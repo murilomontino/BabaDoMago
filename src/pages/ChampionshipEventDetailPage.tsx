@@ -20,6 +20,7 @@ import { ERROR_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
 import {
 	useAddChampionshipEventMatch,
+	useAddChampionshipEventTeam,
 	useChampionshipEvent,
 	useChampionshipEvents,
 	useDeleteChampionshipEvent,
@@ -44,6 +45,7 @@ export function ChampionshipEventDetailPage() {
 	const eventsQuery = useChampionshipEvents(championshipId);
 	const saveTeams = useSaveChampionshipEventTeams(championshipId);
 	const saveAttendance = useSaveChampionshipEventAttendance(championshipId);
+	const addTeam = useAddChampionshipEventTeam(championshipId);
 	const addMatch = useAddChampionshipEventMatch(championshipId);
 	const deleteMatch = useDeleteChampionshipEventMatch(championshipId);
 	const endEvent = useEndChampionshipEvent(championshipId);
@@ -120,6 +122,8 @@ export function ChampionshipEventDetailPage() {
 				saveAttendanceError={
 					saveAttendance.isError ? saveAttendance.error.message : null
 				}
+				addingTeam={addTeam.isPending}
+				addTeamError={addTeam.isError ? addTeam.error.message : null}
 				addingMatch={addMatch.isPending}
 				addMatchError={addMatch.isError ? addMatch.error.message : null}
 				deletingMatch={deleteMatch.isPending}
@@ -141,6 +145,14 @@ export function ChampionshipEventDetailPage() {
 					await saveAttendance.mutateAsync({
 						eventId: event.id,
 						presentPlayerIds,
+					});
+				}}
+				onAddTeam={async ({ color, playerIds, goalkeeperId }) => {
+					await addTeam.mutateAsync({
+						eventId: event.id,
+						color,
+						playerIds,
+						goalkeeperId,
 					});
 				}}
 				onAddMatch={async ({ teamAId, teamBId }) => {

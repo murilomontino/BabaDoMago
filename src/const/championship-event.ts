@@ -63,6 +63,7 @@ export const EVENT_ACTION = {
 	newEvent: "Novo evento",
 	addAttendance: "Adicionar presença",
 	addMatch: "Adicionar partida",
+	addTeam: "Adicionar time",
 	saveAttendance: "Salvar presença",
 	removeAttendance: "Excluir presença",
 	removeMatch: "Excluir partida",
@@ -96,6 +97,7 @@ export const EVENT_TEAM_MESSAGE = {
 	playerLimit: "Time acima do limite",
 	playerNotPresent: "Jogador não está presente",
 	goalkeeperMissing: "Informe o goleiro",
+	needAttendance: "Marque a presença primeiro",
 } as const;
 
 export const EVENT_ATTENDANCE_MESSAGE = {
@@ -353,11 +355,22 @@ export function builderTeamsFromEvent(
 	});
 }
 
-export function canEditEventTeams(event: {
-	ended_at: string | null;
-	matches: readonly unknown[];
-}): boolean {
-	return event.ended_at === null && event.matches.length === 0;
+export function canEditEventTeams(
+	event: {
+		ended_at: string | null;
+		matches: readonly unknown[];
+	},
+	canOverrideEnded = false,
+): boolean {
+	if (event.matches.length > 0) {
+		return false;
+	}
+
+	if (event.ended_at === null) {
+		return true;
+	}
+
+	return canOverrideEnded;
 }
 
 export function eventTeamPlayerIds(
@@ -485,6 +498,51 @@ export function validateEventTeams(
 		for (const playerId of team.playerIds) {
 			players.add(playerId);
 		}
+	}
+
+	return null;
+}
+
+export function validateEventTeam(
+	team: EventTeamDraft,
+	playersPerTeam: number,
+	usedColors: readonly EventTeamColor[],
+	takenPlayerIds: readonly number[],
+	presentIds: readonly number[],
+): string | null {
+	const color = normalizeEventTeamColor(team.color);
+	if (!isEventTeamColor(color)) {
+		return EVENT_TEAM_MESSAGE.colorInvalid;
+	}
+
+	if (usedColors.includes(color)) {
+		return EVENT_TEAM_MESSAGE.colorDuplicate;
+	}
+
+	if (team.playerIds.length === 0) {
+		return EVENT_TEAM_MESSAGE.playerEmpty;
+	}
+
+	if (team.playerIds.length > playersPerTeam) {
+		return EVENT_TEAM_MESSAGE.playerLimit;
+	}
+
+	if (!team.playerIds.includes(team.goalkeeperId)) {
+		return EVENT_TEAM_MESSAGE.goalkeeperMissing;
+	}
+
+	if (new Set(team.playerIds).size !== team.playerIds.length) {
+		return EVENT_TEAM_MESSAGE.playerDuplicate;
+	}
+
+	const taken = new Set(takenPlayerIds);
+	if (team.playerIds.some((playerId) => taken.has(playerId))) {
+		return EVENT_TEAM_MESSAGE.playerDuplicate;
+	}
+
+	const present = new Set(presentIds);
+	if (team.playerIds.some((playerId) => !present.has(playerId))) {
+		return EVENT_TEAM_MESSAGE.playerNotPresent;
 	}
 
 	return null;

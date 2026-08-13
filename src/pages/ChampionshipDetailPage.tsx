@@ -4,6 +4,7 @@ import { ChampionshipDeactivatedTab } from "@/components/championship-deactivate
 import { ChampionshipDetailHeader } from "@/components/championship-detail-header";
 import { ChampionshipEvents } from "@/components/championship-events";
 import { ChampionshipLogoCrop } from "@/components/championship-logo-crop";
+import { ChampionshipPodiumTab } from "@/components/championship-podium-tab";
 import { ChampionshipRosterTab } from "@/components/championship-roster-tab";
 import { ChampionshipSettingsTab } from "@/components/championship-settings-tab";
 import { ConfirmRatingModal } from "@/components/confirm-rating-modal";
@@ -463,6 +464,9 @@ export function ChampionshipDetailPage() {
 					eventTime={data.event_time}
 					canManage={permissions.manageEvent}
 				/>
+			)}
+			{selectedTab === CHAMPIONSHIP_TAB.podium && (
+				<ChampionshipPodiumTab players={activePlayers} />
 			)}
 			{selectedTab === CHAMPIONSHIP_TAB.deactivated && (
 				<ChampionshipDeactivatedTab

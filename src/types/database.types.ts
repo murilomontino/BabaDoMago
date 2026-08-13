@@ -321,6 +321,15 @@ export type Database = {
 			[_ in never]: never;
 		};
 		Functions: {
+			add_championship_event_team: {
+				Args: {
+					event_id: number;
+					team_color: string;
+					player_ids: Json;
+					goalkeeper_id: number;
+				};
+				Returns: Json;
+			};
 			add_championship_event_match: {
 				Args: {
 					event_id: number;

@@ -290,6 +290,26 @@ export async function saveChampionshipEventAttendance(
 	}
 }
 
+export async function addChampionshipEventTeam(
+	eventId: number,
+	team: {
+		color: EventTeamColor;
+		playerIds: readonly number[];
+		goalkeeperId: number;
+	},
+): Promise<void> {
+	const { error } = await supabase.rpc("add_championship_event_team", {
+		event_id: eventId,
+		team_color: normalizeEventTeamColor(team.color),
+		player_ids: [...team.playerIds],
+		goalkeeper_id: team.goalkeeperId,
+	});
+
+	if (error) {
+		throwEventError(error);
+	}
+}
+
 export async function addChampionshipEventMatch(
 	eventId: number,
 	teamAId: number,

@@ -26,6 +26,7 @@ import {
 	resizeBuilderTeams,
 	teamSlotsToPlayerIds,
 	validateEventAttendance,
+	validateEventTeam,
 	validateEventTeams,
 	validateTeamsInAttendance,
 } from "./championship-event.ts";
@@ -126,6 +127,34 @@ check(
 	validateEventAttendance([1], [1, 2, 3]),
 	EVENT_ATTENDANCE_MESSAGE.minPresent,
 );
+check(
+	validateEventTeam(
+		draft(EVENT_TEAM_COLOR.white, [1, 2]),
+		5,
+		[],
+		[],
+		[1, 2, 3],
+	),
+	null,
+);
+check(
+	validateEventTeam(
+		draft(EVENT_TEAM_COLOR.white, [1]),
+		5,
+		[EVENT_TEAM_COLOR.white],
+		[],
+		[1, 2],
+	),
+	EVENT_TEAM_MESSAGE.colorDuplicate,
+);
+check(
+	validateEventTeam(draft(EVENT_TEAM_COLOR.white, [1]), 5, [], [1], [1, 2]),
+	EVENT_TEAM_MESSAGE.playerDuplicate,
+);
+check(
+	validateEventTeam(draft(EVENT_TEAM_COLOR.white, [9]), 5, [], [], [1, 2]),
+	EVENT_TEAM_MESSAGE.playerNotPresent,
+);
 
 check(validateEventAttendance([1, 2], [1, 2, 3]), null);
 
@@ -222,7 +251,12 @@ check(
 );
 check(canEditEventTeams({ ended_at: null, matches: [] }), true);
 check(canEditEventTeams({ ended_at: "2026-08-13", matches: [] }), false);
+check(canEditEventTeams({ ended_at: "2026-08-13", matches: [] }, true), true);
 check(canEditEventTeams({ ended_at: null, matches: [{}] }), false);
+check(
+	canEditEventTeams({ ended_at: "2026-08-13", matches: [{}] }, true),
+	false,
+);
 check(draftAttendanceForEnd(false, [1, 2]), null);
 check(draftAttendanceForEnd(true, [1]), null);
 check(draftAttendanceForEnd(true, [1, 2])?.join(","), "1,2");

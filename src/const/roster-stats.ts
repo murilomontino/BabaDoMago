@@ -1,4 +1,4 @@
-import type { ChampionshipPlayer } from "@/types/championship";
+import type { ChampionshipPlayer } from "../types/championship.ts";
 
 export const ROSTER_COLUMN = {
 	player: "player",
@@ -124,6 +124,29 @@ export function formatRosterAverage(value: number): string {
 
 export function formatRosterWinRate(value: number): string {
 	return `${Math.round(rosterSafeCount(value) * 100)}%`;
+}
+
+export function formatRosterStat(
+	column: RosterStatColumnId,
+	value: number,
+): string {
+	switch (column) {
+		case ROSTER_COLUMN.goals:
+		case ROSTER_COLUMN.assists:
+		case ROSTER_COLUMN.goalInvolvement:
+		case ROSTER_COLUMN.wins:
+		case ROSTER_COLUMN.matches:
+			return formatRosterCount(value);
+		case ROSTER_COLUMN.goalsAverage:
+		case ROSTER_COLUMN.assistsAverage:
+			return formatRosterAverage(value);
+		case ROSTER_COLUMN.winRate:
+			return formatRosterWinRate(value);
+		default: {
+			const _exhaustive: never = column;
+			return _exhaustive;
+		}
+	}
 }
 
 export const ROSTER_STAT_COLUMN_OPTIONS = ROSTER_STAT_COLUMNS.map((id) => ({

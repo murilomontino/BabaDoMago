@@ -1,6 +1,7 @@
 import { X } from "lucide-react";
 import { useRef, useState } from "react";
 import { AddEventMatchModal } from "@/components/add-event-match-modal";
+import { AddEventTeamModal } from "@/components/add-event-team-modal";
 import { Button } from "@/components/button";
 import { ChampionshipEventBuilder } from "@/components/championship-event-builder";
 import { DeleteEventAttendanceModal } from "@/components/delete-event-attendance-modal";
@@ -57,6 +58,11 @@ type ChampionshipEventDetailProps = {
 		teams: EventTeamDraft[];
 	}) => Promise<void>;
 	onSaveAttendance: (presentPlayerIds: number[]) => Promise<void>;
+	onAddTeam: (values: {
+		color: EventTeamColor;
+		playerIds: number[];
+		goalkeeperId: number;
+	}) => Promise<void>;
 	onAddMatch: (values: { teamAId: number; teamBId: number }) => Promise<void>;
 	onDeleteMatch: (matchId: number) => Promise<void>;
 	onEnd: (presentPlayerIds: number[] | null) => Promise<void>;
@@ -65,6 +71,8 @@ type ChampionshipEventDetailProps = {
 	saveTeamsError: string | null;
 	savingAttendance: boolean;
 	saveAttendanceError: string | null;
+	addingTeam: boolean;
+	addTeamError: string | null;
 	addingMatch: boolean;
 	addMatchError: string | null;
 	deletingMatch: boolean;
@@ -135,6 +143,7 @@ export function ChampionshipEventDetail({
 	canOverrideEnded,
 	onSaveTeams,
 	onSaveAttendance,
+	onAddTeam,
 	onAddMatch,
 	onDeleteMatch,
 	onEnd,
@@ -143,6 +152,8 @@ export function ChampionshipEventDetail({
 	saveTeamsError,
 	savingAttendance,
 	saveAttendanceError,
+	addingTeam,
+	addTeamError,
 	addingMatch,
 	addMatchError,
 	deletingMatch,
@@ -164,12 +175,13 @@ export function ChampionshipEventDetail({
 	);
 	const teamsEditable = canManage && canEditEventTeams(event);
 	const [isEditingTeams, setIsEditingTeams] = useState(
-		event.teams.length < CHAMPIONSHIP_EVENT.minTeams,
+		teamsEditable && event.teams.length < CHAMPIONSHIP_EVENT.minTeams,
 	);
 	const showTeamBuilder =
 		teamsEditable &&
 		(isEditingTeams || event.teams.length < CHAMPIONSHIP_EVENT.minTeams);
 	const showAttendanceActions = canOverrideEnded && !showTeamBuilder;
+	const showAddTeam = canOverrideEnded && !showTeamBuilder;
 	const showAddMatch =
 		!showTeamBuilder &&
 		canAddEventMatch({
@@ -182,6 +194,7 @@ export function ChampionshipEventDetail({
 	const [isEndOpen, setIsEndOpen] = useState(false);
 	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 	const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
+	const [isAddTeamOpen, setIsAddTeamOpen] = useState(false);
 	const [isAddMatchOpen, setIsAddMatchOpen] = useState(false);
 	const [attendanceToRemove, setAttendanceToRemove] =
 		useState<ChampionshipPlayer | null>(null);
@@ -214,6 +227,14 @@ export function ChampionshipEventDetail({
 								onClick={() => setIsAttendanceOpen(true)}
 							>
 								{EVENT_ACTION.addAttendance}
+							</Button>
+						)}
+						{showAddTeam && (
+							<Button
+								variant={BUTTON_VARIANT.secondary}
+								onClick={() => setIsAddTeamOpen(true)}
+							>
+								{EVENT_ACTION.addTeam}
 							</Button>
 						)}
 						{showAddMatch && (
@@ -426,6 +447,27 @@ export function ChampionshipEventDetail({
 					onSave={async (presentPlayerIds) => {
 						await onSaveAttendance(presentPlayerIds);
 						setIsAttendanceOpen(false);
+					}}
+				/>
+			)}
+			{isAddTeamOpen && (
+				<AddEventTeamModal
+					playersPerTeam={event.players_per_team}
+					presentPlayers={presentPlayers}
+					usedColors={event.teams.map((team) => team.color)}
+					takenPlayerIds={teamPlayerIds}
+					isPending={addingTeam}
+					errorMessage={addTeamError}
+					onCancel={() => {
+						if (addingTeam) {
+							return;
+						}
+
+						setIsAddTeamOpen(false);
+					}}
+					onAdd={async (values) => {
+						await onAddTeam(values);
+						setIsAddTeamOpen(false);
 					}}
 				/>
 			)}

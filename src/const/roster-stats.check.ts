@@ -2,6 +2,7 @@ import type { ChampionshipPlayer } from "../types/championship.ts";
 import {
 	formatRosterAverage,
 	formatRosterCount,
+	formatRosterStat,
 	formatRosterWinRate,
 	ROSTER_COLUMN,
 	ROSTER_COLUMN_ABBR,
@@ -29,6 +30,23 @@ check(formatRosterCount(0) === "0", "count format");
 check(formatRosterAverage(0) === "0.0", "average format");
 check(formatRosterWinRate(0) === "0%", "win rate zero format");
 check(formatRosterWinRate(0.5) === "50%", "win rate percent");
+check(formatRosterStat(ROSTER_COLUMN.goals, 4) === "4", "stat goals");
+check(formatRosterStat(ROSTER_COLUMN.assists, 2) === "2", "stat assists");
+check(
+	formatRosterStat(ROSTER_COLUMN.goalInvolvement, 6) === "6",
+	"stat involvement",
+);
+check(formatRosterStat(ROSTER_COLUMN.wins, 3) === "3", "stat wins");
+check(formatRosterStat(ROSTER_COLUMN.matches, 6) === "6", "stat matches");
+check(
+	formatRosterStat(ROSTER_COLUMN.goalsAverage, 0.5) === "0.5",
+	"stat goals average",
+);
+check(
+	formatRosterStat(ROSTER_COLUMN.assistsAverage, 1) === "1.0",
+	"stat assists average",
+);
+check(formatRosterStat(ROSTER_COLUMN.winRate, 0.5) === "50%", "stat win rate");
 check(
 	Object.keys(ROSTER_COLUMN).every((id) => id in ROSTER_COLUMN_ABBR),
 	"every column has abbr",

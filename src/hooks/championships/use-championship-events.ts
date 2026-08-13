@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { EventTeamColor } from "@/const/event-team-color";
 import {
 	addChampionshipEventMatch,
+	addChampionshipEventTeam,
 	createChampionshipEvent,
 	deleteChampionshipEvent,
 	deleteChampionshipEventMatch,
@@ -78,6 +79,32 @@ export function useSaveChampionshipEventAttendance(_championshipId: number) {
 			eventId: number;
 			presentPlayerIds: readonly number[];
 		}) => saveChampionshipEventAttendance(eventId, presentPlayerIds),
+		onSuccess: async () => {
+			await invalidateChampionshipEventQueries(queryClient);
+		},
+	});
+}
+
+export function useAddChampionshipEventTeam(_championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({
+			eventId,
+			color,
+			playerIds,
+			goalkeeperId,
+		}: {
+			eventId: number;
+			color: EventTeamColor;
+			playerIds: readonly number[];
+			goalkeeperId: number;
+		}) =>
+			addChampionshipEventTeam(eventId, {
+				color,
+				playerIds,
+				goalkeeperId,
+			}),
 		onSuccess: async () => {
 			await invalidateChampionshipEventQueries(queryClient);
 		},
