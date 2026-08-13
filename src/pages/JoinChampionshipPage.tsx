@@ -86,6 +86,7 @@ export function JoinChampionshipPage() {
 			<h1 className="mb-6 text-2xl font-semibold">{data.name}</h1>
 			<ChampionshipRoster
 				players={data.players}
+				createdBy={data.created_by}
 				currentUserId={user?.id ?? null}
 				claimingPlayerId={claimPlayer.variables ?? null}
 				onClaim={handleClaim}

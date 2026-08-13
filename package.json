@@ -10,7 +10,8 @@
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
 		"typecheck": "tsc --noEmit -p tsconfig.app.json",
-		"check:rating": "node --experimental-strip-types src/const/player-rating.check.ts"
+		"check:rating": "node --experimental-strip-types src/const/player-rating.check.ts",
+		"check:roles": "node --experimental-strip-types src/const/championship-role.check.ts"
 	},
 	"dependencies": {
 		"@supabase/supabase-js": "^2.112.3",

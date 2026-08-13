@@ -15,8 +15,10 @@ create table public.championship_players (
 	display_name text not null,
 	avatar_url text,
 	rating smallint not null default 0,
+	role text not null default 'member',
 	created_at timestamptz not null default now(),
 	constraint championship_players_rating_check check (rating between 0 and 100),
+	constraint championship_players_role_check check (role in ('captain', 'admin', 'member')),
 	unique (championship_id, user_id)
 );
 
@@ -49,6 +51,29 @@ as $$
 			where p.championship_id = championship_id
 				and p.user_id = (select auth.uid())
 		);
+$$;
+
+create or replace function public.championship_actor_role(championship_id bigint)
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+	select case
+		when exists (
+			select 1
+			from public.championships c
+			where c.id = championship_actor_role.championship_id
+				and c.created_by = (select auth.uid())
+		) then 'owner'
+		else (
+			select p.role
+			from public.championship_players p
+			where p.championship_id = championship_actor_role.championship_id
+				and p.user_id = (select auth.uid())
+		)
+	end;
 $$;
 
 create or replace function public.current_user_display_name()
@@ -117,17 +142,12 @@ create policy championship_players_select_member
 	to authenticated
 	using (public.is_championship_member(championship_id));
 
-create policy championship_players_insert_owner
+create policy championship_players_insert_staff
 	on public.championship_players
 	for insert
 	to authenticated
 	with check (
-		exists (
-			select 1
-			from public.championships c
-			where c.id = championship_id
-				and c.created_by = (select auth.uid())
-		)
+		public.championship_actor_role(championship_id) in ('owner', 'captain', 'admin')
 		and (
 			user_id is null
 			or user_id = (select auth.uid())
@@ -157,7 +177,8 @@ begin
 					'user_id', p.user_id,
 					'display_name', p.display_name,
 					'avatar_url', p.avatar_url,
-					'rating', p.rating
+					'rating', p.rating,
+					'role', p.role
 				)
 				order by p.id
 			)
@@ -214,7 +235,8 @@ begin
 			'user_id', player.user_id,
 			'display_name', player.display_name,
 			'avatar_url', player.avatar_url,
-			'rating', player.rating
+			'rating', player.rating,
+			'role', player.role
 		);
 	end if;
 
@@ -238,7 +260,8 @@ begin
 		'user_id', player.user_id,
 		'display_name', player.display_name,
 		'avatar_url', player.avatar_url,
-		'rating', player.rating
+		'rating', player.rating,
+		'role', player.role
 	);
 end;
 $$;
@@ -293,7 +316,8 @@ begin
 		'user_id', player.user_id,
 		'display_name', player.display_name,
 		'avatar_url', player.avatar_url,
-		'rating', player.rating
+		'rating', player.rating,
+		'role', player.role
 	);
 end;
 $$;
@@ -326,13 +350,8 @@ begin
 		raise exception 'player not found' using errcode = 'P0002';
 	end if;
 
-	if not exists (
-		select 1
-		from public.championships c
-		where c.id = player.championship_id
-			and c.created_by = viewer
-	) then
-		raise exception 'not championship owner' using errcode = '42501';
+	if public.championship_actor_role(player.championship_id) not in ('owner', 'captain', 'admin') then
+		raise exception 'not allowed' using errcode = '42501';
 	end if;
 
 	update public.championship_players
@@ -346,26 +365,135 @@ begin
 		'user_id', player.user_id,
 		'display_name', player.display_name,
 		'avatar_url', player.avatar_url,
-		'rating', player.rating
+		'rating', player.rating,
+		'role', player.role
+	);
+end;
+$$;
+
+create or replace function public.update_championship_name(championship_id bigint, name text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+	championship public.championships%rowtype;
+	trimmed text := btrim(update_championship_name.name);
+begin
+	if (select auth.uid()) is null then
+		raise exception 'not authenticated' using errcode = '42501';
+	end if;
+
+	if trimmed is null or trimmed = '' then
+		raise exception 'invalid name' using errcode = '23514';
+	end if;
+
+	if public.championship_actor_role(update_championship_name.championship_id) not in ('owner', 'captain') then
+		raise exception 'not allowed' using errcode = '42501';
+	end if;
+
+	update public.championships c
+	set name = trimmed
+	where c.id = update_championship_name.championship_id
+	returning * into championship;
+
+	if championship.id is null then
+		raise exception 'championship not found' using errcode = 'P0002';
+	end if;
+
+	return jsonb_build_object(
+		'id', championship.id,
+		'name', championship.name,
+		'invite_code', championship.invite_code,
+		'created_by', championship.created_by
+	);
+end;
+$$;
+
+create or replace function public.set_player_role(player_id bigint, role text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+	player public.championship_players%rowtype;
+	championship public.championships%rowtype;
+begin
+	if (select auth.uid()) is null then
+		raise exception 'not authenticated' using errcode = '42501';
+	end if;
+
+	if set_player_role.role not in ('captain', 'admin', 'member') then
+		raise exception 'invalid role' using errcode = '23514';
+	end if;
+
+	select *
+	into player
+	from public.championship_players p
+	where p.id = set_player_role.player_id
+	for update;
+
+	if player.id is null then
+		raise exception 'player not found' using errcode = 'P0002';
+	end if;
+
+	if public.championship_actor_role(player.championship_id) is distinct from 'owner' then
+		raise exception 'not allowed' using errcode = '42501';
+	end if;
+
+	if player.user_id is null then
+		raise exception 'player has no account' using errcode = '23514';
+	end if;
+
+	select *
+	into championship
+	from public.championships c
+	where c.id = player.championship_id;
+
+	if championship.created_by = player.user_id then
+		raise exception 'cannot change owner role' using errcode = '42501';
+	end if;
+
+	update public.championship_players
+	set role = set_player_role.role
+	where id = player.id
+	returning * into player;
+
+	return jsonb_build_object(
+		'id', player.id,
+		'championship_id', player.championship_id,
+		'user_id', player.user_id,
+		'display_name', player.display_name,
+		'avatar_url', player.avatar_url,
+		'rating', player.rating,
+		'role', player.role
 	);
 end;
 $$;
 
 revoke all on function public.is_championship_member(bigint) from public;
+revoke all on function public.championship_actor_role(bigint) from public;
 revoke all on function public.current_user_display_name() from public;
 revoke all on function public.current_user_avatar_url() from public;
 revoke all on function public.get_championship_by_invite(text) from public;
 revoke all on function public.join_championship(text) from public;
 revoke all on function public.claim_player(bigint) from public;
 revoke all on function public.update_player_rating(bigint, smallint) from public;
+revoke all on function public.update_championship_name(bigint, text) from public;
+revoke all on function public.set_player_role(bigint, text) from public;
 
 grant execute on function public.is_championship_member(bigint) to authenticated;
+grant execute on function public.championship_actor_role(bigint) to authenticated;
 grant execute on function public.current_user_display_name() to authenticated;
 grant execute on function public.current_user_avatar_url() to authenticated;
 grant execute on function public.get_championship_by_invite(text) to anon, authenticated;
 grant execute on function public.join_championship(text) to authenticated;
 grant execute on function public.claim_player(bigint) to authenticated;
 grant execute on function public.update_player_rating(bigint, smallint) to authenticated;
+grant execute on function public.update_championship_name(bigint, text) to authenticated;
+grant execute on function public.set_player_role(bigint, text) to authenticated;
 
 grant select, insert, update, delete on public.championships to authenticated;
 grant select, insert on public.championship_players to authenticated;

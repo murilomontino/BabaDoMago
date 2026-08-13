@@ -1,3 +1,4 @@
+import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
 import { PLAYER_RATING } from "@/const/player-rating";
 import { supabase } from "@/lib/supabase";
 import type {
@@ -7,7 +8,7 @@ import type {
 } from "@/types/championship";
 
 const PLAYER_COLUMNS =
-	"id, championship_id, user_id, display_name, avatar_url, rating" as const;
+	"id, championship_id, user_id, display_name, avatar_url, rating, role" as const;
 
 function asChampionship(value: unknown): Championship {
 	if (!value || typeof value !== "object") {
@@ -52,6 +53,7 @@ function asPlayer(value: unknown): ChampionshipPlayer {
 		display_name: row.display_name,
 		avatar_url: typeof row.avatar_url === "string" ? row.avatar_url : null,
 		rating: row.rating,
+		role: typeof row.role === "string" ? row.role : CHAMPIONSHIP_ROLE.member,
 	};
 }
 
@@ -217,4 +219,49 @@ export async function updatePlayerRating(
 	}
 
 	return asPlayer(data);
+}
+
+export async function renameChampionship(
+	championshipId: number,
+	name: string,
+): Promise<Championship> {
+	const { data, error } = await supabase.rpc("update_championship_name", {
+		championship_id: championshipId,
+		name,
+	});
+
+	if (error) {
+		throw error;
+	}
+
+	return asChampionship(data);
+}
+
+export async function setPlayerRole(
+	playerId: number,
+	role: string,
+): Promise<ChampionshipPlayer> {
+	const { data, error } = await supabase.rpc("set_player_role", {
+		player_id: playerId,
+		role,
+	});
+
+	if (error) {
+		throw error;
+	}
+
+	return asPlayer(data);
+}
+
+export async function deleteChampionship(
+	championshipId: number,
+): Promise<void> {
+	const { error } = await supabase
+		.from("championships")
+		.delete()
+		.eq("id", championshipId);
+
+	if (error) {
+		throw error;
+	}
 }

@@ -1,5 +1,12 @@
 import { PlayerRating } from "@/components/player-rating";
 import {
+	ASSIGNABLE_CHAMPIONSHIP_ROLES,
+	type AssignableChampionshipRole,
+	CHAMPIONSHIP_ROLE,
+	CHAMPIONSHIP_ROLE_LABEL,
+	resolveChampionshipRole,
+} from "@/const/championship-role";
+import {
 	championshipRatingCeiling,
 	starFillToRating,
 } from "@/const/player-rating";
@@ -7,20 +14,24 @@ import type { ChampionshipPlayer } from "@/types/championship";
 
 type ChampionshipRosterProps = {
 	players: ChampionshipPlayer[];
+	createdBy: string;
 	currentUserId: string | null;
 	claimingPlayerId: number | null;
 	onClaim: (playerId: number) => void;
 	onChangeRating?: (playerId: number, rating: number) => void;
 	ratingPlayerId?: number | null;
+	onChangeRole?: (playerId: number, role: AssignableChampionshipRole) => void;
 };
 
 export function ChampionshipRoster({
 	players,
+	createdBy,
 	currentUserId,
 	claimingPlayerId,
 	onClaim,
 	onChangeRating,
 	ratingPlayerId,
+	onChangeRole,
 }: ChampionshipRosterProps) {
 	const alreadyMember = Boolean(
 		currentUserId && players.some((player) => player.user_id === currentUserId),
@@ -38,6 +49,16 @@ export function ChampionshipRoster({
 		<ul className="divide-y divide-slate-200 rounded-lg border border-slate-200">
 			{players.map((player) => {
 				const canClaim = !player.user_id && !alreadyMember;
+				const displayRole = resolveChampionshipRole(
+					createdBy,
+					player.user_id,
+					player.role,
+				);
+				const canEditRole = Boolean(
+					onChangeRole &&
+						player.user_id &&
+						displayRole !== CHAMPIONSHIP_ROLE.owner,
+				);
 
 				return (
 					<li
@@ -78,10 +99,34 @@ export function ChampionshipRoster({
 									/>
 								</div>
 								{player.user_id && (
-									<p className="text-xs text-slate-500">Conta conectada</p>
+									<p className="text-xs text-slate-500">
+										{CHAMPIONSHIP_ROLE_LABEL[displayRole]}
+									</p>
 								)}
 								{!player.user_id && (
 									<p className="text-xs text-slate-500">Sem conta</p>
+								)}
+								{canEditRole && onChangeRole && (
+									<select
+										value={player.role}
+										onChange={(event) => {
+											const nextRole = ASSIGNABLE_CHAMPIONSHIP_ROLES.find(
+												(role) => role === event.target.value,
+											);
+											if (!nextRole) {
+												return;
+											}
+
+											onChangeRole(player.id, nextRole);
+										}}
+										className="mt-1 rounded border border-slate-300 px-2 py-1 text-xs"
+									>
+										{ASSIGNABLE_CHAMPIONSHIP_ROLES.map((role) => (
+											<option key={role} value={role}>
+												{CHAMPIONSHIP_ROLE_LABEL[role]}
+											</option>
+										))}
+									</select>
 								)}
 							</div>
 						</div>

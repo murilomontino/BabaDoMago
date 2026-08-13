@@ -36,6 +36,7 @@ Rode no SQL Editor, nesta ordem:
 4. [`supabase/migrations/20260813160000_player_rating.sql`](supabase/migrations/20260813160000_player_rating.sql) — nota no jogador (rode se o 1 já foi aplicado)
 5. [`supabase/migrations/20260813170000_player_rating_100.sql`](supabase/migrations/20260813170000_player_rating_100.sql) — nota 1–100; estrelas relativas ao teto do baba
 6. [`supabase/migrations/20260813180000_player_rating_allow_zero.sql`](supabase/migrations/20260813180000_player_rating_allow_zero.sql) — nota 0–100, default 0; estrelas 1–5 = pontos até o teto crescer
+7. [`supabase/migrations/20260813190000_championship_roles.sql`](supabase/migrations/20260813190000_championship_roles.sql) — papéis dono / capitão / admin / normal
 
 O segundo cria `public.users` e vincula cada login Google (trigger + backfill). Sem ele o app não cadastra usuário na plataforma.
 
@@ -43,5 +44,5 @@ O segundo cria `public.users` e vincula cada login Google (trigger + backfill). 
 
 - `/` lista só os campeonatos que você criou ou entrou
 - `/championships/new` cria (você entra como jogador)
-- `/championships/:id` elenco, copiar convite, adicionar jogador sem conta; dono preenche estrelas (nota oculta); 1–5 estrelas = 1–5 pontos até o teto crescer
+- `/championships/:id` elenco; dono exclui e define papéis; capitão muda o nome; admin/capitão/dono convidam e editam estrelas
 - `/join/:codigo` público: vê o elenco, Conectar no nome livre, Inscrever-me

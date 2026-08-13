@@ -3,10 +3,13 @@ import {
 	addManualPlayer,
 	claimPlayer,
 	createChampionship,
+	deleteChampionship,
 	getChampionshipById,
 	getChampionshipByInvite,
 	joinChampionship,
 	listChampionships,
+	renameChampionship,
+	setPlayerRole,
 	updatePlayerRating,
 } from "@/services/championships";
 import {
@@ -128,6 +131,52 @@ export function useUpdatePlayerRating() {
 			});
 			await queryClient.invalidateQueries({
 				queryKey: CHAMPIONSHIP_BY_INVITE_QUERY_KEY,
+			});
+		},
+	});
+}
+
+export function useRenameChampionship(championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (name: string) => renameChampionship(championshipId, name),
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({
+				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,
+			});
+			await queryClient.invalidateQueries({
+				queryKey: CHAMPIONSHIPS_QUERY_KEY,
+			});
+		},
+	});
+}
+
+export function useSetPlayerRole() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({ playerId, role }: { playerId: number; role: string }) =>
+			setPlayerRole(playerId, role),
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({
+				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,
+			});
+			await queryClient.invalidateQueries({
+				queryKey: CHAMPIONSHIP_BY_INVITE_QUERY_KEY,
+			});
+		},
+	});
+}
+
+export function useDeleteChampionship() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (championshipId: number) => deleteChampionship(championshipId),
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({
+				queryKey: CHAMPIONSHIPS_QUERY_KEY,
 			});
 		},
 	});
