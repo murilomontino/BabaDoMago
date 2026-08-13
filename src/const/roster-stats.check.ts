@@ -36,5 +36,7 @@ check(
 );
 check(ROSTER_COLUMN_ABBR.goals === "G", "goals abbr");
 check(ROSTER_COLUMN_LABEL.goals === "Gols", "goals label");
+check(ROSTER_COLUMN_ABBR.actions === "Ações", "actions abbr");
+check(ROSTER_COLUMN_LABEL.actions === "Ações", "actions label");
 
 console.log("roster-stats ok");

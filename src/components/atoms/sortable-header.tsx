@@ -7,12 +7,24 @@ const ARIA_SORT = {
 	none: "none",
 } as const;
 
+const HEADER_ALIGN_CLASS = {
+	left: "text-left",
+	center: "text-center",
+	right: "text-right",
+} as const;
+
+const HEADER_SORT_BUTTON_CLASS = {
+	left: "",
+	center: "w-full justify-center",
+	right: "flex-row-reverse",
+} as const;
+
 type SortableHeaderProps = {
 	children: ReactNode;
 	canSort: boolean;
 	sorted: false | "asc" | "desc";
 	onSort?: (event: unknown) => void;
-	align?: "left" | "right";
+	align?: "left" | "center" | "right";
 	title?: string;
 };
 
@@ -24,7 +36,7 @@ export function SortableHeader({
 	align = "left",
 	title,
 }: SortableHeaderProps) {
-	const alignClass = align === "right" ? "text-right" : "text-left";
+	const alignClass = HEADER_ALIGN_CLASS[align];
 	const ariaSort = sorted ? ARIA_SORT[sorted] : ARIA_SORT.none;
 
 	if (!canSort) {
@@ -50,7 +62,7 @@ export function SortableHeader({
 				onClick={(event) => {
 					onSort?.(event);
 				}}
-				className={`inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-stone-600 hover:text-stone-900 ${align === "right" ? "flex-row-reverse" : ""}`}
+				className={`inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-stone-600 hover:text-stone-900 ${HEADER_SORT_BUTTON_CLASS[align]}`}
 			>
 				{children}
 				{sorted === "asc" && <ChevronUp className="size-3.5 shrink-0" />}

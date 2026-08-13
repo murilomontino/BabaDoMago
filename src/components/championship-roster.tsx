@@ -245,7 +245,7 @@ export function ChampionshipRoster({
 					header: ROSTER_COLUMN_ABBR.actions,
 					enableHiding: false,
 					enableSorting: false,
-					meta: { title: ROSTER_COLUMN_LABEL.actions },
+					meta: { align: "center", title: ROSTER_COLUMN_LABEL.actions },
 					cell: ({ row }) => (
 						<RosterPlayerActions
 							{...rosterPlayerActionsProps(row.original, playerActionsShared)}

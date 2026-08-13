@@ -1,5 +1,5 @@
 import { Unlink, UserCheck, UserPlus, UserX } from "lucide-react";
-import { Button } from "@/components/button";
+import { IconTooltipButton } from "@/components/molecules/icon-tooltip-button";
 import {
 	CHAMPIONSHIP_ROLE,
 	resolveChampionshipRole,
@@ -56,45 +56,40 @@ export function RosterPlayerActions({
 	}
 
 	return (
-		<div className="flex flex-wrap justify-end gap-2">
+		<div className="flex flex-wrap justify-center gap-2">
 			{canClaim && onClaim && (
-				<Button
-					variant={BUTTON_VARIANT.secondary}
+				<IconTooltipButton
+					label="Conectar"
+					icon={<UserPlus className="size-4" />}
 					onClick={() => onClaim(player.id)}
 					disabled={claimingPlayerId === player.id}
-				>
-					<UserPlus className="size-4" />
-					Conectar
-				</Button>
+				/>
 			)}
 			{canUnlink && onUnlink && (
-				<Button
-					variant={BUTTON_VARIANT.secondary}
+				<IconTooltipButton
+					label="Desconectar"
+					icon={<Unlink className="size-4" />}
 					onClick={() => onUnlink(player.id)}
 					disabled={unlinkingPlayerId === player.id}
-				>
-					<Unlink className="size-4" />
-					Desconectar
-				</Button>
+				/>
 			)}
 			{canDeactivate && onDeactivate && (
-				<Button
+				<IconTooltipButton
+					label="Desativar"
+					icon={<UserX className="size-4" />}
 					variant={BUTTON_VARIANT.danger}
 					onClick={() => onDeactivate(player.id)}
 					disabled={deactivatingPlayerId === player.id}
-				>
-					<UserX className="size-4" />
-					Desativar
-				</Button>
+				/>
 			)}
 			{canReactivate && onReactivate && (
-				<Button
+				<IconTooltipButton
+					label="Ativar"
+					icon={<UserCheck className="size-4" />}
+					variant={BUTTON_VARIANT.primary}
 					onClick={() => onReactivate(player.id)}
 					disabled={reactivatingPlayerId === player.id}
-				>
-					<UserCheck className="size-4" />
-					Ativar
-				</Button>
+				/>
 			)}
 		</div>
 	);

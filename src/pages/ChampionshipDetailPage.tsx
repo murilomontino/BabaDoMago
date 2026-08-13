@@ -1,11 +1,12 @@
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { Field, Form, Formik } from "formik";
-import { Copy, Shield, Trash2, Users, UserX } from "lucide-react";
+import { Copy, Plus, Shield, Trash2, Users, UserX } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Button } from "@/components/button";
 import { ChampionshipLogo } from "@/components/championship-logo";
 import { ChampionshipLogoCrop } from "@/components/championship-logo-crop";
 import { ChampionshipRoster } from "@/components/championship-roster";
+import { ConfirmRatingModal } from "@/components/confirm-rating-modal";
 import { DeleteChampionshipModal } from "@/components/delete-championship-modal";
 import { EmptyState } from "@/components/empty-state";
 import { FormError } from "@/components/form-error";
@@ -86,6 +87,13 @@ export function ChampionshipDetailPage() {
 	const [logoCropSrc, setLogoCropSrc] = useState<string | null>(null);
 	const [logoSourceError, setLogoSourceError] = useState<string | null>(null);
 	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+	const [pendingRatingChange, setPendingRatingChange] = useState<{
+		playerId: number;
+		playerName: string;
+		avatarUrl: string | null;
+		from: number;
+		to: number;
+	} | null>(null);
 	const [tab, setTab] = useState<ChampionshipTab>(CHAMPIONSHIP_TAB.roster);
 
 	const currentPlayer = data?.players.find(
@@ -129,7 +137,50 @@ export function ChampionshipDetailPage() {
 			return;
 		}
 
-		updateRating.mutate({ playerId, rating });
+		const player = activePlayers.find((item) => item.id === playerId);
+		if (!player) {
+			return;
+		}
+
+		if (player.rating === rating) {
+			return;
+		}
+
+		updateRating.reset();
+		setPendingRatingChange({
+			playerId: player.id,
+			playerName: player.display_name,
+			avatarUrl: player.avatar_url,
+			from: player.rating,
+			to: rating,
+		});
+	}
+
+	function handleRatingCancel() {
+		if (updateRating.isPending) {
+			return;
+		}
+
+		updateRating.reset();
+		setPendingRatingChange(null);
+	}
+
+	function handleRatingConfirm() {
+		if (!pendingRatingChange) {
+			return;
+		}
+
+		updateRating.mutate(
+			{
+				playerId: pendingRatingChange.playerId,
+				rating: pendingRatingChange.to,
+			},
+			{
+				onSuccess: () => {
+					setPendingRatingChange(null);
+				},
+			},
+		);
 	}
 
 	function handleUnlink(playerId: number) {
@@ -305,6 +356,21 @@ export function ChampionshipDetailPage() {
 					onConfirm={handleLogoCropConfirm}
 				/>
 			)}
+			{pendingRatingChange && (
+				<ConfirmRatingModal
+					playerName={pendingRatingChange.playerName}
+					avatarUrl={pendingRatingChange.avatarUrl}
+					from={pendingRatingChange.from}
+					to={pendingRatingChange.to}
+					ceiling={rosterCeiling}
+					isPending={updateRating.isPending}
+					errorMessage={
+						updateRating.isError ? updateRating.error.message : null
+					}
+					onCancel={handleRatingCancel}
+					onConfirm={handleRatingConfirm}
+				/>
+			)}
 			{isDeleteOpen && (
 				<DeleteChampionshipModal
 					championshipName={data.name}
@@ -365,8 +431,15 @@ export function ChampionshipDetailPage() {
 										className={`min-w-0 flex-1 ${FIELD_CLASS}`}
 									/>
 									<PlayerRatingField ceiling={rosterCeiling} />
-									<Button type="submit" disabled={addPlayer.isPending}>
-										Adicionar
+									<Button
+										type="submit"
+										variant={BUTTON_VARIANT.ghost}
+										disabled={addPlayer.isPending}
+										aria-label="Adicionar jogador"
+										className="px-2 !text-pitch hover:!bg-pitch-soft"
+									>
+										<Plus className="size-4" />
+										add
 									</Button>
 								</div>
 								<FormError name="name" />
@@ -419,7 +492,7 @@ export function ChampionshipDetailPage() {
 							{deactivatePlayer.error.message}
 						</p>
 					)}
-					{updateRating.isError && (
+					{updateRating.isError && !pendingRatingChange && (
 						<p className={`mt-4 ${ERROR_CLASS}`}>
 							{updateRating.error.message}
 						</p>

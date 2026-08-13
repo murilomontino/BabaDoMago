@@ -13,6 +13,12 @@ import { SortableHeader } from "@/components/atoms/sortable-header";
 import { ColumnVisibilityPanel } from "@/components/molecules/column-visibility-panel";
 import { TableLegend } from "@/components/molecules/table-legend";
 
+const TABLE_CELL_ALIGN = {
+	left: "text-left",
+	center: "text-center",
+	right: "text-right",
+} as const;
+
 export const dataTableFeatures = tableFeatures({
 	columnVisibilityFeature,
 	rowSortingFeature,
@@ -21,7 +27,7 @@ export const dataTableFeatures = tableFeatures({
 		alphanumeric: sortFn_alphanumeric,
 		basic: sortFn_basic,
 	},
-	columnMeta: {} as { align?: "left" | "right"; title?: string },
+	columnMeta: {} as { align?: "left" | "center" | "right"; title?: string },
 });
 
 export type DataTableFeatures = typeof dataTableFeatures;
@@ -128,9 +134,8 @@ export function DataTable<TData extends RowData>({
 						{table.getRowModel().rows.map((row) => (
 							<tr key={row.id}>
 								{row.getVisibleCells().map((cell) => {
-									const align = cell.column.columnDef.meta?.align;
-									const alignClass =
-										align === "right" ? "text-right" : "text-left";
+									const align = cell.column.columnDef.meta?.align ?? "left";
+									const alignClass = TABLE_CELL_ALIGN[align];
 
 									return (
 										<td

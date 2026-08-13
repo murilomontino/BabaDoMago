@@ -18,8 +18,8 @@ export function PlayerRatingField({
 
 	function handleChange(starFill: number) {
 		const rating = starFillToRating(starFill, ceiling);
-		void helpers.setValue(rating, true);
 		if (!onCommit) {
+			void helpers.setValue(rating, true);
 			return;
 		}
 

@@ -26,6 +26,7 @@
 		"react": "^19.2.8",
 		"react-dom": "^19.2.8",
 		"react-easy-crop": "^6.2.3",
+		"react-tooltip": "^6.0.8",
 		"yup": "^1.7.1"
 	},
 	"devDependencies": {

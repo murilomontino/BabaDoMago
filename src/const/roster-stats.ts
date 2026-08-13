@@ -25,7 +25,7 @@ export const ROSTER_COLUMN_ABBR = {
 	goalsAverage: "MG",
 	assistsAverage: "MA",
 	winRate: "WR",
-	actions: "Aç",
+	actions: "Ações",
 } as const;
 
 export const ROSTER_COLUMN_LABEL = {
@@ -136,7 +136,6 @@ export const ROSTER_STAT_COLUMN_OPTIONS = ROSTER_STAT_COLUMNS.map((id) => ({
 export const ROSTER_COLUMN_IDS = [
 	ROSTER_COLUMN.player,
 	...ROSTER_STAT_COLUMNS,
-	ROSTER_COLUMN.actions,
 ] as const;
 
 export const ROSTER_LEGEND_ITEMS = ROSTER_COLUMN_IDS.map((id) => ({

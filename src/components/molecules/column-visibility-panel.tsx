@@ -1,3 +1,5 @@
+import { ChevronDown } from "lucide-react";
+
 type ColumnVisibilityItem = {
 	id: string;
 	label: string;
@@ -15,9 +17,10 @@ export function ColumnVisibilityPanel({ items }: ColumnVisibilityPanelProps) {
 	}
 
 	return (
-		<details className="relative mb-3">
-			<summary className="cursor-pointer list-none text-sm font-medium text-stone-700 hover:text-stone-900">
+		<details className="group relative mb-3">
+			<summary className="inline-flex cursor-pointer list-none items-center gap-1 text-sm font-medium text-stone-700 hover:text-stone-900">
 				Colunas
+				<ChevronDown className="size-4 transition-transform group-open:rotate-180" />
 			</summary>
 			<div className="absolute z-10 mt-2 min-w-56 rounded-lg border border-stone-200 bg-white p-3 shadow-sm">
 				<ul className="space-y-2">
