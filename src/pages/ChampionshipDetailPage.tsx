@@ -3,6 +3,7 @@ import { Field, Form, Formik } from "formik";
 import { Copy, Plus, Shield, Trash2, Users, UserX } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Button } from "@/components/button";
+import { ChampionshipEvents } from "@/components/championship-events";
 import { ChampionshipLogo } from "@/components/championship-logo";
 import { ChampionshipLogoCrop } from "@/components/championship-logo-crop";
 import { ChampionshipRoster } from "@/components/championship-roster";
@@ -13,6 +14,7 @@ import { FormError } from "@/components/form-error";
 import { PlayerRatingField } from "@/components/player-rating-field";
 import { SectionCard } from "@/components/section-card";
 import { Tabs } from "@/components/tabs";
+import { CHAMPIONSHIP_EVENT, parseEventTime } from "@/const/championship-event";
 import {
 	assertChampionshipLogoSource,
 	CHAMPIONSHIP_LOGO,
@@ -24,11 +26,13 @@ import {
 	canDeactivatePlayer,
 	canDeleteChampionship,
 	canInvite,
+	canManageEvent,
 	canReactivatePlayer,
 	canRenameChampionship,
 	canSetRoles,
 	canTransferOwnership,
 	canUnlinkPlayer,
+	canUpdateEventConfig,
 	canUpdateRating,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
@@ -39,6 +43,7 @@ import {
 } from "@/const/championship-tab";
 import {
 	addPlayerFormSchema,
+	eventConfigFormSchema,
 	nameFormSchema,
 	transferOwnerSchema,
 } from "@/const/form-schema";
@@ -65,6 +70,7 @@ import {
 	useSetPlayerRole,
 	useTransferChampionshipOwner,
 	useUnlinkPlayer,
+	useUpdateChampionshipEventConfig,
 	useUpdatePlayerRating,
 	useUploadChampionshipLogo,
 } from "@/hooks/championships/use-championships";
@@ -84,6 +90,7 @@ export function ChampionshipDetailPage() {
 	const reactivatePlayer = useReactivatePlayer();
 	const updateRating = useUpdatePlayerRating();
 	const renameChampionship = useRenameChampionship(championshipId);
+	const updateEventConfig = useUpdateChampionshipEventConfig(championshipId);
 	const setPlayerRole = useSetPlayerRole();
 	const deleteChampionship = useDeleteChampionship();
 	const transferOwner = useTransferChampionshipOwner();
@@ -119,6 +126,8 @@ export function ChampionshipDetailPage() {
 		unlink: canUnlinkPlayer(actorRole),
 		deactivate: canDeactivatePlayer(actorRole),
 		reactivate: canReactivatePlayer(actorRole),
+		updateEventConfig: canUpdateEventConfig(actorRole),
+		manageEvent: canManageEvent(actorRole),
 	};
 	const activePlayers = (data?.players ?? []).filter(
 		(player) => !player.deleted_at,
@@ -251,6 +260,7 @@ export function ChampionshipDetailPage() {
 	const isOwner = Boolean(user && data && data.created_by === user.id);
 	const canConfigure =
 		permissions.rename ||
+		permissions.updateEventConfig ||
 		permissions.transferOwnership ||
 		permissions.deleteChampionship;
 
@@ -509,6 +519,15 @@ export function ChampionshipDetailPage() {
 					)}
 				</SectionCard>
 			)}
+			{selectedTab === CHAMPIONSHIP_TAB.events && (
+				<ChampionshipEvents
+					championshipId={championshipId}
+					eventTime={data.event_time}
+					playersPerTeam={data.players_per_team}
+					players={activePlayers}
+					canManage={permissions.manageEvent}
+				/>
+			)}
 			{selectedTab === CHAMPIONSHIP_TAB.deactivated && (
 				<SectionCard
 					title="Desativados"
@@ -543,7 +562,9 @@ export function ChampionshipDetailPage() {
 							description="Você não pode alterar este campeonato."
 						/>
 					)}
-					{(permissions.rename || permissions.transferOwnership) && (
+					{(permissions.rename ||
+						permissions.updateEventConfig ||
+						permissions.transferOwnership) && (
 						<SectionCard
 							title="Configuração"
 							icon={<Shield className="size-4 text-pitch-fg" />}
@@ -587,6 +608,66 @@ export function ChampionshipDetailPage() {
 								{renameChampionship.isError && (
 									<p className={ERROR_CLASS}>
 										{renameChampionship.error.message}
+									</p>
+								)}
+								{permissions.updateEventConfig && (
+									<Formik
+										initialValues={{
+											eventTime: data.event_time,
+											playersPerTeam: data.players_per_team,
+										}}
+										enableReinitialize
+										validationSchema={eventConfigFormSchema}
+										onSubmit={async (values) => {
+											await updateEventConfig.mutateAsync({
+												eventTime: parseEventTime(values.eventTime),
+												playersPerTeam: Number(values.playersPerTeam),
+											});
+										}}
+									>
+										<Form className="space-y-3">
+											<label
+												htmlFor="championship-event-time"
+												className="block text-sm font-medium text-fg-muted"
+											>
+												Hora do evento
+												<Field
+													id="championship-event-time"
+													name="eventTime"
+													type="time"
+													className={`mt-1 ${FIELD_CLASS}`}
+												/>
+											</label>
+											<FormError name="eventTime" />
+											<label
+												htmlFor="championship-players-per-team"
+												className="block text-sm font-medium text-fg-muted"
+											>
+												Jogadores por time
+												<Field
+													id="championship-players-per-team"
+													name="playersPerTeam"
+													type="number"
+													min={CHAMPIONSHIP_EVENT.playersPerTeamMin}
+													max={CHAMPIONSHIP_EVENT.playersPerTeamMax}
+													className={`mt-1 ${FIELD_CLASS}`}
+												/>
+											</label>
+											<FormError name="playersPerTeam" />
+											<Button
+												type="submit"
+												variant={BUTTON_VARIANT.secondary}
+												disabled={updateEventConfig.isPending}
+												className="h-9"
+											>
+												Salvar
+											</Button>
+										</Form>
+									</Formik>
+								)}
+								{updateEventConfig.isError && (
+									<p className={ERROR_CLASS}>
+										{updateEventConfig.error.message}
 									</p>
 								)}
 								{permissions.transferOwnership && (

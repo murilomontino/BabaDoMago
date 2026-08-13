@@ -14,6 +14,7 @@ import {
 	setPlayerRole,
 	transferChampionshipOwner,
 	unlinkPlayer,
+	updateChampionshipEventConfig,
 	updatePlayerRating,
 	uploadChampionshipLogo,
 } from "@/services/championships";
@@ -151,6 +152,29 @@ export function useRenameChampionship(championshipId: number) {
 
 	return useMutation({
 		mutationFn: (name: string) => renameChampionship(championshipId, name),
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({
+				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,
+			});
+			await queryClient.invalidateQueries({
+				queryKey: CHAMPIONSHIPS_QUERY_KEY,
+			});
+		},
+	});
+}
+
+export function useUpdateChampionshipEventConfig(championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({
+			eventTime,
+			playersPerTeam,
+		}: {
+			eventTime: string;
+			playersPerTeam: number;
+		}) =>
+			updateChampionshipEventConfig(championshipId, eventTime, playersPerTeam),
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({
 				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,

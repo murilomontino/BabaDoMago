@@ -1,4 +1,9 @@
 import {
+	championshipEventErrorMessage,
+	parseEventTime,
+	parsePlayersPerTeam,
+} from "@/const/championship-event";
+import {
 	assertChampionshipLogoFile,
 	CHAMPIONSHIP_LOGO,
 	championshipLogoObjectPath,
@@ -21,7 +26,7 @@ const PLAYER_COLUMNS =
 	"id, championship_id, user_id, display_name, avatar_url, rating, role, deleted_at, goals, assists, wins, matches" as const;
 
 const CHAMPIONSHIP_COLUMNS =
-	"id, name, invite_code, created_by, logo_path" as const;
+	"id, name, invite_code, created_by, logo_path, event_time, players_per_team" as const;
 
 function asChampionship(value: unknown): Championship {
 	if (!value || typeof value !== "object") {
@@ -39,6 +44,8 @@ function asChampionship(value: unknown): Championship {
 		invite_code: String(row.invite_code),
 		created_by: String(row.created_by),
 		logo_path: typeof row.logo_path === "string" ? row.logo_path : null,
+		event_time: parseEventTime(row.event_time),
+		players_per_team: parsePlayersPerTeam(row.players_per_team),
 	};
 }
 
@@ -262,6 +269,27 @@ export async function renameChampionship(
 
 	if (error) {
 		throw error;
+	}
+
+	return asChampionship(data);
+}
+
+export async function updateChampionshipEventConfig(
+	championshipId: number,
+	eventTime: string,
+	playersPerTeam: number,
+): Promise<Championship> {
+	const { data, error } = await supabase.rpc(
+		"update_championship_event_config",
+		{
+			championship_id: championshipId,
+			event_time: eventTime,
+			players_per_team: playersPerTeam,
+		},
+	);
+
+	if (error) {
+		throw new Error(championshipEventErrorMessage(error.message));
 	}
 
 	return asChampionship(data);

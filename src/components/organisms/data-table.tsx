@@ -132,7 +132,7 @@ export function DataTable<TData extends RowData>({
 					</thead>
 					<tbody className="divide-y divide-line">
 						{table.getRowModel().rows.map((row) => (
-							<tr key={row.id}>
+							<tr key={row.id} className="even:bg-surface-muted">
 								{row.getVisibleCells().map((cell) => {
 									const align = cell.column.columnDef.meta?.align ?? "left";
 									const alignClass = TABLE_CELL_ALIGN[align];
