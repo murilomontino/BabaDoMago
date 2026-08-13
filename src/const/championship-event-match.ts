@@ -5,6 +5,13 @@ import type {
 } from "../types/championship-event.ts";
 import { CHAMPIONSHIP_EVENT } from "./championship-event.ts";
 import type { EventTeamColor } from "./event-team-color.ts";
+import { playerVisibleName } from "./player-name.ts";
+
+type MatchStarRosterPlayer = {
+	nickname: string | null;
+	display_name: string;
+	rating: number;
+};
 
 export const EVENT_MATCH_STATUS = {
 	open: "open",
@@ -36,6 +43,7 @@ export type EventGoalKind =
 	(typeof EVENT_GOAL_KIND)[keyof typeof EVENT_GOAL_KIND];
 
 export const EVENT_GOAL_LABEL = {
+	goal: "Gol",
 	assist: "Assistência",
 	none: "Sem assistência",
 	ownGoal: "Gol contra",
@@ -271,6 +279,85 @@ export function matchGoalPayload(draft: MatchGoalDraft): {
 
 export function formatMatchScore(scoreA: number, scoreB: number): string {
 	return `${scoreA} x ${scoreB}`;
+}
+
+export function matchTeamStarName(
+	players: readonly ChampionshipEventMatchPlayer[],
+	teamId: number,
+	roster: ReadonlyMap<number, MatchStarRosterPlayer>,
+): string | null {
+	const team = matchTeamPlayers(players, teamId);
+	const star = team.reduce<ChampionshipEventMatchPlayer | null>(
+		(best, player) => {
+			if (!best) {
+				return player;
+			}
+
+			const playerRating = roster.get(player.player_id)?.rating ?? 0;
+			const bestRating = roster.get(best.player_id)?.rating ?? 0;
+			if (playerRating !== bestRating) {
+				return playerRating > bestRating ? player : best;
+			}
+
+			if (player.slot !== best.slot) {
+				return player.slot < best.slot ? player : best;
+			}
+
+			return player.player_id < best.player_id ? player : best;
+		},
+		null,
+	);
+
+	if (!star) {
+		return null;
+	}
+
+	const named = roster.get(star.player_id);
+	if (!named) {
+		return star.display_name;
+	}
+
+	return playerVisibleName(named);
+}
+
+export function matchGoalForTeamA(
+	goal: ChampionshipEventGoal,
+	teamAPlayerIds: ReadonlySet<number>,
+): boolean {
+	const scorerInA = teamAPlayerIds.has(goal.scorer_player_id);
+	if (goal.is_own_goal) {
+		return !scorerInA;
+	}
+
+	return scorerInA;
+}
+
+export function matchGoalTimeline(
+	goals: readonly ChampionshipEventGoal[],
+): ChampionshipEventGoal[] {
+	return [...goals].sort((left, right) => {
+		if (left.created_at !== right.created_at) {
+			return left.created_at < right.created_at ? -1 : 1;
+		}
+
+		return left.id - right.id;
+	});
+}
+
+export function formatGoalTimelineLine(values: {
+	scorerName: string;
+	assistName: string | null;
+	isOwnGoal: boolean;
+}): string {
+	if (values.isOwnGoal) {
+		return `${values.scorerName} · ${EVENT_GOAL_LABEL.ownGoal}`;
+	}
+
+	if (values.assistName) {
+		return `${values.scorerName} · ${values.assistName}`;
+	}
+
+	return values.scorerName;
 }
 
 export function isOpenMatch(

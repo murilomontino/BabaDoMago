@@ -478,6 +478,25 @@ export async function setChampionshipEventMatchPlayer(
 	}
 }
 
+export async function setChampionshipEventMatchGoalkeeper(
+	matchId: number,
+	teamId: number,
+	playerId: number,
+): Promise<void> {
+	const { error } = await supabase.rpc(
+		"set_championship_event_match_goalkeeper",
+		{
+			match_id: matchId,
+			team_id: teamId,
+			player_id: playerId,
+		},
+	);
+
+	if (error) {
+		throwEventError(error);
+	}
+}
+
 export async function addChampionshipEventGoal(
 	matchId: number,
 	scorerPlayerId: number,

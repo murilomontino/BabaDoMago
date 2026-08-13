@@ -1,3 +1,4 @@
+import { ArrowLeftRight, Goal, Handshake } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/button";
 import { ChampionshipEventBenchModal } from "@/components/championship-event-bench-modal";
@@ -15,13 +16,16 @@ import {
 } from "@/const/championship-event";
 import {
 	canConfirmMatchTeams,
+	EVENT_GOAL_LABEL,
 	EVENT_MATCH_LABEL,
 	formatMatchScore,
 	matchAssistCandidates,
 	matchBenchPlayerIds,
 	matchGoalPayload,
+	matchGoalTimeline,
 	matchScore,
 	matchTeamSlots,
+	matchTeamStarName,
 	toggleMatchTeamSelection,
 } from "@/const/championship-event-match";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
@@ -99,6 +103,7 @@ type ChampionshipEventPlayProps = {
 		slot: number,
 		playerId: number | null,
 	) => Promise<void>;
+	onSetGoalkeeper: (teamId: number, playerId: number) => Promise<void>;
 	onAddGoal: (values: {
 		scorerPlayerId: number;
 		assistPlayerId: number | null;
@@ -184,15 +189,19 @@ function MatchTeamBlock({
 	sortOrder,
 	slots,
 	rosterById,
+	disabled,
 	onMarkGoal,
 	onEditSlot,
+	onSetGoalkeeper,
 }: {
 	color: EventTeamColor | null;
 	sortOrder: number;
 	slots: readonly (ChampionshipEventMatchPlayer | null)[];
 	rosterById: Map<number, ChampionshipPlayer>;
+	disabled: boolean;
 	onMarkGoal: (player: ChampionshipEventMatchPlayer) => void;
 	onEditSlot: (slot: number) => void;
+	onSetGoalkeeper: (player: ChampionshipEventMatchPlayer) => void;
 }) {
 	const style = eventTeamColorStyle(color);
 
@@ -213,7 +222,9 @@ function MatchTeamBlock({
 						const player = occupied
 							? resolvePlayer(row.player_id, row.display_name, rosterById)
 							: null;
-						const position = eventTeamSlotPosition(slot);
+						const position = occupied
+							? eventTeamPlayerPosition(row.is_goalkeeper)
+							: eventTeamSlotPosition(slot);
 
 						return (
 							<li
@@ -233,28 +244,92 @@ function MatchTeamBlock({
 										{EVENT_MATCH_LABEL.emptySlot}
 									</p>
 								)}
-								{row && (
+								{row && !row.is_goalkeeper && (
 									<Button
 										variant={BUTTON_VARIANT.secondary}
 										className="h-7 px-2 text-xs"
-										onClick={() => onMarkGoal(row)}
+										disabled={disabled}
+										onClick={() => onSetGoalkeeper(row)}
 									>
-										{EVENT_ACTION.markGoal}
+										{EVENT_ACTION.setGoalkeeper}
 									</Button>
 								)}
-								<Button
-									variant={BUTTON_VARIANT.ghost}
-									className="h-7 px-2 text-xs"
-									onClick={() => onEditSlot(slot)}
-								>
-									{occupied ? EVENT_ACTION.swapPlayer : EVENT_ACTION.fillSlot}
-								</Button>
+								{row && (
+									<Button
+										variant={BUTTON_VARIANT.ghost}
+										className="h-7 px-2"
+										aria-label={EVENT_ACTION.markGoal}
+										disabled={disabled}
+										onClick={() => onMarkGoal(row)}
+									>
+										<Goal className="size-4" />
+									</Button>
+								)}
+								{occupied && (
+									<Button
+										variant={BUTTON_VARIANT.ghost}
+										className="h-7 px-2"
+										aria-label={EVENT_ACTION.swapPlayer}
+										disabled={disabled}
+										onClick={() => onEditSlot(slot)}
+									>
+										<ArrowLeftRight className="size-4" />
+									</Button>
+								)}
+								{!occupied && (
+									<Button
+										variant={BUTTON_VARIANT.ghost}
+										className="h-7 px-2 text-xs"
+										disabled={disabled}
+										onClick={() => onEditSlot(slot)}
+									>
+										{EVENT_ACTION.fillSlot}
+									</Button>
+								)}
 							</li>
 						);
 					},
 				)}
 			</ul>
 		</section>
+	);
+}
+
+function GoalTimelineEvent({
+	scorerName,
+	assistName,
+	isOwnGoal,
+	mirror,
+}: {
+	scorerName: string;
+	assistName: string | null;
+	isOwnGoal: boolean;
+	mirror: boolean;
+}) {
+	return (
+		<span
+			className={`inline-flex min-w-0 max-w-full items-center gap-1 text-xs text-fg-muted ${
+				mirror ? "flex-row-reverse" : ""
+			}`}
+		>
+			{isOwnGoal && (
+				<Goal
+					className="size-3 shrink-0 text-danger-fg"
+					aria-label={EVENT_GOAL_LABEL.ownGoal}
+				/>
+			)}
+			{!isOwnGoal && (
+				<Goal className="size-3 shrink-0" aria-label={EVENT_GOAL_LABEL.goal} />
+			)}
+			<span className="truncate">{scorerName}</span>
+			{assistName && (
+				<Handshake
+					className="size-3 shrink-0"
+					aria-label={EVENT_GOAL_LABEL.assist}
+				/>
+			)}
+			{assistName && <span className="truncate">{assistName}</span>}
+		</span>
 	);
 }
 
@@ -272,6 +347,7 @@ export function ChampionshipEventPlay({
 	endError,
 	onStart,
 	onSetPlayer,
+	onSetGoalkeeper,
 	onAddGoal,
 	onEnd,
 	onNext,
@@ -346,6 +422,22 @@ export function ChampionshipEventPlay({
 			.map((player) => player.player_id),
 	);
 	const score = matchScore(match.goals, teamAIds);
+	const starA =
+		matchTeamStarName(match.players, match.team_a_id, rosterById) ??
+		eventTeamName(teamA.color, teamA.sort_order);
+	const starB =
+		matchTeamStarName(match.players, match.team_b_id, rosterById) ??
+		eventTeamName(teamB.color, teamB.sort_order);
+	const timeline = matchGoalTimeline(match.goals);
+	const ownGoalsA = timeline.filter(
+		(goal) => goal.is_own_goal && teamAIds.has(goal.scorer_player_id),
+	);
+	const ownGoalsB = timeline.filter(
+		(goal) => goal.is_own_goal && !teamAIds.has(goal.scorer_player_id),
+	);
+	const matchPlayerById = new Map(
+		match.players.map((row) => [row.player_id, row]),
+	);
 	const benchIds = matchBenchPlayerIds(
 		event.attendance.map((row) => row.player_id),
 		match.players,
@@ -373,6 +465,7 @@ export function ChampionshipEventPlay({
 					event.players_per_team,
 				)}
 				rosterById={rosterById}
+				disabled={busy}
 				onMarkGoal={(player) => {
 					if (busy) {
 						return;
@@ -387,10 +480,83 @@ export function ChampionshipEventPlay({
 
 					setSlotTarget({ teamId: match.team_a_id, slot });
 				}}
+				onSetGoalkeeper={(player) => {
+					if (busy) {
+						return;
+					}
+
+					void onSetGoalkeeper(match.team_a_id, player.player_id);
+				}}
 			/>
-			<p className="text-center text-2xl font-semibold tabular-nums text-fg">
-				{formatMatchScore(score.teamA, score.teamB)}
-			</p>
+			<div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-2 gap-y-0.5">
+				<p className="flex min-w-0 items-center justify-end gap-1 text-sm font-medium text-fg">
+					{ownGoalsA.map((goal) => (
+						<Goal
+							key={goal.id}
+							className="size-3.5 shrink-0 text-danger-fg"
+							aria-label={EVENT_GOAL_LABEL.ownGoal}
+						/>
+					))}
+					<span className="truncate">{starA}</span>
+				</p>
+				<p className="text-2xl font-semibold tabular-nums text-fg">
+					{formatMatchScore(score.teamA, score.teamB)}
+				</p>
+				<p className="flex min-w-0 items-center justify-start gap-1 text-sm font-medium text-fg">
+					<span className="truncate">{starB}</span>
+					{ownGoalsB.map((goal) => (
+						<Goal
+							key={goal.id}
+							className="size-3.5 shrink-0 text-danger-fg"
+							aria-label={EVENT_GOAL_LABEL.ownGoal}
+						/>
+					))}
+				</p>
+				{timeline.map((goal) => {
+					const scorer = matchPlayerById.get(goal.scorer_player_id);
+					const assist =
+						goal.assist_player_id === null
+							? null
+							: matchPlayerById.get(goal.assist_player_id);
+					const forTeamA = teamAIds.has(goal.scorer_player_id);
+					const event = (
+						<GoalTimelineEvent
+							scorerName={playerVisibleName(
+								resolvePlayer(
+									goal.scorer_player_id,
+									scorer?.display_name ?? "",
+									rosterById,
+								),
+							)}
+							assistName={
+								assist
+									? playerVisibleName(
+											resolvePlayer(
+												assist.player_id,
+												assist.display_name,
+												rosterById,
+											),
+										)
+									: null
+							}
+							isOwnGoal={goal.is_own_goal}
+							mirror={forTeamA}
+						/>
+					);
+
+					return (
+						<div key={goal.id} className="contents">
+							<div className="flex min-w-0 justify-end">
+								{forTeamA && event}
+							</div>
+							<span />
+							<div className="flex min-w-0 justify-start">
+								{!forTeamA && event}
+							</div>
+						</div>
+					);
+				})}
+			</div>
 			<MatchTeamBlock
 				color={teamB.color}
 				sortOrder={teamB.sort_order}
@@ -400,6 +566,7 @@ export function ChampionshipEventPlay({
 					event.players_per_team,
 				)}
 				rosterById={rosterById}
+				disabled={busy}
 				onMarkGoal={(player) => {
 					if (busy) {
 						return;
@@ -413,6 +580,13 @@ export function ChampionshipEventPlay({
 					}
 
 					setSlotTarget({ teamId: match.team_b_id, slot });
+				}}
+				onSetGoalkeeper={(player) => {
+					if (busy) {
+						return;
+					}
+
+					void onSetGoalkeeper(match.team_b_id, player.player_id);
 				}}
 			/>
 			{(playerError || goalError || endError) && (

@@ -527,6 +527,14 @@ export type Database = {
 				};
 				Returns: Json;
 			};
+			set_championship_event_match_goalkeeper: {
+				Args: {
+					match_id: number;
+					team_id: number;
+					player_id: number;
+				};
+				Returns: Json;
+			};
 			start_championship_event_match: {
 				Args: {
 					event_id: number;

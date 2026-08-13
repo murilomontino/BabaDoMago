@@ -13,6 +13,7 @@ import {
 	listChampionshipEvents,
 	saveChampionshipEventAttendance,
 	saveChampionshipEventTeams,
+	setChampionshipEventMatchGoalkeeper,
 	setChampionshipEventMatchPlayer,
 	startChampionshipEventMatch,
 	updateChampionshipEventTeam,
@@ -192,6 +193,27 @@ export function useSetChampionshipEventMatchPlayer(_championshipId: number) {
 			slot: number;
 			playerId: number | null;
 		}) => setChampionshipEventMatchPlayer(matchId, teamId, slot, playerId),
+		onSuccess: async () => {
+			await invalidateChampionshipEventQueries(queryClient);
+		},
+	});
+}
+
+export function useSetChampionshipEventMatchGoalkeeper(
+	_championshipId: number,
+) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({
+			matchId,
+			teamId,
+			playerId,
+		}: {
+			matchId: number;
+			teamId: number;
+			playerId: number;
+		}) => setChampionshipEventMatchGoalkeeper(matchId, teamId, playerId),
 		onSuccess: async () => {
 			await invalidateChampionshipEventQueries(queryClient);
 		},

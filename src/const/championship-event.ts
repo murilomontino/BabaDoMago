@@ -103,6 +103,7 @@ export const EVENT_ACTION = {
 	markGoal: "Marcar gol",
 	swapPlayer: "Trocar",
 	fillSlot: "Adicionar",
+	setGoalkeeper: "Goleiro",
 	addTeam: "Adicionar time",
 	editTeam: "Editar time",
 	saveTeam: "Salvar time",

@@ -13,6 +13,7 @@ import {
 	useAddChampionshipEventGoal,
 	useChampionshipEvent,
 	useEndChampionshipEventMatch,
+	useSetChampionshipEventMatchGoalkeeper,
 	useSetChampionshipEventMatchPlayer,
 	useStartChampionshipEventMatch,
 } from "@/hooks/championships/use-championship-events";
@@ -30,6 +31,7 @@ export function ChampionshipEventPlayPage() {
 	const eventQuery = useChampionshipEvent(championshipId, eventId);
 	const startMatch = useStartChampionshipEventMatch(championshipId);
 	const setPlayer = useSetChampionshipEventMatchPlayer(championshipId);
+	const setGoalkeeper = useSetChampionshipEventMatchGoalkeeper(championshipId);
 	const addGoal = useAddChampionshipEventGoal(championshipId);
 	const endMatch = useEndChampionshipEventMatch(championshipId);
 
@@ -76,7 +78,9 @@ export function ChampionshipEventPlayPage() {
 	return (
 		<main>
 			<PageHeader
-				title={openMatch ? EVENT_MATCH_LABEL.open : EVENT_MATCH_LABEL.selectTeams}
+				title={
+					openMatch ? EVENT_MATCH_LABEL.open : EVENT_MATCH_LABEL.selectTeams
+				}
 				action={
 					<Link
 						to={ROUTES.championshipEvent}
@@ -103,8 +107,12 @@ export function ChampionshipEventPlayPage() {
 					players={activePlayers}
 					starting={startMatch.isPending}
 					startError={startMatch.isError ? startMatch.error.message : null}
-					savingPlayer={setPlayer.isPending}
-					playerError={setPlayer.isError ? setPlayer.error.message : null}
+					savingPlayer={setPlayer.isPending || setGoalkeeper.isPending}
+					playerError={
+						(setPlayer.isError && setPlayer.error.message) ||
+						(setGoalkeeper.isError && setGoalkeeper.error.message) ||
+						null
+					}
 					savingGoal={addGoal.isPending}
 					goalError={addGoal.isError ? addGoal.error.message : null}
 					ending={endMatch.isPending}
@@ -125,6 +133,17 @@ export function ChampionshipEventPlayPage() {
 							matchId: openMatch.id,
 							teamId,
 							slot,
+							playerId,
+						});
+					}}
+					onSetGoalkeeper={async (teamId, playerId) => {
+						if (!openMatch) {
+							return;
+						}
+
+						await setGoalkeeper.mutateAsync({
+							matchId: openMatch.id,
+							teamId,
 							playerId,
 						});
 					}}
