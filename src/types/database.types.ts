@@ -16,6 +16,7 @@ type ChampionshipPlayersRow = {
 	goals: number;
 	id: number;
 	matches: number;
+	own_goals: number;
 	nickname: string | null;
 	rating: number;
 	role: string;
@@ -311,6 +312,7 @@ export type Database = {
 					id?: number;
 					matches?: number;
 					nickname?: string | null;
+					own_goals?: number;
 					rating?: number;
 					role?: string;
 					user_id?: string | null;
@@ -327,6 +329,7 @@ export type Database = {
 					id?: number;
 					matches?: number;
 					nickname?: string | null;
+					own_goals?: number;
 					rating?: number;
 					role?: string;
 					user_id?: string | null;

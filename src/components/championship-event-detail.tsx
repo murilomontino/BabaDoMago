@@ -151,6 +151,7 @@ function fallbackRosterPlayer(
 		deleted_at: null,
 		goals: 0,
 		assists: 0,
+		own_goals: 0,
 		wins: 0,
 		matches: 0,
 	};

@@ -223,6 +223,16 @@ export function ChampionshipRoster({
 						</span>
 					),
 				}),
+				rosterColumnHelper.accessor("own_goals", {
+					id: ROSTER_COLUMN.own_goals,
+					header: ROSTER_COLUMN_ABBR.own_goals,
+					meta: { align: "right", title: ROSTER_COLUMN_LABEL.own_goals },
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatRosterCount(getValue())}
+						</span>
+					),
+				}),
 				rosterColumnHelper.accessor("goalInvolvement", {
 					id: ROSTER_COLUMN.goalInvolvement,
 					header: ROSTER_COLUMN_ABBR.goalInvolvement,

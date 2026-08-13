@@ -5,6 +5,7 @@ export const ROSTER_COLUMN = {
 	rating: "rating",
 	goals: "goals",
 	assists: "assists",
+	own_goals: "own_goals",
 	goalInvolvement: "goalInvolvement",
 	wins: "wins",
 	matches: "matches",
@@ -21,6 +22,7 @@ export const ROSTER_COLUMN_ABBR = {
 	rating: "Rat",
 	goals: "G",
 	assists: "A",
+	own_goals: "GC",
 	goalInvolvement: "PG",
 	wins: "V",
 	matches: "J",
@@ -35,6 +37,7 @@ export const ROSTER_COLUMN_LABEL = {
 	rating: "Rating",
 	goals: "Gols",
 	assists: "Assistências",
+	own_goals: "Gols contra",
 	goalInvolvement: "Participação em Gols",
 	wins: "Vitórias",
 	matches: "Jogos",
@@ -47,6 +50,7 @@ export const ROSTER_COLUMN_LABEL = {
 export const ROSTER_STAT_COLUMNS = [
 	ROSTER_COLUMN.goals,
 	ROSTER_COLUMN.assists,
+	ROSTER_COLUMN.own_goals,
 	ROSTER_COLUMN.goalInvolvement,
 	ROSTER_COLUMN.wins,
 	ROSTER_COLUMN.matches,
@@ -98,6 +102,7 @@ export function rosterWinRate(wins: number, matches: number): number {
 export function toRosterRow(player: ChampionshipPlayer): RosterRow {
 	const goals = rosterSafeCount(player.goals);
 	const assists = rosterSafeCount(player.assists);
+	const ownGoals = rosterSafeCount(player.own_goals);
 	const wins = rosterSafeCount(player.wins);
 	const matches = rosterSafeCount(player.matches);
 
@@ -105,6 +110,7 @@ export function toRosterRow(player: ChampionshipPlayer): RosterRow {
 		...player,
 		goals,
 		assists,
+		own_goals: ownGoals,
 		wins,
 		matches,
 		goalInvolvement: rosterGoalInvolvement(goals, assists),
@@ -133,6 +139,7 @@ export function formatRosterStat(
 	switch (column) {
 		case ROSTER_COLUMN.goals:
 		case ROSTER_COLUMN.assists:
+		case ROSTER_COLUMN.own_goals:
 		case ROSTER_COLUMN.goalInvolvement:
 		case ROSTER_COLUMN.wins:
 		case ROSTER_COLUMN.matches:

@@ -21,6 +21,7 @@ export type ChampionshipPlayer = {
 	deleted_at: string | null;
 	goals: number;
 	assists: number;
+	own_goals: number;
 	wins: number;
 	matches: number;
 };

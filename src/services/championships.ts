@@ -81,6 +81,7 @@ function asPlayer(value: unknown): ChampionshipPlayer {
 		deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
 		goals: rosterSafeCount(row.goals),
 		assists: rosterSafeCount(row.assists),
+		own_goals: rosterSafeCount(row.own_goals),
 		wins: rosterSafeCount(row.wins),
 		matches: rosterSafeCount(row.matches),
 	};
