@@ -10,12 +10,14 @@ import {
 	EventTeamRatingAverage,
 	EventTeamRemoveButton,
 } from "@/components/event-team-player";
+import { Tabs } from "@/components/tabs";
 import {
 	applyVisibleAttendance,
 	builderTeamsFromDrafts,
 	CHAMPIONSHIP_EVENT,
 	EVENT_ACTION,
 	EVENT_BUILDER_STEP,
+	EVENT_BUILDER_TABS,
 	EVENT_TEAM_MESSAGE,
 	EVENT_TEAM_POSITION_LABEL,
 	type EventBuilderStep,
@@ -65,10 +67,12 @@ type ChampionshipEventBuilderProps = {
 	playersPerTeam: number;
 	players: ChampionshipPlayer[];
 	attendanceCounts: ReadonlyMap<number, number>;
+	step: EventBuilderStep;
 	initialPresentIds?: readonly number[];
 	initialTeams?: EventTeamBuilderTeam[];
 	isPending: boolean;
 	errorMessage: string | null;
+	onStepChange: (step: EventBuilderStep) => void;
 	onCancel?: () => void;
 	onPresentIdsChange?: (playerIds: readonly number[]) => void;
 	onSubmit: (
@@ -84,17 +88,16 @@ export function ChampionshipEventBuilder({
 	playersPerTeam,
 	players,
 	attendanceCounts,
+	step,
 	initialPresentIds = [],
 	initialTeams,
 	isPending,
 	errorMessage,
+	onStepChange,
 	onCancel,
 	onPresentIdsChange,
 	onSubmit,
 }: ChampionshipEventBuilderProps) {
-	const [step, setStep] = useState<EventBuilderStep>(
-		EVENT_BUILDER_STEP.attendance,
-	);
 	const [presentIds, setPresentIds] = useState<number[]>([
 		...initialPresentIds,
 	]);
@@ -133,7 +136,30 @@ export function ChampionshipEventBuilder({
 	}
 
 	function handleBackToAttendance() {
-		setStep(EVENT_BUILDER_STEP.attendance);
+		onStepChange(EVENT_BUILDER_STEP.attendance);
+	}
+
+	function tryGoToTeams(
+		teams: EventTeamBuilderTeam[],
+		setTeams: (teams: EventTeamBuilderTeam[]) => void,
+	): boolean {
+		const invalid = validateEventAttendance(presentIds, rosterIds);
+		if (invalid) {
+			setAttendanceError(invalid);
+			return false;
+		}
+
+		setTeams(
+			resizeBuilderTeams(
+				teams,
+				eventTeamCount(presentIds.length, playersPerTeam),
+				playersPerTeam,
+				new Set(presentIds),
+			),
+		);
+		setTeamsError(null);
+		onStepChange(EVENT_BUILDER_STEP.teams);
+		return true;
 	}
 
 	async function handleDrawTeams(
@@ -142,7 +168,7 @@ export function ChampionshipEventBuilder({
 		const attendanceInvalid = validateEventAttendance(presentIds, rosterIds);
 		if (attendanceInvalid) {
 			setAttendanceError(attendanceInvalid);
-			setStep(EVENT_BUILDER_STEP.attendance);
+			onStepChange(EVENT_BUILDER_STEP.attendance);
 			return;
 		}
 
@@ -217,24 +243,9 @@ export function ChampionshipEventBuilder({
 				initialValues={{ teams: teamsStart }}
 				onSubmit={async (values, helpers) => {
 					if (step === EVENT_BUILDER_STEP.attendance) {
-						const invalid = validateEventAttendance(presentIds, rosterIds);
-						if (invalid) {
-							setAttendanceError(invalid);
-							return;
-						}
-
-						const present = new Set(presentIds);
-						helpers.setFieldValue(
-							"teams",
-							resizeBuilderTeams(
-								values.teams,
-								eventTeamCount(presentIds.length, playersPerTeam),
-								playersPerTeam,
-								present,
-							),
-						);
-						setTeamsError(null);
-						setStep(EVENT_BUILDER_STEP.teams);
+						tryGoToTeams(values.teams, (teams) => {
+							helpers.setFieldValue("teams", teams);
+						});
 						return;
 					}
 
@@ -249,7 +260,7 @@ export function ChampionshipEventBuilder({
 					);
 					if (attendanceInvalid) {
 						setAttendanceError(attendanceInvalid);
-						setStep(EVENT_BUILDER_STEP.attendance);
+						onStepChange(EVENT_BUILDER_STEP.attendance);
 						return;
 					}
 
@@ -294,8 +305,34 @@ export function ChampionshipEventBuilder({
 						setTeamsError(null);
 					}
 
+					function handleTabChange(next: EventBuilderStep) {
+						if (next === step) {
+							return;
+						}
+
+						switch (next) {
+							case EVENT_BUILDER_STEP.attendance:
+								onStepChange(next);
+								return;
+							case EVENT_BUILDER_STEP.teams:
+								tryGoToTeams(values.teams, (teams) => {
+									setFieldValue("teams", teams);
+								});
+								return;
+							default: {
+								const _never: never = next;
+								return _never;
+							}
+						}
+					}
+
 					return (
 						<Form className="space-y-4">
+							<Tabs
+								value={step}
+								items={EVENT_BUILDER_TABS}
+								onChange={handleTabChange}
+							/>
 							{step === EVENT_BUILDER_STEP.attendance && (
 								<>
 									<p className="text-sm font-medium text-fg">Presentes</p>

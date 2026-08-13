@@ -1,5 +1,5 @@
 import { Pencil, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AddEventMatchModal } from "@/components/add-event-match-modal";
 import { AddEventTeamModal } from "@/components/add-event-team-modal";
 import { Button } from "@/components/button";
@@ -23,6 +23,7 @@ import {
 	canRemoveEventAttendance,
 	draftAttendanceForEnd,
 	EVENT_ACTION,
+	EVENT_BUILDER_STEP,
 	EVENT_STATUS,
 	EVENT_STATUS_LABEL,
 	EVENT_TEAM_POSITION_LABEL,
@@ -44,6 +45,7 @@ import {
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import { BUTTON_VARIANT, CHIP_CLASS } from "@/const/ui";
+import { useEventBuilderStep } from "@/hooks/use-event-builder-step";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type {
 	ChampionshipEvent,
@@ -195,12 +197,11 @@ export function ChampionshipEventDetail({
 		players.map((player) => player.rating),
 	);
 	const teamsEditable = canManage && canEditEventTeams(event);
-	const [isEditingTeams, setIsEditingTeams] = useState(
-		teamsEditable && event.teams.length < CHAMPIONSHIP_EVENT.minTeams,
-	);
-	const showTeamBuilder =
-		teamsEditable &&
-		(isEditingTeams || event.teams.length < CHAMPIONSHIP_EVENT.minTeams);
+	const [step, setStep] = useEventBuilderStep();
+	const mustBuild =
+		teamsEditable && event.teams.length < CHAMPIONSHIP_EVENT.minTeams;
+	const showTeamBuilder = teamsEditable && (step !== null || mustBuild);
+	const builderStep = step ?? EVENT_BUILDER_STEP.attendance;
 	const showAttendanceActions = canOverrideEnded && !showTeamBuilder;
 	const showAddTeam = canOverrideEnded && !showTeamBuilder;
 	const showAddMatch =
@@ -230,6 +231,18 @@ export function ChampionshipEventDetail({
 		event.attendance.map((row) => row.player_id),
 	);
 
+	useEffect(() => {
+		if (!mustBuild) {
+			return;
+		}
+
+		if (step !== null) {
+			return;
+		}
+
+		void setStep(EVENT_BUILDER_STEP.attendance);
+	}, [mustBuild, setStep, step]);
+
 	return (
 		<article className="space-y-6">
 			<div className="flex flex-wrap items-center gap-2">
@@ -242,7 +255,9 @@ export function ChampionshipEventDetail({
 						{teamsEditable && !showTeamBuilder && (
 							<Button
 								variant={BUTTON_VARIANT.secondary}
-								onClick={() => setIsEditingTeams(true)}
+								onClick={() => {
+									void setStep(EVENT_BUILDER_STEP.teams);
+								}}
 							>
 								{EVENT_ACTION.editTeams}
 							</Button>
@@ -293,6 +308,7 @@ export function ChampionshipEventDetail({
 					playersPerTeam={event.players_per_team}
 					players={players}
 					attendanceCounts={attendanceCounts}
+					step={builderStep}
 					initialPresentIds={event.attendance.map((row) => row.player_id)}
 					initialTeams={builderTeamsFromEvent(
 						event.teams,
@@ -301,9 +317,14 @@ export function ChampionshipEventDetail({
 					)}
 					isPending={savingTeams}
 					errorMessage={saveTeamsError}
+					onStepChange={(next) => {
+						void setStep(next);
+					}}
 					onCancel={
 						event.teams.length >= CHAMPIONSHIP_EVENT.minTeams
-							? () => setIsEditingTeams(false)
+							? () => {
+									void setStep(null);
+								}
 							: undefined
 					}
 					onPresentIdsChange={(playerIds) => {
@@ -315,7 +336,7 @@ export function ChampionshipEventDetail({
 							return;
 						}
 
-						setIsEditingTeams(false);
+						void setStep(null);
 					}}
 				/>
 			)}

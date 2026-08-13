@@ -12,6 +12,7 @@ import {
 	draftAttendanceForEnd,
 	drawBalancedEventTeams,
 	EVENT_ATTENDANCE_MESSAGE,
+	EVENT_BUILDER_STEP,
 	EVENT_ERROR_MESSAGE,
 	EVENT_TEAM_MESSAGE,
 	EVENT_TEAM_POSITION,
@@ -24,6 +25,7 @@ import {
 	eventTeamSlotPosition,
 	formatEventTeamRatingAverage,
 	initialBuilderTeams,
+	isEventBuilderStep,
 	keepPresentSlots,
 	keepTeamPlayersPresent,
 	nextEventTeamColor,
@@ -424,3 +426,8 @@ check(
 	leftover.every((team) => team.playerIds.includes(team.goalkeeperId)),
 	true,
 );
+
+check(isEventBuilderStep(EVENT_BUILDER_STEP.attendance), true);
+check(isEventBuilderStep(EVENT_BUILDER_STEP.teams), true);
+check(isEventBuilderStep("nope"), false);
+check(isEventBuilderStep(null), false);

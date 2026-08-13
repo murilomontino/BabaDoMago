@@ -4,6 +4,7 @@ import {
 	Outlet,
 } from "@tanstack/react-router";
 import { Trophy } from "lucide-react";
+import { NuqsAdapter } from "nuqs/adapters/tanstack-router";
 import { EmptyState } from "@/components/empty-state";
 import { PAGE_SHELL_CLASS } from "@/const/ui";
 import { AuthProvider } from "@/contexts/auth";
@@ -19,7 +20,9 @@ function RootLayout() {
 	return (
 		<ThemeProvider>
 			<AuthProvider>
-				<Outlet />
+				<NuqsAdapter>
+					<Outlet />
+				</NuqsAdapter>
 			</AuthProvider>
 		</ThemeProvider>
 	);

@@ -9,6 +9,7 @@ import { SectionCard } from "@/components/section-card";
 import {
 	championshipEventToday,
 	EVENT_ACTION,
+	EVENT_BUILDER_STEP,
 	EVENT_STATUS_LABEL,
 	eventStatus,
 	formatEventStartsAt,
@@ -51,6 +52,7 @@ export function ChampionshipEvents({
 				championshipId: String(championshipId),
 				eventId: String(eventId),
 			},
+			search: { step: EVENT_BUILDER_STEP.attendance },
 		});
 	}
 

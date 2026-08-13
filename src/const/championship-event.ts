@@ -24,6 +24,26 @@ export const EVENT_BUILDER_STEP = {
 export type EventBuilderStep =
 	(typeof EVENT_BUILDER_STEP)[keyof typeof EVENT_BUILDER_STEP];
 
+export const EVENT_BUILDER_STEP_LABEL = {
+	attendance: "Presença",
+	teams: "Times",
+} as const;
+
+export const EVENT_BUILDER_TABS = [
+	{
+		id: EVENT_BUILDER_STEP.attendance,
+		label: EVENT_BUILDER_STEP_LABEL.attendance,
+	},
+	{
+		id: EVENT_BUILDER_STEP.teams,
+		label: EVENT_BUILDER_STEP_LABEL.teams,
+	},
+] as const;
+
+export function isEventBuilderStep(value: unknown): value is EventBuilderStep {
+	return Object.values(EVENT_BUILDER_STEP).includes(value as EventBuilderStep);
+}
+
 export const EVENT_STATUS = {
 	open: "open",
 	ended: "ended",
