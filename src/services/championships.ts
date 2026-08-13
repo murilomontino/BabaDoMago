@@ -23,7 +23,7 @@ import type {
 } from "@/types/championship";
 
 const PLAYER_COLUMNS =
-	"id, championship_id, user_id, display_name, avatar_url, rating, role, deleted_at, goals, assists, wins, matches" as const;
+	"id, championship_id, user_id, display_name, nickname, avatar_url, rating, role, deleted_at, goals, assists, wins, matches" as const;
 
 const CHAMPIONSHIP_COLUMNS =
 	"id, name, invite_code, created_by, logo_path, event_time, players_per_team" as const;
@@ -73,6 +73,7 @@ function asPlayer(value: unknown): ChampionshipPlayer {
 		championship_id: Number(row.championship_id),
 		user_id: typeof row.user_id === "string" ? row.user_id : null,
 		display_name: row.display_name,
+		nickname: typeof row.nickname === "string" ? row.nickname : null,
 		avatar_url: typeof row.avatar_url === "string" ? row.avatar_url : null,
 		rating,
 		role: typeof row.role === "string" ? row.role : CHAMPIONSHIP_ROLE.member,
@@ -249,6 +250,22 @@ export async function updatePlayerRating(
 	const { data, error } = await supabase.rpc("update_player_rating", {
 		player_id: playerId,
 		rating,
+	});
+
+	if (error) {
+		throw error;
+	}
+
+	return asPlayer(data);
+}
+
+export async function updatePlayerNickname(
+	playerId: number,
+	nickname: string,
+): Promise<ChampionshipPlayer> {
+	const { data, error } = await supabase.rpc("update_player_nickname", {
+		player_id: playerId,
+		nickname,
 	});
 
 	if (error) {

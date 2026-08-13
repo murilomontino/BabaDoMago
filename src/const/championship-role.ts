@@ -29,6 +29,7 @@ type ChampionshipPermissions = {
 	setRoles: boolean;
 	renameChampionship: boolean;
 	updateRating: boolean;
+	updateNickname: boolean;
 	invite: boolean;
 	transferOwnership: boolean;
 	unlinkPlayer: boolean;
@@ -71,6 +72,7 @@ export function championshipPermissions(
 				setRoles: true,
 				renameChampionship: true,
 				updateRating: true,
+				updateNickname: true,
 				invite: true,
 				transferOwnership: true,
 				unlinkPlayer: true,
@@ -85,6 +87,7 @@ export function championshipPermissions(
 				setRoles: false,
 				renameChampionship: true,
 				updateRating: true,
+				updateNickname: true,
 				invite: true,
 				transferOwnership: false,
 				unlinkPlayer: true,
@@ -99,6 +102,7 @@ export function championshipPermissions(
 				setRoles: false,
 				renameChampionship: false,
 				updateRating: true,
+				updateNickname: true,
 				invite: true,
 				transferOwnership: false,
 				unlinkPlayer: true,
@@ -113,6 +117,7 @@ export function championshipPermissions(
 				setRoles: false,
 				renameChampionship: false,
 				updateRating: false,
+				updateNickname: false,
 				invite: false,
 				transferOwnership: false,
 				unlinkPlayer: false,
@@ -142,6 +147,22 @@ export function canRenameChampionship(role: ChampionshipRole): boolean {
 
 export function canUpdateRating(role: ChampionshipRole): boolean {
 	return championshipPermissions(role).updateRating;
+}
+
+export function canUpdateNickname(role: ChampionshipRole): boolean {
+	return championshipPermissions(role).updateNickname;
+}
+
+export function canEditPlayerNickname(
+	role: ChampionshipRole,
+	playerUserId: string | null,
+	viewerUserId: string | null,
+): boolean {
+	if (championshipPermissions(role).updateNickname) {
+		return true;
+	}
+
+	return Boolean(viewerUserId && playerUserId && viewerUserId === playerUserId);
 }
 
 export function canInvite(role: ChampionshipRole): boolean {

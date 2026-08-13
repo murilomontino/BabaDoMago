@@ -76,13 +76,20 @@ export const EVENT_ATTENDANCE_MESSAGE = {
 export const EVENT_ATTENDANCE_COLUMN = {
 	present: "present",
 	player: "player",
+	rating: "rating",
 	count: "count",
 } as const;
 
 export const EVENT_ATTENDANCE_COLUMN_LABEL = {
 	present: "Presente",
 	player: "Jogador",
+	rating: "Rating",
 	count: "Presenças",
+} as const;
+
+export const EVENT_ATTENDANCE_ACTION = {
+	selectAll: "Selecionar todos",
+	deselectAll: "Desselecionar todos",
 } as const;
 
 export function parseEventTime(value: unknown): string {
@@ -273,4 +280,29 @@ export function compareByAttendanceCount(
 	}
 
 	return a.display_name.localeCompare(b.display_name, "pt-BR");
+}
+
+export function applyVisibleAttendance(
+	presentIds: readonly number[],
+	visibleIds: readonly number[],
+	present: boolean,
+): number[] {
+	if (!present) {
+		const visible = new Set(visibleIds);
+		return presentIds.filter((id) => !visible.has(id));
+	}
+
+	return [...new Set([...presentIds, ...visibleIds])];
+}
+
+export function areAllVisiblePresent(
+	presentIds: readonly number[],
+	visibleIds: readonly number[],
+): boolean {
+	if (visibleIds.length === 0) {
+		return false;
+	}
+
+	const present = new Set(presentIds);
+	return visibleIds.every((id) => present.has(id));
 }

@@ -8,7 +8,10 @@ import {
 	listChampionshipEvents,
 	startChampionshipEvent,
 } from "@/services/championship-events";
-import { CHAMPIONSHIP_EVENTS_QUERY_KEY } from "./championships-query-keys";
+import {
+	CHAMPIONSHIP_EVENTS_QUERY_KEY,
+	invalidateChampionshipEventQueries,
+} from "./championships-query-keys";
 
 export function useChampionshipEvents(championshipId: number) {
 	return useQuery({
@@ -46,14 +49,12 @@ export function useStartChampionshipEvent(championshipId: number) {
 				teams,
 			),
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIP_EVENTS_QUERY_KEY,
-			});
+			await invalidateChampionshipEventQueries(queryClient);
 		},
 	});
 }
 
-export function useAddChampionshipEventMatch(championshipId: number) {
+export function useAddChampionshipEventMatch(_championshipId: number) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
@@ -67,35 +68,29 @@ export function useAddChampionshipEventMatch(championshipId: number) {
 			teamBId: number;
 		}) => addChampionshipEventMatch(eventId, teamAId, teamBId),
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({
-				queryKey: [...CHAMPIONSHIP_EVENTS_QUERY_KEY, championshipId],
-			});
+			await invalidateChampionshipEventQueries(queryClient);
 		},
 	});
 }
 
-export function useEndChampionshipEvent(championshipId: number) {
+export function useEndChampionshipEvent(_championshipId: number) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: (eventId: number) => endChampionshipEvent(eventId),
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({
-				queryKey: [...CHAMPIONSHIP_EVENTS_QUERY_KEY, championshipId],
-			});
+			await invalidateChampionshipEventQueries(queryClient);
 		},
 	});
 }
 
-export function useDeleteChampionshipEvent(championshipId: number) {
+export function useDeleteChampionshipEvent(_championshipId: number) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: (eventId: number) => deleteChampionshipEvent(eventId),
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({
-				queryKey: [...CHAMPIONSHIP_EVENTS_QUERY_KEY, championshipId],
-			});
+			await invalidateChampionshipEventQueries(queryClient);
 		},
 	});
 }

@@ -1,4 +1,6 @@
 import {
+	applyVisibleAttendance,
+	areAllVisiblePresent,
 	compareByAttendanceCount,
 	countPlayerAttendance,
 	EVENT_ATTENDANCE_MESSAGE,
@@ -126,3 +128,9 @@ check(
 	) > 0,
 	true,
 );
+
+check(String(applyVisibleAttendance([3], [1, 2], true)), "3,1,2");
+check(String(applyVisibleAttendance([1, 2, 3], [1, 2], false)), "3");
+check(areAllVisiblePresent([1, 2], [1, 2]), true);
+check(areAllVisiblePresent([1], [1, 2]), false);
+check(areAllVisiblePresent([1, 2, 3], []), false);

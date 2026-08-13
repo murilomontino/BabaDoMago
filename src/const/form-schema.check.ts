@@ -3,9 +3,11 @@ import {
 	deleteChampionshipSchema,
 	FORM_MESSAGE,
 	nameFormSchema,
+	playerNicknameSchema,
 	playerRatingSchema,
 	transferOwnerSchema,
 } from "./form-schema.ts";
+import { PLAYER_NICKNAME } from "./player-name.ts";
 import { PLAYER_RATING } from "./player-rating.ts";
 
 function check(condition: boolean, message: string) {
@@ -51,6 +53,15 @@ check(
 check(
 	!playerRatingSchema.isValidSync({ rating: PLAYER_RATING.max + 1 }),
 	"rating above max",
+);
+
+check(playerNicknameSchema.isValidSync({ nickname: "" }), "empty nickname ok");
+check(playerNicknameSchema.isValidSync({ nickname: "Vitinho" }), "nickname ok");
+check(
+	!playerNicknameSchema.isValidSync({
+		nickname: "x".repeat(PLAYER_NICKNAME.maxLength + 1),
+	}),
+	"nickname too long",
 );
 
 check(

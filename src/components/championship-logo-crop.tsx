@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import Cropper, { type Area } from "react-easy-crop";
+import { AppDialog } from "@/components/atoms/app-dialog";
 import { Button } from "@/components/button";
 import { BUTTON_VARIANT, ERROR_CLASS, MODAL_CLASS } from "@/const/ui";
 import { getCroppedJpeg } from "@/lib/crop-image";
@@ -45,7 +46,7 @@ export function ChampionshipLogoCrop({
 	}
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+		<AppDialog onClose={onCancel}>
 			<div className={MODAL_CLASS}>
 				<p className="mb-3 text-sm font-medium tracking-tight text-fg">
 					Ajustar logo
@@ -94,6 +95,6 @@ export function ChampionshipLogoCrop({
 					</Button>
 				</div>
 			</div>
-		</div>
+		</AppDialog>
 	);
 }

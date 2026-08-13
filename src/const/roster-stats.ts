@@ -2,6 +2,7 @@ import type { ChampionshipPlayer } from "@/types/championship";
 
 export const ROSTER_COLUMN = {
 	player: "player",
+	rating: "rating",
 	goals: "goals",
 	assists: "assists",
 	goalInvolvement: "goalInvolvement",
@@ -17,6 +18,7 @@ export type RosterColumnId = (typeof ROSTER_COLUMN)[keyof typeof ROSTER_COLUMN];
 
 export const ROSTER_COLUMN_ABBR = {
 	player: "Jog",
+	rating: "Rat",
 	goals: "G",
 	assists: "A",
 	goalInvolvement: "PG",
@@ -30,6 +32,7 @@ export const ROSTER_COLUMN_ABBR = {
 
 export const ROSTER_COLUMN_LABEL = {
 	player: "Jogador",
+	rating: "Rating",
 	goals: "Gols",
 	assists: "Assistências",
 	goalInvolvement: "Participação em Gols",
@@ -130,6 +133,7 @@ export const ROSTER_STAT_COLUMN_OPTIONS = ROSTER_STAT_COLUMNS.map((id) => ({
 
 export const ROSTER_COLUMN_IDS = [
 	ROSTER_COLUMN.player,
+	ROSTER_COLUMN.rating,
 	...ROSTER_STAT_COLUMNS,
 ] as const;
 

@@ -218,10 +218,10 @@ export async function startChampionshipEvent(
 	const { data, error } = await supabase.rpc("start_championship_event", {
 		championship_id: championshipId,
 		event_date: eventDate,
-		present_player_ids: presentPlayerIds,
+		present_player_ids: [...presentPlayerIds],
 		teams: teams.map((team) => ({
 			color: team.color,
-			player_ids: team.playerIds,
+			player_ids: [...team.playerIds],
 		})),
 	});
 

@@ -39,6 +39,8 @@ check(
 );
 check(ROSTER_COLUMN_ABBR.goals === "G", "goals abbr");
 check(ROSTER_COLUMN_LABEL.goals === "Gols", "goals label");
+check(ROSTER_COLUMN_ABBR.rating === "Rat", "rating abbr");
+check(ROSTER_COLUMN_LABEL.rating === "Rating", "rating label");
 check(ROSTER_COLUMN_ABBR.actions === "Ações", "actions abbr");
 check(ROSTER_COLUMN_LABEL.actions === "Ações", "actions label");
 
@@ -47,6 +49,7 @@ const player: ChampionshipPlayer = {
 	championship_id: 1,
 	user_id: null,
 	display_name: "Ana",
+	nickname: null,
 	avatar_url: null,
 	rating: 5,
 	role: "member",

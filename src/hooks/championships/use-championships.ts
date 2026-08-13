@@ -15,6 +15,7 @@ import {
 	transferChampionshipOwner,
 	unlinkPlayer,
 	updateChampionshipEventConfig,
+	updatePlayerNickname,
 	updatePlayerRating,
 	uploadChampionshipLogo,
 } from "@/services/championships";
@@ -22,6 +23,7 @@ import {
 	CHAMPIONSHIP_BY_ID_QUERY_KEY,
 	CHAMPIONSHIP_BY_INVITE_QUERY_KEY,
 	CHAMPIONSHIPS_QUERY_KEY,
+	invalidateChampionshipQueries,
 } from "./championships-query-keys";
 
 export function useChampionships() {
@@ -63,9 +65,7 @@ export function useCreateChampionship() {
 			avatarUrl: string | null;
 		}) => createChampionship(name, userId, displayName, avatarUrl),
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIPS_QUERY_KEY,
-			});
+			await invalidateChampionshipQueries(queryClient);
 		},
 	});
 }
@@ -82,12 +82,7 @@ export function useAddManualPlayer(championshipId: number) {
 			rating: number;
 		}) => addManualPlayer(championshipId, displayName, rating),
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,
-			});
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIP_BY_INVITE_QUERY_KEY,
-			});
+			await invalidateChampionshipQueries(queryClient);
 		},
 	});
 }
@@ -98,15 +93,7 @@ export function useJoinChampionship(inviteCode: string) {
 	return useMutation({
 		mutationFn: () => joinChampionship(inviteCode),
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIP_BY_INVITE_QUERY_KEY,
-			});
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIPS_QUERY_KEY,
-			});
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,
-			});
+			await invalidateChampionshipQueries(queryClient);
 		},
 	});
 }
@@ -117,15 +104,7 @@ export function useClaimPlayer() {
 	return useMutation({
 		mutationFn: (playerId: number) => claimPlayer(playerId),
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIP_BY_INVITE_QUERY_KEY,
-			});
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIPS_QUERY_KEY,
-			});
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,
-			});
+			await invalidateChampionshipQueries(queryClient);
 		},
 	});
 }
@@ -137,12 +116,24 @@ export function useUpdatePlayerRating() {
 		mutationFn: ({ playerId, rating }: { playerId: number; rating: number }) =>
 			updatePlayerRating(playerId, rating),
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,
-			});
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIP_BY_INVITE_QUERY_KEY,
-			});
+			await invalidateChampionshipQueries(queryClient);
+		},
+	});
+}
+
+export function useUpdatePlayerNickname() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({
+			playerId,
+			nickname,
+		}: {
+			playerId: number;
+			nickname: string;
+		}) => updatePlayerNickname(playerId, nickname),
+		onSuccess: async () => {
+			await invalidateChampionshipQueries(queryClient);
 		},
 	});
 }
@@ -153,12 +144,7 @@ export function useRenameChampionship(championshipId: number) {
 	return useMutation({
 		mutationFn: (name: string) => renameChampionship(championshipId, name),
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,
-			});
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIPS_QUERY_KEY,
-			});
+			await invalidateChampionshipQueries(queryClient);
 		},
 	});
 }
@@ -176,12 +162,7 @@ export function useUpdateChampionshipEventConfig(championshipId: number) {
 		}) =>
 			updateChampionshipEventConfig(championshipId, eventTime, playersPerTeam),
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,
-			});
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIPS_QUERY_KEY,
-			});
+			await invalidateChampionshipQueries(queryClient);
 		},
 	});
 }
@@ -193,12 +174,7 @@ export function useSetPlayerRole() {
 		mutationFn: ({ playerId, role }: { playerId: number; role: string }) =>
 			setPlayerRole(playerId, role),
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,
-			});
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIP_BY_INVITE_QUERY_KEY,
-			});
+			await invalidateChampionshipQueries(queryClient);
 		},
 	});
 }
@@ -215,15 +191,7 @@ export function useUploadChampionshipLogo(championshipId: number) {
 			previousPath: string | null;
 		}) => uploadChampionshipLogo(championshipId, file, previousPath),
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,
-			});
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIPS_QUERY_KEY,
-			});
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIP_BY_INVITE_QUERY_KEY,
-			});
+			await invalidateChampionshipQueries(queryClient);
 		},
 	});
 }
@@ -234,15 +202,7 @@ export function useTransferChampionshipOwner() {
 	return useMutation({
 		mutationFn: (playerId: number) => transferChampionshipOwner(playerId),
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,
-			});
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIPS_QUERY_KEY,
-			});
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIP_BY_INVITE_QUERY_KEY,
-			});
+			await invalidateChampionshipQueries(queryClient);
 		},
 	});
 }
@@ -253,15 +213,7 @@ export function useUnlinkPlayer() {
 	return useMutation({
 		mutationFn: (playerId: number) => unlinkPlayer(playerId),
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIP_BY_INVITE_QUERY_KEY,
-			});
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIPS_QUERY_KEY,
-			});
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,
-			});
+			await invalidateChampionshipQueries(queryClient);
 		},
 	});
 }
@@ -272,15 +224,7 @@ export function useDeactivatePlayer() {
 	return useMutation({
 		mutationFn: (playerId: number) => deactivatePlayer(playerId),
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIP_BY_INVITE_QUERY_KEY,
-			});
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIPS_QUERY_KEY,
-			});
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,
-			});
+			await invalidateChampionshipQueries(queryClient);
 		},
 	});
 }
@@ -291,15 +235,7 @@ export function useReactivatePlayer() {
 	return useMutation({
 		mutationFn: (playerId: number) => reactivatePlayer(playerId),
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIP_BY_INVITE_QUERY_KEY,
-			});
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIPS_QUERY_KEY,
-			});
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,
-			});
+			await invalidateChampionshipQueries(queryClient);
 		},
 	});
 }
@@ -310,9 +246,7 @@ export function useDeleteChampionship() {
 	return useMutation({
 		mutationFn: (championshipId: number) => deleteChampionship(championshipId),
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIPS_QUERY_KEY,
-			});
+			await invalidateChampionshipQueries(queryClient);
 		},
 	});
 }

@@ -17,6 +17,7 @@ import {
 	type EventTeamColor,
 } from "@/const/event-team-color";
 import { addMatchFormSchema } from "@/const/form-schema";
+import { playerVisibleName } from "@/const/player-name";
 import {
 	BUTTON_VARIANT,
 	CHIP_CLASS,
@@ -68,6 +69,7 @@ function attendancePlayers(
 			championship_id: 0,
 			user_id: null,
 			display_name: row.display_name,
+			nickname: null,
 			avatar_url: null,
 			rating: 0,
 			role: CHAMPIONSHIP_ROLE.member,
@@ -151,11 +153,11 @@ export function ChampionshipEventDetail({
 								)}
 								{!player.avatar_url && (
 									<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-pitch-soft text-xs font-medium text-pitch-fg">
-										{player.display_name.charAt(0).toUpperCase()}
+										{playerVisibleName(player).charAt(0).toUpperCase()}
 									</span>
 								)}
 								<p className="min-w-0 truncate text-sm font-medium text-fg">
-									{player.display_name}
+									{playerVisibleName(player)}
 								</p>
 							</li>
 						))}

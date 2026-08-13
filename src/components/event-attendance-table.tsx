@@ -1,16 +1,22 @@
 import { createColumnHelper } from "@tanstack/react-table";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { Button } from "@/components/button";
 import {
 	DataTable,
 	type DataTableFeatures,
 } from "@/components/organisms/data-table";
 import { PlayerRating } from "@/components/player-rating";
 import {
+	areAllVisiblePresent,
 	compareByAttendanceCount,
+	EVENT_ATTENDANCE_ACTION,
 	EVENT_ATTENDANCE_COLUMN,
 	EVENT_ATTENDANCE_COLUMN_LABEL,
 } from "@/const/championship-event";
+import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
+import { filterPlayersBySearch, PLAYER_SEARCH } from "@/const/player-search";
+import { BUTTON_VARIANT, FIELD_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 type AttendanceRow = {
@@ -26,7 +32,7 @@ type EventAttendanceTableProps = {
 	players: ChampionshipPlayer[];
 	attendanceCounts: ReadonlyMap<number, number>;
 	presentIds?: readonly number[];
-	onToggle?: (playerId: number) => void;
+	onSetPresent?: (playerIds: readonly number[], present: boolean) => void;
 };
 
 const attendanceColumnHelper = createColumnHelper<
@@ -34,13 +40,7 @@ const attendanceColumnHelper = createColumnHelper<
 	AttendanceRow
 >();
 
-function AttendancePlayerCell({
-	player,
-	ceiling,
-}: {
-	player: AttendanceRow;
-	ceiling: number;
-}) {
+function AttendancePlayerCell({ player }: { player: AttendanceRow }) {
 	return (
 		<div className="flex min-w-0 items-center gap-3">
 			{player.avatar_url && (
@@ -56,12 +56,7 @@ function AttendancePlayerCell({
 					{player.display_name.charAt(0).toUpperCase()}
 				</span>
 			)}
-			<div className="min-w-0">
-				<p className="font-medium text-fg">{player.display_name}</p>
-				<div className="mt-1">
-					<PlayerRating rating={player.rating} ceiling={ceiling} />
-				</div>
-			</div>
+			<p className="min-w-0 font-medium text-fg">{player.display_name}</p>
 		</div>
 	);
 }
@@ -70,16 +65,21 @@ export function EventAttendanceTable({
 	players,
 	attendanceCounts,
 	presentIds = [],
-	onToggle,
+	onSetPresent,
 }: EventAttendanceTableProps) {
-	const selectable = Boolean(onToggle);
+	const [query, setQuery] = useState("");
+	const selectable = Boolean(onSetPresent);
 	const ceiling = championshipRatingCeiling(
 		players.map((player) => player.rating),
 	);
+	const visiblePlayers = useMemo(
+		() => filterPlayersBySearch(players, query),
+		[players, query],
+	);
 	const rows = useMemo(() => {
-		const list = players.map((player) => ({
+		const list = visiblePlayers.map((player) => ({
 			id: player.id,
-			display_name: player.display_name,
+			display_name: playerVisibleName(player),
 			avatar_url: player.avatar_url,
 			rating: player.rating,
 			attendanceCount: attendanceCounts.get(player.id) ?? 0,
@@ -87,7 +87,9 @@ export function EventAttendanceTable({
 		}));
 
 		return [...list].sort(compareByAttendanceCount);
-	}, [players, attendanceCounts, presentIds]);
+	}, [visiblePlayers, attendanceCounts, presentIds]);
+	const visibleIds = rows.map((row) => row.id);
+	const allVisiblePresent = areAllVisiblePresent(presentIds, visibleIds);
 
 	const columns = useMemo(() => {
 		const playerColumn = attendanceColumnHelper.accessor("display_name", {
@@ -95,8 +97,15 @@ export function EventAttendanceTable({
 			header: EVENT_ATTENDANCE_COLUMN_LABEL.player,
 			enableHiding: false,
 			meta: { title: EVENT_ATTENDANCE_COLUMN_LABEL.player },
-			cell: ({ row }) => (
-				<AttendancePlayerCell player={row.original} ceiling={ceiling} />
+			cell: ({ row }) => <AttendancePlayerCell player={row.original} />,
+		});
+		const ratingColumn = attendanceColumnHelper.accessor("rating", {
+			id: EVENT_ATTENDANCE_COLUMN.rating,
+			header: EVENT_ATTENDANCE_COLUMN_LABEL.rating,
+			enableHiding: false,
+			meta: { title: EVENT_ATTENDANCE_COLUMN_LABEL.rating },
+			cell: ({ getValue }) => (
+				<PlayerRating rating={getValue()} ceiling={ceiling} />
 			),
 		});
 		const countColumn = attendanceColumnHelper.accessor("attendanceCount", {
@@ -112,8 +121,12 @@ export function EventAttendanceTable({
 			),
 		});
 
-		if (!selectable || !onToggle) {
-			return attendanceColumnHelper.columns([playerColumn, countColumn]);
+		if (!selectable || !onSetPresent) {
+			return attendanceColumnHelper.columns([
+				playerColumn,
+				ratingColumn,
+				countColumn,
+			]);
 		}
 
 		return attendanceColumnHelper.columns([
@@ -138,32 +151,71 @@ export function EventAttendanceTable({
 								id={inputId}
 								type="checkbox"
 								checked={row.original.present}
-								onChange={() => onToggle(row.original.id)}
+								onChange={() => {
+									onSetPresent([row.original.id], !row.original.present);
+								}}
 							/>
 						</label>
 					);
 				},
 			}),
 			playerColumn,
+			ratingColumn,
 			countColumn,
 		]);
-	}, [ceiling, onToggle, selectable]);
+	}, [ceiling, onSetPresent, selectable]);
 
 	return (
-		<DataTable
-			data={rows}
-			columns={columns}
-			getRowId={(row) => String(row.id)}
-			onRowClick={
-				onToggle
-					? (row) => {
-							onToggle(row.id);
-						}
-					: undefined
-			}
-			getRowClassName={(row) =>
-				row.present ? "bg-pitch-soft" : "even:bg-surface-muted"
-			}
-		/>
+		<div className="space-y-3">
+			<label
+				htmlFor="event-attendance-search"
+				className="block text-sm text-fg-muted"
+			>
+				{PLAYER_SEARCH.label}
+				<input
+					id="event-attendance-search"
+					type="search"
+					value={query}
+					placeholder={PLAYER_SEARCH.placeholder}
+					autoComplete="off"
+					className={`mt-1 ${FIELD_CLASS}`}
+					onChange={(event) => {
+						setQuery(event.target.value);
+					}}
+				/>
+			</label>
+			{selectable && rows.length > 0 && onSetPresent && (
+				<Button
+					variant={BUTTON_VARIANT.secondary}
+					onClick={() => {
+						onSetPresent(visibleIds, !allVisiblePresent);
+					}}
+				>
+					{allVisiblePresent
+						? EVENT_ATTENDANCE_ACTION.deselectAll
+						: EVENT_ATTENDANCE_ACTION.selectAll}
+				</Button>
+			)}
+			{rows.length === 0 && (
+				<p className="text-sm text-fg-muted">{PLAYER_SEARCH.empty}</p>
+			)}
+			{rows.length > 0 && (
+				<DataTable
+					data={rows}
+					columns={columns}
+					getRowId={(row) => String(row.id)}
+					onRowClick={
+						onSetPresent
+							? (row) => {
+									onSetPresent([row.id], !row.present);
+								}
+							: undefined
+					}
+					getRowClassName={(row) =>
+						row.present ? "bg-pitch-soft" : "even:bg-surface-muted"
+					}
+				/>
+			)}
+		</div>
 	);
 }

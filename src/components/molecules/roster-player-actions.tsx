@@ -1,18 +1,25 @@
-import { Unlink, UserCheck, UserPlus, UserX } from "lucide-react";
+import { Unlink, UserCheck, UserPen, UserPlus, UserX } from "lucide-react";
 import { IconTooltipButton } from "@/components/molecules/icon-tooltip-button";
 import {
 	CHAMPIONSHIP_ROLE,
+	type ChampionshipRole,
+	canEditPlayerNickname,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
+import { PLAYER_LABEL } from "@/const/player-name";
 import { BUTTON_VARIANT } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 export type RosterPlayerActionsProps = {
 	player: ChampionshipPlayer;
 	createdBy: string;
+	actorRole: ChampionshipRole;
+	currentUserId: string | null;
 	alreadyMember: boolean;
 	claimingPlayerId?: number | null;
 	onClaim?: (playerId: number) => void;
+	onEditNickname?: (playerId: number) => void;
+	nicknamePlayerId?: number | null;
 	onUnlink?: (playerId: number) => void;
 	unlinkingPlayerId?: number | null;
 	onDeactivate?: (playerId: number) => void;
@@ -24,9 +31,13 @@ export type RosterPlayerActionsProps = {
 export function RosterPlayerActions({
 	player,
 	createdBy,
+	actorRole,
+	currentUserId,
 	alreadyMember,
 	claimingPlayerId,
 	onClaim,
+	onEditNickname,
+	nicknamePlayerId,
 	onUnlink,
 	unlinkingPlayerId,
 	onDeactivate,
@@ -50,13 +61,32 @@ export function RosterPlayerActions({
 		onDeactivate && !isChampionshipOwner && !player.deleted_at,
 	);
 	const canReactivate = Boolean(onReactivate && player.deleted_at);
+	const canEditNickname = Boolean(
+		onEditNickname &&
+			!player.deleted_at &&
+			canEditPlayerNickname(actorRole, player.user_id, currentUserId),
+	);
 
-	if (!canClaim && !canUnlink && !canDeactivate && !canReactivate) {
+	if (
+		!canClaim &&
+		!canEditNickname &&
+		!canUnlink &&
+		!canDeactivate &&
+		!canReactivate
+	) {
 		return null;
 	}
 
 	return (
 		<div className="flex flex-wrap justify-center gap-2">
+			{canEditNickname && onEditNickname && (
+				<IconTooltipButton
+					label={PLAYER_LABEL.nickname}
+					icon={<UserPen className="size-4" />}
+					onClick={() => onEditNickname(player.id)}
+					disabled={nicknamePlayerId === player.id}
+				/>
+			)}
 			{canClaim && onClaim && (
 				<IconTooltipButton
 					label="Conectar"

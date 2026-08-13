@@ -5,6 +5,7 @@ import { Button } from "@/components/button";
 import { EventAttendanceTable } from "@/components/event-attendance-table";
 import { FormError } from "@/components/form-error";
 import {
+	applyVisibleAttendance,
 	CHAMPIONSHIP_EVENT,
 	championshipEventToday,
 	EVENT_BUILDER_STEP,
@@ -23,6 +24,7 @@ import {
 	isEventTeamColor,
 } from "@/const/event-team-color";
 import { startEventFormSchema } from "@/const/form-schema";
+import { playerVisibleName } from "@/const/player-name";
 import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 
@@ -77,14 +79,10 @@ export function ChampionshipEventBuilder({
 	);
 	const pool = presentPlayers.filter((player) => !assignedIds.has(player.id));
 
-	function handleTogglePresent(playerId: number) {
-		setPresentIds((current) => {
-			if (current.includes(playerId)) {
-				return current.filter((id) => id !== playerId);
-			}
-
-			return [...current, playerId];
-		});
+	function handleSetPresent(playerIds: readonly number[], present: boolean) {
+		setPresentIds((current) =>
+			applyVisibleAttendance(current, playerIds, present),
+		);
 		setAttendanceError(null);
 	}
 
@@ -253,7 +251,7 @@ export function ChampionshipEventBuilder({
 							players={players}
 							attendanceCounts={attendanceCounts}
 							presentIds={presentIds}
-							onToggle={handleTogglePresent}
+							onSetPresent={handleSetPresent}
 						/>
 						{attendanceError && (
 							<p className={ERROR_CLASS}>{attendanceError}</p>
@@ -333,10 +331,10 @@ export function ChampionshipEventBuilder({
 													key={playerId}
 													className="flex items-center justify-between gap-2 text-sm text-fg"
 												>
-													{player.display_name}
+													{playerVisibleName(player)}
 													<Button
 														variant={BUTTON_VARIANT.ghost}
-														aria-label={`Remover ${player.display_name}`}
+														aria-label={`Remover ${playerVisibleName(player)}`}
 														className="px-2"
 														onClick={() =>
 															handleRemovePlayer(team.key, playerId)
@@ -361,7 +359,7 @@ export function ChampionshipEventBuilder({
 												<option value="">Adicionar jogador</option>
 												{pool.map((player) => (
 													<option key={player.id} value={player.id}>
-														{player.display_name}
+														{playerVisibleName(player)}
 													</option>
 												))}
 											</select>

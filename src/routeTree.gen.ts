@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
-import { Route as AuthenticatedTodosRouteImport } from './routes/_authenticated/todos'
 import { Route as JoinInviteCodeRouteImport } from './routes/join.$inviteCode'
 import { Route as AuthenticatedChampionshipsChampionshipIdRouteImport } from './routes/_authenticated/championships.$championshipId'
 import { Route as AuthenticatedChampionshipsNewRouteImport } from './routes/_authenticated/championships.new'
@@ -31,11 +30,6 @@ const LoginRoute = LoginRouteImport.update({
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedTodosRoute = AuthenticatedTodosRouteImport.update({
-  id: '/todos',
-  path: '/todos',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const JoinInviteCodeRoute = JoinInviteCodeRouteImport.update({
@@ -71,7 +65,6 @@ const AuthenticatedChampionshipsChampionshipIdEventsEventIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/login': typeof LoginRoute
-  '/todos': typeof AuthenticatedTodosRoute
   '/join/$inviteCode': typeof JoinInviteCodeRoute
   '/championships/$championshipId': typeof AuthenticatedChampionshipsChampionshipIdRouteWithChildren
   '/championships/new': typeof AuthenticatedChampionshipsNewRoute
@@ -80,7 +73,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
-  '/todos': typeof AuthenticatedTodosRoute
   '/join/$inviteCode': typeof JoinInviteCodeRoute
   '/': typeof AuthenticatedIndexRoute
   '/championships/new': typeof AuthenticatedChampionshipsNewRoute
@@ -91,7 +83,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
-  '/_authenticated/todos': typeof AuthenticatedTodosRoute
   '/join/$inviteCode': typeof JoinInviteCodeRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/championships/$championshipId': typeof AuthenticatedChampionshipsChampionshipIdRouteWithChildren
@@ -104,7 +95,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
-    | '/todos'
     | '/join/$inviteCode'
     | '/championships/$championshipId'
     | '/championships/new'
@@ -113,7 +103,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
-    | '/todos'
     | '/join/$inviteCode'
     | '/'
     | '/championships/new'
@@ -123,7 +112,6 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_authenticated'
     | '/login'
-    | '/_authenticated/todos'
     | '/join/$inviteCode'
     | '/_authenticated/'
     | '/_authenticated/championships/$championshipId'
@@ -159,13 +147,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/todos': {
-      id: '/_authenticated/todos'
-      path: '/todos'
-      fullPath: '/todos'
-      preLoaderRoute: typeof AuthenticatedTodosRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/join/$inviteCode': {
@@ -225,14 +206,12 @@ const AuthenticatedChampionshipsChampionshipIdRouteWithChildren =
   )
 
 interface AuthenticatedRouteChildren {
-  AuthenticatedTodosRoute: typeof AuthenticatedTodosRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedChampionshipsChampionshipIdRoute: typeof AuthenticatedChampionshipsChampionshipIdRouteWithChildren
   AuthenticatedChampionshipsNewRoute: typeof AuthenticatedChampionshipsNewRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
-  AuthenticatedTodosRoute: AuthenticatedTodosRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedChampionshipsChampionshipIdRoute:
     AuthenticatedChampionshipsChampionshipIdRouteWithChildren,

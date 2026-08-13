@@ -1,3 +1,4 @@
+import { AppDialog } from "@/components/atoms/app-dialog";
 import { Button } from "@/components/button";
 import { BUTTON_VARIANT, ERROR_CLASS, MODAL_CLASS } from "@/const/ui";
 
@@ -15,7 +16,7 @@ export function EndEventModal({
 	onConfirm,
 }: EndEventModalProps) {
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+		<AppDialog onClose={onCancel}>
 			<div className={MODAL_CLASS}>
 				<p className="mb-1 text-sm font-medium tracking-tight text-fg">
 					Encerrar evento
@@ -44,6 +45,6 @@ export function EndEventModal({
 					</Button>
 				</div>
 			</div>
-		</div>
+		</AppDialog>
 	);
 }

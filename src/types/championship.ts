@@ -13,6 +13,7 @@ export type ChampionshipPlayer = {
 	championship_id: number;
 	user_id: string | null;
 	display_name: string;
+	nickname: string | null;
 	avatar_url: string | null;
 	rating: number;
 	role: string;

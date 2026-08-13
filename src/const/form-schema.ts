@@ -1,5 +1,6 @@
 import { number, object, string } from "yup";
 import { CHAMPIONSHIP_EVENT } from "./championship-event.ts";
+import { PLAYER_NICKNAME } from "./player-name.ts";
 import { PLAYER_RATING } from "./player-rating.ts";
 
 export const FORM_MESSAGE = {
@@ -7,6 +8,7 @@ export const FORM_MESSAGE = {
 	nameMismatch: "Nome não confere",
 	playerRequired: "Selecione um jogador",
 	ratingInvalid: "Nota inválida",
+	nicknameInvalid: "Apelido inválido",
 	eventTimeInvalid: "Hora inválida",
 	playersPerTeamInvalid: "Limite inválido",
 	eventDateRequired: "Informe a data",
@@ -30,6 +32,12 @@ export const addPlayerFormSchema = object({
 
 export const playerRatingSchema = object({
 	rating: ratingField,
+});
+
+export const playerNicknameSchema = object({
+	nickname: string()
+		.trim()
+		.max(PLAYER_NICKNAME.maxLength, FORM_MESSAGE.nicknameInvalid),
 });
 
 export const transferOwnerSchema = object({

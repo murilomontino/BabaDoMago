@@ -1,6 +1,6 @@
 import { createColumnHelper } from "@tanstack/react-table";
 import { UserPlus } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { EmptyState } from "@/components/empty-state";
 import {
 	RosterPlayerActions,
@@ -11,11 +11,20 @@ import {
 	type RosterPlayerCellProps,
 } from "@/components/molecules/roster-player-cell";
 import {
+	RosterPlayerRating,
+	type RosterPlayerRatingProps,
+} from "@/components/molecules/roster-player-rating";
+import {
 	DataTable,
 	type DataTableFeatures,
 } from "@/components/organisms/data-table";
-import type { AssignableChampionshipRole } from "@/const/championship-role";
+import {
+	type AssignableChampionshipRole,
+	CHAMPIONSHIP_ROLE,
+	resolveChampionshipRole,
+} from "@/const/championship-role";
 import { championshipRatingCeiling } from "@/const/player-rating";
+import { filterPlayersBySearch, PLAYER_SEARCH } from "@/const/player-search";
 import {
 	formatRosterAverage,
 	formatRosterCount,
@@ -28,6 +37,7 @@ import {
 	type RosterRow,
 	toRosterRow,
 } from "@/const/roster-stats";
+import { FIELD_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 const rosterColumnHelper = createColumnHelper<DataTableFeatures, RosterRow>();
@@ -40,6 +50,8 @@ type ChampionshipRosterProps = {
 	onClaim?: (playerId: number) => void;
 	onChangeRating?: (playerId: number, rating: number) => void;
 	ratingPlayerId?: number | null;
+	onEditNickname?: (playerId: number) => void;
+	nicknamePlayerId?: number | null;
 	onChangeRole?: (playerId: number, role: AssignableChampionshipRole) => void;
 	onUnlink?: (playerId: number) => void;
 	unlinkingPlayerId?: number | null;
@@ -58,6 +70,13 @@ function rosterPlayerCellProps(
 	return { ...shared, player };
 }
 
+function rosterPlayerRatingProps(
+	player: ChampionshipPlayer,
+	shared: Omit<RosterPlayerRatingProps, "player">,
+): RosterPlayerRatingProps {
+	return { ...shared, player };
+}
+
 function rosterPlayerActionsProps(
 	player: ChampionshipPlayer,
 	shared: Omit<RosterPlayerActionsProps, "player">,
@@ -73,6 +92,8 @@ export function ChampionshipRoster({
 	onClaim,
 	onChangeRating,
 	ratingPlayerId,
+	onEditNickname,
+	nicknamePlayerId,
 	onChangeRole,
 	onUnlink,
 	unlinkingPlayerId,
@@ -83,37 +104,46 @@ export function ChampionshipRoster({
 	emptyTitle = "Nenhum jogador ainda",
 	withStats = true,
 }: ChampionshipRosterProps) {
+	const [query, setQuery] = useState("");
 	const alreadyMember = Boolean(
 		currentUserId && players.some((player) => player.user_id === currentUserId),
 	);
 	const isOwnerViewer = Boolean(currentUserId && currentUserId === createdBy);
+	const viewer = players.find((player) => player.user_id === currentUserId);
+	const actorRole = resolveChampionshipRole(
+		createdBy,
+		currentUserId,
+		viewer?.role ?? CHAMPIONSHIP_ROLE.member,
+	);
 	const ceiling = championshipRatingCeiling(
 		players.map((player) => player.rating),
 	);
 	const playerCellShared = useMemo(
 		() => ({
 			createdBy,
-			isOwnerViewer,
-			ceiling,
-			onChangeRating,
-			ratingPlayerId,
 			onChangeRole,
 		}),
-		[
-			createdBy,
+		[createdBy, onChangeRole],
+	);
+	const playerRatingShared = useMemo(
+		() => ({
 			isOwnerViewer,
 			ceiling,
 			onChangeRating,
 			ratingPlayerId,
-			onChangeRole,
-		],
+		}),
+		[isOwnerViewer, ceiling, onChangeRating, ratingPlayerId],
 	);
 	const playerActionsShared = useMemo(
 		() => ({
 			createdBy,
+			actorRole,
+			currentUserId,
 			alreadyMember,
 			claimingPlayerId,
 			onClaim,
+			onEditNickname,
+			nicknamePlayerId,
 			onUnlink,
 			unlinkingPlayerId,
 			onDeactivate,
@@ -123,9 +153,13 @@ export function ChampionshipRoster({
 		}),
 		[
 			createdBy,
+			actorRole,
+			currentUserId,
 			alreadyMember,
 			claimingPlayerId,
 			onClaim,
+			onEditNickname,
+			nicknamePlayerId,
 			onUnlink,
 			unlinkingPlayerId,
 			onDeactivate,
@@ -135,9 +169,13 @@ export function ChampionshipRoster({
 		],
 	);
 
+	const visiblePlayers = useMemo(
+		() => filterPlayersBySearch(players, query),
+		[players, query],
+	);
 	const rows = useMemo(
-		() => players.map((player) => toRosterRow(player)),
-		[players],
+		() => visiblePlayers.map((player) => toRosterRow(player)),
+		[visiblePlayers],
 	);
 
 	const columns = useMemo(
@@ -151,6 +189,17 @@ export function ChampionshipRoster({
 					cell: ({ row }) => (
 						<RosterPlayerCell
 							{...rosterPlayerCellProps(row.original, playerCellShared)}
+						/>
+					),
+				}),
+				rosterColumnHelper.accessor("rating", {
+					id: ROSTER_COLUMN.rating,
+					header: ROSTER_COLUMN_ABBR.rating,
+					enableHiding: false,
+					meta: { title: ROSTER_COLUMN_LABEL.rating },
+					cell: ({ row }) => (
+						<RosterPlayerRating
+							{...rosterPlayerRatingProps(row.original, playerRatingShared)}
 						/>
 					),
 				}),
@@ -253,7 +302,7 @@ export function ChampionshipRoster({
 					),
 				}),
 			]),
-		[playerCellShared, playerActionsShared],
+		[playerCellShared, playerRatingShared, playerActionsShared],
 	);
 
 	if (players.length === 0) {
@@ -262,33 +311,59 @@ export function ChampionshipRoster({
 		);
 	}
 
-	if (!withStats) {
-		return (
-			<ul className="divide-y divide-line">
-				{players.map((player) => (
-					<li
-						key={player.id}
-						className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
-					>
-						<RosterPlayerCell
-							{...rosterPlayerCellProps(player, playerCellShared)}
-						/>
-						<RosterPlayerActions
-							{...rosterPlayerActionsProps(player, playerActionsShared)}
-						/>
-					</li>
-				))}
-			</ul>
-		);
-	}
-
 	return (
-		<DataTable
-			data={rows}
-			columns={columns}
-			getRowId={(row) => String(row.id)}
-			hideableColumns={ROSTER_STAT_COLUMN_OPTIONS}
-			legendItems={ROSTER_LEGEND_ITEMS}
-		/>
+		<div className="space-y-3">
+			<label
+				htmlFor="roster-player-search"
+				className="block text-sm text-fg-muted"
+			>
+				{PLAYER_SEARCH.label}
+				<input
+					id="roster-player-search"
+					type="search"
+					value={query}
+					placeholder={PLAYER_SEARCH.placeholder}
+					autoComplete="off"
+					className={`mt-1 ${FIELD_CLASS}`}
+					onChange={(event) => {
+						setQuery(event.target.value);
+					}}
+				/>
+			</label>
+			{visiblePlayers.length === 0 && (
+				<p className="text-sm text-fg-muted">{PLAYER_SEARCH.empty}</p>
+			)}
+			{visiblePlayers.length > 0 && !withStats && (
+				<ul className="divide-y divide-line">
+					{visiblePlayers.map((player) => (
+						<li
+							key={player.id}
+							className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+						>
+							<RosterPlayerCell
+								{...rosterPlayerCellProps(player, playerCellShared)}
+							/>
+							<div className="flex items-center gap-3">
+								<RosterPlayerRating
+									{...rosterPlayerRatingProps(player, playerRatingShared)}
+								/>
+								<RosterPlayerActions
+									{...rosterPlayerActionsProps(player, playerActionsShared)}
+								/>
+							</div>
+						</li>
+					))}
+				</ul>
+			)}
+			{visiblePlayers.length > 0 && withStats && (
+				<DataTable
+					data={rows}
+					columns={columns}
+					getRowId={(row) => String(row.id)}
+					hideableColumns={ROSTER_STAT_COLUMN_OPTIONS}
+					legendItems={ROSTER_LEGEND_ITEMS}
+				/>
+			)}
+		</div>
 	);
 }
