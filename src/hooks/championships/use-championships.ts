@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/auth";
 import {
 	addManualPlayer,
 	claimPlayer,
@@ -15,6 +16,7 @@ import {
 	transferChampionshipOwner,
 	unlinkPlayer,
 	updateChampionshipEventConfig,
+	updateChampionshipVisibility,
 	updatePlayerNickname,
 	updatePlayerRating,
 	uploadChampionshipLogo,
@@ -27,9 +29,11 @@ import {
 } from "./championships-query-keys";
 
 export function useChampionships() {
+	const { user } = useAuth();
+
 	return useQuery({
-		queryKey: CHAMPIONSHIPS_QUERY_KEY,
-		queryFn: listChampionships,
+		queryKey: [...CHAMPIONSHIPS_QUERY_KEY, user?.id],
+		queryFn: () => listChampionships(user?.id ?? ""),
 	});
 }
 
@@ -161,6 +165,18 @@ export function useUpdateChampionshipEventConfig(championshipId: number) {
 			playersPerTeam: number;
 		}) =>
 			updateChampionshipEventConfig(championshipId, eventTime, playersPerTeam),
+		onSuccess: async () => {
+			await invalidateChampionshipQueries(queryClient);
+		},
+	});
+}
+
+export function useUpdateChampionshipVisibility(championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (isVisible: boolean) =>
+			updateChampionshipVisibility(championshipId, isVisible),
 		onSuccess: async () => {
 			await invalidateChampionshipQueries(queryClient);
 		},

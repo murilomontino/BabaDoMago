@@ -9,8 +9,10 @@ import {
 	canSetRoles,
 	canTransferOwnership,
 	canUnlinkPlayer,
+	canUpdateEventConfig,
 	canUpdateNickname,
 	canUpdateRating,
+	canUpdateVisibility,
 	resolveChampionshipRole,
 } from "./championship-role.ts";
 
@@ -35,6 +37,8 @@ check(canTransferOwnership(owner), "owner transfers");
 check(canUnlinkPlayer(owner), "owner unlinks");
 check(canDeactivatePlayer(owner), "owner deactivates");
 check(canReactivatePlayer(owner), "owner reactivates");
+check(canUpdateEventConfig(owner), "owner updates event config");
+check(canUpdateVisibility(owner), "owner updates visibility");
 
 check(!canDeleteChampionship(captain), "captain cannot delete");
 check(!canSetRoles(captain), "captain cannot set roles");
@@ -46,6 +50,8 @@ check(!canTransferOwnership(captain), "captain cannot transfer");
 check(canUnlinkPlayer(captain), "captain unlinks");
 check(canDeactivatePlayer(captain), "captain deactivates");
 check(!canReactivatePlayer(captain), "captain cannot reactivate");
+check(canUpdateEventConfig(captain), "captain updates event config");
+check(canUpdateVisibility(captain), "captain updates visibility");
 
 check(!canDeleteChampionship(admin), "admin cannot delete");
 check(!canSetRoles(admin), "admin cannot set roles");
@@ -57,6 +63,8 @@ check(!canTransferOwnership(admin), "admin cannot transfer");
 check(canUnlinkPlayer(admin), "admin unlinks");
 check(canDeactivatePlayer(admin), "admin deactivates");
 check(!canReactivatePlayer(admin), "admin cannot reactivate");
+check(!canUpdateEventConfig(admin), "admin cannot update event config");
+check(!canUpdateVisibility(admin), "admin cannot update visibility");
 
 check(!canDeleteChampionship(member), "member cannot delete");
 check(!canSetRoles(member), "member cannot set roles");
@@ -68,6 +76,8 @@ check(!canTransferOwnership(member), "member cannot transfer");
 check(!canUnlinkPlayer(member), "member cannot unlink");
 check(!canDeactivatePlayer(member), "member cannot deactivate");
 check(!canReactivatePlayer(member), "member cannot reactivate");
+check(!canUpdateEventConfig(member), "member cannot update event config");
+check(!canUpdateVisibility(member), "member cannot update visibility");
 
 check(
 	resolveChampionshipRole("owner-id", "owner-id", member) === owner,

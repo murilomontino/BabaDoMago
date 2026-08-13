@@ -6,6 +6,7 @@ export type Championship = {
 	logo_path: string | null;
 	event_time: string;
 	players_per_team: number;
+	is_visible: boolean;
 };
 
 export type ChampionshipPlayer = {

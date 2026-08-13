@@ -26,6 +26,7 @@ import {
 	canUnlinkPlayer,
 	canUpdateEventConfig,
 	canUpdateRating,
+	canUpdateVisibility,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
 import {
@@ -50,6 +51,7 @@ import {
 	useTransferChampionshipOwner,
 	useUnlinkPlayer,
 	useUpdateChampionshipEventConfig,
+	useUpdateChampionshipVisibility,
 	useUpdatePlayerNickname,
 	useUpdatePlayerRating,
 	useUploadChampionshipLogo,
@@ -73,6 +75,7 @@ export function ChampionshipDetailPage() {
 	const updateNickname = useUpdatePlayerNickname();
 	const renameChampionship = useRenameChampionship(championshipId);
 	const updateEventConfig = useUpdateChampionshipEventConfig(championshipId);
+	const updateVisibility = useUpdateChampionshipVisibility(championshipId);
 	const setPlayerRole = useSetPlayerRole();
 	const deleteChampionship = useDeleteChampionship();
 	const transferOwner = useTransferChampionshipOwner();
@@ -101,7 +104,7 @@ export function ChampionshipDetailPage() {
 		currentPlayer?.role ?? CHAMPIONSHIP_ROLE.member,
 	);
 	const permissions = {
-		invite: canInvite(actorRole),
+		invite: canInvite(actorRole) && Boolean(data?.is_visible),
 		rating: canUpdateRating(actorRole),
 		rename: canRenameChampionship(actorRole),
 		setRoles: canSetRoles(actorRole),
@@ -111,6 +114,7 @@ export function ChampionshipDetailPage() {
 		deactivate: canDeactivatePlayer(actorRole),
 		reactivate: canReactivatePlayer(actorRole),
 		updateEventConfig: canUpdateEventConfig(actorRole),
+		updateVisibility: canUpdateVisibility(actorRole),
 		manageEvent: canManageEvent(actorRole),
 	};
 	const activePlayers = (data?.players ?? []).filter(
@@ -259,7 +263,7 @@ export function ChampionshipDetailPage() {
 	}
 
 	async function handleCopyLink() {
-		if (!data) {
+		if (!data?.is_visible) {
 			return;
 		}
 
@@ -484,9 +488,11 @@ export function ChampionshipDetailPage() {
 					createdBy={data.created_by}
 					eventTime={data.event_time}
 					playersPerTeam={data.players_per_team}
+					isVisible={data.is_visible}
 					activePlayers={activePlayers}
 					canRename={permissions.rename}
 					canUpdateEventConfig={permissions.updateEventConfig}
+					canUpdateVisibility={permissions.updateVisibility}
 					canTransferOwnership={permissions.transferOwnership}
 					canDelete={permissions.deleteChampionship}
 					isRenaming={renameChampionship.isPending}
@@ -497,6 +503,10 @@ export function ChampionshipDetailPage() {
 					eventConfigError={
 						updateEventConfig.isError ? updateEventConfig.error.message : null
 					}
+					isUpdatingVisibility={updateVisibility.isPending}
+					visibilityError={
+						updateVisibility.isError ? updateVisibility.error.message : null
+					}
 					isTransferring={transferOwner.isPending}
 					transferError={
 						transferOwner.isError ? transferOwner.error.message : null
@@ -506,6 +516,9 @@ export function ChampionshipDetailPage() {
 					}}
 					onUpdateEventConfig={async (values) => {
 						await updateEventConfig.mutateAsync(values);
+					}}
+					onUpdateVisibility={(isVisible) => {
+						updateVisibility.mutate(isVisible);
 					}}
 					onTransferOwner={async (playerId) => {
 						await transferOwner.mutateAsync(playerId);

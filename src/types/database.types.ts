@@ -255,6 +255,7 @@ export type Database = {
 					event_time: string;
 					id: number;
 					invite_code: string;
+					is_visible: boolean;
 					logo_path: string | null;
 					name: string;
 					players_per_team: number;
@@ -266,6 +267,7 @@ export type Database = {
 					event_time?: string;
 					id?: number;
 					invite_code?: string;
+					is_visible?: boolean;
 					logo_path?: string | null;
 					name: string;
 					players_per_team?: number;
@@ -277,6 +279,7 @@ export type Database = {
 					event_time?: string;
 					id?: number;
 					invite_code?: string;
+					is_visible?: boolean;
 					logo_path?: string | null;
 					name?: string;
 					players_per_team?: number;
@@ -410,6 +413,10 @@ export type Database = {
 			};
 			update_championship_name: {
 				Args: { championship_id: number; name: string };
+				Returns: Json;
+			};
+			update_championship_visibility: {
+				Args: { championship_id: number; is_visible: boolean };
 				Returns: Json;
 			};
 			update_player_nickname: {

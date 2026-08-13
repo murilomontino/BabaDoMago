@@ -26,7 +26,7 @@ const PLAYER_COLUMNS =
 	"id, championship_id, user_id, display_name, nickname, avatar_url, rating, role, deleted_at, goals, assists, wins, matches" as const;
 
 const CHAMPIONSHIP_COLUMNS =
-	"id, name, invite_code, created_by, logo_path, event_time, players_per_team" as const;
+	"id, name, invite_code, created_by, logo_path, event_time, players_per_team, is_visible" as const;
 
 function asChampionship(value: unknown): Championship {
 	if (!value || typeof value !== "object") {
@@ -46,6 +46,7 @@ function asChampionship(value: unknown): Championship {
 		logo_path: typeof row.logo_path === "string" ? row.logo_path : null,
 		event_time: parseEventTime(row.event_time),
 		players_per_team: parsePlayersPerTeam(row.players_per_team),
+		is_visible: row.is_visible !== false,
 	};
 }
 
@@ -93,11 +94,14 @@ function throwChampionshipWriteError(error: { message: string }): never {
 	throw error;
 }
 
-export async function listChampionships(): Promise<Championship[]> {
+export async function listChampionships(
+	userId: string,
+): Promise<Championship[]> {
 	const { data, error } = await supabase
 		.from("championships")
 		.select(CHAMPIONSHIP_COLUMNS)
 		.is("deleted_at", null)
+		.or(`is_visible.eq.true,created_by.eq.${userId}`)
 		.order("id", { ascending: false });
 
 	if (error) {
@@ -307,6 +311,22 @@ export async function updateChampionshipEventConfig(
 
 	if (error) {
 		throw new Error(championshipEventErrorMessage(error.message));
+	}
+
+	return asChampionship(data);
+}
+
+export async function updateChampionshipVisibility(
+	championshipId: number,
+	isVisible: boolean,
+): Promise<Championship> {
+	const { data, error } = await supabase.rpc("update_championship_visibility", {
+		championship_id: championshipId,
+		is_visible: isVisible,
+	});
+
+	if (error) {
+		throw error;
 	}
 
 	return asChampionship(data);

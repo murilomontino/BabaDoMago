@@ -36,6 +36,7 @@ type ChampionshipPermissions = {
 	deactivatePlayer: boolean;
 	reactivatePlayer: boolean;
 	updateEventConfig: boolean;
+	updateVisibility: boolean;
 	manageEvent: boolean;
 };
 
@@ -79,6 +80,7 @@ export function championshipPermissions(
 				deactivatePlayer: true,
 				reactivatePlayer: true,
 				updateEventConfig: true,
+				updateVisibility: true,
 				manageEvent: true,
 			};
 		case CHAMPIONSHIP_ROLE.captain:
@@ -94,6 +96,7 @@ export function championshipPermissions(
 				deactivatePlayer: true,
 				reactivatePlayer: false,
 				updateEventConfig: true,
+				updateVisibility: true,
 				manageEvent: true,
 			};
 		case CHAMPIONSHIP_ROLE.admin:
@@ -109,6 +112,7 @@ export function championshipPermissions(
 				deactivatePlayer: true,
 				reactivatePlayer: false,
 				updateEventConfig: false,
+				updateVisibility: false,
 				manageEvent: true,
 			};
 		case CHAMPIONSHIP_ROLE.member:
@@ -124,6 +128,7 @@ export function championshipPermissions(
 				deactivatePlayer: false,
 				reactivatePlayer: false,
 				updateEventConfig: false,
+				updateVisibility: false,
 				manageEvent: false,
 			};
 		default: {
@@ -187,6 +192,10 @@ export function canReactivatePlayer(role: ChampionshipRole): boolean {
 
 export function canUpdateEventConfig(role: ChampionshipRole): boolean {
 	return championshipPermissions(role).updateEventConfig;
+}
+
+export function canUpdateVisibility(role: ChampionshipRole): boolean {
+	return championshipPermissions(role).updateVisibility;
 }
 
 export function canManageEvent(role: ChampionshipRole): boolean {
