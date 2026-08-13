@@ -129,8 +129,11 @@ export function ChampionshipEventDetailPage() {
 						teamBId,
 					});
 				}}
-				onEnd={async () => {
-					await endEvent.mutateAsync(event.id);
+				onEnd={async (presentPlayerIds) => {
+					await endEvent.mutateAsync({
+						eventId: event.id,
+						presentPlayerIds,
+					});
 				}}
 				onDelete={async () => {
 					await deleteEvent.mutateAsync(event.id);

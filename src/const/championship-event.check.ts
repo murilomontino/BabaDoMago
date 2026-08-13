@@ -4,6 +4,7 @@ import {
 	builderTeamsFromEvent,
 	canEditEventTeams,
 	championshipEventErrorMessage,
+	draftAttendanceForEnd,
 	compareByAttendanceCount,
 	countPlayerAttendance,
 	EVENT_ATTENDANCE_MESSAGE,
@@ -218,6 +219,9 @@ check(
 check(canEditEventTeams({ ended_at: null, matches: [] }), true);
 check(canEditEventTeams({ ended_at: "2026-08-13", matches: [] }), false);
 check(canEditEventTeams({ ended_at: null, matches: [{}] }), false);
+check(draftAttendanceForEnd(false, [1, 2]), null);
+check(draftAttendanceForEnd(true, [1]), null);
+check(draftAttendanceForEnd(true, [1, 2])?.join(","), "1,2");
 check(
 	championshipEventErrorMessage("event already ended"),
 	EVENT_ERROR_MESSAGE["event already ended"],

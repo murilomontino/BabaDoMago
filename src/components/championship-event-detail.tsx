@@ -1,5 +1,5 @@
 import { Field, Form, Formik } from "formik";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/button";
 import { ChampionshipEventBuilder } from "@/components/championship-event-builder";
 import { DeleteEventModal } from "@/components/delete-event-modal";
@@ -13,6 +13,7 @@ import {
 	builderTeamsFromEvent,
 	CHAMPIONSHIP_EVENT,
 	canEditEventTeams,
+	draftAttendanceForEnd,
 	EVENT_ACTION,
 	EVENT_STATUS,
 	EVENT_STATUS_LABEL,
@@ -52,7 +53,7 @@ type ChampionshipEventDetailProps = {
 		teams: EventTeamDraft[];
 	}) => Promise<void>;
 	onAddMatch: (values: { teamAId: number; teamBId: number }) => Promise<void>;
-	onEnd: () => Promise<void>;
+	onEnd: (presentPlayerIds: number[] | null) => Promise<void>;
 	onDelete: () => Promise<void>;
 	savingTeams: boolean;
 	saveTeamsError: string | null;
@@ -151,6 +152,9 @@ export function ChampionshipEventDetail({
 		(isEditingTeams || event.teams.length < CHAMPIONSHIP_EVENT.minTeams);
 	const [isEndOpen, setIsEndOpen] = useState(false);
 	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+	const draftPresentIdsRef = useRef(
+		event.attendance.map((row) => row.player_id),
+	);
 
 	return (
 		<article className="space-y-6">
@@ -204,48 +208,14 @@ export function ChampionshipEventDetail({
 							? () => setIsEditingTeams(false)
 							: undefined
 					}
+					onPresentIdsChange={(playerIds) => {
+						draftPresentIdsRef.current = [...playerIds];
+					}}
 					onSubmit={async (values) => {
 						await onSaveTeams(values);
 						setIsEditingTeams(false);
 					}}
 				/>
-			)}
-			{!showTeamBuilder && (
-				<div>
-					<p className="mb-1 text-xs font-medium uppercase tracking-wide text-fg-muted">
-						Presentes
-					</p>
-					{event.attendance.length === 0 && (
-						<p className="text-sm text-fg-muted">Ninguém marcado.</p>
-					)}
-					{event.attendance.length > 0 && (
-						<ul className="divide-y divide-line">
-							{presentPlayers.map((player) => (
-								<li
-									key={player.id}
-									className="flex items-center gap-3 py-2 first:pt-0 last:pb-0"
-								>
-									{player.avatar_url && (
-										<img
-											src={player.avatar_url}
-											alt=""
-											referrerPolicy="no-referrer"
-											className="h-8 w-8 rounded-full object-cover"
-										/>
-									)}
-									{!player.avatar_url && (
-										<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-pitch-soft text-xs font-medium text-pitch-fg">
-											{playerVisibleName(player).charAt(0).toUpperCase()}
-										</span>
-									)}
-									<p className="min-w-0 truncate text-sm font-medium text-fg">
-										{playerVisibleName(player)}
-									</p>
-								</li>
-							))}
-						</ul>
-					)}
-				</div>
 			)}
 			{!showTeamBuilder && (
 				<ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -397,6 +367,43 @@ export function ChampionshipEventDetail({
 					</Formik>
 				)}
 			{addMatchError && <p className={ERROR_CLASS}>{addMatchError}</p>}
+			{!showTeamBuilder && (
+				<div>
+					<p className="mb-1 text-xs font-medium uppercase tracking-wide text-fg-muted">
+						Presentes
+					</p>
+					{event.attendance.length === 0 && (
+						<p className="text-sm text-fg-muted">Ninguém marcado.</p>
+					)}
+					{event.attendance.length > 0 && (
+						<ul className="divide-y divide-line">
+							{presentPlayers.map((player) => (
+								<li
+									key={player.id}
+									className="flex items-center gap-3 py-2 first:pt-0 last:pb-0"
+								>
+									{player.avatar_url && (
+										<img
+											src={player.avatar_url}
+											alt=""
+											referrerPolicy="no-referrer"
+											className="h-8 w-8 rounded-full object-cover"
+										/>
+									)}
+									{!player.avatar_url && (
+										<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-pitch-soft text-xs font-medium text-pitch-fg">
+											{playerVisibleName(player).charAt(0).toUpperCase()}
+										</span>
+									)}
+									<p className="min-w-0 truncate text-sm font-medium text-fg">
+										{playerVisibleName(player)}
+									</p>
+								</li>
+							))}
+						</ul>
+					)}
+				</div>
+			)}
 			{isEndOpen && (
 				<EndEventModal
 					isPending={ending}
@@ -411,7 +418,11 @@ export function ChampionshipEventDetail({
 					onConfirm={() => {
 						void (async () => {
 							try {
-								await onEnd();
+								const presentPlayerIds = draftAttendanceForEnd(
+									showTeamBuilder,
+									draftPresentIdsRef.current,
+								);
+								await onEnd(presentPlayerIds);
 								setIsEndOpen(false);
 							} catch {
 								return;

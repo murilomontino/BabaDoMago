@@ -60,6 +60,7 @@ type ChampionshipEventBuilderProps = {
 	isPending: boolean;
 	errorMessage: string | null;
 	onCancel?: () => void;
+	onPresentIdsChange?: (playerIds: readonly number[]) => void;
 	onSubmit: (values: {
 		presentPlayerIds: number[];
 		teams: EventTeamDraft[];
@@ -75,6 +76,7 @@ export function ChampionshipEventBuilder({
 	isPending,
 	errorMessage,
 	onCancel,
+	onPresentIdsChange,
 	onSubmit,
 }: ChampionshipEventBuilderProps) {
 	const [step, setStep] = useState<EventBuilderStep>(
@@ -100,9 +102,11 @@ export function ChampionshipEventBuilder({
 		);
 
 	function handleSetPresent(playerIds: readonly number[], present: boolean) {
-		setPresentIds((current) =>
-			applyVisibleAttendance(current, playerIds, present),
-		);
+		setPresentIds((current) => {
+			const next = applyVisibleAttendance(current, playerIds, present);
+			onPresentIdsChange?.(next);
+			return next;
+		});
 		setAttendanceError(null);
 	}
 

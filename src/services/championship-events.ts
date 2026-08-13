@@ -292,9 +292,13 @@ export async function addChampionshipEventMatch(
 	}
 }
 
-export async function endChampionshipEvent(eventId: number): Promise<void> {
+export async function endChampionshipEvent(
+	eventId: number,
+	presentPlayerIds: readonly number[] | null = null,
+): Promise<void> {
 	const { error } = await supabase.rpc("end_championship_event", {
 		event_id: eventId,
+		present_player_ids: presentPlayerIds ? [...presentPlayerIds] : null,
 	});
 
 	if (error) {

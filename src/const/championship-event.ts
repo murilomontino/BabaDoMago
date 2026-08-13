@@ -355,6 +355,21 @@ export function canEditEventTeams(event: {
 	return event.ended_at === null && event.matches.length === 0;
 }
 
+export function draftAttendanceForEnd(
+	builderOpen: boolean,
+	presentIds: readonly number[],
+): number[] | null {
+	if (!builderOpen) {
+		return null;
+	}
+
+	if (presentIds.length < CHAMPIONSHIP_EVENT.minAttendance) {
+		return null;
+	}
+
+	return [...presentIds];
+}
+
 export function teamSlotsToPlayerIds(slots: readonly string[]): number[] {
 	return slots.filter(Boolean).map(Number);
 }

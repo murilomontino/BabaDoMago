@@ -88,7 +88,13 @@ export function useEndChampionshipEvent(_championshipId: number) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: (eventId: number) => endChampionshipEvent(eventId),
+		mutationFn: ({
+			eventId,
+			presentPlayerIds,
+		}: {
+			eventId: number;
+			presentPlayerIds: readonly number[] | null;
+		}) => endChampionshipEvent(eventId, presentPlayerIds),
 		onSuccess: async () => {
 			await invalidateChampionshipEventQueries(queryClient);
 		},

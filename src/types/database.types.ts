@@ -354,7 +354,7 @@ export type Database = {
 				Returns: undefined;
 			};
 			end_championship_event: {
-				Args: { event_id: number };
+				Args: { event_id: number; present_player_ids?: Json | null };
 				Returns: Json;
 			};
 			get_championship_by_invite: {
