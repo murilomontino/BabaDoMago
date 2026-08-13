@@ -12,16 +12,19 @@
 		"typecheck": "tsc --noEmit -p tsconfig.app.json",
 		"check:rating": "node --experimental-strip-types src/const/player-rating.check.ts",
 		"check:roles": "node --experimental-strip-types src/const/championship-role.check.ts",
-		"check:quota": "node --experimental-strip-types src/const/championship-quota.check.ts"
+		"check:quota": "node --experimental-strip-types src/const/championship-quota.check.ts",
+		"check:form": "node --experimental-strip-types src/const/form-schema.check.ts"
 	},
 	"dependencies": {
 		"@supabase/supabase-js": "^2.112.3",
 		"@tanstack/react-query": "^5.101.4",
 		"@tanstack/react-router": "^1.170.27",
+		"formik": "^2.4.9",
 		"lucide-react": "^1.31.0",
 		"react": "^19.2.8",
 		"react-dom": "^19.2.8",
-		"react-easy-crop": "^6.2.3"
+		"react-easy-crop": "^6.2.3",
+		"yup": "^1.7.1"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.8",

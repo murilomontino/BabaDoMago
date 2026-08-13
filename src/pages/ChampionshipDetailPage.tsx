@@ -1,4 +1,5 @@
 import { useNavigate, useParams } from "@tanstack/react-router";
+import { Field, Form, Formik } from "formik";
 import { Copy, Shield, Trash2, Users, UserX } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Button } from "@/components/button";
@@ -7,6 +8,8 @@ import { ChampionshipLogoCrop } from "@/components/championship-logo-crop";
 import { ChampionshipRoster } from "@/components/championship-roster";
 import { DeleteChampionshipModal } from "@/components/delete-championship-modal";
 import { EmptyState } from "@/components/empty-state";
+import { FormError } from "@/components/form-error";
+import { PlayerRatingField } from "@/components/player-rating-field";
 import { SectionCard } from "@/components/section-card";
 import { Tabs } from "@/components/tabs";
 import {
@@ -33,6 +36,15 @@ import {
 	CHAMPIONSHIP_TABS,
 	type ChampionshipTab,
 } from "@/const/championship-tab";
+import {
+	addPlayerFormSchema,
+	nameFormSchema,
+	transferOwnerSchema,
+} from "@/const/form-schema";
+import {
+	championshipRatingCeiling,
+	PLAYER_RATING,
+} from "@/const/player-rating";
 import { ROUTES } from "@/const/routes";
 import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
@@ -70,10 +82,7 @@ export function ChampionshipDetailPage() {
 	const deleteChampionship = useDeleteChampionship();
 	const transferOwner = useTransferChampionshipOwner();
 	const uploadLogo = useUploadChampionshipLogo(championshipId);
-	const [playerName, setPlayerName] = useState("");
 	const [copied, setCopied] = useState(false);
-	const [nameDraft, setNameDraft] = useState<string | null>(null);
-	const [transferPlayerId, setTransferPlayerId] = useState("");
 	const [logoCropSrc, setLogoCropSrc] = useState<string | null>(null);
 	const [logoSourceError, setLogoSourceError] = useState<string | null>(null);
 	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -100,6 +109,9 @@ export function ChampionshipDetailPage() {
 	};
 	const activePlayers = (data?.players ?? []).filter(
 		(player) => !player.deleted_at,
+	);
+	const rosterCeiling = championshipRatingCeiling(
+		activePlayers.map((player) => player.rating),
 	);
 	const deactivatedPlayers = (data?.players ?? []).filter(
 		(player) => player.deleted_at,
@@ -156,17 +168,6 @@ export function ChampionshipDetailPage() {
 		reactivatePlayer.mutate(playerId);
 	}
 
-	async function handleAddPlayer(event: FormEvent<HTMLFormElement>) {
-		event.preventDefault();
-		const trimmedName = playerName.trim();
-		if (!trimmedName) {
-			return;
-		}
-
-		await addPlayer.mutateAsync(trimmedName);
-		setPlayerName("");
-	}
-
 	async function handleCopyLink() {
 		if (!data) {
 			return;
@@ -175,17 +176,6 @@ export function ChampionshipDetailPage() {
 		const url = `${window.location.origin}${ROUTES.join.replace("$inviteCode", data.invite_code)}`;
 		await navigator.clipboard.writeText(url);
 		setCopied(true);
-	}
-
-	async function handleRename(event: FormEvent<HTMLFormElement>) {
-		event.preventDefault();
-		const trimmedName = nameDraft?.trim() ?? "";
-		if (!trimmedName) {
-			return;
-		}
-
-		await renameChampionship.mutateAsync(trimmedName);
-		setNameDraft(null);
 	}
 
 	function handleDelete() {
@@ -200,21 +190,6 @@ export function ChampionshipDetailPage() {
 		await deleteChampionship.mutateAsync(championshipId);
 		setIsDeleteOpen(false);
 		await navigate({ to: ROUTES.home });
-	}
-
-	async function handleTransfer(event: FormEvent<HTMLFormElement>) {
-		event.preventDefault();
-		const playerId = Number(transferPlayerId);
-		if (!Number.isFinite(playerId)) {
-			return;
-		}
-
-		if (!window.confirm("Transferir o campeonato? Você vira Normal.")) {
-			return;
-		}
-
-		await transferOwner.mutateAsync(playerId);
-		setTransferPlayerId("");
 	}
 
 	const isOwner = Boolean(user && data && data.created_by === user.id);
@@ -368,18 +343,36 @@ export function ChampionshipDetailPage() {
 					}
 				>
 					{permissions.invite && (
-						<form onSubmit={handleAddPlayer} className="mb-4 flex gap-2">
-							<input
-								value={playerName}
-								onChange={(event) => setPlayerName(event.target.value)}
-								placeholder="Nome do jogador"
-								required
-								className={FIELD_CLASS}
-							/>
-							<Button type="submit" disabled={addPlayer.isPending}>
-								Adicionar
-							</Button>
-						</form>
+						<Formik
+							initialValues={{
+								name: "",
+								rating: PLAYER_RATING.default,
+							}}
+							validationSchema={addPlayerFormSchema}
+							onSubmit={async (values, helpers) => {
+								await addPlayer.mutateAsync({
+									displayName: values.name,
+									rating: values.rating,
+								});
+								helpers.resetForm();
+							}}
+						>
+							<Form className="mb-4 space-y-2">
+								<div className="flex flex-wrap items-center gap-2">
+									<Field
+										name="name"
+										placeholder="Nome do jogador"
+										className={`min-w-0 flex-1 ${FIELD_CLASS}`}
+									/>
+									<PlayerRatingField ceiling={rosterCeiling} />
+									<Button type="submit" disabled={addPlayer.isPending}>
+										Adicionar
+									</Button>
+								</div>
+								<FormError name="name" />
+								<FormError name="rating" />
+							</Form>
+						</Formik>
 					)}
 					{addPlayer.isError && (
 						<p className={`mb-4 ${ERROR_CLASS}`}>{addPlayer.error.message}</p>
@@ -478,30 +471,39 @@ export function ChampionshipDetailPage() {
 						>
 							<div className="space-y-4">
 								{permissions.rename && (
-									<form onSubmit={handleRename} className="space-y-1.5">
-										<label
-											htmlFor="championship-name"
-											className="text-sm font-medium text-stone-700"
-										>
-											Nome
-										</label>
-										<div className="flex items-center gap-2">
-											<input
-												id="championship-name"
-												value={nameDraft ?? data.name}
-												onChange={(event) => setNameDraft(event.target.value)}
-												className={`min-w-0 flex-1 ${FIELD_CLASS}`}
-											/>
-											<Button
-												type="submit"
-												variant={BUTTON_VARIANT.secondary}
-												disabled={renameChampionship.isPending}
-												className="h-9 shrink-0"
+									<Formik
+										initialValues={{ name: data.name }}
+										enableReinitialize
+										validationSchema={nameFormSchema}
+										onSubmit={async (values) => {
+											await renameChampionship.mutateAsync(values.name);
+										}}
+									>
+										<Form className="space-y-1.5">
+											<label
+												htmlFor="championship-name"
+												className="text-sm font-medium text-stone-700"
 											>
-												Salvar
-											</Button>
-										</div>
-									</form>
+												Nome
+											</label>
+											<div className="flex items-center gap-2">
+												<Field
+													id="championship-name"
+													name="name"
+													className={`min-w-0 flex-1 ${FIELD_CLASS}`}
+												/>
+												<Button
+													type="submit"
+													variant={BUTTON_VARIANT.secondary}
+													disabled={renameChampionship.isPending}
+													className="h-9 shrink-0"
+												>
+													Salvar
+												</Button>
+											</div>
+											<FormError name="name" />
+										</Form>
+									</Formik>
 								)}
 								{renameChampionship.isError && (
 									<p className={ERROR_CLASS}>
@@ -509,46 +511,69 @@ export function ChampionshipDetailPage() {
 									</p>
 								)}
 								{permissions.transferOwnership && (
-									<form onSubmit={handleTransfer} className="space-y-1.5">
-										<label
-											htmlFor="championship-owner"
-											className="text-sm font-medium text-stone-700"
-										>
-											Novo dono
-										</label>
-										<div className="flex items-center gap-2">
-											<select
-												id="championship-owner"
-												value={transferPlayerId}
-												onChange={(event) =>
-													setTransferPlayerId(event.target.value)
-												}
-												required
-												className={`min-w-0 flex-1 ${FIELD_CLASS}`}
-											>
-												<option value="">Selecionar jogador</option>
-												{activePlayers
-													.filter(
-														(player) =>
-															player.user_id &&
-															player.user_id !== data.created_by,
-													)
-													.map((player) => (
-														<option key={player.id} value={player.id}>
-															{player.display_name}
-														</option>
-													))}
-											</select>
-											<Button
-												type="submit"
-												variant={BUTTON_VARIANT.secondary}
-												disabled={transferOwner.isPending}
-												className="h-9 shrink-0"
-											>
-												Transferir
-											</Button>
-										</div>
-									</form>
+									<Formik
+										initialValues={{ playerId: "" }}
+										validationSchema={transferOwnerSchema}
+										validateOnMount
+										onSubmit={async (values, helpers) => {
+											const playerId = Number(values.playerId);
+											if (!Number.isFinite(playerId)) {
+												return;
+											}
+
+											if (
+												!window.confirm(
+													"Transferir o campeonato? Você vira Normal.",
+												)
+											) {
+												return;
+											}
+
+											await transferOwner.mutateAsync(playerId);
+											helpers.resetForm();
+										}}
+									>
+										{({ isValid }) => (
+											<Form className="space-y-1.5">
+												<label
+													htmlFor="championship-owner"
+													className="text-sm font-medium text-stone-700"
+												>
+													Novo dono
+												</label>
+												<div className="flex items-center gap-2">
+													<Field
+														as="select"
+														id="championship-owner"
+														name="playerId"
+														className={`min-w-0 flex-1 ${FIELD_CLASS}`}
+													>
+														<option value="">Selecionar jogador</option>
+														{activePlayers
+															.filter(
+																(player) =>
+																	player.user_id &&
+																	player.user_id !== data.created_by,
+															)
+															.map((player) => (
+																<option key={player.id} value={player.id}>
+																	{player.display_name}
+																</option>
+															))}
+													</Field>
+													<Button
+														type="submit"
+														variant={BUTTON_VARIANT.secondary}
+														disabled={transferOwner.isPending || !isValid}
+														className="h-9 shrink-0"
+													>
+														Transferir
+													</Button>
+												</div>
+												<FormError name="playerId" />
+											</Form>
+										)}
+									</Formik>
 								)}
 								{transferOwner.isError && (
 									<p className={ERROR_CLASS}>{transferOwner.error.message}</p>

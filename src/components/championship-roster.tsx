@@ -1,7 +1,9 @@
+import { Formik } from "formik";
 import { Unlink, UserCheck, UserPlus, UserX } from "lucide-react";
 import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
 import { PlayerRating } from "@/components/player-rating";
+import { PlayerRatingField } from "@/components/player-rating-field";
 import {
 	ASSIGNABLE_CHAMPIONSHIP_ROLES,
 	type AssignableChampionshipRole,
@@ -9,10 +11,8 @@ import {
 	CHAMPIONSHIP_ROLE_LABEL,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
-import {
-	championshipRatingCeiling,
-	starFillToRating,
-} from "@/const/player-rating";
+import { playerRatingSchema } from "@/const/form-schema";
+import { championshipRatingCeiling } from "@/const/player-rating";
 import { BUTTON_VARIANT, FIELD_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 
@@ -116,19 +116,25 @@ export function ChampionshipRoster({
 									{player.display_name}
 								</p>
 								<div className="mt-1 flex items-center gap-2">
-									<PlayerRating
-										rating={player.rating}
-										ceiling={ceiling}
-										disabled={ratingPlayerId === player.id}
-										onChange={
-											onChangeRating &&
-											((starFill) =>
-												onChangeRating(
-													player.id,
-													starFillToRating(starFill, ceiling),
-												))
-										}
-									/>
+									{onChangeRating && (
+										<Formik
+											initialValues={{ rating: player.rating }}
+											enableReinitialize
+											validationSchema={playerRatingSchema}
+											onSubmit={(values) =>
+												onChangeRating(player.id, values.rating)
+											}
+										>
+											<PlayerRatingField
+												ceiling={ceiling}
+												disabled={ratingPlayerId === player.id}
+												onCommit={(rating) => onChangeRating(player.id, rating)}
+											/>
+										</Formik>
+									)}
+									{!onChangeRating && (
+										<PlayerRating rating={player.rating} ceiling={ceiling} />
+									)}
 									{isOwner && (
 										<span className="rounded bg-stone-100 px-1.5 py-0.5 text-xs font-medium tabular-nums text-stone-700">
 											{player.rating}

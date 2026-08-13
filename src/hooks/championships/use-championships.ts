@@ -73,8 +73,13 @@ export function useAddManualPlayer(championshipId: number) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: (displayName: string) =>
-			addManualPlayer(championshipId, displayName),
+		mutationFn: ({
+			displayName,
+			rating,
+		}: {
+			displayName: string;
+			rating: number;
+		}) => addManualPlayer(championshipId, displayName, rating),
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({
 				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,

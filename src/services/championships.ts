@@ -183,7 +183,7 @@ export async function createChampionship(
 export async function addManualPlayer(
 	championshipId: number,
 	displayName: string,
-	rating = PLAYER_RATING.default,
+	rating: number = PLAYER_RATING.default,
 ): Promise<ChampionshipPlayer> {
 	const { data, error } = await supabase
 		.from("championship_players")
