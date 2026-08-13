@@ -50,6 +50,7 @@ import {
 	openEventMatch,
 } from "@/const/championship-event-match";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
+import { eventRatingPreview } from "@/const/event-rating-adjustment";
 import {
 	EVENT_TEAM_COLOR,
 	type EventTeamColor,
@@ -343,6 +344,19 @@ export function ChampionshipEventDetail({
 		event.attendance.map((row) => row.player_id),
 	);
 
+	const ratingPreview = eventRatingPreview({
+		attendance: event.attendance,
+		players,
+		presentPlayerIds: draftAttendanceForEnd(
+			showTeamBuilder,
+			draftPresentIdsRef.current,
+		),
+	});
+	const previewCeiling = championshipRatingCeiling([
+		...players.map((player) => player.rating),
+		...ratingPreview.map((row) => row.to),
+	]);
+
 	useEffect(() => {
 		if (!mustBuild) {
 			return;
@@ -437,7 +451,7 @@ export function ChampionshipEventDetail({
 								variant={BUTTON_VARIANT.ghost}
 								onClick={() => setIsEndOpen(true)}
 							>
-								Encerrar
+								{EVENT_ACTION.endEvent}
 							</Button>
 						)}
 						{canManage && (
@@ -922,6 +936,8 @@ export function ChampionshipEventDetail({
 			)}
 			{isEndOpen && (
 				<EndEventModal
+					rows={ratingPreview}
+					ceiling={previewCeiling}
 					isPending={ending}
 					errorMessage={endError}
 					onCancel={() => {

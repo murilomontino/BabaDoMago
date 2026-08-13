@@ -23,7 +23,10 @@ export type StarSide = (typeof STAR_SIDE)[keyof typeof STAR_SIDE];
 
 export function championshipRatingCeiling(ratings: readonly number[]): number {
 	const maxRating = ratings.length === 0 ? 0 : Math.max(...ratings);
-	return Math.max(maxRating, PLAYER_RATING.initialCeiling);
+	return Math.min(
+		PLAYER_RATING.max,
+		Math.max(maxRating, PLAYER_RATING.initialCeiling),
+	);
 }
 
 export function ratingToStarFill(rating: number, ceiling: number): number {

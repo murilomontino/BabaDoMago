@@ -117,6 +117,14 @@ export const EVENT_ACTION = {
 	removeMatch: "Excluir partida",
 	removeTeam: "Excluir time",
 	drawTeams: "Sortear times",
+	endEvent: "Encerrar",
+} as const;
+
+export const EVENT_END_LABEL = {
+	title: "Encerrar evento",
+	hint: "O evento fica marcado como encerrado. Ainda dá para adicionar partidas depois.",
+	confirm: "Encerrar",
+	cancel: "Cancelar",
 } as const;
 
 export const EVENT_TEAM_POSITION = {
