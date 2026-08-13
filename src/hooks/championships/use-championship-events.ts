@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { EventAttendanceStatsDraft } from "@/const/championship-event";
 import type { EventTeamColor } from "@/const/event-team-color";
 import {
 	addChampionshipEventGoal,
@@ -12,6 +13,7 @@ import {
 	getChampionshipEventById,
 	listChampionshipEvents,
 	saveChampionshipEventAttendance,
+	saveChampionshipEventAttendanceStats,
 	saveChampionshipEventTeams,
 	setChampionshipEventMatchGoalkeeper,
 	setChampionshipEventMatchPlayer,
@@ -101,6 +103,28 @@ export function useSaveChampionshipEventAttendance(_championshipId: number) {
 				presentPlayerIds,
 				goalkeeperPlayerIds,
 			),
+		onSuccess: async () => {
+			await Promise.all([
+				invalidateChampionshipEventQueries(queryClient),
+				invalidateChampionshipQueries(queryClient),
+			]);
+		},
+	});
+}
+
+export function useSaveChampionshipEventAttendanceStats(
+	_championshipId: number,
+) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({
+			eventId,
+			stats,
+		}: {
+			eventId: number;
+			stats: readonly EventAttendanceStatsDraft[];
+		}) => saveChampionshipEventAttendanceStats(eventId, stats),
 		onSuccess: async () => {
 			await Promise.all([
 				invalidateChampionshipEventQueries(queryClient),

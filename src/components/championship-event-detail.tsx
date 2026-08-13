@@ -9,12 +9,14 @@ import { DeleteEventMatchModal } from "@/components/delete-event-match-modal";
 import { DeleteEventModal } from "@/components/delete-event-modal";
 import { DeleteEventTeamModal } from "@/components/delete-event-team-modal";
 import { EditEventAttendanceModal } from "@/components/edit-event-attendance-modal";
+import { EditEventAttendanceStatsModal } from "@/components/edit-event-attendance-stats-modal";
 import { EndEventModal } from "@/components/end-event-modal";
 import {
 	EventTeamColorDot,
 	EventTeamPlayerRow,
 	EventTeamRatingAverage,
 } from "@/components/event-team-player";
+import { PlayerRating } from "@/components/player-rating";
 import {
 	attendanceGoalkeeperIds,
 	builderTeamsFromEvent,
@@ -30,6 +32,7 @@ import {
 	EVENT_STATUS,
 	EVENT_STATUS_LABEL,
 	EVENT_TEAM_POSITION_LABEL,
+	type EventAttendanceStatsDraft,
 	type EventTeamDraft,
 	eventStatus,
 	eventTeamPlayerIds,
@@ -80,7 +83,13 @@ function formatAttendanceEventDate(value: string): string {
 	return `${day}/${month}/${year}`;
 }
 
-function AttendanceStatLine({ row }: { row: ChampionshipEventAttendance }) {
+function AttendanceStatLine({
+	row,
+	ceiling,
+}: {
+	row: ChampionshipEventAttendance;
+	ceiling: number;
+}) {
 	const items = [
 		{
 			abbr: EVENT_ATTENDANCE_STAT_ABBR.goals,
@@ -110,16 +119,27 @@ function AttendanceStatLine({ row }: { row: ChampionshipEventAttendance }) {
 	] as const;
 
 	return (
-		<p className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-fg-muted">
-			<span title={EVENT_ATTENDANCE_COLUMN_LABEL.eventDate}>
-				{formatAttendanceEventDate(row.event_date)}
-			</span>
-			{items.map((item) => (
-				<span key={item.abbr} title={item.label}>
-					{item.abbr} {item.value}
+		<div className="mt-0.5 space-y-0.5">
+			<div className="flex items-center gap-2">
+				<PlayerRating rating={row.rating} ceiling={ceiling} />
+				<span
+					className={CHIP_CLASS}
+					title={EVENT_ATTENDANCE_COLUMN_LABEL.rating}
+				>
+					{row.rating}
 				</span>
-			))}
-		</p>
+			</div>
+			<p className="flex flex-wrap gap-x-2 text-xs text-fg-muted">
+				<span title={EVENT_ATTENDANCE_COLUMN_LABEL.eventDate}>
+					{formatAttendanceEventDate(row.event_date)}
+				</span>
+				{items.map((item) => (
+					<span key={item.abbr} title={item.label}>
+						{item.abbr} {item.value}
+					</span>
+				))}
+			</p>
+		</div>
 	);
 }
 
@@ -138,6 +158,7 @@ type ChampionshipEventDetailProps = {
 		presentPlayerIds: number[],
 		goalkeeperPlayerIds: number[],
 	) => Promise<void>;
+	onSaveAttendanceStats: (stats: EventAttendanceStatsDraft[]) => Promise<void>;
 	onAddTeam: (values: {
 		color: EventTeamColor | null;
 		playerIds: number[];
@@ -157,6 +178,8 @@ type ChampionshipEventDetailProps = {
 	saveTeamsError: string | null;
 	savingAttendance: boolean;
 	saveAttendanceError: string | null;
+	savingAttendanceStats: boolean;
+	saveAttendanceStatsError: string | null;
 	addingTeam: boolean;
 	addTeamError: string | null;
 	updatingTeam: boolean;
@@ -247,6 +270,7 @@ export function ChampionshipEventDetail({
 	canOverrideEnded,
 	onSaveTeams,
 	onSaveAttendance,
+	onSaveAttendanceStats,
 	onAddTeam,
 	onUpdateTeam,
 	onDeleteTeam,
@@ -257,6 +281,8 @@ export function ChampionshipEventDetail({
 	saveTeamsError,
 	savingAttendance,
 	saveAttendanceError,
+	savingAttendanceStats,
+	saveAttendanceStatsError,
 	addingTeam,
 	addTeamError,
 	updatingTeam,
@@ -278,9 +304,10 @@ export function ChampionshipEventDetail({
 	const presentPlayers = resolveEventPlayers(event.attendance, rosterById);
 	const volunteerGoalkeeperIds = attendanceGoalkeeperIds(event.attendance);
 	const teamPlayerIds = eventTeamPlayerIds(event.teams);
-	const ceiling = championshipRatingCeiling(
-		players.map((player) => player.rating),
-	);
+	const ceiling = championshipRatingCeiling([
+		...players.map((player) => player.rating),
+		...event.attendance.map((row) => row.rating),
+	]);
 	const teamsEditable = canManage && canEditEventTeams(event);
 	const [step, setStep] = useEventBuilderStep();
 	const mustBuild =
@@ -301,6 +328,7 @@ export function ChampionshipEventDetail({
 	const [isEndOpen, setIsEndOpen] = useState(false);
 	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 	const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
+	const [isAttendanceStatsOpen, setIsAttendanceStatsOpen] = useState(false);
 	const [isAddTeamOpen, setIsAddTeamOpen] = useState(false);
 	const [teamToEdit, setTeamToEdit] = useState<ChampionshipEventTeam | null>(
 		null,
@@ -386,6 +414,16 @@ export function ChampionshipEventDetail({
 								{EVENT_ACTION.addAttendance}
 							</Button>
 						)}
+						{canManage &&
+							showAttendanceActions &&
+							event.attendance.length > 0 && (
+								<Button
+									variant={BUTTON_VARIANT.secondary}
+									onClick={() => setIsAttendanceStatsOpen(true)}
+								>
+									{EVENT_ACTION.markAttendanceStats}
+								</Button>
+							)}
 						{canManage && showAddTeam && (
 							<Button
 								variant={BUTTON_VARIANT.secondary}
@@ -683,7 +721,7 @@ export function ChampionshipEventDetail({
 											<p className="truncate text-sm font-medium text-fg">
 												{playerVisibleName(player)}
 											</p>
-											<AttendanceStatLine row={row} />
+											<AttendanceStatLine row={row} ceiling={ceiling} />
 										</div>
 										{showAttendanceActions &&
 											canRemoveEventAttendance(
@@ -726,6 +764,26 @@ export function ChampionshipEventDetail({
 					onSave={async (presentPlayerIds, goalkeeperPlayerIds) => {
 						await onSaveAttendance(presentPlayerIds, goalkeeperPlayerIds);
 						setIsAttendanceOpen(false);
+					}}
+				/>
+			)}
+			{isAttendanceStatsOpen && (
+				<EditEventAttendanceStatsModal
+					attendance={event.attendance}
+					players={players}
+					ceiling={ceiling}
+					isPending={savingAttendanceStats}
+					errorMessage={saveAttendanceStatsError}
+					onCancel={() => {
+						if (savingAttendanceStats) {
+							return;
+						}
+
+						setIsAttendanceStatsOpen(false);
+					}}
+					onSave={async (stats) => {
+						await onSaveAttendanceStats(stats);
+						setIsAttendanceStatsOpen(false);
 					}}
 				/>
 			)}

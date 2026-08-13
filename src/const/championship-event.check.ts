@@ -35,12 +35,16 @@ import {
 	keepPresentSlots,
 	keepTeamPlayersPresent,
 	nextEventTeamColor,
+	parseAttendanceStatInput,
 	pickTeamGoalkeeper,
 	resizeBuilderTeams,
+	setAttendanceRating,
+	setAttendanceStat,
 	teamHasMatches,
 	teamPlayerSlots,
 	teamSlotsToPlayerIds,
 	validateEventAttendance,
+	validateEventAttendanceStats,
 	validateEventTeam,
 	validateEventTeams,
 	validateTeamsInAttendance,
@@ -521,5 +525,69 @@ check(isEventBuilderStep("nope"), false);
 check(isEventBuilderStep(null), false);
 check(EVENT_ATTENDANCE_STAT_ABBR.goals, "G");
 check(EVENT_ATTENDANCE_STAT_ABBR.ownGoals, "GC");
+
+const statsDraft = [
+	{
+		player_id: 1,
+		rating: 7.5,
+		goals: 2,
+		assists: 1,
+		own_goals: 0,
+		wins: 1,
+		matches: 2,
+	},
+	{
+		player_id: 2,
+		rating: 5,
+		goals: 0,
+		assists: 0,
+		own_goals: 0,
+		wins: 0,
+		matches: 2,
+	},
+];
+check(validateEventAttendanceStats(statsDraft, [1, 2]), null);
+check(
+	validateEventAttendanceStats(statsDraft, [1]),
+	EVENT_ATTENDANCE_MESSAGE.invalidStats,
+);
+check(
+	validateEventAttendanceStats(
+		[{ ...statsDraft[0], wins: 3, matches: 2 }, statsDraft[1]],
+		[1, 2],
+	),
+	EVENT_ATTENDANCE_MESSAGE.winsExceedMatches,
+);
+check(
+	validateEventAttendanceStats(
+		[{ ...statsDraft[0], goals: -1 }, statsDraft[1]],
+		[1, 2],
+	),
+	EVENT_ATTENDANCE_MESSAGE.invalidStats,
+);
+check(
+	validateEventAttendanceStats(
+		[{ ...statsDraft[0], rating: 101 }, statsDraft[1]],
+		[1, 2],
+	),
+	EVENT_ATTENDANCE_MESSAGE.invalidRating,
+);
+check(parseAttendanceStatInput(""), 0);
+check(parseAttendanceStatInput("4"), 4);
+check(parseAttendanceStatInput("-1"), null);
+check(setAttendanceStat(statsDraft, 1, "goals", 9)[0]?.goals, 9);
+check(setAttendanceRating(statsDraft, 1, 8)[0]?.rating, 8);
+check(
+	championshipEventErrorMessage("invalid attendance stats"),
+	EVENT_ERROR_MESSAGE["invalid attendance stats"],
+);
+check(
+	championshipEventErrorMessage("wins exceed matches"),
+	EVENT_ERROR_MESSAGE["wins exceed matches"],
+);
+check(
+	championshipEventErrorMessage("invalid rating"),
+	EVENT_ERROR_MESSAGE["invalid rating"],
+);
 
 console.log("championship-event ok");

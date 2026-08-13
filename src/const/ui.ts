@@ -34,6 +34,8 @@ export const MODAL_CLASS =
 export const CHIP_CLASS =
 	"rounded bg-surface-muted px-1.5 py-0.5 text-xs font-medium tabular-nums text-fg-muted";
 
+export const PLAYER_AVATAR_CLASS = "ml-2 size-10 shrink-0 md:ml-0 md:size-9";
+
 export function buttonClassName(
 	variant: ButtonVariant,
 	className?: string,

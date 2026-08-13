@@ -86,6 +86,9 @@ export const EVENT_ERROR_MESSAGE = {
 	"team not in match": "Time não está na partida",
 	"player not in match": "Jogador não está na partida",
 	"assist not in team": "Assistência de outro time",
+	"invalid attendance stats": "Números inválidos",
+	"wins exceed matches": "Vitórias acima dos jogos",
+	"invalid rating": "Nota inválida",
 } as const;
 
 export const EVENT_ACTION = {
@@ -108,6 +111,8 @@ export const EVENT_ACTION = {
 	editTeam: "Editar time",
 	saveTeam: "Salvar time",
 	saveAttendance: "Salvar presença",
+	markAttendanceStats: "Marcar stats",
+	saveAttendanceStats: "Salvar stats",
 	removeAttendance: "Excluir presença",
 	removeMatch: "Excluir partida",
 	removeTeam: "Excluir time",
@@ -153,6 +158,9 @@ export const EVENT_ATTENDANCE_MESSAGE = {
 	minPresent: "Marque pelo menos dois presentes",
 	notInRoster: "Jogador fora do elenco",
 	duplicate: "Jogador repetido na presença",
+	invalidStats: "Números inválidos",
+	invalidRating: "Nota inválida",
+	winsExceedMatches: "Vitórias acima dos jogos",
 } as const;
 
 export const EVENT_ATTENDANCE_COLUMN = {
@@ -190,6 +198,55 @@ export const EVENT_ATTENDANCE_STAT_ABBR = {
 	wins: "V",
 	matches: "J",
 } as const;
+
+export const ATTENDANCE_STAT = {
+	goals: "goals",
+	assists: "assists",
+	ownGoals: "own_goals",
+	wins: "wins",
+	matches: "matches",
+} as const;
+
+export type AttendanceStatField =
+	(typeof ATTENDANCE_STAT)[keyof typeof ATTENDANCE_STAT];
+
+export const ATTENDANCE_STAT_META = [
+	{
+		id: ATTENDANCE_STAT.goals,
+		abbr: EVENT_ATTENDANCE_STAT_ABBR.goals,
+		label: EVENT_ATTENDANCE_COLUMN_LABEL.goals,
+	},
+	{
+		id: ATTENDANCE_STAT.assists,
+		abbr: EVENT_ATTENDANCE_STAT_ABBR.assists,
+		label: EVENT_ATTENDANCE_COLUMN_LABEL.assists,
+	},
+	{
+		id: ATTENDANCE_STAT.ownGoals,
+		abbr: EVENT_ATTENDANCE_STAT_ABBR.ownGoals,
+		label: EVENT_ATTENDANCE_COLUMN_LABEL.ownGoals,
+	},
+	{
+		id: ATTENDANCE_STAT.wins,
+		abbr: EVENT_ATTENDANCE_STAT_ABBR.wins,
+		label: EVENT_ATTENDANCE_COLUMN_LABEL.wins,
+	},
+	{
+		id: ATTENDANCE_STAT.matches,
+		abbr: EVENT_ATTENDANCE_STAT_ABBR.matches,
+		label: EVENT_ATTENDANCE_COLUMN_LABEL.matches,
+	},
+] as const;
+
+export type EventAttendanceStatsDraft = {
+	player_id: number;
+	rating: number;
+	goals: number;
+	assists: number;
+	own_goals: number;
+	wins: number;
+	matches: number;
+};
 
 export const EVENT_ATTENDANCE_ACTION = {
 	selectAll: "Selecionar todos",
@@ -257,9 +314,9 @@ export function eventStatus(endedAt: string | null): EventStatus {
 }
 
 export function championshipEventErrorMessage(message: string): string {
-	const known = Object.entries(EVENT_ERROR_MESSAGE).find(([code]) =>
-		message.includes(code),
-	);
+	const known = Object.entries(EVENT_ERROR_MESSAGE)
+		.filter(([code]) => message.includes(code))
+		.sort((left, right) => right[0].length - left[0].length)[0];
 
 	if (!known) {
 		return message;
@@ -1013,6 +1070,152 @@ export function validateEventAttendance(
 		}
 
 		seen.add(playerId);
+	}
+
+	return null;
+}
+
+export function isAttendanceStatCount(value: unknown): value is number {
+	return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+
+export function isAttendanceRating(value: unknown): value is number {
+	if (typeof value !== "number" || !Number.isFinite(value)) {
+		return false;
+	}
+
+	if (value < PLAYER_RATING.min || value > PLAYER_RATING.max) {
+		return false;
+	}
+
+	return Math.round(value * 10) / 10 === value;
+}
+
+export function attendanceStatsFromRows(
+	rows: readonly EventAttendanceStatsDraft[],
+): EventAttendanceStatsDraft[] {
+	return rows.map((row) => ({
+		player_id: row.player_id,
+		rating: row.rating,
+		goals: row.goals,
+		assists: row.assists,
+		own_goals: row.own_goals,
+		wins: row.wins,
+		matches: row.matches,
+	}));
+}
+
+export function parseAttendanceStatInput(value: string): number | null {
+	if (value === "") {
+		return 0;
+	}
+
+	const n = Number(value);
+	if (!isAttendanceStatCount(n)) {
+		return null;
+	}
+
+	return n;
+}
+
+export function setAttendanceStat(
+	rows: readonly EventAttendanceStatsDraft[],
+	playerId: number,
+	field: AttendanceStatField,
+	value: number,
+): EventAttendanceStatsDraft[] {
+	return rows.map((row) => {
+		if (row.player_id !== playerId) {
+			return row;
+		}
+
+		return { ...row, [field]: value };
+	});
+}
+
+export function setAttendanceRating(
+	rows: readonly EventAttendanceStatsDraft[],
+	playerId: number,
+	rating: number,
+): EventAttendanceStatsDraft[] {
+	return rows.map((row) => {
+		if (row.player_id !== playerId) {
+			return row;
+		}
+
+		return { ...row, rating };
+	});
+}
+
+function isAttendanceStatRow(row: EventAttendanceStatsDraft): boolean {
+	if (!isAttendanceRating(row.rating)) {
+		return false;
+	}
+
+	if (!isAttendanceStatCount(row.goals)) {
+		return false;
+	}
+
+	if (!isAttendanceStatCount(row.assists)) {
+		return false;
+	}
+
+	if (!isAttendanceStatCount(row.own_goals)) {
+		return false;
+	}
+
+	if (!isAttendanceStatCount(row.wins)) {
+		return false;
+	}
+
+	if (!isAttendanceStatCount(row.matches)) {
+		return false;
+	}
+
+	return row.wins <= row.matches;
+}
+
+export function validateEventAttendanceStats(
+	stats: readonly EventAttendanceStatsDraft[],
+	presentIds: readonly number[],
+): string | null {
+	if (stats.length !== presentIds.length) {
+		return EVENT_ATTENDANCE_MESSAGE.invalidStats;
+	}
+
+	const present = new Set(presentIds);
+	const seen = new Set<number>();
+	const invalid = stats.find((row) => {
+		if (seen.has(row.player_id)) {
+			return true;
+		}
+
+		if (!present.has(row.player_id)) {
+			return true;
+		}
+
+		seen.add(row.player_id);
+		return !isAttendanceStatRow(row);
+	});
+
+	if (invalid) {
+		if (!isAttendanceRating(invalid.rating)) {
+			return EVENT_ATTENDANCE_MESSAGE.invalidRating;
+		}
+
+		if (
+			isAttendanceStatCount(invalid.wins) &&
+			isAttendanceStatCount(invalid.matches) &&
+			invalid.wins > invalid.matches
+		) {
+			return EVENT_ATTENDANCE_MESSAGE.winsExceedMatches;
+		}
+
+		return EVENT_ATTENDANCE_MESSAGE.invalidStats;
+	}
+
+	if (seen.size !== present.size) {
+		return EVENT_ATTENDANCE_MESSAGE.invalidStats;
 	}
 
 	return null;

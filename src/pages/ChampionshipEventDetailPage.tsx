@@ -27,6 +27,7 @@ import {
 	useDeleteChampionshipEventTeam,
 	useEndChampionshipEvent,
 	useSaveChampionshipEventAttendance,
+	useSaveChampionshipEventAttendanceStats,
 	useSaveChampionshipEventTeams,
 	useUpdateChampionshipEventTeam,
 } from "@/hooks/championships/use-championship-events";
@@ -46,6 +47,8 @@ export function ChampionshipEventDetailPage() {
 	const eventsQuery = useChampionshipEvents(championshipId);
 	const saveTeams = useSaveChampionshipEventTeams(championshipId);
 	const saveAttendance = useSaveChampionshipEventAttendance(championshipId);
+	const saveAttendanceStats =
+		useSaveChampionshipEventAttendanceStats(championshipId);
 	const addTeam = useAddChampionshipEventTeam(championshipId);
 	const updateTeam = useUpdateChampionshipEventTeam(championshipId);
 	const deleteTeam = useDeleteChampionshipEventTeam(championshipId);
@@ -124,6 +127,10 @@ export function ChampionshipEventDetailPage() {
 				saveAttendanceError={
 					saveAttendance.isError ? saveAttendance.error.message : null
 				}
+				savingAttendanceStats={saveAttendanceStats.isPending}
+				saveAttendanceStatsError={
+					saveAttendanceStats.isError ? saveAttendanceStats.error.message : null
+				}
 				addingTeam={addTeam.isPending}
 				addTeamError={addTeam.isError ? addTeam.error.message : null}
 				updatingTeam={updateTeam.isPending}
@@ -155,6 +162,12 @@ export function ChampionshipEventDetailPage() {
 						eventId: event.id,
 						presentPlayerIds,
 						goalkeeperPlayerIds,
+					});
+				}}
+				onSaveAttendanceStats={async (stats) => {
+					await saveAttendanceStats.mutateAsync({
+						eventId: event.id,
+						stats,
 					});
 				}}
 				onAddTeam={async ({ color, playerIds, goalkeeperId }) => {

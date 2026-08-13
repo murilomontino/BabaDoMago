@@ -29,7 +29,7 @@ import {
 	type RosterRow,
 	toRosterRow,
 } from "@/const/roster-stats";
-import { CHIP_CLASS } from "@/const/ui";
+import { CHIP_CLASS, PLAYER_AVATAR_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 const podiumConfettiSession = { fired: false };
@@ -51,16 +51,18 @@ function PodiumTablePlayer({ row }: { row: RosterRow }) {
 					src={row.avatar_url}
 					alt=""
 					referrerPolicy="no-referrer"
-					className="h-9 w-9 rounded-full object-cover"
+					className={`${PLAYER_AVATAR_CLASS} rounded-full object-cover`}
 				/>
 			)}
 			{!row.avatar_url && (
-				<span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pitch-soft text-sm font-medium text-pitch-fg">
+				<span
+					className={`flex items-center justify-center rounded-full bg-pitch-soft text-sm font-medium text-pitch-fg ${PLAYER_AVATAR_CLASS}`}
+				>
 					{visibleName.charAt(0).toUpperCase()}
 				</span>
 			)}
 			<div className="min-w-0">
-				<p className="font-medium text-fg">{visibleName}</p>
+				<p className="truncate font-medium text-fg">{visibleName}</p>
 				{showLegalName && (
 					<p className="truncate text-xs text-fg-muted">{row.display_name}</p>
 				)}

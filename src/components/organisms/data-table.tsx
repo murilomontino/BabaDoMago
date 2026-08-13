@@ -12,6 +12,11 @@ import {
 import { SortableHeader } from "@/components/atoms/sortable-header";
 import { ColumnVisibilityPanel } from "@/components/molecules/column-visibility-panel";
 import { TableLegend } from "@/components/molecules/table-legend";
+import {
+	DATA_TABLE_MOBILE_PRIMARY,
+	mobileTableCellAbbr,
+	splitMobileTableCells,
+} from "@/const/data-table";
 
 const TABLE_CELL_ALIGN = {
 	left: "text-left",
@@ -112,7 +117,109 @@ export function DataTable<TData extends RowData>({
 			<div className="mb-3">
 				<TableLegend items={legend} />
 			</div>
-			<div className="overflow-x-auto">
+			<ul className="divide-y divide-line md:hidden">
+				{table.getRowModel().rows.map((row) => {
+					const { primary, stats, actions } = splitMobileTableCells(
+						row.getVisibleCells(),
+					);
+
+					return (
+						<li
+							key={row.id}
+							className={[
+								"py-3",
+								onRowClick ? "cursor-pointer" : "",
+								getRowClassName?.(row.original) ?? "even:bg-surface-muted",
+							]
+								.filter(Boolean)
+								.join(" ")}
+							onClick={
+								onRowClick
+									? () => {
+											onRowClick(row.original);
+										}
+									: undefined
+							}
+							onKeyDown={
+								onRowClick
+									? (event) => {
+											if (event.key !== "Enter" && event.key !== " ") {
+												return;
+											}
+
+											event.preventDefault();
+											onRowClick(row.original);
+										}
+									: undefined
+							}
+						>
+							<div className="flex min-w-0 items-center justify-between gap-3">
+								{primary.map((cell) => (
+									<div
+										key={cell.id}
+										className={
+											cell.column.id === DATA_TABLE_MOBILE_PRIMARY.player
+												? "min-w-0 flex-1"
+												: "shrink-0"
+										}
+									>
+										<table.FlexRender cell={cell} />
+									</div>
+								))}
+							</div>
+							{stats.length > 0 && (
+								<div className="mt-2 overflow-x-auto">
+									<table className="w-full border-collapse text-sm">
+										<thead>
+											<tr>
+												{stats.map((cell) => {
+													const label = mobileTableCellAbbr(
+														cell.column.id,
+														legendItems,
+														cell.column.columnDef.meta?.title,
+													);
+
+													return (
+														<th
+															key={cell.id}
+															title={cell.column.columnDef.meta?.title}
+															className="px-1 py-1 text-center text-xs font-semibold uppercase tracking-wide text-fg-muted"
+														>
+															{label}
+														</th>
+													);
+												})}
+											</tr>
+										</thead>
+										<tbody>
+											<tr>
+												{stats.map((cell) => (
+													<td
+														key={cell.id}
+														className="whitespace-nowrap px-1 py-1 text-center tabular-nums"
+													>
+														<table.FlexRender cell={cell} />
+													</td>
+												))}
+											</tr>
+										</tbody>
+									</table>
+								</div>
+							)}
+							{actions.length > 0 && (
+								<div className="mt-2 flex flex-wrap items-center justify-end gap-2">
+									{actions.map((cell) => (
+										<div key={cell.id}>
+											<table.FlexRender cell={cell} />
+										</div>
+									))}
+								</div>
+							)}
+						</li>
+					);
+				})}
+			</ul>
+			<div className="hidden overflow-x-auto md:block">
 				<table className="w-full min-w-max border-collapse text-sm">
 					<thead className="border-b border-line bg-surface-muted">
 						{table.getHeaderGroups().map((headerGroup) => (
