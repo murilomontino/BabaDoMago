@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/auth";
 import {
-	addManualPlayer,
+	addManualPlayers,
 	claimPlayer,
 	createChampionship,
 	deactivatePlayer,
@@ -79,12 +79,12 @@ export function useAddManualPlayer(championshipId: number) {
 
 	return useMutation({
 		mutationFn: ({
-			displayName,
+			displayNames,
 			rating,
 		}: {
-			displayName: string;
+			displayNames: string[];
 			rating: number;
-		}) => addManualPlayer(championshipId, displayName, rating),
+		}) => addManualPlayers(championshipId, displayNames, rating),
 		onSuccess: async () => {
 			await invalidateChampionshipQueries(queryClient);
 		},

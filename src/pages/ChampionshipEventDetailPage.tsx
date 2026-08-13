@@ -138,17 +138,23 @@ export function ChampionshipEventDetailPage() {
 				endError={endEvent.isError ? endEvent.error.message : null}
 				deleting={deleteEvent.isPending}
 				deleteError={deleteEvent.isError ? deleteEvent.error.message : null}
-				onSaveTeams={async ({ presentPlayerIds, teams }) => {
+				onSaveTeams={async ({
+					presentPlayerIds,
+					teams,
+					goalkeeperPlayerIds,
+				}) => {
 					await saveTeams.mutateAsync({
 						eventId: event.id,
 						presentPlayerIds,
 						teams,
+						goalkeeperPlayerIds,
 					});
 				}}
-				onSaveAttendance={async (presentPlayerIds) => {
+				onSaveAttendance={async (presentPlayerIds, goalkeeperPlayerIds) => {
 					await saveAttendance.mutateAsync({
 						eventId: event.id,
 						presentPlayerIds,
+						goalkeeperPlayerIds,
 					});
 				}}
 				onAddTeam={async ({ color, playerIds, goalkeeperId }) => {

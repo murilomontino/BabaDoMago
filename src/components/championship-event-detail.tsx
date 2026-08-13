@@ -16,6 +16,7 @@ import {
 	EventTeamRatingAverage,
 } from "@/components/event-team-player";
 import {
+	attendanceGoalkeeperIds,
 	builderTeamsFromEvent,
 	CHAMPIONSHIP_EVENT,
 	canEditEventTeams,
@@ -23,6 +24,8 @@ import {
 	canStartEventMatch,
 	draftAttendanceForEnd,
 	EVENT_ACTION,
+	EVENT_ATTENDANCE_COLUMN_LABEL,
+	EVENT_ATTENDANCE_STAT_ABBR,
 	EVENT_BUILDER_STEP,
 	EVENT_STATUS,
 	EVENT_STATUS_LABEL,
@@ -32,6 +35,7 @@ import {
 	eventTeamPlayerIds,
 	eventTeamPlayerPosition,
 	formatEventStartsAt,
+	keepGoalkeepersPresent,
 	teamHasMatches,
 } from "@/const/championship-event";
 import {
@@ -58,9 +62,66 @@ import { useEventBuilderStep } from "@/hooks/use-event-builder-step";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type {
 	ChampionshipEvent,
+	ChampionshipEventAttendance,
 	ChampionshipEventMatch,
 	ChampionshipEventTeam,
 } from "@/types/championship-event";
+
+function formatAttendanceEventDate(value: string): string {
+	if (!value) {
+		return "—";
+	}
+
+	const [year, month, day] = value.split("-");
+	if (!year || !month || !day) {
+		return value;
+	}
+
+	return `${day}/${month}/${year}`;
+}
+
+function AttendanceStatLine({ row }: { row: ChampionshipEventAttendance }) {
+	const items = [
+		{
+			abbr: EVENT_ATTENDANCE_STAT_ABBR.goals,
+			label: EVENT_ATTENDANCE_COLUMN_LABEL.goals,
+			value: row.goals,
+		},
+		{
+			abbr: EVENT_ATTENDANCE_STAT_ABBR.assists,
+			label: EVENT_ATTENDANCE_COLUMN_LABEL.assists,
+			value: row.assists,
+		},
+		{
+			abbr: EVENT_ATTENDANCE_STAT_ABBR.ownGoals,
+			label: EVENT_ATTENDANCE_COLUMN_LABEL.ownGoals,
+			value: row.own_goals,
+		},
+		{
+			abbr: EVENT_ATTENDANCE_STAT_ABBR.wins,
+			label: EVENT_ATTENDANCE_COLUMN_LABEL.wins,
+			value: row.wins,
+		},
+		{
+			abbr: EVENT_ATTENDANCE_STAT_ABBR.matches,
+			label: EVENT_ATTENDANCE_COLUMN_LABEL.matches,
+			value: row.matches,
+		},
+	] as const;
+
+	return (
+		<p className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-fg-muted">
+			<span title={EVENT_ATTENDANCE_COLUMN_LABEL.eventDate}>
+				{formatAttendanceEventDate(row.event_date)}
+			</span>
+			{items.map((item) => (
+				<span key={item.abbr} title={item.label}>
+					{item.abbr} {item.value}
+				</span>
+			))}
+		</p>
+	);
+}
 
 type ChampionshipEventDetailProps = {
 	event: ChampionshipEvent;
@@ -70,9 +131,13 @@ type ChampionshipEventDetailProps = {
 	canOverrideEnded: boolean;
 	onSaveTeams: (values: {
 		presentPlayerIds: number[];
+		goalkeeperPlayerIds: number[];
 		teams: EventTeamDraft[];
 	}) => Promise<void>;
-	onSaveAttendance: (presentPlayerIds: number[]) => Promise<void>;
+	onSaveAttendance: (
+		presentPlayerIds: number[],
+		goalkeeperPlayerIds: number[],
+	) => Promise<void>;
 	onAddTeam: (values: {
 		color: EventTeamColor | null;
 		playerIds: number[];
@@ -211,6 +276,7 @@ export function ChampionshipEventDetail({
 	const teamById = new Map(event.teams.map((team) => [team.id, team]));
 	const rosterById = new Map(players.map((player) => [player.id, player]));
 	const presentPlayers = resolveEventPlayers(event.attendance, rosterById);
+	const volunteerGoalkeeperIds = attendanceGoalkeeperIds(event.attendance);
 	const teamPlayerIds = eventTeamPlayerIds(event.teams);
 	const ceiling = championshipRatingCeiling(
 		players.map((player) => player.rating),
@@ -354,6 +420,7 @@ export function ChampionshipEventDetail({
 					attendanceCounts={attendanceCounts}
 					step={builderStep}
 					initialPresentIds={event.attendance.map((row) => row.player_id)}
+					initialGoalkeeperIds={volunteerGoalkeeperIds}
 					initialTeams={builderTeamsFromEvent(
 						event.teams,
 						event.players_per_team,
@@ -587,44 +654,55 @@ export function ChampionshipEventDetail({
 					)}
 					{event.attendance.length > 0 && (
 						<ul className="divide-y divide-line">
-							{presentPlayers.map((player) => (
-								<li
-									key={player.id}
-									className="flex items-center gap-3 py-2 first:pt-0 last:pb-0"
-								>
-									{player.avatar_url && (
-										<img
-											src={player.avatar_url}
-											alt=""
-											referrerPolicy="no-referrer"
-											className="h-8 w-8 rounded-full object-cover"
-										/>
-									)}
-									{!player.avatar_url && (
-										<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-pitch-soft text-xs font-medium text-pitch-fg">
-											{playerVisibleName(player).charAt(0).toUpperCase()}
-										</span>
-									)}
-									<p className="min-w-0 truncate text-sm font-medium text-fg">
-										{playerVisibleName(player)}
-									</p>
-									{showAttendanceActions &&
-										canRemoveEventAttendance(
-											player.id,
-											event.attendance.length,
-											teamPlayerIds,
-										) && (
-											<button
-												type="button"
-												aria-label={EVENT_ACTION.removeAttendance}
-												className="ml-auto inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-muted hover:text-danger-fg"
-												onClick={() => setAttendanceToRemove(player)}
-											>
-												<X className="size-4" />
-											</button>
+							{event.attendance.map((row) => {
+								const player = resolveRosterPlayer(
+									row.player_id,
+									row.display_name,
+									rosterById,
+								);
+
+								return (
+									<li
+										key={row.id}
+										className="flex items-center gap-3 py-2 first:pt-0 last:pb-0"
+									>
+										{player.avatar_url && (
+											<img
+												src={player.avatar_url}
+												alt=""
+												referrerPolicy="no-referrer"
+												className="h-8 w-8 rounded-full object-cover"
+											/>
 										)}
-								</li>
-							))}
+										{!player.avatar_url && (
+											<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-pitch-soft text-xs font-medium text-pitch-fg">
+												{playerVisibleName(player).charAt(0).toUpperCase()}
+											</span>
+										)}
+										<div className="min-w-0 flex-1">
+											<p className="truncate text-sm font-medium text-fg">
+												{playerVisibleName(player)}
+											</p>
+											<AttendanceStatLine row={row} />
+										</div>
+										{showAttendanceActions &&
+											canRemoveEventAttendance(
+												player.id,
+												event.attendance.length,
+												teamPlayerIds,
+											) && (
+												<button
+													type="button"
+													aria-label={EVENT_ACTION.removeAttendance}
+													className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-muted hover:text-danger-fg"
+													onClick={() => setAttendanceToRemove(player)}
+												>
+													<X className="size-4" />
+												</button>
+											)}
+									</li>
+								);
+							})}
 						</ul>
 					)}
 				</div>
@@ -634,6 +712,7 @@ export function ChampionshipEventDetail({
 					players={players}
 					attendanceCounts={attendanceCounts}
 					initialPresentIds={event.attendance.map((row) => row.player_id)}
+					initialGoalkeeperIds={volunteerGoalkeeperIds}
 					teamPlayerIds={teamPlayerIds}
 					isPending={savingAttendance}
 					errorMessage={saveAttendanceError}
@@ -644,8 +723,8 @@ export function ChampionshipEventDetail({
 
 						setIsAttendanceOpen(false);
 					}}
-					onSave={async (presentPlayerIds) => {
-						await onSaveAttendance(presentPlayerIds);
+					onSave={async (presentPlayerIds, goalkeeperPlayerIds) => {
+						await onSaveAttendance(presentPlayerIds, goalkeeperPlayerIds);
 						setIsAttendanceOpen(false);
 					}}
 				/>
@@ -654,6 +733,7 @@ export function ChampionshipEventDetail({
 				<AddEventTeamModal
 					playersPerTeam={event.players_per_team}
 					presentPlayers={presentPlayers}
+					goalkeeperIds={volunteerGoalkeeperIds}
 					usedColors={event.teams.flatMap((team) =>
 						team.color === null ? [] : [team.color],
 					)}
@@ -677,6 +757,7 @@ export function ChampionshipEventDetail({
 				<AddEventTeamModal
 					playersPerTeam={event.players_per_team}
 					presentPlayers={presentPlayers}
+					goalkeeperIds={volunteerGoalkeeperIds}
 					usedColors={event.teams
 						.filter((team) => team.id !== teamToEdit.id)
 						.flatMap((team) => (team.color === null ? [] : [team.color]))}
@@ -744,10 +825,12 @@ export function ChampionshipEventDetail({
 						void (async () => {
 							try {
 								const playerId = attendanceToRemove.id;
+								const nextPresent = event.attendance
+									.map((row) => row.player_id)
+									.filter((id) => id !== playerId);
 								await onSaveAttendance(
-									event.attendance
-										.map((row) => row.player_id)
-										.filter((id) => id !== playerId),
+									nextPresent,
+									keepGoalkeepersPresent(volunteerGoalkeeperIds, nextPresent),
 								);
 								setAttendanceToRemove(null);
 							} catch {

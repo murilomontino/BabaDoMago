@@ -37,6 +37,20 @@ check(
 	"add player needs name",
 );
 check(
+	addPlayerFormSchema.isValidSync({
+		name: "1. Vitinho ✅\n2. Murilo ✅",
+		rating: PLAYER_RATING.default,
+	}),
+	"add player list ok",
+);
+check(
+	!addPlayerFormSchema.isValidSync({
+		name: "1. ✅",
+		rating: PLAYER_RATING.default,
+	}),
+	"add player emoji only fails",
+);
+check(
 	!addPlayerFormSchema.isValidSync({
 		name: "João",
 		rating: PLAYER_RATING.max + 1,

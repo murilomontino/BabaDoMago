@@ -23,7 +23,7 @@ import type {
 } from "@/types/championship";
 
 const PLAYER_COLUMNS =
-	"id, championship_id, user_id, display_name, nickname, avatar_url, rating, role, deleted_at, goals, assists, wins, matches" as const;
+	"id, championship_id, user_id, display_name, nickname, avatar_url, rating, role, deleted_at, goals, assists, own_goals, wins, matches" as const;
 
 const CHAMPIONSHIP_COLUMNS =
 	"id, name, invite_code, created_by, logo_path, event_time, players_per_team, is_visible" as const;
@@ -198,26 +198,48 @@ export async function createChampionship(
 	return championship;
 }
 
-export async function addManualPlayer(
+export async function addManualPlayers(
 	championshipId: number,
-	displayName: string,
+	displayNames: string[],
 	rating: number = PLAYER_RATING.default,
-): Promise<ChampionshipPlayer> {
+): Promise<ChampionshipPlayer[]> {
+	if (displayNames.length === 0) {
+		return [];
+	}
+
 	const { data, error } = await supabase
 		.from("championship_players")
-		.insert({
-			championship_id: championshipId,
-			display_name: displayName,
-			rating,
-		})
-		.select(PLAYER_COLUMNS)
-		.single();
+		.insert(
+			displayNames.map((displayName) => ({
+				championship_id: championshipId,
+				display_name: displayName,
+				rating,
+			})),
+		)
+		.select(PLAYER_COLUMNS);
 
 	if (error) {
 		throw error;
 	}
 
-	return asPlayer(data);
+	return (data ?? []).map(asPlayer);
+}
+
+export async function addManualPlayer(
+	championshipId: number,
+	displayName: string,
+	rating: number = PLAYER_RATING.default,
+): Promise<ChampionshipPlayer> {
+	const [player] = await addManualPlayers(
+		championshipId,
+		[displayName],
+		rating,
+	);
+	if (!player) {
+		throw new Error("player: invalid payload");
+	}
+
+	return player;
 }
 
 export async function joinChampionship(

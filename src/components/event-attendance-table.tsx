@@ -26,13 +26,19 @@ type AttendanceRow = {
 	rating: number;
 	attendanceCount: number;
 	present: boolean;
+	goalkeeper: boolean;
 };
 
 type EventAttendanceTableProps = {
 	players: ChampionshipPlayer[];
 	attendanceCounts: ReadonlyMap<number, number>;
 	presentIds?: readonly number[];
+	goalkeeperIds?: readonly number[];
 	onSetPresent?: (playerIds: readonly number[], present: boolean) => void;
+	onSetGoalkeeper?: (
+		playerIds: readonly number[],
+		asGoalkeeper: boolean,
+	) => void;
 };
 
 const attendanceColumnHelper = createColumnHelper<
@@ -65,7 +71,9 @@ export function EventAttendanceTable({
 	players,
 	attendanceCounts,
 	presentIds = [],
+	goalkeeperIds = [],
 	onSetPresent,
+	onSetGoalkeeper,
 }: EventAttendanceTableProps) {
 	const [query, setQuery] = useState("");
 	const selectable = Boolean(onSetPresent);
@@ -84,10 +92,11 @@ export function EventAttendanceTable({
 			rating: player.rating,
 			attendanceCount: attendanceCounts.get(player.id) ?? 0,
 			present: presentIds.includes(player.id),
+			goalkeeper: goalkeeperIds.includes(player.id),
 		}));
 
 		return [...list].sort(compareByAttendanceCount);
-	}, [visiblePlayers, attendanceCounts, presentIds]);
+	}, [visiblePlayers, attendanceCounts, presentIds, goalkeeperIds]);
 	const visibleIds = rows.map((row) => row.id);
 	const allVisiblePresent = areAllVisiblePresent(presentIds, visibleIds);
 
@@ -159,11 +168,50 @@ export function EventAttendanceTable({
 					);
 				},
 			}),
+			attendanceColumnHelper.accessor("goalkeeper", {
+				id: EVENT_ATTENDANCE_COLUMN.goalkeeper,
+				header: EVENT_ATTENDANCE_COLUMN_LABEL.goalkeeper,
+				enableHiding: false,
+				enableSorting: false,
+				meta: {
+					align: "center" as const,
+					title: EVENT_ATTENDANCE_COLUMN_LABEL.goalkeeper,
+				},
+				cell: ({ row }) => {
+					const inputId = `event-goalkeeper-${row.original.id}`;
+
+					return (
+						<label
+							htmlFor={inputId}
+							className="inline-flex"
+							onClick={(event) => {
+								event.stopPropagation();
+							}}
+							onKeyDown={(event) => {
+								event.stopPropagation();
+							}}
+						>
+							<input
+								id={inputId}
+								type="checkbox"
+								checked={row.original.goalkeeper}
+								disabled={!onSetGoalkeeper}
+								onChange={() => {
+									onSetGoalkeeper?.(
+										[row.original.id],
+										!row.original.goalkeeper,
+									);
+								}}
+							/>
+						</label>
+					);
+				},
+			}),
 			playerColumn,
 			ratingColumn,
 			countColumn,
 		]);
-	}, [ceiling, onSetPresent, selectable]);
+	}, [ceiling, onSetGoalkeeper, onSetPresent, selectable]);
 
 	return (
 		<div className="space-y-3">

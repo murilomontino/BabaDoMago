@@ -7,6 +7,10 @@ import { PlayerRatingField } from "@/components/player-rating-field";
 import { SectionCard } from "@/components/section-card";
 import type { AssignableChampionshipRole } from "@/const/championship-role";
 import { addPlayerFormSchema } from "@/const/form-schema";
+import {
+	PLAYER_NAME_LIST,
+	parsePlayerNameList,
+} from "@/const/player-name-list";
 import { PLAYER_RATING } from "@/const/player-rating";
 import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
@@ -36,7 +40,7 @@ type ChampionshipRosterTabProps = {
 	deactivateError: string | null;
 	onCopyLink: () => void;
 	onAddPlayer: (values: {
-		displayName: string;
+		displayNames: string[];
 		rating: number;
 	}) => Promise<void>;
 	onClaim: (playerId: number) => void;
@@ -108,18 +112,20 @@ export function ChampionshipRosterTab({
 					validationSchema={addPlayerFormSchema}
 					onSubmit={async (values, helpers) => {
 						await onAddPlayer({
-							displayName: values.name,
+							displayNames: parsePlayerNameList(values.name),
 							rating: values.rating,
 						});
 						helpers.resetForm();
 					}}
 				>
 					<Form className="mb-4 space-y-2">
-						<div className="flex flex-wrap items-center gap-2">
+						<div className="flex flex-wrap items-start gap-2">
 							<Field
+								as="textarea"
 								name="name"
-								placeholder="Nome do jogador"
-								className={`min-w-0 flex-1 ${FIELD_CLASS}`}
+								rows={4}
+								placeholder={PLAYER_NAME_LIST.placeholder}
+								className={`min-h-20 min-w-0 flex-1 resize-y !h-auto ${FIELD_CLASS}`}
 							/>
 							<PlayerRatingField ceiling={rosterCeiling} />
 							<Button

@@ -5,6 +5,13 @@ export type ChampionshipEventAttendance = {
 	event_id: number;
 	player_id: number;
 	display_name: string;
+	is_goalkeeper: boolean;
+	event_date: string;
+	goals: number;
+	assists: number;
+	own_goals: number;
+	wins: number;
+	matches: number;
 };
 
 export type ChampionshipEventTeamPlayer = {

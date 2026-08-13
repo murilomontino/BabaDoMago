@@ -157,16 +157,38 @@ export const EVENT_ATTENDANCE_MESSAGE = {
 
 export const EVENT_ATTENDANCE_COLUMN = {
 	present: "present",
+	goalkeeper: "goalkeeper",
 	player: "player",
 	rating: "rating",
 	count: "count",
+	eventDate: "eventDate",
+	goals: "goals",
+	assists: "assists",
+	ownGoals: "ownGoals",
+	wins: "wins",
+	matches: "matches",
 } as const;
 
 export const EVENT_ATTENDANCE_COLUMN_LABEL = {
 	present: "Presente",
+	goalkeeper: "Goleiro",
 	player: "Jogador",
 	rating: "Rating",
 	count: "Presenças",
+	eventDate: "Data",
+	goals: "Gols",
+	assists: "Assistências",
+	ownGoals: "Gols contra",
+	wins: "Vitórias",
+	matches: "Jogos",
+} as const;
+
+export const EVENT_ATTENDANCE_STAT_ABBR = {
+	goals: "G",
+	assists: "A",
+	ownGoals: "GC",
+	wins: "V",
+	matches: "J",
 } as const;
 
 export const EVENT_ATTENDANCE_ACTION = {
@@ -456,10 +478,26 @@ function eventTeamPartitionKey(
 	return `${index}-${state}`;
 }
 
+export function pickTeamGoalkeeper(
+	playerIds: readonly number[],
+	playersPerTeam: number,
+	volunteerIds: readonly number[] = [],
+): number {
+	if (playerIds.length < playersPerTeam) {
+		return 0;
+	}
+
+	const volunteers = new Set(volunteerIds);
+	return (
+		playerIds.find((playerId) => volunteers.has(playerId)) ?? playerIds[0] ?? 0
+	);
+}
+
 export function drawBalancedEventTeams(
 	players: readonly { id: number; rating: number }[],
 	playersPerTeam: number,
 	random: () => number = Math.random,
+	volunteerIds: readonly number[] = [],
 ): EventTeamDraft[] {
 	const teamCount = eventTeamCount(players.length, playersPerTeam);
 	const capacities = eventTeamCapacities(players.length, teamCount);
@@ -569,7 +607,11 @@ export function drawBalancedEventTeams(
 	return best.map((team) => ({
 		color: EVENT_TEAM_COLOR_NONE,
 		playerIds: team.playerIds,
-		goalkeeperId: team.playerIds[0] ?? 0,
+		goalkeeperId: pickTeamGoalkeeper(
+			team.playerIds,
+			playersPerTeam,
+			volunteerIds,
+		),
 	}));
 }
 
@@ -732,15 +774,11 @@ export function builderTeamsFromDrafts(
 		key: `team-draw-${index}`,
 		color: team.color,
 		slots: teamPlayerSlots(
-			[
-				{ player_id: team.goalkeeperId, is_goalkeeper: true },
-				...team.playerIds
-					.filter((playerId) => playerId !== team.goalkeeperId)
-					.map((playerId) => ({
-						player_id: playerId,
-						is_goalkeeper: false,
-					})),
-			],
+			team.playerIds.map((playerId) => ({
+				player_id: playerId,
+				is_goalkeeper:
+					team.goalkeeperId !== 0 && playerId === team.goalkeeperId,
+			})),
 			playersPerTeam,
 		),
 	}));
@@ -894,7 +932,10 @@ export function validateEventTeams(
 			return EVENT_TEAM_MESSAGE.playerDuplicate;
 		}
 
-		if (!team.playerIds.includes(team.goalkeeperId)) {
+		if (
+			team.goalkeeperId !== 0 &&
+			!team.playerIds.includes(team.goalkeeperId)
+		) {
 			return EVENT_TEAM_MESSAGE.goalkeeperMissing;
 		}
 
@@ -930,7 +971,7 @@ export function validateEventTeam(
 		return EVENT_TEAM_MESSAGE.playerLimit;
 	}
 
-	if (!team.playerIds.includes(team.goalkeeperId)) {
+	if (team.goalkeeperId !== 0 && !team.playerIds.includes(team.goalkeeperId)) {
 		return EVENT_TEAM_MESSAGE.goalkeeperMissing;
 	}
 
@@ -1032,6 +1073,33 @@ export function applyVisibleAttendance(
 	}
 
 	return [...new Set([...presentIds, ...visibleIds])];
+}
+
+export function keepGoalkeepersPresent(
+	goalkeeperIds: readonly number[],
+	presentIds: readonly number[],
+): number[] {
+	const present = new Set(presentIds);
+	return [...new Set(goalkeeperIds)].filter((id) => present.has(id));
+}
+
+export function attendanceGoalkeeperIds(
+	attendance: readonly { player_id: number; is_goalkeeper: boolean }[],
+): number[] {
+	return attendance.flatMap((row) =>
+		row.is_goalkeeper ? [row.player_id] : [],
+	);
+}
+
+export function eventTeamPlayerOptionLabel(
+	name: string,
+	isGoalkeeperVolunteer: boolean,
+): string {
+	if (!isGoalkeeperVolunteer) {
+		return name;
+	}
+
+	return `${name} · ${EVENT_TEAM_POSITION_LABEL.goalkeeper}`;
 }
 
 export function areAllVisiblePresent(

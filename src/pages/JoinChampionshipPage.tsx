@@ -20,6 +20,7 @@ import {
 	useJoinChampionship,
 } from "@/hooks/championships/use-championships";
 import { withClaimQuery } from "@/lib/safe-path";
+import type { ChampionshipPlayer } from "@/types/championship";
 
 export function JoinChampionshipPage() {
 	const { inviteCode } = useParams({ from: "/join/$inviteCode" });
@@ -33,7 +34,10 @@ export function JoinChampionshipPage() {
 	const claimedRef = useRef(false);
 
 	const alreadyMember = Boolean(
-		user && data?.players.some((player) => player.user_id === user.id),
+		user &&
+			data?.players.some(
+				(player: ChampionshipPlayer) => player.user_id === user.id,
+			),
 	);
 
 	useEffect(() => {
@@ -48,7 +52,14 @@ export function JoinChampionshipPage() {
 
 		claimedRef.current = true;
 		claimPlayer.mutate(playerId, {
-			onSettled: () => {
+			onSuccess: (claimed) => {
+				void navigate({
+					to: ROUTES.championship,
+					params: { championshipId: String(claimed.championship_id) },
+					replace: true,
+				});
+			},
+			onError: () => {
 				void navigate({
 					to: ROUTES.join,
 					params: { inviteCode },
@@ -61,7 +72,15 @@ export function JoinChampionshipPage() {
 
 	function handleClaim(playerId: number) {
 		if (user) {
-			claimPlayer.mutate(playerId);
+			claimPlayer.mutate(playerId, {
+				onSuccess: (claimed) => {
+					void navigate({
+						to: ROUTES.championship,
+						params: { championshipId: String(claimed.championship_id) },
+						replace: true,
+					});
+				},
+			});
 			return;
 		}
 

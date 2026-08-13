@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { PlayerRating } from "@/components/player-rating";
 import {
 	EVENT_TEAM_AVERAGE_LABEL,
+	EVENT_TEAM_POSITION_LABEL,
 	eventTeamRatingAverage,
 	formatEventTeamRatingAverage,
 } from "@/const/championship-event";
@@ -12,6 +13,7 @@ import {
 	eventTeamColorFg,
 } from "@/const/event-team-color";
 import { playerVisibleName } from "@/const/player-name";
+import { CHIP_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 type EventTeamColorDotProps = {
@@ -93,6 +95,7 @@ type EventTeamPlayerRowProps = {
 	player: ChampionshipPlayer;
 	ceiling: number;
 	backgroundColor: string;
+	isGoalkeeperVolunteer?: boolean;
 	onRemove?: () => void;
 };
 
@@ -100,6 +103,7 @@ export function EventTeamPlayerRow({
 	player,
 	ceiling,
 	backgroundColor,
+	isGoalkeeperVolunteer = false,
 	onRemove,
 }: EventTeamPlayerRowProps) {
 	const visibleName = playerVisibleName(player);
@@ -123,6 +127,11 @@ export function EventTeamPlayerRow({
 			<p className="min-w-0 flex-1 truncate text-xs font-medium">
 				{visibleName}
 			</p>
+			{isGoalkeeperVolunteer && (
+				<span className={CHIP_CLASS}>
+					{EVENT_TEAM_POSITION_LABEL.goalkeeper}
+				</span>
+			)}
 			<PlayerRating rating={player.rating} ceiling={ceiling} />
 			{onRemove && (
 				<EventTeamRemoveButton

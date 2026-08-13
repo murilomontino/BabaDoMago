@@ -26,8 +26,10 @@ import {
 	type EventTeamDraft,
 	emptyTeamSlots,
 	eventTeamCount,
+	eventTeamPlayerOptionLabel,
 	eventTeamSlotPosition,
 	initialBuilderTeams,
+	keepGoalkeepersPresent,
 	resizeBuilderTeams,
 	teamSlotsToPlayerIds,
 	validateEventAttendance,
@@ -70,6 +72,7 @@ type ChampionshipEventBuilderProps = {
 	attendanceCounts: ReadonlyMap<number, number>;
 	step: EventBuilderStep;
 	initialPresentIds?: readonly number[];
+	initialGoalkeeperIds?: readonly number[];
 	initialTeams?: EventTeamBuilderTeam[];
 	isPending: boolean;
 	errorMessage: string | null;
@@ -79,6 +82,7 @@ type ChampionshipEventBuilderProps = {
 	onSubmit: (
 		values: {
 			presentPlayerIds: number[];
+			goalkeeperPlayerIds: number[];
 			teams: EventTeamDraft[];
 		},
 		keepOpen?: boolean,
@@ -91,6 +95,7 @@ export function ChampionshipEventBuilder({
 	attendanceCounts,
 	step,
 	initialPresentIds = [],
+	initialGoalkeeperIds = [],
 	initialTeams,
 	isPending,
 	errorMessage,
@@ -102,6 +107,9 @@ export function ChampionshipEventBuilder({
 	const [presentIds, setPresentIds] = useState<number[]>([
 		...initialPresentIds,
 	]);
+	const [goalkeeperIds, setGoalkeeperIds] = useState<number[]>(() =>
+		keepGoalkeepersPresent(initialGoalkeeperIds, initialPresentIds),
+	);
 	const [attendanceError, setAttendanceError] = useState<string | null>(null);
 	const [teamsError, setTeamsError] = useState<string | null>(null);
 	const [isDrawing, setIsDrawing] = useState(false);
@@ -128,11 +136,35 @@ export function ChampionshipEventBuilder({
 	);
 
 	function handleSetPresent(playerIds: readonly number[], present: boolean) {
-		setPresentIds((current) => {
-			const next = applyVisibleAttendance(current, playerIds, present);
-			onPresentIdsChange?.(next);
-			return next;
-		});
+		const nextPresent = applyVisibleAttendance(presentIds, playerIds, present);
+		setPresentIds(nextPresent);
+		setGoalkeeperIds((current) => keepGoalkeepersPresent(current, nextPresent));
+		onPresentIdsChange?.(nextPresent);
+		setAttendanceError(null);
+	}
+
+	function handleSetGoalkeeper(
+		playerIds: readonly number[],
+		asGoalkeeper: boolean,
+	) {
+		if (asGoalkeeper) {
+			const nextPresent = applyVisibleAttendance(presentIds, playerIds, true);
+			setPresentIds(nextPresent);
+			setGoalkeeperIds((current) =>
+				keepGoalkeepersPresent([...current, ...playerIds], nextPresent),
+			);
+			onPresentIdsChange?.(nextPresent);
+			setAttendanceError(null);
+			return;
+		}
+
+		const visible = new Set(playerIds);
+		setGoalkeeperIds((current) =>
+			keepGoalkeepersPresent(
+				current.filter((id) => !visible.has(id)),
+				presentIds,
+			),
+		);
 		setAttendanceError(null);
 	}
 
@@ -193,6 +225,7 @@ export function ChampionshipEventBuilder({
 				worker.postMessage({
 					players: presentPlayers.map(({ id, rating }) => ({ id, rating })),
 					playersPerTeam,
+					volunteerIds: goalkeeperIds,
 				});
 			});
 			const teamsInvalid =
@@ -206,6 +239,7 @@ export function ChampionshipEventBuilder({
 			await onSubmit(
 				{
 					presentPlayerIds: presentIds,
+					goalkeeperPlayerIds: goalkeeperIds,
 					teams: drafts,
 				},
 				true,
@@ -275,6 +309,7 @@ export function ChampionshipEventBuilder({
 
 					await onSubmit({
 						presentPlayerIds: presentIds,
+						goalkeeperPlayerIds: goalkeeperIds,
 						teams: drafts,
 					});
 				}}
@@ -346,7 +381,9 @@ export function ChampionshipEventBuilder({
 										players={players}
 										attendanceCounts={attendanceCounts}
 										presentIds={presentIds}
+										goalkeeperIds={goalkeeperIds}
 										onSetPresent={handleSetPresent}
+										onSetGoalkeeper={handleSetGoalkeeper}
 									/>
 									{attendanceError && (
 										<p className={ERROR_CLASS}>{attendanceError}</p>
@@ -494,6 +531,10 @@ export function ChampionshipEventBuilder({
 																					backgroundColor={
 																						EVENT_TEAM_COLOR.white
 																					}
+																					isGoalkeeperVolunteer={
+																						slot !== 0 &&
+																						goalkeeperIds.includes(player.id)
+																					}
 																					onRemove={() => {
 																						setFieldValue(
 																							`teams.${teamIndex}.slots.${slot}`,
@@ -518,7 +559,10 @@ export function ChampionshipEventBuilder({
 																							key={item.id}
 																							value={String(item.id)}
 																						>
-																							{playerVisibleName(item)}
+																							{eventTeamPlayerOptionLabel(
+																								playerVisibleName(item),
+																								goalkeeperIds.includes(item.id),
+																							)}
 																						</option>
 																					))}
 																				</Field>

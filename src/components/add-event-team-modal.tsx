@@ -12,6 +12,7 @@ import {
 	EVENT_TEAM_MESSAGE,
 	EVENT_TEAM_POSITION_LABEL,
 	emptyTeamSlots,
+	eventTeamPlayerOptionLabel,
 	eventTeamSlotPosition,
 	teamPlayerSlots,
 	teamSlotsToPlayerIds,
@@ -42,6 +43,7 @@ import type { ChampionshipPlayer } from "@/types/championship";
 type AddEventTeamModalProps = {
 	playersPerTeam: number;
 	presentPlayers: ChampionshipPlayer[];
+	goalkeeperIds?: readonly number[];
 	usedColors: readonly EventTeamColor[];
 	takenPlayerIds: readonly number[];
 	initialTeam?: {
@@ -61,6 +63,7 @@ type AddEventTeamModalProps = {
 export function AddEventTeamModal({
 	playersPerTeam,
 	presentPlayers,
+	goalkeeperIds = [],
 	usedColors,
 	takenPlayerIds,
 	initialTeam,
@@ -194,6 +197,9 @@ export function AddEventTeamModal({
 												player={player}
 												ceiling={ceiling}
 												backgroundColor={EVENT_TEAM_COLOR.white}
+												isGoalkeeperVolunteer={
+													slot !== 0 && goalkeeperIds.includes(player.id)
+												}
 												onRemove={() => {
 													setSlots((current) =>
 														current.map((value, index) =>
@@ -222,7 +228,10 @@ export function AddEventTeamModal({
 												<option value="">Adicionar jogador</option>
 												{pool.map((item) => (
 													<option key={item.id} value={String(item.id)}>
-														{playerVisibleName(item)}
+														{eventTeamPlayerOptionLabel(
+															playerVisibleName(item),
+															goalkeeperIds.includes(item.id),
+														)}
 													</option>
 												))}
 											</select>

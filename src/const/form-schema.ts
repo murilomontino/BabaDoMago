@@ -1,6 +1,7 @@
 import { number, object, string } from "yup";
 import { CHAMPIONSHIP_EVENT } from "./championship-event.ts";
 import { PLAYER_NICKNAME } from "./player-name.ts";
+import { parsePlayerNameList } from "./player-name-list.ts";
 import { PLAYER_RATING } from "./player-rating.ts";
 
 export const FORM_MESSAGE = {
@@ -26,7 +27,14 @@ export const nameFormSchema = object({
 });
 
 export const addPlayerFormSchema = object({
-	name: string().trim().required(FORM_MESSAGE.nameRequired),
+	name: string()
+		.trim()
+		.required(FORM_MESSAGE.nameRequired)
+		.test(
+			"player-names",
+			FORM_MESSAGE.nameRequired,
+			(value) => parsePlayerNameList(value ?? "").length > 0,
+		),
 	rating: ratingField,
 });
 

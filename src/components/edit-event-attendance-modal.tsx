@@ -5,6 +5,7 @@ import { EventAttendanceTable } from "@/components/event-attendance-table";
 import {
 	applyVisibleAttendance,
 	EVENT_ACTION,
+	keepGoalkeepersPresent,
 	keepTeamPlayersPresent,
 	validateEventAttendance,
 } from "@/const/championship-event";
@@ -15,17 +16,22 @@ type EditEventAttendanceModalProps = {
 	players: ChampionshipPlayer[];
 	attendanceCounts: ReadonlyMap<number, number>;
 	initialPresentIds: readonly number[];
+	initialGoalkeeperIds?: readonly number[];
 	teamPlayerIds: readonly number[];
 	isPending: boolean;
 	errorMessage: string | null;
 	onCancel: () => void;
-	onSave: (presentPlayerIds: number[]) => Promise<void>;
+	onSave: (
+		presentPlayerIds: number[],
+		goalkeeperPlayerIds: number[],
+	) => Promise<void>;
 };
 
 export function EditEventAttendanceModal({
 	players,
 	attendanceCounts,
 	initialPresentIds,
+	initialGoalkeeperIds = [],
 	teamPlayerIds,
 	isPending,
 	errorMessage,
@@ -36,6 +42,12 @@ export function EditEventAttendanceModal({
 	const rosterIds = players.map((player) => player.id);
 	const [presentIds, setPresentIds] = useState(() =>
 		keepTeamPlayersPresent(initialPresentIds, teamPlayerIds),
+	);
+	const [goalkeeperIds, setGoalkeeperIds] = useState(() =>
+		keepGoalkeepersPresent(
+			initialGoalkeeperIds,
+			keepTeamPlayersPresent(initialPresentIds, teamPlayerIds),
+		),
 	);
 	const [localError, setLocalError] = useState<string | null>(null);
 
@@ -52,18 +64,54 @@ export function EditEventAttendanceModal({
 					players={players}
 					attendanceCounts={attendanceCounts}
 					presentIds={presentIds}
+					goalkeeperIds={goalkeeperIds}
 					onSetPresent={(playerIds, present) => {
 						setLocalError(null);
 						if (!present) {
 							const removable = playerIds.filter((id) => !locked.has(id));
-							setPresentIds((current) =>
-								applyVisibleAttendance(current, removable, false),
+							const nextPresent = applyVisibleAttendance(
+								presentIds,
+								removable,
+								false,
+							);
+							setPresentIds(nextPresent);
+							setGoalkeeperIds((current) =>
+								keepGoalkeepersPresent(current, nextPresent),
 							);
 							return;
 						}
 
-						setPresentIds((current) =>
-							applyVisibleAttendance(current, playerIds, true),
+						const nextPresent = applyVisibleAttendance(
+							presentIds,
+							playerIds,
+							true,
+						);
+						setPresentIds(nextPresent);
+						setGoalkeeperIds((current) =>
+							keepGoalkeepersPresent(current, nextPresent),
+						);
+					}}
+					onSetGoalkeeper={(playerIds, asGoalkeeper) => {
+						setLocalError(null);
+						if (asGoalkeeper) {
+							const nextPresent = applyVisibleAttendance(
+								presentIds,
+								playerIds,
+								true,
+							);
+							setPresentIds(nextPresent);
+							setGoalkeeperIds((current) =>
+								keepGoalkeepersPresent([...current, ...playerIds], nextPresent),
+							);
+							return;
+						}
+
+						const visible = new Set(playerIds);
+						setGoalkeeperIds((current) =>
+							keepGoalkeepersPresent(
+								current.filter((id) => !visible.has(id)),
+								presentIds,
+							),
 						);
 					}}
 				/>
@@ -89,7 +137,7 @@ export function EditEventAttendanceModal({
 									return;
 								}
 
-								await onSave(next);
+								await onSave(next, keepGoalkeepersPresent(goalkeeperIds, next));
 							})();
 						}}
 						disabled={isPending}

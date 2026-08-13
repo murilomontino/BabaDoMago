@@ -60,6 +60,7 @@ export function useSaveChampionshipEventTeams(_championshipId: number) {
 			eventId,
 			presentPlayerIds,
 			teams,
+			goalkeeperPlayerIds,
 		}: {
 			eventId: number;
 			presentPlayerIds: readonly number[];
@@ -68,7 +69,14 @@ export function useSaveChampionshipEventTeams(_championshipId: number) {
 				playerIds: readonly number[];
 				goalkeeperId: number;
 			}[];
-		}) => saveChampionshipEventTeams(eventId, presentPlayerIds, teams),
+			goalkeeperPlayerIds: readonly number[];
+		}) =>
+			saveChampionshipEventTeams(
+				eventId,
+				presentPlayerIds,
+				teams,
+				goalkeeperPlayerIds,
+			),
 		onSuccess: async () => {
 			await invalidateChampionshipEventQueries(queryClient);
 		},
@@ -82,12 +90,22 @@ export function useSaveChampionshipEventAttendance(_championshipId: number) {
 		mutationFn: ({
 			eventId,
 			presentPlayerIds,
+			goalkeeperPlayerIds,
 		}: {
 			eventId: number;
 			presentPlayerIds: readonly number[];
-		}) => saveChampionshipEventAttendance(eventId, presentPlayerIds),
+			goalkeeperPlayerIds: readonly number[];
+		}) =>
+			saveChampionshipEventAttendance(
+				eventId,
+				presentPlayerIds,
+				goalkeeperPlayerIds,
+			),
 		onSuccess: async () => {
-			await invalidateChampionshipEventQueries(queryClient);
+			await Promise.all([
+				invalidateChampionshipEventQueries(queryClient),
+				invalidateChampionshipQueries(queryClient),
+			]);
 		},
 	});
 }

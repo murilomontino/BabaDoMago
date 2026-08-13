@@ -1,4 +1,5 @@
 import { Unlink, UserCheck, UserPen, UserPlus, UserX } from "lucide-react";
+import { Button } from "@/components/button";
 import { IconTooltipButton } from "@/components/molecules/icon-tooltip-button";
 import {
 	CHAMPIONSHIP_ROLE,
@@ -9,6 +10,13 @@ import {
 import { PLAYER_LABEL } from "@/const/player-name";
 import { BUTTON_VARIANT } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
+
+const ROSTER_ACTION_LABEL = {
+	connect: "Conectar",
+	disconnect: "Desconectar",
+	deactivate: "Desativar",
+	activate: "Ativar",
+} as const;
 
 export type RosterPlayerActionsProps = {
 	player: ChampionshipPlayer;
@@ -88,16 +96,18 @@ export function RosterPlayerActions({
 				/>
 			)}
 			{canClaim && onClaim && (
-				<IconTooltipButton
-					label="Conectar"
-					icon={<UserPlus className="size-4" />}
+				<Button
+					variant={BUTTON_VARIANT.secondary}
 					onClick={() => onClaim(player.id)}
 					disabled={claimingPlayerId === player.id}
-				/>
+				>
+					<UserPlus className="size-4" />
+					{ROSTER_ACTION_LABEL.connect}
+				</Button>
 			)}
 			{canUnlink && onUnlink && (
 				<IconTooltipButton
-					label="Desconectar"
+					label={ROSTER_ACTION_LABEL.disconnect}
 					icon={<Unlink className="size-4" />}
 					onClick={() => onUnlink(player.id)}
 					disabled={unlinkingPlayerId === player.id}
@@ -105,7 +115,7 @@ export function RosterPlayerActions({
 			)}
 			{canDeactivate && onDeactivate && (
 				<IconTooltipButton
-					label="Desativar"
+					label={ROSTER_ACTION_LABEL.deactivate}
 					icon={<UserX className="size-4" />}
 					variant={BUTTON_VARIANT.danger}
 					onClick={() => onDeactivate(player.id)}
@@ -114,7 +124,7 @@ export function RosterPlayerActions({
 			)}
 			{canReactivate && onReactivate && (
 				<IconTooltipButton
-					label="Ativar"
+					label={ROSTER_ACTION_LABEL.activate}
 					icon={<UserCheck className="size-4" />}
 					variant={BUTTON_VARIANT.primary}
 					onClick={() => onReactivate(player.id)}

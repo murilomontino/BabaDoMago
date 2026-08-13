@@ -1,6 +1,7 @@
 import {
 	applyVisibleAttendance,
 	areAllVisiblePresent,
+	attendanceGoalkeeperIds,
 	builderTeamsFromDrafts,
 	builderTeamsFromEvent,
 	canAddEventMatch,
@@ -13,23 +14,28 @@ import {
 	draftAttendanceForEnd,
 	drawBalancedEventTeams,
 	EVENT_ATTENDANCE_MESSAGE,
+	EVENT_ATTENDANCE_STAT_ABBR,
 	EVENT_BUILDER_STEP,
 	EVENT_ERROR_MESSAGE,
 	EVENT_TEAM_MESSAGE,
 	EVENT_TEAM_POSITION,
+	EVENT_TEAM_POSITION_LABEL,
 	type EventTeamDraft,
 	emptyTeamSlots,
 	eventTeamCount,
 	eventTeamPlayerIds,
+	eventTeamPlayerOptionLabel,
 	eventTeamPlayerPosition,
 	eventTeamRatingAverage,
 	eventTeamSlotPosition,
 	formatEventTeamRatingAverage,
 	initialBuilderTeams,
 	isEventBuilderStep,
+	keepGoalkeepersPresent,
 	keepPresentSlots,
 	keepTeamPlayersPresent,
 	nextEventTeamColor,
+	pickTeamGoalkeeper,
 	resizeBuilderTeams,
 	teamHasMatches,
 	teamPlayerSlots,
@@ -132,6 +138,17 @@ check(
 		5,
 	),
 	EVENT_TEAM_MESSAGE.goalkeeperMissing,
+);
+
+check(
+	validateEventTeams(
+		[
+			draft(EVENT_TEAM_COLOR.white, [1, 2, 3, 4], 0),
+			draft(EVENT_TEAM_COLOR.black, [5, 6, 7, 8], 0),
+		],
+		5,
+	),
+	null,
 );
 
 check(
@@ -281,6 +298,21 @@ check(
 		.join("/"),
 	"1|2|/3||",
 );
+check(
+	builderTeamsFromDrafts(
+		[
+			{
+				color: EVENT_TEAM_COLOR.white,
+				playerIds: [1, 2, 3, 4],
+				goalkeeperId: 0,
+			},
+		],
+		5,
+	)
+		.map((team) => team.slots.join("|"))
+		.join("/"),
+	"|1|2|3|4",
+);
 check(canEditEventTeams({ ended_at: null, matches: [] }), true);
 check(canEditEventTeams({ ended_at: "2026-08-13", matches: [] }), false);
 check(canEditEventTeams({ ended_at: "2026-08-13", matches: [] }, true), true);
@@ -324,6 +356,27 @@ check(eventTeamPlayerPosition(false), EVENT_TEAM_POSITION.player);
 
 check(String(applyVisibleAttendance([3], [1, 2], true)), "3,1,2");
 check(String(applyVisibleAttendance([1, 2, 3], [1, 2], false)), "3");
+check(String(keepGoalkeepersPresent([1, 2, 9], [1, 3])), "1");
+check(String(keepGoalkeepersPresent([2, 2, 1], [1, 2])), "2,1");
+check(
+	String(
+		attendanceGoalkeeperIds([
+			{ player_id: 1, is_goalkeeper: false },
+			{ player_id: 2, is_goalkeeper: true },
+		]),
+	),
+	"2",
+);
+check(eventTeamPlayerOptionLabel("Ana", false), "Ana");
+check(
+	eventTeamPlayerOptionLabel("Ana", true),
+	`Ana · ${EVENT_TEAM_POSITION_LABEL.goalkeeper}`,
+);
+check(pickTeamGoalkeeper([1, 2, 3, 4], 5), 0);
+check(pickTeamGoalkeeper([1, 2, 3, 4, 5], 5), 1);
+check(pickTeamGoalkeeper([1, 2, 3, 4, 5], 5, [4]), 4);
+check(pickTeamGoalkeeper([1, 2, 3, 4, 5], 5, [9, 2]), 2);
+check(pickTeamGoalkeeper([], 5), 0);
 check(areAllVisiblePresent([1, 2], [1, 2]), true);
 check(areAllVisiblePresent([1], [1, 2]), false);
 check(areAllVisiblePresent([1, 2, 3], []), false);
@@ -394,8 +447,8 @@ check(drawn[0]?.color, null);
 check(drawn[1]?.color, null);
 check(String(drawn[0]?.playerIds), "1,4,5,8");
 check(String(drawn[1]?.playerIds), "2,3,6,7");
-check(drawn[0]?.goalkeeperId, 1);
-check(drawn[1]?.goalkeeperId, 2);
+check(drawn[0]?.goalkeeperId, 0);
+check(drawn[1]?.goalkeeperId, 0);
 check(
 	validateEventTeams(drawn, 5) ??
 		validateTeamsInAttendance(
@@ -425,7 +478,40 @@ check(
 	true,
 );
 check(
-	leftover.every((team) => team.playerIds.includes(team.goalkeeperId)),
+	leftover.every((team) =>
+		team.playerIds.length < 3
+			? team.goalkeeperId === 0
+			: team.playerIds.includes(team.goalkeeperId) && team.goalkeeperId !== 0,
+	),
+	true,
+);
+const fullRated = [
+	...rated,
+	{ id: 9, rating: 2 },
+	{ id: 10, rating: 1 },
+] as const;
+const fullDrawn = drawBalancedEventTeams(fullRated, 5, () => 0.999);
+check(fullDrawn.length, 2);
+check(
+	fullDrawn.every(
+		(team) =>
+			team.playerIds.length === 5 && team.goalkeeperId === team.playerIds[0],
+	),
+	true,
+);
+const volunteerDrawn = drawBalancedEventTeams(fullRated, 5, () => 0.999, [8]);
+check(
+	volunteerDrawn.some(
+		(team) => team.playerIds.includes(8) && team.goalkeeperId === 8,
+	),
+	true,
+);
+check(
+	volunteerDrawn.every((team) =>
+		team.playerIds.includes(8)
+			? team.goalkeeperId === 8
+			: team.goalkeeperId === team.playerIds[0],
+	),
 	true,
 );
 
@@ -433,5 +519,7 @@ check(isEventBuilderStep(EVENT_BUILDER_STEP.attendance), true);
 check(isEventBuilderStep(EVENT_BUILDER_STEP.teams), true);
 check(isEventBuilderStep("nope"), false);
 check(isEventBuilderStep(null), false);
+check(EVENT_ATTENDANCE_STAT_ABBR.goals, "G");
+check(EVENT_ATTENDANCE_STAT_ABBR.ownGoals, "GC");
 
 console.log("championship-event ok");

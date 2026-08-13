@@ -42,7 +42,14 @@ const EVENT_COLUMNS = `
 		id,
 		event_id,
 		player_id,
-		display_name
+		display_name,
+		is_goalkeeper,
+		event_date,
+		goals,
+		assists,
+		own_goals,
+		wins,
+		matches
 	),
 	championship_event_matches (
 		id,
@@ -93,6 +100,13 @@ function asAttendance(value: unknown): ChampionshipEventAttendance {
 		event_id: Number(row.event_id),
 		player_id: Number(row.player_id),
 		display_name: row.display_name,
+		is_goalkeeper: row.is_goalkeeper === true,
+		event_date: String(row.event_date ?? ""),
+		goals: Number(row.goals ?? 0),
+		assists: Number(row.assists ?? 0),
+		own_goals: Number(row.own_goals ?? 0),
+		wins: Number(row.wins ?? 0),
+		matches: Number(row.matches ?? 0),
 	};
 }
 
@@ -354,6 +368,7 @@ export async function saveChampionshipEventTeams(
 		playerIds: readonly number[];
 		goalkeeperId: number;
 	}[],
+	goalkeeperPlayerIds: readonly number[] = [],
 ): Promise<void> {
 	const { error } = await supabase.rpc("save_championship_event_teams", {
 		event_id: eventId,
@@ -363,6 +378,7 @@ export async function saveChampionshipEventTeams(
 			player_ids: [...team.playerIds],
 			goalkeeper_id: team.goalkeeperId,
 		})),
+		goalkeeper_player_ids: [...goalkeeperPlayerIds],
 	});
 
 	if (error) {
@@ -373,10 +389,12 @@ export async function saveChampionshipEventTeams(
 export async function saveChampionshipEventAttendance(
 	eventId: number,
 	presentPlayerIds: readonly number[],
+	goalkeeperPlayerIds: readonly number[] = [],
 ): Promise<void> {
 	const { error } = await supabase.rpc("save_championship_event_attendance", {
 		event_id: eventId,
 		present_player_ids: [...presentPlayerIds],
+		goalkeeper_player_ids: [...goalkeeperPlayerIds],
 	});
 
 	if (error) {

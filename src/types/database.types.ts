@@ -29,22 +29,43 @@ export type Database = {
 		Tables: {
 			championship_event_attendance: {
 				Row: {
+					assists: number;
 					display_name: string;
+					event_date: string;
 					event_id: number;
+					goals: number;
 					id: number;
+					is_goalkeeper: boolean;
+					matches: number;
+					own_goals: number;
 					player_id: number;
+					wins: number;
 				};
 				Insert: {
+					assists?: number;
 					display_name: string;
+					event_date?: string;
 					event_id: number;
+					goals?: number;
 					id?: number;
+					is_goalkeeper?: boolean;
+					matches?: number;
+					own_goals?: number;
 					player_id: number;
+					wins?: number;
 				};
 				Update: {
+					assists?: number;
 					display_name?: string;
+					event_date?: string;
+					is_goalkeeper?: boolean;
 					event_id?: number;
+					goals?: number;
 					id?: number;
+					matches?: number;
+					own_goals?: number;
 					player_id?: number;
+					wins?: number;
 				};
 				Relationships: [
 					{
@@ -550,6 +571,7 @@ export type Database = {
 				Args: {
 					event_id: number;
 					present_player_ids: Json;
+					goalkeeper_player_ids: Json;
 				};
 				Returns: Json;
 			};
@@ -558,6 +580,7 @@ export type Database = {
 					event_id: number;
 					present_player_ids: Json;
 					teams: Json;
+					goalkeeper_player_ids: Json;
 				};
 				Returns: Json;
 			};
