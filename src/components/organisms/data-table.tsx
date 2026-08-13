@@ -110,7 +110,7 @@ export function DataTable<TData extends RowData>({
 			</div>
 			<div className="overflow-x-auto">
 				<table className="w-full min-w-max border-collapse text-sm">
-					<thead className="border-b border-stone-200 bg-stone-50">
+					<thead className="border-b border-line bg-surface-muted">
 						{table.getHeaderGroups().map((headerGroup) => (
 							<tr key={headerGroup.id}>
 								{headerGroup.headers.map((header) => (
@@ -130,7 +130,7 @@ export function DataTable<TData extends RowData>({
 							</tr>
 						))}
 					</thead>
-					<tbody className="divide-y divide-stone-100">
+					<tbody className="divide-y divide-line">
 						{table.getRowModel().rows.map((row) => (
 							<tr key={row.id}>
 								{row.getVisibleCells().map((cell) => {

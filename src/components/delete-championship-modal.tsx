@@ -2,7 +2,12 @@ import { Field, Form, Formik } from "formik";
 import { Button } from "@/components/button";
 import { FormError } from "@/components/form-error";
 import { deleteChampionshipSchema } from "@/const/form-schema";
-import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
+import {
+	BUTTON_VARIANT,
+	ERROR_CLASS,
+	FIELD_CLASS,
+	MODAL_CLASS,
+} from "@/const/ui";
 
 type DeleteChampionshipModalProps = {
 	championshipName: string;
@@ -30,19 +35,19 @@ export function DeleteChampionshipModal({
 				}}
 			>
 				{({ isValid }) => (
-					<Form className="w-full max-w-lg rounded-xl bg-white p-4 shadow-lg">
-						<p className="mb-1 text-sm font-medium tracking-tight text-stone-800">
+					<Form className={MODAL_CLASS}>
+						<p className="mb-1 text-sm font-medium tracking-tight text-fg">
 							Excluir campeonato
 						</p>
-						<p className="mb-3 text-sm text-stone-600">
+						<p className="mb-3 text-sm text-fg-muted">
 							Digite o nome do baba para confirmar.
 						</p>
-						<p className="mb-3 select-all text-sm font-bold text-stone-900">
+						<p className="mb-3 select-all text-sm font-bold text-fg">
 							"{championshipName}"
 						</p>
 						<label
 							htmlFor="typed-championship-name"
-							className="block text-sm text-stone-600"
+							className="block text-sm text-fg-muted"
 						>
 							Nome do baba
 							<Field

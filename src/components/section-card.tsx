@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { CARD_CLASS } from "@/const/ui";
 
 type SectionCardProps = {
 	title: string;
@@ -14,8 +15,8 @@ export function SectionCard({
 	children,
 }: SectionCardProps) {
 	return (
-		<section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
-			<div className="mb-4 flex items-center gap-2 text-stone-800">
+		<section className={CARD_CLASS}>
+			<div className="mb-4 flex items-center gap-2 text-fg">
 				{icon}
 				<h2 className="text-sm font-semibold tracking-tight">{title}</h2>
 				{action && (

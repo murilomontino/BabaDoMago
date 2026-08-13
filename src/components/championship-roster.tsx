@@ -264,7 +264,7 @@ export function ChampionshipRoster({
 
 	if (!withStats) {
 		return (
-			<ul className="divide-y divide-stone-100">
+			<ul className="divide-y divide-line">
 				{players.map((player) => (
 					<li
 						key={player.id}

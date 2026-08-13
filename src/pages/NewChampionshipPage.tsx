@@ -30,19 +30,19 @@ export function NewChampionshipPage() {
 	);
 
 	if (isPending) {
-		return <p className="text-stone-600">Carregando campeonatos...</p>;
+		return <p className="text-fg-muted">Carregando campeonatos...</p>;
 	}
 
 	return (
 		<main>
 			<PageHeader title="Novo campeonato" description="Dê um nome pro baba." />
 			{atLimit && (
-				<p className="text-sm text-stone-600">{championshipQuotaHint()}</p>
+				<p className="text-sm text-fg-muted">{championshipQuotaHint()}</p>
 			)}
 			{!atLimit && (
 				<SectionCard
 					title="Dados"
-					icon={<Trophy className="size-4 text-pitch" />}
+					icon={<Trophy className="size-4 text-pitch-fg" />}
 				>
 					<Formik
 						initialValues={{ name: "" }}
@@ -68,7 +68,7 @@ export function NewChampionshipPage() {
 						<Form className="space-y-4">
 							<label
 								htmlFor="new-championship-name"
-								className="block text-sm font-medium text-stone-700"
+								className="block text-sm font-medium text-fg-muted"
 							>
 								Nome
 								<Field

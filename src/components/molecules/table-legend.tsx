@@ -13,10 +13,10 @@ export function TableLegend({ items }: TableLegendProps) {
 	}
 
 	return (
-		<ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone-600">
+		<ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-fg-muted">
 			{items.map((item) => (
 				<li key={item.abbr}>
-					<span className="font-semibold text-stone-800">{item.abbr}</span>
+					<span className="font-semibold text-fg">{item.abbr}</span>
 					{" = "}
 					{item.label}
 				</li>

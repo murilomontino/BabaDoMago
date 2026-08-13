@@ -43,7 +43,7 @@ export function SortableHeader({
 		return (
 			<th
 				title={title}
-				className={`whitespace-nowrap px-3 py-2 text-xs font-semibold uppercase tracking-wide text-stone-600 ${alignClass}`}
+				className={`whitespace-nowrap px-3 py-2 text-xs font-semibold uppercase tracking-wide text-fg-muted ${alignClass}`}
 			>
 				{children}
 			</th>
@@ -62,7 +62,7 @@ export function SortableHeader({
 				onClick={(event) => {
 					onSort?.(event);
 				}}
-				className={`inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-stone-600 hover:text-stone-900 ${HEADER_SORT_BUTTON_CLASS[align]}`}
+				className={`inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-fg-muted hover:text-fg ${HEADER_SORT_BUTTON_CLASS[align]}`}
 			>
 				{children}
 				{sorted === "asc" && <ChevronUp className="size-3.5 shrink-0" />}

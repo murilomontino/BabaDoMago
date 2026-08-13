@@ -5,8 +5,14 @@ import { Button } from "@/components/button";
 import { ChampionshipLogo } from "@/components/championship-logo";
 import { ChampionshipRoster } from "@/components/championship-roster";
 import { SectionCard } from "@/components/section-card";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { ROUTES } from "@/const/routes";
-import { BUTTON_VARIANT, ERROR_CLASS, PAGE_SHELL_CLASS } from "@/const/ui";
+import {
+	BUTTON_VARIANT,
+	CARD_CLASS,
+	ERROR_CLASS,
+	PAGE_SHELL_CLASS,
+} from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
 import {
 	useChampionshipByInvite,
@@ -70,7 +76,7 @@ export function JoinChampionshipPage() {
 	if (isPending || isAuthLoading) {
 		return (
 			<main className={PAGE_SHELL_CLASS}>
-				<p className="text-stone-600">Carregando campeonato...</p>
+				<p className="text-fg-muted">Carregando campeonato...</p>
 			</main>
 		);
 	}
@@ -87,8 +93,11 @@ export function JoinChampionshipPage() {
 
 	return (
 		<main className={`${PAGE_SHELL_CLASS} space-y-6`}>
-			<section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
-				<p className="mb-3 flex items-center gap-2 text-sm font-medium uppercase tracking-wide text-pitch">
+			<div className="flex justify-end">
+				<ThemeToggle />
+			</div>
+			<section className={CARD_CLASS}>
+				<p className="mb-3 flex items-center gap-2 text-sm font-medium uppercase tracking-wide text-pitch-fg">
 					<Trophy className="size-4" />
 					Campeonato
 				</p>
@@ -98,14 +107,14 @@ export function JoinChampionshipPage() {
 						name={data.name}
 						className="h-16 w-16"
 					/>
-					<h1 className="text-2xl font-semibold tracking-tight text-stone-900">
+					<h1 className="text-2xl font-semibold tracking-tight text-fg">
 						{data.name}
 					</h1>
 				</div>
 			</section>
 			<SectionCard
 				title="Elenco"
-				icon={<Users className="size-4 text-pitch" />}
+				icon={<Users className="size-4 text-pitch-fg" />}
 			>
 				<ChampionshipRoster
 					players={data.players}

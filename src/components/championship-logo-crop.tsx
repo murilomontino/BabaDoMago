@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import Cropper, { type Area } from "react-easy-crop";
 import { Button } from "@/components/button";
-import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
+import { BUTTON_VARIANT, ERROR_CLASS, MODAL_CLASS } from "@/const/ui";
 import { getCroppedJpeg } from "@/lib/crop-image";
 
 type ChampionshipLogoCropProps = {
@@ -46,11 +46,11 @@ export function ChampionshipLogoCrop({
 
 	return (
 		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-			<div className="w-full max-w-lg rounded-xl bg-white p-4 shadow-lg">
-				<p className="mb-3 text-sm font-medium tracking-tight text-stone-800">
+			<div className={MODAL_CLASS}>
+				<p className="mb-3 text-sm font-medium tracking-tight text-fg">
 					Ajustar logo
 				</p>
-				<div className="relative h-72 overflow-hidden rounded-lg bg-stone-900">
+				<div className="relative h-72 overflow-hidden rounded-lg bg-black">
 					<Cropper
 						image={imageSrc}
 						crop={crop}
@@ -61,7 +61,7 @@ export function ChampionshipLogoCrop({
 						onCropComplete={handleCropComplete}
 					/>
 				</div>
-				<label className="mt-3 block text-sm text-stone-600">
+				<label className="mt-3 block text-sm text-fg-muted">
 					Zoom
 					<input
 						type="range"

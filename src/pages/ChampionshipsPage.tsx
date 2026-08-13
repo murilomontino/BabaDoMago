@@ -18,7 +18,7 @@ export function ChampionshipsPage() {
 	const { data: championships, isPending, isError, error } = useChampionships();
 
 	if (isPending) {
-		return <p className="text-stone-600">Carregando campeonatos...</p>;
+		return <p className="text-fg-muted">Carregando campeonatos...</p>;
 	}
 
 	if (isError) {
@@ -51,7 +51,7 @@ export function ChampionshipsPage() {
 				}
 			/>
 			{atLimit && (
-				<p className="mb-4 text-sm text-stone-600">{championshipQuotaHint()}</p>
+				<p className="mb-4 text-sm text-fg-muted">{championshipQuotaHint()}</p>
 			)}
 			{championships.length === 0 && (
 				<EmptyState
@@ -78,16 +78,16 @@ export function ChampionshipsPage() {
 							<Link
 								to={ROUTES.championship}
 								params={{ championshipId: String(championship.id) }}
-								className="flex items-center gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3 shadow-sm hover:border-pitch/30 hover:bg-pitch-soft/40"
+								className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3 shadow-sm hover:border-pitch/30 hover:bg-pitch-soft/40"
 							>
 								<ChampionshipLogo
 									path={championship.logo_path}
 									name={championship.name}
 								/>
-								<span className="flex-1 font-semibold tracking-tight text-stone-900">
+								<span className="flex-1 font-semibold tracking-tight text-fg">
 									{championship.name}
 								</span>
-								<ChevronRight className="size-4 text-stone-400" />
+								<ChevronRight className="size-4 text-fg-subtle" />
 							</Link>
 						</li>
 					))}

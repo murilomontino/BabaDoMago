@@ -1,6 +1,7 @@
 import { Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { House, LogOut, Trophy } from "lucide-react";
 import { Button } from "@/components/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { ROUTES } from "@/const/routes";
 import { BUTTON_VARIANT, PAGE_SHELL_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
@@ -20,7 +21,7 @@ export function AuthenticatedLayout() {
 	if (isLoading) {
 		return (
 			<div className={PAGE_SHELL_CLASS}>
-				<p className="text-stone-600">Carregando sessão...</p>
+				<p className="text-fg-muted">Carregando sessão...</p>
 			</div>
 		);
 	}
@@ -31,7 +32,7 @@ export function AuthenticatedLayout() {
 				<div className="flex flex-wrap items-center justify-between gap-4">
 					<Link
 						to={ROUTES.home}
-						className="flex items-center gap-2 font-semibold tracking-tight text-pitch"
+						className="flex items-center gap-2 font-semibold tracking-tight text-pitch-fg"
 					>
 						<Trophy className="size-5" />
 						Baba do Mago
@@ -46,15 +47,16 @@ export function AuthenticatedLayout() {
 							/>
 						)}
 						{!avatarUrl && (
-							<span className="flex h-8 w-8 items-center justify-center rounded-full bg-pitch-soft text-xs font-medium text-pitch">
+							<span className="flex h-8 w-8 items-center justify-center rounded-full bg-pitch-soft text-xs font-medium text-pitch-fg">
 								{initial}
 							</span>
 						)}
 						{user?.email && (
-							<span className="hidden text-stone-600 sm:inline">
+							<span className="hidden text-fg-muted sm:inline">
 								{user.email}
 							</span>
 						)}
+						<ThemeToggle />
 						<Button variant={BUTTON_VARIANT.ghost} onClick={handleSignOut}>
 							<LogOut className="size-4" />
 							Sair
@@ -64,7 +66,7 @@ export function AuthenticatedLayout() {
 				<nav className="mt-4">
 					<Link
 						to={ROUTES.home}
-						className="inline-flex items-center gap-1.5 text-sm font-medium text-stone-700 hover:text-pitch"
+						className="inline-flex items-center gap-1.5 text-sm font-medium text-fg-muted hover:text-pitch-fg"
 					>
 						<House className="size-4" />
 						Início

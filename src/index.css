@@ -4,7 +4,37 @@
 	--color-pitch: #166534;
 	--color-pitch-dark: #14532d;
 	--color-pitch-soft: #ecfdf5;
+	--color-pitch-fg: #166534;
 	--color-field: #fafaf9;
+	--color-surface: #ffffff;
+	--color-surface-muted: #f5f5f4;
+	--color-fg: #1c1917;
+	--color-fg-muted: #57534e;
+	--color-fg-subtle: #a8a29e;
+	--color-line: #e7e5e4;
+	--color-danger: #dc2626;
+	--color-danger-soft: #fef2f2;
+	--color-danger-fg: #b91c1c;
+}
+
+html {
+	color-scheme: light;
+}
+
+html.dark {
+	color-scheme: dark;
+	--color-pitch-soft: #052e16;
+	--color-pitch-fg: #4ade80;
+	--color-field: #0c0a09;
+	--color-surface: #1c1917;
+	--color-surface-muted: #292524;
+	--color-fg: #fafaf9;
+	--color-fg-muted: #a8a29e;
+	--color-fg-subtle: #78716c;
+	--color-line: #44403c;
+	--color-danger: #f87171;
+	--color-danger-soft: #7f1d1d;
+	--color-danger-fg: #fca5a5;
 }
 
 body {
@@ -15,5 +45,5 @@ body {
 		var(--color-pitch-soft),
 		transparent
 	);
-	color: #1c1917;
+	color: var(--color-fg);
 }

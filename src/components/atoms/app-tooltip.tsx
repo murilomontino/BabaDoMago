@@ -3,5 +3,13 @@ import "react-tooltip/dist/react-tooltip.css";
 import { TOOLTIP_ID } from "@/const/tooltip";
 
 export function AppTooltip() {
-	return <Tooltip id={TOOLTIP_ID} />;
+	return (
+		<Tooltip
+			id={TOOLTIP_ID}
+			style={{
+				backgroundColor: "var(--color-fg)",
+				color: "var(--color-surface)",
+			}}
+		/>
+	);
 }

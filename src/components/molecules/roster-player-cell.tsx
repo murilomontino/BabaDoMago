@@ -9,7 +9,7 @@ import {
 	resolveChampionshipRole,
 } from "@/const/championship-role";
 import { playerRatingSchema } from "@/const/form-schema";
-import { FIELD_CLASS } from "@/const/ui";
+import { CHIP_CLASS, FIELD_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 export type RosterPlayerCellProps = {
@@ -52,12 +52,12 @@ export function RosterPlayerCell({
 				/>
 			)}
 			{!player.avatar_url && (
-				<span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pitch-soft text-sm font-medium text-pitch">
+				<span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pitch-soft text-sm font-medium text-pitch-fg">
 					{player.display_name.charAt(0).toUpperCase()}
 				</span>
 			)}
 			<div className="min-w-0">
-				<p className="font-medium text-stone-900">{player.display_name}</p>
+				<p className="font-medium text-fg">{player.display_name}</p>
 				<div className="mt-1 flex items-center gap-2">
 					{onChangeRating && (
 						<Formik
@@ -76,19 +76,15 @@ export function RosterPlayerCell({
 					{!onChangeRating && (
 						<PlayerRating rating={player.rating} ceiling={ceiling} />
 					)}
-					{isOwnerViewer && (
-						<span className="rounded bg-stone-100 px-1.5 py-0.5 text-xs font-medium tabular-nums text-stone-700">
-							{player.rating}
-						</span>
-					)}
+					{isOwnerViewer && <span className={CHIP_CLASS}>{player.rating}</span>}
 				</div>
 				{player.user_id && (
-					<span className="mt-1 inline-flex rounded-full bg-pitch-soft px-2 py-0.5 text-xs font-medium text-pitch">
+					<span className="mt-1 inline-flex rounded-full bg-pitch-soft px-2 py-0.5 text-xs font-medium text-pitch-fg">
 						{CHAMPIONSHIP_ROLE_LABEL[displayRole]}
 					</span>
 				)}
 				{!player.user_id && (
-					<span className="mt-1 inline-flex rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600">
+					<span className="mt-1 inline-flex rounded-full bg-surface-muted px-2 py-0.5 text-xs font-medium text-fg-muted">
 						Sem conta
 					</span>
 				)}

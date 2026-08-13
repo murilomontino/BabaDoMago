@@ -3,6 +3,7 @@ import { Trophy } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { PAGE_SHELL_CLASS } from "@/const/ui";
 import { AuthProvider } from "@/contexts/auth";
+import { ThemeProvider } from "@/contexts/theme";
 
 export const Route = createRootRoute({
 	component: RootLayout,
@@ -11,9 +12,11 @@ export const Route = createRootRoute({
 
 function RootLayout() {
 	return (
-		<AuthProvider>
-			<Outlet />
-		</AuthProvider>
+		<ThemeProvider>
+			<AuthProvider>
+				<Outlet />
+			</AuthProvider>
+		</ThemeProvider>
 	);
 }
 

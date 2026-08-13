@@ -65,7 +65,7 @@ export function PlayerRating({
 			<span className="sr-only">
 				{currentFill} de {PLAYER_RATING.starCount} estrelas
 			</span>
-			<div className="flex text-slate-300" aria-hidden="true">
+			<div className="flex text-fg-subtle" aria-hidden="true">
 				{PLAYER_STARS.map((star) => (
 					<StarIcon
 						key={`empty-${star.id}`}

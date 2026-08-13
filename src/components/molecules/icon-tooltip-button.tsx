@@ -4,9 +4,9 @@ import { TOOLTIP_ID } from "@/const/tooltip";
 import { BUTTON_VARIANT, type ButtonVariant } from "@/const/ui";
 
 const ICON_TOOLTIP_BUTTON_CLASS = {
-	primary: "px-2 !text-pitch hover:!bg-pitch-soft",
+	primary: "px-2 !text-pitch-fg hover:!bg-pitch-soft",
 	secondary: "px-2",
-	danger: "px-2 !text-red-700 hover:!bg-red-50",
+	danger: "px-2 !text-danger-fg hover:!bg-danger-soft",
 	ghost: "px-2",
 } as const;
 

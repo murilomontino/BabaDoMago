@@ -47,7 +47,12 @@ import {
 	PLAYER_RATING,
 } from "@/const/player-rating";
 import { ROUTES } from "@/const/routes";
-import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
+import {
+	BUTTON_VARIANT,
+	CARD_CLASS,
+	ERROR_CLASS,
+	FIELD_CLASS,
+} from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
 import {
 	useAddManualPlayer,
@@ -291,7 +296,7 @@ export function ChampionshipDetailPage() {
 	}
 
 	if (isPending) {
-		return <p className="text-stone-600">Carregando campeonato...</p>;
+		return <p className="text-fg-muted">Carregando campeonato...</p>;
 	}
 
 	if (isError) {
@@ -304,7 +309,7 @@ export function ChampionshipDetailPage() {
 
 	return (
 		<main className="space-y-6">
-			<section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+			<section className={CARD_CLASS}>
 				<div className="flex items-start gap-4">
 					{isOwner && (
 						<label
@@ -333,10 +338,10 @@ export function ChampionshipDetailPage() {
 						/>
 					)}
 					<div className="min-w-0 flex-1">
-						<h1 className="text-2xl font-semibold tracking-tight text-stone-900">
+						<h1 className="text-2xl font-semibold tracking-tight text-fg">
 							{data.name}
 						</h1>
-						<span className="mt-2 inline-flex items-center gap-1 rounded-full bg-pitch-soft px-2 py-0.5 text-xs font-medium text-pitch">
+						<span className="mt-2 inline-flex items-center gap-1 rounded-full bg-pitch-soft px-2 py-0.5 text-xs font-medium text-pitch-fg">
 							<Shield className="size-3" />
 							{CHAMPIONSHIP_ROLE_LABEL[actorRole]}
 						</span>
@@ -388,12 +393,12 @@ export function ChampionshipDetailPage() {
 			{selectedTab === CHAMPIONSHIP_TAB.roster && (
 				<SectionCard
 					title="Elenco"
-					icon={<Users className="size-4 text-pitch" />}
+					icon={<Users className="size-4 text-pitch-fg" />}
 					action={
 						permissions.invite && (
 							<>
 								{copied && (
-									<span className="text-sm font-normal text-stone-500">
+									<span className="text-sm font-normal text-fg-muted">
 										Link copiado.
 									</span>
 								)}
@@ -436,7 +441,7 @@ export function ChampionshipDetailPage() {
 										variant={BUTTON_VARIANT.ghost}
 										disabled={addPlayer.isPending}
 										aria-label="Adicionar jogador"
-										className="px-2 !text-pitch hover:!bg-pitch-soft"
+										className="px-2 !text-pitch-fg hover:!bg-pitch-soft"
 									>
 										<Plus className="size-4" />
 										add
@@ -507,7 +512,7 @@ export function ChampionshipDetailPage() {
 			{selectedTab === CHAMPIONSHIP_TAB.deactivated && (
 				<SectionCard
 					title="Desativados"
-					icon={<UserX className="size-4 text-pitch" />}
+					icon={<UserX className="size-4 text-pitch-fg" />}
 				>
 					<ChampionshipRoster
 						players={deactivatedPlayers}
@@ -541,7 +546,7 @@ export function ChampionshipDetailPage() {
 					{(permissions.rename || permissions.transferOwnership) && (
 						<SectionCard
 							title="Configuração"
-							icon={<Shield className="size-4 text-pitch" />}
+							icon={<Shield className="size-4 text-pitch-fg" />}
 						>
 							<div className="space-y-4">
 								{permissions.rename && (
@@ -556,7 +561,7 @@ export function ChampionshipDetailPage() {
 										<Form className="space-y-1.5">
 											<label
 												htmlFor="championship-name"
-												className="text-sm font-medium text-stone-700"
+												className="text-sm font-medium text-fg-muted"
 											>
 												Nome
 											</label>
@@ -611,7 +616,7 @@ export function ChampionshipDetailPage() {
 											<Form className="space-y-1.5">
 												<label
 													htmlFor="championship-owner"
-													className="text-sm font-medium text-stone-700"
+													className="text-sm font-medium text-fg-muted"
 												>
 													Novo dono
 												</label>
@@ -658,7 +663,7 @@ export function ChampionshipDetailPage() {
 					{permissions.deleteChampionship && (
 						<SectionCard
 							title="Zona de perigo"
-							icon={<Trash2 className="size-4 text-red-700" />}
+							icon={<Trash2 className="size-4 text-danger-fg" />}
 						>
 							<Button variant={BUTTON_VARIANT.danger} onClick={handleDelete}>
 								<Trash2 className="size-4" />
