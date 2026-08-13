@@ -405,6 +405,10 @@ export type Database = {
 				};
 				Returns: Json;
 			};
+			delete_championship_event_team: {
+				Args: { team_id: number };
+				Returns: Json;
+			};
 			delete_championship_event_match: {
 				Args: { match_id: number };
 				Returns: Json;
@@ -430,6 +434,15 @@ export type Database = {
 			};
 			unlink_player: {
 				Args: { player_id: number };
+				Returns: Json;
+			};
+			update_championship_event_team: {
+				Args: {
+					team_id: number;
+					team_color: string;
+					player_ids: Json;
+					goalkeeper_id: number;
+				};
 				Returns: Json;
 			};
 			update_championship_event_config: {

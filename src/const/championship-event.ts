@@ -54,6 +54,7 @@ export const EVENT_ERROR_MESSAGE = {
 	"invalid goalkeeper": "Informe o goleiro",
 	"event already ended": "Evento já encerrado",
 	"event has matches": "Evento já tem partidas",
+	"team has matches": "Time já tem partidas",
 } as const;
 
 export const EVENT_ACTION = {
@@ -64,9 +65,12 @@ export const EVENT_ACTION = {
 	addAttendance: "Adicionar presença",
 	addMatch: "Adicionar partida",
 	addTeam: "Adicionar time",
+	editTeam: "Editar time",
+	saveTeam: "Salvar time",
 	saveAttendance: "Salvar presença",
 	removeAttendance: "Excluir presença",
 	removeMatch: "Excluir partida",
+	removeTeam: "Excluir time",
 } as const;
 
 export const EVENT_TEAM_POSITION = {
@@ -353,6 +357,38 @@ export function builderTeamsFromEvent(
 			}, slots),
 		};
 	});
+}
+
+export function teamPlayerSlots(
+	players: readonly { player_id: number; is_goalkeeper: boolean }[],
+	playersPerTeam: number,
+): string[] {
+	const slots = emptyTeamSlots(playersPerTeam);
+	const goalkeeper = players.find((player) => player.is_goalkeeper);
+	const others = players.filter((player) => !player.is_goalkeeper);
+
+	if (goalkeeper) {
+		slots[0] = String(goalkeeper.player_id);
+	}
+
+	return others.reduce((next, player, index) => {
+		const slot = index + 1;
+		if (slot >= next.length) {
+			return next;
+		}
+
+		next[slot] = String(player.player_id);
+		return next;
+	}, slots);
+}
+
+export function teamHasMatches(
+	teamId: number,
+	matches: readonly { team_a_id: number; team_b_id: number }[],
+): boolean {
+	return matches.some(
+		(match) => match.team_a_id === teamId || match.team_b_id === teamId,
+	);
 }
 
 export function canEditEventTeams(

@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { Pencil, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { AddEventMatchModal } from "@/components/add-event-match-modal";
 import { AddEventTeamModal } from "@/components/add-event-team-modal";
@@ -7,6 +7,7 @@ import { ChampionshipEventBuilder } from "@/components/championship-event-builde
 import { DeleteEventAttendanceModal } from "@/components/delete-event-attendance-modal";
 import { DeleteEventMatchModal } from "@/components/delete-event-match-modal";
 import { DeleteEventModal } from "@/components/delete-event-modal";
+import { DeleteEventTeamModal } from "@/components/delete-event-team-modal";
 import { EditEventAttendanceModal } from "@/components/edit-event-attendance-modal";
 import { EndEventModal } from "@/components/end-event-modal";
 import {
@@ -29,6 +30,7 @@ import {
 	eventTeamPlayerIds,
 	eventTeamPlayerPosition,
 	formatEventStartsAt,
+	teamHasMatches,
 } from "@/const/championship-event";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
 import {
@@ -45,6 +47,7 @@ import type { ChampionshipPlayer } from "@/types/championship";
 import type {
 	ChampionshipEvent,
 	ChampionshipEventMatch,
+	ChampionshipEventTeam,
 } from "@/types/championship-event";
 
 type ChampionshipEventDetailProps = {
@@ -63,6 +66,13 @@ type ChampionshipEventDetailProps = {
 		playerIds: number[];
 		goalkeeperId: number;
 	}) => Promise<void>;
+	onUpdateTeam: (values: {
+		teamId: number;
+		color: EventTeamColor;
+		playerIds: number[];
+		goalkeeperId: number;
+	}) => Promise<void>;
+	onDeleteTeam: (teamId: number) => Promise<void>;
 	onAddMatch: (values: { teamAId: number; teamBId: number }) => Promise<void>;
 	onDeleteMatch: (matchId: number) => Promise<void>;
 	onEnd: (presentPlayerIds: number[] | null) => Promise<void>;
@@ -73,6 +83,10 @@ type ChampionshipEventDetailProps = {
 	saveAttendanceError: string | null;
 	addingTeam: boolean;
 	addTeamError: string | null;
+	updatingTeam: boolean;
+	updateTeamError: string | null;
+	deletingTeam: boolean;
+	deleteTeamError: string | null;
 	addingMatch: boolean;
 	addMatchError: string | null;
 	deletingMatch: boolean;
@@ -144,6 +158,8 @@ export function ChampionshipEventDetail({
 	onSaveTeams,
 	onSaveAttendance,
 	onAddTeam,
+	onUpdateTeam,
+	onDeleteTeam,
 	onAddMatch,
 	onDeleteMatch,
 	onEnd,
@@ -154,6 +170,10 @@ export function ChampionshipEventDetail({
 	saveAttendanceError,
 	addingTeam,
 	addTeamError,
+	updatingTeam,
+	updateTeamError,
+	deletingTeam,
+	deleteTeamError,
 	addingMatch,
 	addMatchError,
 	deletingMatch,
@@ -195,6 +215,11 @@ export function ChampionshipEventDetail({
 	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 	const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
 	const [isAddTeamOpen, setIsAddTeamOpen] = useState(false);
+	const [teamToEdit, setTeamToEdit] = useState<ChampionshipEventTeam | null>(
+		null,
+	);
+	const [teamToRemove, setTeamToRemove] =
+		useState<ChampionshipEventTeam | null>(null);
 	const [isAddMatchOpen, setIsAddMatchOpen] = useState(false);
 	const [attendanceToRemove, setAttendanceToRemove] =
 		useState<ChampionshipPlayer | null>(null);
@@ -301,9 +326,32 @@ export function ChampionshipEventDetail({
 								style={cardStyle}
 							>
 								<EventTeamColorDot color={team.color} />
-								<p className="mb-1 text-xs font-medium">
-									{EVENT_TEAM_COLOR_LABEL[team.color] ?? team.color}
-								</p>
+								<div className="mb-1 flex items-center gap-1 pr-5">
+									<p className="min-w-0 flex-1 text-xs font-medium">
+										{EVENT_TEAM_COLOR_LABEL[team.color] ?? team.color}
+									</p>
+									{canOverrideEnded && (
+										<button
+											type="button"
+											aria-label={EVENT_ACTION.editTeam}
+											className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-fg-muted hover:bg-black/10"
+											onClick={() => setTeamToEdit(team)}
+										>
+											<Pencil className="size-3.5" />
+										</button>
+									)}
+									{canOverrideEnded &&
+										!teamHasMatches(team.id, event.matches) && (
+											<button
+												type="button"
+												aria-label={EVENT_ACTION.removeTeam}
+												className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-fg-muted hover:bg-black/10 hover:text-danger-fg"
+												onClick={() => setTeamToRemove(team)}
+											>
+												<X className="size-3.5" />
+											</button>
+										)}
+								</div>
 								<ul className="space-y-1">
 									{team.players.map((row) => {
 										const player = resolveRosterPlayer(
@@ -468,6 +516,61 @@ export function ChampionshipEventDetail({
 					onAdd={async (values) => {
 						await onAddTeam(values);
 						setIsAddTeamOpen(false);
+					}}
+				/>
+			)}
+			{teamToEdit && (
+				<AddEventTeamModal
+					playersPerTeam={event.players_per_team}
+					presentPlayers={presentPlayers}
+					usedColors={event.teams
+						.filter((team) => team.id !== teamToEdit.id)
+						.map((team) => team.color)}
+					takenPlayerIds={eventTeamPlayerIds(
+						event.teams.filter((team) => team.id !== teamToEdit.id),
+					)}
+					initialTeam={{
+						color: teamToEdit.color,
+						players: teamToEdit.players,
+					}}
+					isPending={updatingTeam}
+					errorMessage={updateTeamError}
+					onCancel={() => {
+						if (updatingTeam) {
+							return;
+						}
+
+						setTeamToEdit(null);
+					}}
+					onAdd={async (values) => {
+						await onUpdateTeam({
+							teamId: teamToEdit.id,
+							...values,
+						});
+						setTeamToEdit(null);
+					}}
+				/>
+			)}
+			{teamToRemove && (
+				<DeleteEventTeamModal
+					isPending={deletingTeam}
+					errorMessage={deleteTeamError}
+					onCancel={() => {
+						if (deletingTeam) {
+							return;
+						}
+
+						setTeamToRemove(null);
+					}}
+					onConfirm={() => {
+						void (async () => {
+							try {
+								await onDeleteTeam(teamToRemove.id);
+								setTeamToRemove(null);
+							} catch {
+								return;
+							}
+						})();
 					}}
 				/>
 			)}

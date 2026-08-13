@@ -5,12 +5,10 @@ import { SectionCard } from "@/components/section-card";
 import {
 	PODIUM_DEFAULT_METRIC,
 	PODIUM_LABEL,
+	PODIUM_METRIC_OPTIONS,
+	type PodiumMetricId,
 	parsePodiumMetric,
 } from "@/const/podium";
-import {
-	ROSTER_STAT_COLUMN_OPTIONS,
-	type RosterStatColumnId,
-} from "@/const/roster-stats";
 import { FIELD_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 
@@ -19,9 +17,7 @@ type ChampionshipPodiumTabProps = {
 };
 
 export function ChampionshipPodiumTab({ players }: ChampionshipPodiumTabProps) {
-	const [metric, setMetric] = useState<RosterStatColumnId>(
-		PODIUM_DEFAULT_METRIC,
-	);
+	const [metric, setMetric] = useState<PodiumMetricId>(PODIUM_DEFAULT_METRIC);
 
 	return (
 		<SectionCard
@@ -37,7 +33,7 @@ export function ChampionshipPodiumTab({ players }: ChampionshipPodiumTabProps) {
 						setMetric(parsePodiumMetric(event.target.value));
 					}}
 				>
-					{ROSTER_STAT_COLUMN_OPTIONS.map((option) => (
+					{PODIUM_METRIC_OPTIONS.map((option) => (
 						<option key={option.id} value={option.id}>
 							{option.label}
 						</option>

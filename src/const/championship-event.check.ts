@@ -24,6 +24,8 @@ import {
 	keepTeamPlayersPresent,
 	nextEventTeamColor,
 	resizeBuilderTeams,
+	teamHasMatches,
+	teamPlayerSlots,
 	teamSlotsToPlayerIds,
 	validateEventAttendance,
 	validateEventTeam,
@@ -267,6 +269,22 @@ check(
 check(
 	championshipEventErrorMessage("event has matches"),
 	EVENT_ERROR_MESSAGE["event has matches"],
+);
+check(
+	championshipEventErrorMessage("team has matches"),
+	EVENT_ERROR_MESSAGE["team has matches"],
+);
+check(teamHasMatches(1, [{ team_a_id: 1, team_b_id: 2 }]), true);
+check(teamHasMatches(3, [{ team_a_id: 1, team_b_id: 2 }]), false);
+check(
+	teamPlayerSlots(
+		[
+			{ player_id: 2, is_goalkeeper: false },
+			{ player_id: 1, is_goalkeeper: true },
+		],
+		3,
+	).join("|"),
+	"1|2|",
 );
 check(String(teamSlotsToPlayerIds(["1", "", "2"])), "1,2");
 check(eventTeamSlotPosition(0), EVENT_TEAM_POSITION.goalkeeper);

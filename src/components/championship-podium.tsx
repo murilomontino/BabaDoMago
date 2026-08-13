@@ -3,7 +3,7 @@ import confetti from "canvas-confetti";
 import { Trophy } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { EmptyState } from "@/components/empty-state";
-import { PodiumPlaceCard } from "@/components/molecules/podium-place";
+import PodiumPlaceCard from "@/components/molecules/podium-place";
 import {
 	DataTable,
 	type DataTableFeatures,
@@ -12,23 +12,24 @@ import { PlayerRating } from "@/components/player-rating";
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import {
+	formatPodiumMetric,
 	PODIUM_CONFETTI,
 	PODIUM_DISPLAY_ORDER,
 	PODIUM_LABEL,
+	type PodiumMetricId,
 	podiumStandings,
 	rankPodiumRows,
 } from "@/const/podium";
 import {
-	formatRosterStat,
 	ROSTER_COLUMN,
 	ROSTER_COLUMN_ABBR,
 	ROSTER_COLUMN_LABEL,
 	ROSTER_LEGEND_ITEMS,
 	ROSTER_STAT_COLUMNS,
 	type RosterRow,
-	type RosterStatColumnId,
 	toRosterRow,
 } from "@/const/roster-stats";
+import { CHIP_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 const podiumConfettiSession = { fired: false };
@@ -36,7 +37,7 @@ const podiumColumnHelper = createColumnHelper<DataTableFeatures, RosterRow>();
 
 type ChampionshipPodiumProps = {
 	players: ChampionshipPlayer[];
-	metric: RosterStatColumnId;
+	metric: PodiumMetricId;
 };
 
 function PodiumTablePlayer({ row }: { row: RosterRow }) {
@@ -70,7 +71,7 @@ function PodiumTablePlayer({ row }: { row: RosterRow }) {
 
 type PodiumTableProps = {
 	rows: RosterRow[];
-	metric: RosterStatColumnId;
+	metric: PodiumMetricId;
 	ceiling: number;
 };
 
@@ -91,7 +92,18 @@ function PodiumTable({ rows, metric, ceiling }: PodiumTableProps) {
 					enableHiding: false,
 					meta: { title: ROSTER_COLUMN_LABEL.rating },
 					cell: ({ row }) => (
-						<PlayerRating rating={row.original.rating} ceiling={ceiling} />
+						<div className="flex items-center gap-2">
+							<PlayerRating rating={row.original.rating} ceiling={ceiling} />
+							<span
+								className={
+									metric === ROSTER_COLUMN.rating
+										? "font-semibold tabular-nums text-pitch-fg"
+										: CHIP_CLASS
+								}
+							>
+								{formatPodiumMetric(ROSTER_COLUMN.rating, row.original.rating)}
+							</span>
+						</div>
 					),
 				}),
 				...ROSTER_STAT_COLUMNS.map((column) =>
@@ -111,7 +123,7 @@ function PodiumTable({ rows, metric, ceiling }: PodiumTableProps) {
 										: "tabular-nums"
 								}
 							>
-								{formatRosterStat(column, getValue())}
+								{formatPodiumMetric(column, getValue())}
 							</span>
 						),
 					}),

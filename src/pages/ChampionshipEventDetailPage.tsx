@@ -25,9 +25,11 @@ import {
 	useChampionshipEvents,
 	useDeleteChampionshipEvent,
 	useDeleteChampionshipEventMatch,
+	useDeleteChampionshipEventTeam,
 	useEndChampionshipEvent,
 	useSaveChampionshipEventAttendance,
 	useSaveChampionshipEventTeams,
+	useUpdateChampionshipEventTeam,
 } from "@/hooks/championships/use-championship-events";
 import { useChampionship } from "@/hooks/championships/use-championships";
 
@@ -46,6 +48,8 @@ export function ChampionshipEventDetailPage() {
 	const saveTeams = useSaveChampionshipEventTeams(championshipId);
 	const saveAttendance = useSaveChampionshipEventAttendance(championshipId);
 	const addTeam = useAddChampionshipEventTeam(championshipId);
+	const updateTeam = useUpdateChampionshipEventTeam(championshipId);
+	const deleteTeam = useDeleteChampionshipEventTeam(championshipId);
 	const addMatch = useAddChampionshipEventMatch(championshipId);
 	const deleteMatch = useDeleteChampionshipEventMatch(championshipId);
 	const endEvent = useEndChampionshipEvent(championshipId);
@@ -124,6 +128,10 @@ export function ChampionshipEventDetailPage() {
 				}
 				addingTeam={addTeam.isPending}
 				addTeamError={addTeam.isError ? addTeam.error.message : null}
+				updatingTeam={updateTeam.isPending}
+				updateTeamError={updateTeam.isError ? updateTeam.error.message : null}
+				deletingTeam={deleteTeam.isPending}
+				deleteTeamError={deleteTeam.isError ? deleteTeam.error.message : null}
 				addingMatch={addMatch.isPending}
 				addMatchError={addMatch.isError ? addMatch.error.message : null}
 				deletingMatch={deleteMatch.isPending}
@@ -154,6 +162,17 @@ export function ChampionshipEventDetailPage() {
 						playerIds,
 						goalkeeperId,
 					});
+				}}
+				onUpdateTeam={async ({ teamId, color, playerIds, goalkeeperId }) => {
+					await updateTeam.mutateAsync({
+						teamId,
+						color,
+						playerIds,
+						goalkeeperId,
+					});
+				}}
+				onDeleteTeam={async (teamId) => {
+					await deleteTeam.mutateAsync(teamId);
 				}}
 				onAddMatch={async ({ teamAId, teamBId }) => {
 					await addMatch.mutateAsync({

@@ -12,6 +12,7 @@ import {
 	emptyTeamSlots,
 	eventTeamSlotPosition,
 	nextEventTeamColor,
+	teamPlayerSlots,
 	teamSlotsToPlayerIds,
 	validateEventTeam,
 } from "@/const/championship-event";
@@ -41,6 +42,10 @@ type AddEventTeamModalProps = {
 	presentPlayers: ChampionshipPlayer[];
 	usedColors: readonly EventTeamColor[];
 	takenPlayerIds: readonly number[];
+	initialTeam?: {
+		color: EventTeamColor;
+		players: readonly { player_id: number; is_goalkeeper: boolean }[];
+	};
 	isPending: boolean;
 	errorMessage: string | null;
 	onCancel: () => void;
@@ -56,18 +61,24 @@ export function AddEventTeamModal({
 	presentPlayers,
 	usedColors,
 	takenPlayerIds,
+	initialTeam,
 	isPending,
 	errorMessage,
 	onCancel,
 	onAdd,
 }: AddEventTeamModalProps) {
+	const isEdit = Boolean(initialTeam);
 	const ceiling = championshipRatingCeiling(
 		presentPlayers.map((player) => player.rating),
 	);
-	const [color, setColor] = useState<EventTeamColor>(() =>
-		nextEventTeamColor(usedColors),
+	const [color, setColor] = useState<EventTeamColor>(
+		() => initialTeam?.color ?? nextEventTeamColor(usedColors),
 	);
-	const [slots, setSlots] = useState(() => emptyTeamSlots(playersPerTeam));
+	const [slots, setSlots] = useState(() =>
+		initialTeam
+			? teamPlayerSlots(initialTeam.players, playersPerTeam)
+			: emptyTeamSlots(playersPerTeam),
+	);
 	const [localError, setLocalError] = useState<string | null>(null);
 	const assignedIds = new Set(teamSlotsToPlayerIds(slots));
 	const taken = new Set(takenPlayerIds);
@@ -97,7 +108,7 @@ export function AddEventTeamModal({
 		<AppDialog onClose={onCancel}>
 			<div className={`${MODAL_CLASS} max-h-[90dvh] overflow-y-auto`}>
 				<p className="mb-3 text-sm font-medium tracking-tight text-fg">
-					{EVENT_ACTION.addTeam}
+					{isEdit ? EVENT_ACTION.editTeam : EVENT_ACTION.addTeam}
 				</p>
 				{presentPlayers.length === 0 && (
 					<p className="mb-3 text-sm text-fg-muted">
@@ -247,7 +258,7 @@ export function AddEventTeamModal({
 							})();
 						}}
 					>
-						{EVENT_ACTION.addTeam}
+						{isEdit ? EVENT_ACTION.saveTeam : EVENT_ACTION.addTeam}
 					</Button>
 				</div>
 			</div>

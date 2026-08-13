@@ -1,9 +1,11 @@
 import { playerVisibleName } from "./player-name.ts";
 import {
+	formatRosterCount,
+	formatRosterStat,
 	ROSTER_COLUMN,
+	ROSTER_COLUMN_LABEL,
 	ROSTER_STAT_COLUMNS,
 	type RosterRow,
-	type RosterStatColumnId,
 } from "./roster-stats.ts";
 
 export const PODIUM_PLACE = {
@@ -35,6 +37,18 @@ export const PODIUM_LABEL = {
 
 export const PODIUM_DEFAULT_METRIC = ROSTER_COLUMN.goals;
 
+export const PODIUM_METRICS = [
+	ROSTER_COLUMN.rating,
+	...ROSTER_STAT_COLUMNS,
+] as const;
+
+export type PodiumMetricId = (typeof PODIUM_METRICS)[number];
+
+export const PODIUM_METRIC_OPTIONS = PODIUM_METRICS.map((id) => ({
+	id,
+	label: ROSTER_COLUMN_LABEL[id],
+}));
+
 export const PODIUM_STAND_HEIGHT = {
 	[PODIUM_PLACE.first]: 148,
 	[PODIUM_PLACE.second]: 108,
@@ -60,8 +74,8 @@ export type PodiumStanding = {
 	row: RosterRow;
 };
 
-export function parsePodiumMetric(value: string): RosterStatColumnId {
-	const metric = ROSTER_STAT_COLUMNS.find((id) => id === value);
+export function parsePodiumMetric(value: string): PodiumMetricId {
+	const metric = PODIUM_METRICS.find((id) => id === value);
 	if (!metric) {
 		return PODIUM_DEFAULT_METRIC;
 	}
@@ -69,9 +83,20 @@ export function parsePodiumMetric(value: string): RosterStatColumnId {
 	return metric;
 }
 
+export function formatPodiumMetric(
+	column: PodiumMetricId,
+	value: number,
+): string {
+	if (column === ROSTER_COLUMN.rating) {
+		return formatRosterCount(value);
+	}
+
+	return formatRosterStat(column, value);
+}
+
 export function rankPodiumRows(
 	rows: readonly RosterRow[],
-	metric: RosterStatColumnId,
+	metric: PodiumMetricId,
 ): RosterRow[] {
 	return [...rows].sort((left, right) => {
 		const metricDiff = right[metric] - left[metric];
@@ -93,7 +118,7 @@ export function rankPodiumRows(
 
 export function podiumStandings(
 	ranked: readonly RosterRow[],
-	metric: RosterStatColumnId,
+	metric: PodiumMetricId,
 ): PodiumStanding[] {
 	const scored = ranked
 		.filter((row) => row[metric] > 0)

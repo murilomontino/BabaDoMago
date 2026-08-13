@@ -1,8 +1,10 @@
 import type { ChampionshipPlayer } from "../types/championship.ts";
 import {
+	formatPodiumMetric,
 	PODIUM_DEFAULT_METRIC,
 	PODIUM_DISPLAY_ORDER,
 	PODIUM_LABEL,
+	PODIUM_METRICS,
 	PODIUM_PLACE,
 	PODIUM_PLACES,
 	parsePodiumMetric,
@@ -26,7 +28,11 @@ check(PODIUM_DEFAULT_METRIC === ROSTER_COLUMN.goals, "default goals");
 check(PODIUM_LABEL.tab === "Pódio", "tab label");
 check(parsePodiumMetric("goals") === ROSTER_COLUMN.goals, "parse goals");
 check(parsePodiumMetric("assists") === ROSTER_COLUMN.assists, "parse assists");
+check(parsePodiumMetric("rating") === ROSTER_COLUMN.rating, "parse rating");
 check(parsePodiumMetric("nope") === PODIUM_DEFAULT_METRIC, "parse fallback");
+check(PODIUM_METRICS[0] === ROSTER_COLUMN.rating, "rating first in select");
+check(formatPodiumMetric(ROSTER_COLUMN.rating, 8) === "8", "format rating");
+check(formatPodiumMetric(ROSTER_COLUMN.goals, 4) === "4", "format goals");
 
 function player(
 	id: number,
@@ -116,5 +122,27 @@ const nickTie = rankPodiumRows(
 	ROSTER_COLUMN.goals,
 );
 check(nickTie[0]?.nickname === "Bia", "tie uses visible name");
+
+const byRating = rankPodiumRows([ana, bruno, caio, dora], ROSTER_COLUMN.rating);
+check(
+	byRating.map((row) => row.display_name).join(",") === "Dora,Bruno,Caio,Ana",
+	"rating order",
+);
+const ratingStandings = podiumStandings(byRating, ROSTER_COLUMN.rating);
+check(ratingStandings.length === 3, "rating podium top three");
+check(ratingStandings[0]?.row.display_name === "Dora", "highest rating first");
+check(
+	podiumStandings(
+		rankPodiumRows(
+			[
+				toRosterRow(player(1, "Ana", { rating: 0 })),
+				toRosterRow(player(2, "Bruno", { rating: 0 })),
+			],
+			ROSTER_COLUMN.rating,
+		),
+		ROSTER_COLUMN.rating,
+	).length === 0,
+	"zero rating empty podium",
+);
 
 console.log("podium ok");

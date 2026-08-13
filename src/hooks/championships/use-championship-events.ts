@@ -6,11 +6,13 @@ import {
 	createChampionshipEvent,
 	deleteChampionshipEvent,
 	deleteChampionshipEventMatch,
+	deleteChampionshipEventTeam,
 	endChampionshipEvent,
 	getChampionshipEventById,
 	listChampionshipEvents,
 	saveChampionshipEventAttendance,
 	saveChampionshipEventTeams,
+	updateChampionshipEventTeam,
 } from "@/services/championship-events";
 import {
 	CHAMPIONSHIP_EVENTS_QUERY_KEY,
@@ -105,6 +107,43 @@ export function useAddChampionshipEventTeam(_championshipId: number) {
 				playerIds,
 				goalkeeperId,
 			}),
+		onSuccess: async () => {
+			await invalidateChampionshipEventQueries(queryClient);
+		},
+	});
+}
+
+export function useUpdateChampionshipEventTeam(_championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({
+			teamId,
+			color,
+			playerIds,
+			goalkeeperId,
+		}: {
+			teamId: number;
+			color: EventTeamColor;
+			playerIds: readonly number[];
+			goalkeeperId: number;
+		}) =>
+			updateChampionshipEventTeam(teamId, {
+				color,
+				playerIds,
+				goalkeeperId,
+			}),
+		onSuccess: async () => {
+			await invalidateChampionshipEventQueries(queryClient);
+		},
+	});
+}
+
+export function useDeleteChampionshipEventTeam(_championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (teamId: number) => deleteChampionshipEventTeam(teamId),
 		onSuccess: async () => {
 			await invalidateChampionshipEventQueries(queryClient);
 		},

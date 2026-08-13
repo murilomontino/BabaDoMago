@@ -3,21 +3,19 @@ import { motion, useReducedMotion } from "motion/react";
 import { PlayerRating } from "@/components/player-rating";
 import { playerVisibleName } from "@/const/player-name";
 import {
+	formatPodiumMetric,
 	PODIUM_ANIMATION_DELAY,
 	PODIUM_PLACE,
 	PODIUM_STAND_HEIGHT,
+	type PodiumMetricId,
 	type PodiumPlace,
 } from "@/const/podium";
-import {
-	formatRosterStat,
-	type RosterRow,
-	type RosterStatColumnId,
-} from "@/const/roster-stats";
+import type { RosterRow } from "@/const/roster-stats";
 
 type PodiumPlaceCardProps = {
 	place: PodiumPlace;
 	row: RosterRow;
-	metric: RosterStatColumnId;
+	metric: PodiumMetricId;
 	ceiling: number;
 };
 
@@ -36,7 +34,7 @@ function PodiumMedal({ place }: { place: PodiumPlace }) {
 	}
 }
 
-export function PodiumPlaceCard({
+export default function PodiumPlaceCard({
 	place,
 	row,
 	metric,
@@ -73,7 +71,7 @@ export function PodiumPlaceCard({
 				)}
 				<PlayerRating rating={row.rating} ceiling={ceiling} />
 				<p className="text-sm font-semibold tabular-nums text-pitch-fg">
-					{formatRosterStat(metric, row[metric])}
+					{formatPodiumMetric(metric, row[metric])}
 				</p>
 				<PodiumMedal place={place} />
 			</div>
