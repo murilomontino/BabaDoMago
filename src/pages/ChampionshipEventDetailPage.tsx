@@ -12,6 +12,7 @@ import {
 import {
 	CHAMPIONSHIP_ROLE,
 	canManageEvent,
+	canOverrideEndedEvent,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
 import { ROUTES } from "@/const/routes";
@@ -22,7 +23,9 @@ import {
 	useChampionshipEvent,
 	useChampionshipEvents,
 	useDeleteChampionshipEvent,
+	useDeleteChampionshipEventMatch,
 	useEndChampionshipEvent,
+	useSaveChampionshipEventAttendance,
 	useSaveChampionshipEventTeams,
 } from "@/hooks/championships/use-championship-events";
 import { useChampionship } from "@/hooks/championships/use-championships";
@@ -40,7 +43,9 @@ export function ChampionshipEventDetailPage() {
 	const eventQuery = useChampionshipEvent(championshipId, eventId);
 	const eventsQuery = useChampionshipEvents(championshipId);
 	const saveTeams = useSaveChampionshipEventTeams(championshipId);
+	const saveAttendance = useSaveChampionshipEventAttendance(championshipId);
 	const addMatch = useAddChampionshipEventMatch(championshipId);
+	const deleteMatch = useDeleteChampionshipEventMatch(championshipId);
 	const endEvent = useEndChampionshipEvent(championshipId);
 	const deleteEvent = useDeleteChampionshipEvent(championshipId);
 	const attendanceCounts = useMemo(
@@ -58,6 +63,7 @@ export function ChampionshipEventDetailPage() {
 		currentPlayer?.role ?? CHAMPIONSHIP_ROLE.member,
 	);
 	const canManage = canManageEvent(actorRole);
+	const canOverrideEnded = canOverrideEndedEvent(actorRole);
 	const activePlayers = (championship?.players ?? []).filter(
 		(player) => !player.deleted_at,
 	);
@@ -107,10 +113,19 @@ export function ChampionshipEventDetailPage() {
 				players={activePlayers}
 				attendanceCounts={attendanceCounts}
 				canManage={canManage}
+				canOverrideEnded={canOverrideEnded}
 				savingTeams={saveTeams.isPending}
 				saveTeamsError={saveTeams.isError ? saveTeams.error.message : null}
+				savingAttendance={saveAttendance.isPending}
+				saveAttendanceError={
+					saveAttendance.isError ? saveAttendance.error.message : null
+				}
 				addingMatch={addMatch.isPending}
 				addMatchError={addMatch.isError ? addMatch.error.message : null}
+				deletingMatch={deleteMatch.isPending}
+				deleteMatchError={
+					deleteMatch.isError ? deleteMatch.error.message : null
+				}
 				ending={endEvent.isPending}
 				endError={endEvent.isError ? endEvent.error.message : null}
 				deleting={deleteEvent.isPending}
@@ -122,12 +137,21 @@ export function ChampionshipEventDetailPage() {
 						teams,
 					});
 				}}
+				onSaveAttendance={async (presentPlayerIds) => {
+					await saveAttendance.mutateAsync({
+						eventId: event.id,
+						presentPlayerIds,
+					});
+				}}
 				onAddMatch={async ({ teamAId, teamBId }) => {
 					await addMatch.mutateAsync({
 						eventId: event.id,
 						teamAId,
 						teamBId,
 					});
+				}}
+				onDeleteMatch={async (matchId) => {
+					await deleteMatch.mutateAsync(matchId);
 				}}
 				onEnd={async (presentPlayerIds) => {
 					await endEvent.mutateAsync({

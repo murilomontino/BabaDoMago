@@ -4,9 +4,11 @@ import {
 	addChampionshipEventMatch,
 	createChampionshipEvent,
 	deleteChampionshipEvent,
+	deleteChampionshipEventMatch,
 	endChampionshipEvent,
 	getChampionshipEventById,
 	listChampionshipEvents,
+	saveChampionshipEventAttendance,
 	saveChampionshipEventTeams,
 } from "@/services/championship-events";
 import {
@@ -65,6 +67,23 @@ export function useSaveChampionshipEventTeams(_championshipId: number) {
 	});
 }
 
+export function useSaveChampionshipEventAttendance(_championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({
+			eventId,
+			presentPlayerIds,
+		}: {
+			eventId: number;
+			presentPlayerIds: readonly number[];
+		}) => saveChampionshipEventAttendance(eventId, presentPlayerIds),
+		onSuccess: async () => {
+			await invalidateChampionshipEventQueries(queryClient);
+		},
+	});
+}
+
 export function useAddChampionshipEventMatch(_championshipId: number) {
 	const queryClient = useQueryClient();
 
@@ -78,6 +97,17 @@ export function useAddChampionshipEventMatch(_championshipId: number) {
 			teamAId: number;
 			teamBId: number;
 		}) => addChampionshipEventMatch(eventId, teamAId, teamBId),
+		onSuccess: async () => {
+			await invalidateChampionshipEventQueries(queryClient);
+		},
+	});
+}
+
+export function useDeleteChampionshipEventMatch(_championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (matchId: number) => deleteChampionshipEventMatch(matchId),
 		onSuccess: async () => {
 			await invalidateChampionshipEventQueries(queryClient);
 		},

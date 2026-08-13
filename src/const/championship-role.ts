@@ -201,3 +201,7 @@ export function canUpdateVisibility(role: ChampionshipRole): boolean {
 export function canManageEvent(role: ChampionshipRole): boolean {
 	return championshipPermissions(role).manageEvent;
 }
+
+export function canOverrideEndedEvent(role: ChampionshipRole): boolean {
+	return role === CHAMPIONSHIP_ROLE.owner;
+}

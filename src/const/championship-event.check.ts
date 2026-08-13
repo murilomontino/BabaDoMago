@@ -2,11 +2,13 @@ import {
 	applyVisibleAttendance,
 	areAllVisiblePresent,
 	builderTeamsFromEvent,
+	canAddEventMatch,
 	canEditEventTeams,
+	canRemoveEventAttendance,
 	championshipEventErrorMessage,
-	draftAttendanceForEnd,
 	compareByAttendanceCount,
 	countPlayerAttendance,
+	draftAttendanceForEnd,
 	EVENT_ATTENDANCE_MESSAGE,
 	EVENT_ERROR_MESSAGE,
 	EVENT_TEAM_MESSAGE,
@@ -14,10 +16,12 @@ import {
 	type EventTeamDraft,
 	emptyTeamSlots,
 	eventTeamCount,
+	eventTeamPlayerIds,
 	eventTeamPlayerPosition,
 	eventTeamSlotPosition,
 	initialBuilderTeams,
 	keepPresentSlots,
+	keepTeamPlayersPresent,
 	nextEventTeamColor,
 	resizeBuilderTeams,
 	teamSlotsToPlayerIds,
@@ -241,3 +245,52 @@ check(String(applyVisibleAttendance([1, 2, 3], [1, 2], false)), "3");
 check(areAllVisiblePresent([1, 2], [1, 2]), true);
 check(areAllVisiblePresent([1], [1, 2]), false);
 check(areAllVisiblePresent([1, 2, 3], []), false);
+check(
+	String(
+		eventTeamPlayerIds([
+			{ players: [{ player_id: 1 }, { player_id: 2 }] },
+			{ players: [{ player_id: 2 }] },
+		]),
+	),
+	"1,2",
+);
+check(String(keepTeamPlayersPresent([3], [1, 2])), "3,1,2");
+check(canRemoveEventAttendance(3, 3, [1, 2]), true);
+check(canRemoveEventAttendance(1, 3, [1, 2]), false);
+check(canRemoveEventAttendance(3, 2, []), false);
+check(
+	canAddEventMatch({
+		canManage: true,
+		canOverrideEnded: false,
+		ended: false,
+		teamCount: 2,
+	}),
+	true,
+);
+check(
+	canAddEventMatch({
+		canManage: true,
+		canOverrideEnded: false,
+		ended: true,
+		teamCount: 2,
+	}),
+	false,
+);
+check(
+	canAddEventMatch({
+		canManage: false,
+		canOverrideEnded: true,
+		ended: true,
+		teamCount: 2,
+	}),
+	true,
+);
+check(
+	canAddEventMatch({
+		canManage: true,
+		canOverrideEnded: true,
+		ended: true,
+		teamCount: 1,
+	}),
+	false,
+);

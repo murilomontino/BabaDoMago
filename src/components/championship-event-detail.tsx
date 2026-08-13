@@ -1,18 +1,23 @@
-import { Field, Form, Formik } from "formik";
+import { X } from "lucide-react";
 import { useRef, useState } from "react";
+import { AddEventMatchModal } from "@/components/add-event-match-modal";
 import { Button } from "@/components/button";
 import { ChampionshipEventBuilder } from "@/components/championship-event-builder";
+import { DeleteEventAttendanceModal } from "@/components/delete-event-attendance-modal";
+import { DeleteEventMatchModal } from "@/components/delete-event-match-modal";
 import { DeleteEventModal } from "@/components/delete-event-modal";
+import { EditEventAttendanceModal } from "@/components/edit-event-attendance-modal";
 import { EndEventModal } from "@/components/end-event-modal";
 import {
 	EventTeamColorDot,
 	EventTeamPlayerRow,
 } from "@/components/event-team-player";
-import { FormError } from "@/components/form-error";
 import {
 	builderTeamsFromEvent,
 	CHAMPIONSHIP_EVENT,
+	canAddEventMatch,
 	canEditEventTeams,
+	canRemoveEventAttendance,
 	draftAttendanceForEnd,
 	EVENT_ACTION,
 	EVENT_STATUS,
@@ -20,6 +25,7 @@ import {
 	EVENT_TEAM_POSITION_LABEL,
 	type EventTeamDraft,
 	eventStatus,
+	eventTeamPlayerIds,
 	eventTeamPlayerPosition,
 	formatEventStartsAt,
 } from "@/const/championship-event";
@@ -31,34 +37,38 @@ import {
 	eventTeamColorFg,
 	eventTeamColorStyle,
 } from "@/const/event-team-color";
-import { addMatchFormSchema } from "@/const/form-schema";
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
-import {
-	BUTTON_VARIANT,
-	CHIP_CLASS,
-	ERROR_CLASS,
-	FIELD_CLASS,
-} from "@/const/ui";
+import { BUTTON_VARIANT, CHIP_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
-import type { ChampionshipEvent } from "@/types/championship-event";
+import type {
+	ChampionshipEvent,
+	ChampionshipEventMatch,
+} from "@/types/championship-event";
 
 type ChampionshipEventDetailProps = {
 	event: ChampionshipEvent;
 	players: ChampionshipPlayer[];
 	attendanceCounts: ReadonlyMap<number, number>;
 	canManage: boolean;
+	canOverrideEnded: boolean;
 	onSaveTeams: (values: {
 		presentPlayerIds: number[];
 		teams: EventTeamDraft[];
 	}) => Promise<void>;
+	onSaveAttendance: (presentPlayerIds: number[]) => Promise<void>;
 	onAddMatch: (values: { teamAId: number; teamBId: number }) => Promise<void>;
+	onDeleteMatch: (matchId: number) => Promise<void>;
 	onEnd: (presentPlayerIds: number[] | null) => Promise<void>;
 	onDelete: () => Promise<void>;
 	savingTeams: boolean;
 	saveTeamsError: string | null;
+	savingAttendance: boolean;
+	saveAttendanceError: string | null;
 	addingMatch: boolean;
 	addMatchError: string | null;
+	deletingMatch: boolean;
+	deleteMatchError: string | null;
 	ending: boolean;
 	endError: string | null;
 	deleting: boolean;
@@ -122,14 +132,21 @@ export function ChampionshipEventDetail({
 	players,
 	attendanceCounts,
 	canManage,
+	canOverrideEnded,
 	onSaveTeams,
+	onSaveAttendance,
 	onAddMatch,
+	onDeleteMatch,
 	onEnd,
 	onDelete,
 	savingTeams,
 	saveTeamsError,
+	savingAttendance,
+	saveAttendanceError,
 	addingMatch,
 	addMatchError,
+	deletingMatch,
+	deleteMatchError,
 	ending,
 	endError,
 	deleting,
@@ -137,9 +154,11 @@ export function ChampionshipEventDetail({
 }: ChampionshipEventDetailProps) {
 	const when = formatEventStartsAt(event.starts_at);
 	const status = eventStatus(event.ended_at);
+	const ended = status === EVENT_STATUS.ended;
 	const teamById = new Map(event.teams.map((team) => [team.id, team]));
 	const rosterById = new Map(players.map((player) => [player.id, player]));
 	const presentPlayers = resolveEventPlayers(event.attendance, rosterById);
+	const teamPlayerIds = eventTeamPlayerIds(event.teams);
 	const ceiling = championshipRatingCeiling(
 		players.map((player) => player.rating),
 	);
@@ -150,8 +169,24 @@ export function ChampionshipEventDetail({
 	const showTeamBuilder =
 		teamsEditable &&
 		(isEditingTeams || event.teams.length < CHAMPIONSHIP_EVENT.minTeams);
+	const showAttendanceActions = canOverrideEnded && !showTeamBuilder;
+	const showAddMatch =
+		!showTeamBuilder &&
+		canAddEventMatch({
+			canManage,
+			canOverrideEnded,
+			ended,
+			teamCount: event.teams.length,
+		});
+	const showMatchDelete = canOverrideEnded && !showTeamBuilder;
 	const [isEndOpen, setIsEndOpen] = useState(false);
 	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+	const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
+	const [isAddMatchOpen, setIsAddMatchOpen] = useState(false);
+	const [attendanceToRemove, setAttendanceToRemove] =
+		useState<ChampionshipPlayer | null>(null);
+	const [matchToRemove, setMatchToRemove] =
+		useState<ChampionshipEventMatch | null>(null);
 	const draftPresentIdsRef = useRef(
 		event.attendance.map((row) => row.player_id),
 	);
@@ -164,13 +199,29 @@ export function ChampionshipEventDetail({
 				</p>
 				<span className={CHIP_CLASS}>{EVENT_STATUS_LABEL[status]}</span>
 				{canManage && (
-					<div className="ml-auto flex items-center gap-2">
+					<div className="ml-auto flex flex-wrap items-center gap-2">
 						{teamsEditable && !showTeamBuilder && (
 							<Button
 								variant={BUTTON_VARIANT.secondary}
 								onClick={() => setIsEditingTeams(true)}
 							>
 								{EVENT_ACTION.editTeams}
+							</Button>
+						)}
+						{showAttendanceActions && (
+							<Button
+								variant={BUTTON_VARIANT.secondary}
+								onClick={() => setIsAttendanceOpen(true)}
+							>
+								{EVENT_ACTION.addAttendance}
+							</Button>
+						)}
+						{showAddMatch && (
+							<Button
+								variant={BUTTON_VARIANT.secondary}
+								onClick={() => setIsAddMatchOpen(true)}
+							>
+								{EVENT_ACTION.addMatch}
 							</Button>
 						)}
 						{status === EVENT_STATUS.open && (
@@ -288,6 +339,16 @@ export function ChampionshipEventDetail({
 										<TeamChip color={teamA.color} />
 										<span className="text-fg-muted">x</span>
 										<TeamChip color={teamB.color} />
+										{showMatchDelete && (
+											<button
+												type="button"
+												aria-label={EVENT_ACTION.removeMatch}
+												className="ml-auto inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-muted hover:text-danger-fg"
+												onClick={() => setMatchToRemove(match)}
+											>
+												<X className="size-4" />
+											</button>
+										)}
 									</li>
 								);
 							})}
@@ -295,78 +356,6 @@ export function ChampionshipEventDetail({
 					)}
 				</div>
 			)}
-			{canManage &&
-				!showTeamBuilder &&
-				event.teams.length >= CHAMPIONSHIP_EVENT.minTeams && (
-					<Formik
-						initialValues={{ teamAId: "", teamBId: "" }}
-						validationSchema={addMatchFormSchema}
-						validateOnMount
-						onSubmit={async (values, helpers) => {
-							await onAddMatch({
-								teamAId: Number(values.teamAId),
-								teamBId: Number(values.teamBId),
-							});
-							helpers.resetForm();
-						}}
-					>
-						{({ isValid }) => (
-							<Form className="space-y-2">
-								<div className="flex flex-wrap items-end gap-2">
-									<label
-										htmlFor={`match-team-a-${event.id}`}
-										className="min-w-0 flex-1 text-sm text-fg-muted"
-									>
-										Time A
-										<Field
-											as="select"
-											id={`match-team-a-${event.id}`}
-											name="teamAId"
-											className={`mt-1 ${FIELD_CLASS}`}
-										>
-											<option value="">Selecionar</option>
-											{event.teams.map((team) => (
-												<option key={team.id} value={team.id}>
-													{EVENT_TEAM_COLOR_LABEL[team.color] ?? team.color}
-												</option>
-											))}
-										</Field>
-									</label>
-									<label
-										htmlFor={`match-team-b-${event.id}`}
-										className="min-w-0 flex-1 text-sm text-fg-muted"
-									>
-										Time B
-										<Field
-											as="select"
-											id={`match-team-b-${event.id}`}
-											name="teamBId"
-											className={`mt-1 ${FIELD_CLASS}`}
-										>
-											<option value="">Selecionar</option>
-											{event.teams.map((team) => (
-												<option key={team.id} value={team.id}>
-													{EVENT_TEAM_COLOR_LABEL[team.color] ?? team.color}
-												</option>
-											))}
-										</Field>
-									</label>
-									<Button
-										type="submit"
-										variant={BUTTON_VARIANT.secondary}
-										disabled={addingMatch || !isValid}
-										className="h-9 shrink-0"
-									>
-										Nova partida
-									</Button>
-								</div>
-								<FormError name="teamAId" />
-								<FormError name="teamBId" />
-							</Form>
-						)}
-					</Formik>
-				)}
-			{addMatchError && <p className={ERROR_CLASS}>{addMatchError}</p>}
 			{!showTeamBuilder && (
 				<div>
 					<p className="mb-1 text-xs font-medium uppercase tracking-wide text-fg-muted">
@@ -398,11 +387,117 @@ export function ChampionshipEventDetail({
 									<p className="min-w-0 truncate text-sm font-medium text-fg">
 										{playerVisibleName(player)}
 									</p>
+									{showAttendanceActions &&
+										canRemoveEventAttendance(
+											player.id,
+											event.attendance.length,
+											teamPlayerIds,
+										) && (
+											<button
+												type="button"
+												aria-label={EVENT_ACTION.removeAttendance}
+												className="ml-auto inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-muted hover:text-danger-fg"
+												onClick={() => setAttendanceToRemove(player)}
+											>
+												<X className="size-4" />
+											</button>
+										)}
 								</li>
 							))}
 						</ul>
 					)}
 				</div>
+			)}
+			{isAttendanceOpen && (
+				<EditEventAttendanceModal
+					players={players}
+					attendanceCounts={attendanceCounts}
+					initialPresentIds={event.attendance.map((row) => row.player_id)}
+					teamPlayerIds={teamPlayerIds}
+					isPending={savingAttendance}
+					errorMessage={saveAttendanceError}
+					onCancel={() => {
+						if (savingAttendance) {
+							return;
+						}
+
+						setIsAttendanceOpen(false);
+					}}
+					onSave={async (presentPlayerIds) => {
+						await onSaveAttendance(presentPlayerIds);
+						setIsAttendanceOpen(false);
+					}}
+				/>
+			)}
+			{isAddMatchOpen && (
+				<AddEventMatchModal
+					teams={event.teams}
+					isPending={addingMatch}
+					errorMessage={addMatchError}
+					onCancel={() => {
+						if (addingMatch) {
+							return;
+						}
+
+						setIsAddMatchOpen(false);
+					}}
+					onAdd={async (values) => {
+						await onAddMatch(values);
+						setIsAddMatchOpen(false);
+					}}
+				/>
+			)}
+			{attendanceToRemove && (
+				<DeleteEventAttendanceModal
+					playerName={playerVisibleName(attendanceToRemove)}
+					isPending={savingAttendance}
+					errorMessage={saveAttendanceError}
+					onCancel={() => {
+						if (savingAttendance) {
+							return;
+						}
+
+						setAttendanceToRemove(null);
+					}}
+					onConfirm={() => {
+						void (async () => {
+							try {
+								const playerId = attendanceToRemove.id;
+								await onSaveAttendance(
+									event.attendance
+										.map((row) => row.player_id)
+										.filter((id) => id !== playerId),
+								);
+								setAttendanceToRemove(null);
+							} catch {
+								return;
+							}
+						})();
+					}}
+				/>
+			)}
+			{matchToRemove && (
+				<DeleteEventMatchModal
+					isPending={deletingMatch}
+					errorMessage={deleteMatchError}
+					onCancel={() => {
+						if (deletingMatch) {
+							return;
+						}
+
+						setMatchToRemove(null);
+					}}
+					onConfirm={() => {
+						void (async () => {
+							try {
+								await onDeleteMatch(matchToRemove.id);
+								setMatchToRemove(null);
+							} catch {
+								return;
+							}
+						})();
+					}}
+				/>
 			)}
 			{isEndOpen && (
 				<EndEventModal

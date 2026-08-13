@@ -396,6 +396,17 @@ export type Database = {
 				};
 				Returns: Json;
 			};
+			delete_championship_event_match: {
+				Args: { match_id: number };
+				Returns: Json;
+			};
+			save_championship_event_attendance: {
+				Args: {
+					event_id: number;
+					present_player_ids: Json;
+				};
+				Returns: Json;
+			};
 			save_championship_event_teams: {
 				Args: {
 					event_id: number;

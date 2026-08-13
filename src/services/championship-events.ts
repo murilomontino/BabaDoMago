@@ -276,6 +276,20 @@ export async function saveChampionshipEventTeams(
 	}
 }
 
+export async function saveChampionshipEventAttendance(
+	eventId: number,
+	presentPlayerIds: readonly number[],
+): Promise<void> {
+	const { error } = await supabase.rpc("save_championship_event_attendance", {
+		event_id: eventId,
+		present_player_ids: [...presentPlayerIds],
+	});
+
+	if (error) {
+		throwEventError(error);
+	}
+}
+
 export async function addChampionshipEventMatch(
 	eventId: number,
 	teamAId: number,
@@ -285,6 +299,18 @@ export async function addChampionshipEventMatch(
 		event_id: eventId,
 		team_a_id: teamAId,
 		team_b_id: teamBId,
+	});
+
+	if (error) {
+		throwEventError(error);
+	}
+}
+
+export async function deleteChampionshipEventMatch(
+	matchId: number,
+): Promise<void> {
+	const { error } = await supabase.rpc("delete_championship_event_match", {
+		match_id: matchId,
 	});
 
 	if (error) {

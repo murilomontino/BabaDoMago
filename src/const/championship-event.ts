@@ -61,6 +61,11 @@ export const EVENT_ACTION = {
 	saveTeams: "Salvar times",
 	editTeams: "Editar times",
 	newEvent: "Novo evento",
+	addAttendance: "Adicionar presença",
+	addMatch: "Adicionar partida",
+	saveAttendance: "Salvar presença",
+	removeAttendance: "Excluir presença",
+	removeMatch: "Excluir partida",
 } as const;
 
 export const EVENT_TEAM_POSITION = {
@@ -353,6 +358,52 @@ export function canEditEventTeams(event: {
 	matches: readonly unknown[];
 }): boolean {
 	return event.ended_at === null && event.matches.length === 0;
+}
+
+export function eventTeamPlayerIds(
+	teams: readonly { players: readonly { player_id: number }[] }[],
+): number[] {
+	return [
+		...new Set(
+			teams.flatMap((team) => team.players.map((player) => player.player_id)),
+		),
+	];
+}
+
+export function keepTeamPlayersPresent(
+	presentIds: readonly number[],
+	teamPlayerIds: readonly number[],
+): number[] {
+	return [...new Set([...presentIds, ...teamPlayerIds])];
+}
+
+export function canRemoveEventAttendance(
+	playerId: number,
+	presentCount: number,
+	teamPlayerIds: readonly number[],
+): boolean {
+	if (presentCount <= CHAMPIONSHIP_EVENT.minAttendance) {
+		return false;
+	}
+
+	return !teamPlayerIds.includes(playerId);
+}
+
+export function canAddEventMatch(options: {
+	canManage: boolean;
+	canOverrideEnded: boolean;
+	ended: boolean;
+	teamCount: number;
+}): boolean {
+	if (options.teamCount < CHAMPIONSHIP_EVENT.minTeams) {
+		return false;
+	}
+
+	if (options.ended) {
+		return options.canOverrideEnded;
+	}
+
+	return options.canManage;
 }
 
 export function draftAttendanceForEnd(
