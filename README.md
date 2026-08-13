@@ -26,9 +26,16 @@ Supabase → Authentication → URL Configuration:
 - Site URL: `http://localhost:5173`
 - Redirect URLs: `http://localhost:5173/**`
 
-## Campeonatos
+## SQL no Dashboard
 
-Rode no SQL Editor o arquivo [`supabase/migrations/20260813120000_championships.sql`](supabase/migrations/20260813120000_championships.sql).
+Rode no SQL Editor, nesta ordem:
+
+1. [`supabase/migrations/20260813120000_championships.sql`](supabase/migrations/20260813120000_championships.sql)
+2. [`supabase/migrations/20260813140000_users.sql`](supabase/migrations/20260813140000_users.sql)
+
+O segundo cria `public.users` e vincula cada login Google (trigger + backfill). Sem ele o app não cadastra usuário na plataforma.
+
+## Campeonatos
 
 - `/` lista só os campeonatos que você criou ou entrou
 - `/championships/new` cria (você entra como jogador)

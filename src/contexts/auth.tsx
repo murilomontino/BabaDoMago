@@ -11,6 +11,7 @@ import {
 import { ROUTES } from "@/const/routes";
 import { isSafeInternalPath } from "@/lib/safe-path";
 import { supabase } from "@/lib/supabase";
+import { ensureCurrentUser } from "@/services/users";
 
 type AuthContextValue = {
 	user: User | null;
@@ -28,7 +29,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	useEffect(() => {
 		let isMounted = true;
 
-		supabase.auth.getUser().then(({ data }) => {
+		async function syncPlatformUser(nextUser: User | null) {
+			if (!nextUser) {
+				return;
+			}
+
+			await ensureCurrentUser(nextUser);
+		}
+
+		supabase.auth.getUser().then(async ({ data }) => {
+			if (data.user) {
+				try {
+					await syncPlatformUser(data.user);
+				} catch (error) {
+					console.error(error);
+				}
+			}
+
 			if (!isMounted) {
 				return;
 			}
@@ -39,9 +56,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 		const {
 			data: { subscription },
-		} = supabase.auth.onAuthStateChange((_event, session) => {
-			setUser(session?.user ?? null);
+		} = supabase.auth.onAuthStateChange((event, session) => {
+			const nextUser = session?.user ?? null;
+			setUser(nextUser);
 			setIsLoading(false);
+
+			if (event !== "SIGNED_IN" && event !== "USER_UPDATED") {
+				return;
+			}
+
+			void syncPlatformUser(nextUser).catch((error) => {
+				console.error(error);
+			});
 		});
 
 		return () => {
