@@ -26,21 +26,11 @@ Supabase → Authentication → URL Configuration:
 - Site URL: `http://localhost:5173`
 - Redirect URLs: `http://localhost:5173/**`
 
-Rotas: `/login` pública. `/` e `/todos` exigem sessão.
+## Campeonatos
 
-## RLS (SQL Editor)
+Rode no SQL Editor o arquivo [`supabase/migrations/20260813120000_championships.sql`](supabase/migrations/20260813120000_championships.sql).
 
-A UI privada não esconde `todos` da API `anon`. Para restringir leitura:
-
-```sql
-revoke select on public.todos from anon;
-grant select on public.todos to authenticated;
-
-drop policy if exists "public can read todos" on public.todos;
-
-create policy "authenticated can read todos"
-on public.todos
-for select
-to authenticated
-using (true);
-```
+- `/` lista só os campeonatos que você criou ou entrou
+- `/championships/new` cria (você entra como jogador)
+- `/championships/:id` elenco, copiar convite, adicionar jogador sem conta
+- `/join/:codigo` público: vê o elenco, Conectar no nome livre, Inscrever-me

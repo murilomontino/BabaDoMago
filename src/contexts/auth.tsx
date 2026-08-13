@@ -9,12 +9,13 @@ import {
 	useState,
 } from "react";
 import { ROUTES } from "@/const/routes";
+import { isSafeInternalPath } from "@/lib/safe-path";
 import { supabase } from "@/lib/supabase";
 
 type AuthContextValue = {
 	user: User | null;
 	isLoading: boolean;
-	signInWithGoogle: () => Promise<void>;
+	signInWithGoogle: (nextPath?: string) => Promise<void>;
 	signOut: () => Promise<void>;
 };
 
@@ -49,11 +50,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		};
 	}, []);
 
-	const signInWithGoogle = useCallback(async () => {
+	const signInWithGoogle = useCallback(async (nextPath?: string) => {
+		const path = isSafeInternalPath(nextPath) ? nextPath : ROUTES.home;
 		const { error } = await supabase.auth.signInWithOAuth({
 			provider: "google",
 			options: {
-				redirectTo: `${window.location.origin}${ROUTES.home}`,
+				redirectTo: `${window.location.origin}${path}`,
 			},
 		});
 

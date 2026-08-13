@@ -1,9 +1,13 @@
+import { useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 import { GoogleIcon } from "@/components/google-icon";
+import { ROUTES } from "@/const/routes";
 import { useAuth } from "@/contexts/auth";
+import { isSafeInternalPath } from "@/lib/safe-path";
 
 export function LoginPage() {
 	const { signInWithGoogle } = useAuth();
+	const search = useSearch({ from: "/login" });
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [isSigningIn, setIsSigningIn] = useState(false);
 
@@ -11,8 +15,12 @@ export function LoginPage() {
 		setErrorMessage(null);
 		setIsSigningIn(true);
 
+		const nextPath = isSafeInternalPath(search.redirect)
+			? search.redirect
+			: ROUTES.home;
+
 		try {
-			await signInWithGoogle();
+			await signInWithGoogle(nextPath);
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : "Falha ao entrar com Google";
@@ -31,7 +39,7 @@ export function LoginPage() {
 					Entrar na conta
 				</h1>
 				<p className="mb-8 text-slate-600">
-					Use sua conta Google para acessar as tarefas.
+					Use sua conta Google para acessar os campeonatos.
 				</p>
 				<button
 					type="button"

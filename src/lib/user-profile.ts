@@ -18,7 +18,28 @@ export function getUserAvatarUrl(user: User | null): string | null {
 	return null;
 }
 
+export function getUserDisplayName(user: User | null): string {
+	if (!user) {
+		return "Jogador";
+	}
+
+	const fullName = user.user_metadata.full_name;
+	if (typeof fullName === "string" && fullName.trim().length > 0) {
+		return fullName.trim();
+	}
+
+	const name = user.user_metadata.name;
+	if (typeof name === "string" && name.trim().length > 0) {
+		return name.trim();
+	}
+
+	if (user.email) {
+		return user.email;
+	}
+
+	return "Jogador";
+}
+
 export function getUserInitial(user: User | null): string {
-	const source = user?.user_metadata.full_name ?? user?.email ?? "?";
-	return source.trim().charAt(0).toUpperCase();
+	return getUserDisplayName(user).charAt(0).toUpperCase();
 }

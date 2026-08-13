@@ -32,12 +32,6 @@ export function AuthenticatedLayout() {
 					>
 						Início
 					</Link>
-					<Link
-						to={ROUTES.todos}
-						className="font-medium text-slate-700 hover:text-slate-900"
-					>
-						Tarefas
-					</Link>
 				</nav>
 				<div className="flex items-center gap-3 text-sm">
 					{avatarUrl && (
