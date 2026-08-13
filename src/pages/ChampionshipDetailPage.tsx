@@ -36,7 +36,10 @@ import {
 	type ChampionshipTab,
 } from "@/const/championship-tab";
 import { playerVisibleName } from "@/const/player-name";
-import { championshipRatingCeiling } from "@/const/player-rating";
+import {
+	championshipRatingCeiling,
+	PLAYER_RATING,
+} from "@/const/player-rating";
 import { ROUTES } from "@/const/routes";
 import { ERROR_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
@@ -135,6 +138,17 @@ export function ChampionshipDetailPage() {
 		? tab
 		: CHAMPIONSHIP_TAB.roster;
 
+	function applyRating(playerId: number, rating: number) {
+		updateRating.mutate(
+			{ playerId, rating },
+			{
+				onSuccess: () => {
+					setPendingRatingChange(null);
+				},
+			},
+		);
+	}
+
 	function handleChangeRating(playerId: number, rating: number) {
 		if (!permissions.rating) {
 			return;
@@ -150,6 +164,11 @@ export function ChampionshipDetailPage() {
 		}
 
 		updateRating.reset();
+		if (player.rating === PLAYER_RATING.min) {
+			applyRating(player.id, rating);
+			return;
+		}
+
 		setPendingRatingChange({
 			playerId: player.id,
 			playerName: playerVisibleName(player),
@@ -173,17 +192,7 @@ export function ChampionshipDetailPage() {
 			return;
 		}
 
-		updateRating.mutate(
-			{
-				playerId: pendingRatingChange.playerId,
-				rating: pendingRatingChange.to,
-			},
-			{
-				onSuccess: () => {
-					setPendingRatingChange(null);
-				},
-			},
-		);
+		applyRating(pendingRatingChange.playerId, pendingRatingChange.to);
 	}
 
 	function handleEditNickname(playerId: number) {
