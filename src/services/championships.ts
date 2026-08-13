@@ -47,10 +47,11 @@ function asPlayer(value: unknown): ChampionshipPlayer {
 		throw new Error("player: invalid payload");
 	}
 
+	const rating = Number(row.rating);
 	if (
-		typeof row.rating !== "number" ||
-		row.rating < PLAYER_RATING.min ||
-		row.rating > PLAYER_RATING.max
+		!Number.isFinite(rating) ||
+		rating < PLAYER_RATING.min ||
+		rating > PLAYER_RATING.max
 	) {
 		throw new Error("player: invalid payload");
 	}
@@ -61,7 +62,7 @@ function asPlayer(value: unknown): ChampionshipPlayer {
 		user_id: typeof row.user_id === "string" ? row.user_id : null,
 		display_name: row.display_name,
 		avatar_url: typeof row.avatar_url === "string" ? row.avatar_url : null,
-		rating: row.rating,
+		rating,
 		role: typeof row.role === "string" ? row.role : CHAMPIONSHIP_ROLE.member,
 	};
 }
@@ -70,6 +71,7 @@ export async function listChampionships(): Promise<Championship[]> {
 	const { data, error } = await supabase
 		.from("championships")
 		.select(CHAMPIONSHIP_COLUMNS)
+		.is("deleted_at", null)
 		.order("id", { ascending: false });
 
 	if (error) {
@@ -86,6 +88,7 @@ export async function getChampionshipById(
 		.from("championships")
 		.select(CHAMPIONSHIP_COLUMNS)
 		.eq("id", championshipId)
+		.is("deleted_at", null)
 		.single();
 
 	if (championshipError) {
@@ -279,10 +282,9 @@ export async function transferChampionshipOwner(
 export async function deleteChampionship(
 	championshipId: number,
 ): Promise<void> {
-	const { error } = await supabase
-		.from("championships")
-		.delete()
-		.eq("id", championshipId);
+	const { error } = await supabase.rpc("soft_delete_championship", {
+		championship_id: championshipId,
+	});
 
 	if (error) {
 		throw error;

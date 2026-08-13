@@ -23,7 +23,8 @@ check(championshipRatingCeiling([10]) === 10, "teto 10");
 
 check(starFillToRating(5, 5) === 5, "initial 5 stars = 5 points");
 check(starFillToRating(3, 5) === 3, "initial 3 stars = 3 points");
-check(starFillToRating(2.5, 5) === 3, "teto 5 half star rounds");
+check(starFillToRating(3.5, 5) === 3.5, "teto 5 3.5 stars = 3.5");
+check(starFillToRating(2.5, 5) === 2.5, "teto 5 half star stays");
 check(starFillToRating(2.5, 10) === 5, "teto 10 and 2.5 stars = 5");
 check(starFillToRating(5, 10) === 10, "teto 10 and 5 stars = 10");
 check(starFillToRating(0, 5) === 0, "0 stars = 0");

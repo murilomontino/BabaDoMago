@@ -56,6 +56,7 @@ export function starFillToRating(starFill: number, ceiling: number): number {
 		return PLAYER_RATING.min;
 	}
 
-	const rating = Math.round((starFill / PLAYER_RATING.starCount) * ceiling);
+	const rating =
+		Math.round((starFill / PLAYER_RATING.starCount) * ceiling * 10) / 10;
 	return Math.min(PLAYER_RATING.max, Math.max(PLAYER_RATING.min, rating));
 }

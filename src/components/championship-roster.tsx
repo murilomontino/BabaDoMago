@@ -40,6 +40,7 @@ export function ChampionshipRoster({
 	const alreadyMember = Boolean(
 		currentUserId && players.some((player) => player.user_id === currentUserId),
 	);
+	const isOwner = Boolean(currentUserId && currentUserId === createdBy);
 
 	if (players.length === 0) {
 		return (
@@ -92,7 +93,7 @@ export function ChampionshipRoster({
 								<p className="font-medium text-stone-900">
 									{player.display_name}
 								</p>
-								<div className="mt-1">
+								<div className="mt-1 flex items-center gap-2">
 									<PlayerRating
 										rating={player.rating}
 										ceiling={ceiling}
@@ -106,6 +107,11 @@ export function ChampionshipRoster({
 												))
 										}
 									/>
+									{isOwner && (
+										<span className="rounded bg-stone-100 px-1.5 py-0.5 text-xs font-medium tabular-nums text-stone-700">
+											{player.rating}
+										</span>
+									)}
 								</div>
 								{player.user_id && (
 									<span className="mt-1 inline-flex rounded-full bg-pitch-soft px-2 py-0.5 text-xs font-medium text-pitch">

@@ -7,7 +7,7 @@ export type ChampionshipTab =
 	(typeof CHAMPIONSHIP_TAB)[keyof typeof CHAMPIONSHIP_TAB];
 
 export const CHAMPIONSHIP_TAB_LABEL = {
-	roster: "Convite e elenco",
+	roster: "Elenco",
 	settings: "Configuração",
 } as const;
 

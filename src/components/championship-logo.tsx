@@ -1,8 +1,7 @@
-import { Trophy } from "lucide-react";
 import { championshipLogoPublicUrl } from "@/services/championships";
 
 const LOGO_BOX =
-	"relative flex shrink-0 items-center justify-center overflow-hidden rounded-lg";
+	"flex shrink-0 items-center justify-center overflow-hidden rounded-full";
 
 type ChampionshipLogoProps = {
 	path: string | null;
@@ -29,12 +28,11 @@ export function ChampionshipLogo({
 
 	return (
 		<span
-			className={`${LOGO_BOX} bg-pitch text-white ${className}`}
+			className={`${LOGO_BOX} bg-pitch text-sm font-semibold text-white ${className}`}
 			role="img"
 			aria-label={name}
 		>
-			<Trophy className="absolute size-[55%] opacity-25" aria-hidden />
-			<span className="relative text-sm font-semibold">{initial}</span>
+			{initial}
 		</span>
 	);
 }

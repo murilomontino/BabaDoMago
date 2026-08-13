@@ -5,6 +5,7 @@ import { Button } from "@/components/button";
 import { ChampionshipLogo } from "@/components/championship-logo";
 import { ChampionshipLogoCrop } from "@/components/championship-logo-crop";
 import { ChampionshipRoster } from "@/components/championship-roster";
+import { DeleteChampionshipModal } from "@/components/delete-championship-modal";
 import { EmptyState } from "@/components/empty-state";
 import { SectionCard } from "@/components/section-card";
 import { Tabs } from "@/components/tabs";
@@ -66,6 +67,7 @@ export function ChampionshipDetailPage() {
 	const [transferPlayerId, setTransferPlayerId] = useState("");
 	const [logoCropSrc, setLogoCropSrc] = useState<string | null>(null);
 	const [logoSourceError, setLogoSourceError] = useState<string | null>(null);
+	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 	const [tab, setTab] = useState<ChampionshipTab>(CHAMPIONSHIP_TAB.roster);
 
 	const currentPlayer = data?.players.find(
@@ -125,12 +127,17 @@ export function ChampionshipDetailPage() {
 		setNameDraft(null);
 	}
 
-	async function handleDelete() {
-		if (!window.confirm("Excluir este campeonato?")) {
-			return;
-		}
+	function handleDelete() {
+		setIsDeleteOpen(true);
+	}
 
+	function handleDeleteCancel() {
+		setIsDeleteOpen(false);
+	}
+
+	async function handleDeleteConfirm() {
 		await deleteChampionship.mutateAsync(championshipId);
+		setIsDeleteOpen(false);
 		await navigate({ to: ROUTES.home });
 	}
 
@@ -212,11 +219,32 @@ export function ChampionshipDetailPage() {
 		<main className="space-y-6">
 			<section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
 				<div className="flex items-start gap-4">
-					<ChampionshipLogo
-						path={data.logo_path}
-						name={data.name}
-						className="h-16 w-16"
-					/>
+					{isOwner && (
+						<label
+							className="cursor-pointer"
+							aria-label={data.logo_path ? "Trocar logo" : "Enviar logo"}
+						>
+							<ChampionshipLogo
+								path={data.logo_path}
+								name={data.name}
+								className="h-16 w-16"
+							/>
+							<input
+								type="file"
+								accept={`${CHAMPIONSHIP_LOGO.mimePng},${CHAMPIONSHIP_LOGO.mimeJpeg}`}
+								disabled={uploadLogo.isPending}
+								onChange={handleLogoChange}
+								className="sr-only"
+							/>
+						</label>
+					)}
+					{!isOwner && (
+						<ChampionshipLogo
+							path={data.logo_path}
+							name={data.name}
+							className="h-16 w-16"
+						/>
+					)}
 					<div className="min-w-0 flex-1">
 						<h1 className="text-2xl font-semibold tracking-tight text-stone-900">
 							{data.name}
@@ -225,18 +253,6 @@ export function ChampionshipDetailPage() {
 							<Shield className="size-3" />
 							{CHAMPIONSHIP_ROLE_LABEL[actorRole]}
 						</span>
-						{isOwner && (
-							<label className="mt-3 flex cursor-pointer items-center gap-1 text-sm text-pitch hover:underline">
-								{data.logo_path ? "Trocar logo" : "Enviar logo"}
-								<input
-									type="file"
-									accept={`${CHAMPIONSHIP_LOGO.mimePng},${CHAMPIONSHIP_LOGO.mimeJpeg}`}
-									disabled={uploadLogo.isPending}
-									onChange={handleLogoChange}
-									className="sr-only"
-								/>
-							</label>
-						)}
 					</div>
 				</div>
 				{logoSourceError && (
@@ -251,6 +267,19 @@ export function ChampionshipDetailPage() {
 					imageSrc={logoCropSrc}
 					onCancel={handleLogoCropCancel}
 					onConfirm={handleLogoCropConfirm}
+				/>
+			)}
+			{isDeleteOpen && (
+				<DeleteChampionshipModal
+					championshipName={data.name}
+					isPending={deleteChampionship.isPending}
+					errorMessage={
+						deleteChampionship.isError ? deleteChampionship.error.message : null
+					}
+					onCancel={handleDeleteCancel}
+					onConfirm={() => {
+						void handleDeleteConfirm();
+					}}
 				/>
 			)}
 			<Tabs value={tab} items={CHAMPIONSHIP_TABS} onChange={setTab} />
@@ -410,19 +439,10 @@ export function ChampionshipDetailPage() {
 							title="Zona de perigo"
 							icon={<Trash2 className="size-4 text-red-700" />}
 						>
-							<Button
-								variant={BUTTON_VARIANT.danger}
-								onClick={handleDelete}
-								disabled={deleteChampionship.isPending}
-							>
+							<Button variant={BUTTON_VARIANT.danger} onClick={handleDelete}>
 								<Trash2 className="size-4" />
 								Excluir campeonato
 							</Button>
-							{deleteChampionship.isError && (
-								<p className={`mt-4 ${ERROR_CLASS}`}>
-									{deleteChampionship.error.message}
-								</p>
-							)}
 						</SectionCard>
 					)}
 				</div>
