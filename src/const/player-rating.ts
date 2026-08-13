@@ -6,6 +6,11 @@ export const PLAYER_RATING = {
 	initialCeiling: 5,
 } as const;
 
+export const PLAYER_STAR_CLASS = {
+	default: "h-5 w-5 shrink-0 fill-current",
+	compact: "h-3.5 w-3.5 shrink-0 fill-current",
+} as const;
+
 export const PLAYER_STARS = [
 	{ id: "star-1", index: 0 },
 	{ id: "star-2", index: 1 },
