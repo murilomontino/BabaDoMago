@@ -31,6 +31,9 @@ type ChampionshipPermissions = {
 	updateRating: boolean;
 	invite: boolean;
 	transferOwnership: boolean;
+	unlinkPlayer: boolean;
+	deactivatePlayer: boolean;
+	reactivatePlayer: boolean;
 };
 
 export function resolveChampionshipRole(
@@ -68,6 +71,9 @@ export function championshipPermissions(
 				updateRating: true,
 				invite: true,
 				transferOwnership: true,
+				unlinkPlayer: true,
+				deactivatePlayer: true,
+				reactivatePlayer: true,
 			};
 		case CHAMPIONSHIP_ROLE.captain:
 			return {
@@ -77,6 +83,9 @@ export function championshipPermissions(
 				updateRating: true,
 				invite: true,
 				transferOwnership: false,
+				unlinkPlayer: true,
+				deactivatePlayer: true,
+				reactivatePlayer: false,
 			};
 		case CHAMPIONSHIP_ROLE.admin:
 			return {
@@ -86,6 +95,9 @@ export function championshipPermissions(
 				updateRating: true,
 				invite: true,
 				transferOwnership: false,
+				unlinkPlayer: true,
+				deactivatePlayer: true,
+				reactivatePlayer: false,
 			};
 		case CHAMPIONSHIP_ROLE.member:
 			return {
@@ -95,6 +107,9 @@ export function championshipPermissions(
 				updateRating: false,
 				invite: false,
 				transferOwnership: false,
+				unlinkPlayer: false,
+				deactivatePlayer: false,
+				reactivatePlayer: false,
 			};
 		default: {
 			const _exhaustive: never = role;
@@ -125,4 +140,16 @@ export function canInvite(role: ChampionshipRole): boolean {
 
 export function canTransferOwnership(role: ChampionshipRole): boolean {
 	return championshipPermissions(role).transferOwnership;
+}
+
+export function canUnlinkPlayer(role: ChampionshipRole): boolean {
+	return championshipPermissions(role).unlinkPlayer;
+}
+
+export function canDeactivatePlayer(role: ChampionshipRole): boolean {
+	return championshipPermissions(role).deactivatePlayer;
+}
+
+export function canReactivatePlayer(role: ChampionshipRole): boolean {
+	return championshipPermissions(role).reactivatePlayer;
 }

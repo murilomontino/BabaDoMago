@@ -3,14 +3,17 @@ import {
 	addManualPlayer,
 	claimPlayer,
 	createChampionship,
+	deactivatePlayer,
 	deleteChampionship,
 	getChampionshipById,
 	getChampionshipByInvite,
 	joinChampionship,
 	listChampionships,
+	reactivatePlayer,
 	renameChampionship,
 	setPlayerRole,
 	transferChampionshipOwner,
+	unlinkPlayer,
 	updatePlayerRating,
 	uploadChampionshipLogo,
 } from "@/services/championships";
@@ -210,6 +213,63 @@ export function useTransferChampionshipOwner() {
 			});
 			await queryClient.invalidateQueries({
 				queryKey: CHAMPIONSHIP_BY_INVITE_QUERY_KEY,
+			});
+		},
+	});
+}
+
+export function useUnlinkPlayer() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (playerId: number) => unlinkPlayer(playerId),
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({
+				queryKey: CHAMPIONSHIP_BY_INVITE_QUERY_KEY,
+			});
+			await queryClient.invalidateQueries({
+				queryKey: CHAMPIONSHIPS_QUERY_KEY,
+			});
+			await queryClient.invalidateQueries({
+				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,
+			});
+		},
+	});
+}
+
+export function useDeactivatePlayer() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (playerId: number) => deactivatePlayer(playerId),
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({
+				queryKey: CHAMPIONSHIP_BY_INVITE_QUERY_KEY,
+			});
+			await queryClient.invalidateQueries({
+				queryKey: CHAMPIONSHIPS_QUERY_KEY,
+			});
+			await queryClient.invalidateQueries({
+				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,
+			});
+		},
+	});
+}
+
+export function useReactivatePlayer() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (playerId: number) => reactivatePlayer(playerId),
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({
+				queryKey: CHAMPIONSHIP_BY_INVITE_QUERY_KEY,
+			});
+			await queryClient.invalidateQueries({
+				queryKey: CHAMPIONSHIPS_QUERY_KEY,
+			});
+			await queryClient.invalidateQueries({
+				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,
 			});
 		},
 	});

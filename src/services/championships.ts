@@ -17,7 +17,7 @@ import type {
 } from "@/types/championship";
 
 const PLAYER_COLUMNS =
-	"id, championship_id, user_id, display_name, avatar_url, rating, role" as const;
+	"id, championship_id, user_id, display_name, avatar_url, rating, role, deleted_at" as const;
 
 const CHAMPIONSHIP_COLUMNS =
 	"id, name, invite_code, created_by, logo_path" as const;
@@ -68,6 +68,7 @@ function asPlayer(value: unknown): ChampionshipPlayer {
 		avatar_url: typeof row.avatar_url === "string" ? row.avatar_url : null,
 		rating,
 		role: typeof row.role === "string" ? row.role : CHAMPIONSHIP_ROLE.member,
+		deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
 	};
 }
 
@@ -289,6 +290,44 @@ export async function transferChampionshipOwner(
 	}
 
 	return asChampionship(data);
+}
+
+export async function unlinkPlayer(
+	playerId: number,
+): Promise<ChampionshipPlayer> {
+	const { data, error } = await supabase.rpc("unlink_player", {
+		player_id: playerId,
+	});
+
+	if (error) {
+		throw error;
+	}
+
+	return asPlayer(data);
+}
+
+export async function deactivatePlayer(playerId: number): Promise<void> {
+	const { error } = await supabase.rpc("deactivate_player", {
+		player_id: playerId,
+	});
+
+	if (error) {
+		throw error;
+	}
+}
+
+export async function reactivatePlayer(
+	playerId: number,
+): Promise<ChampionshipPlayer> {
+	const { data, error } = await supabase.rpc("reactivate_player", {
+		player_id: playerId,
+	});
+
+	if (error) {
+		throw error;
+	}
+
+	return asPlayer(data);
 }
 
 export async function deleteChampionship(

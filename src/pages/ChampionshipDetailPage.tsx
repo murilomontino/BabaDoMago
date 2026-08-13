@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { Copy, Shield, Trash2, Users } from "lucide-react";
+import { Copy, Shield, Trash2, Users, UserX } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Button } from "@/components/button";
 import { ChampionshipLogo } from "@/components/championship-logo";
@@ -17,11 +17,14 @@ import {
 	type AssignableChampionshipRole,
 	CHAMPIONSHIP_ROLE,
 	CHAMPIONSHIP_ROLE_LABEL,
+	canDeactivatePlayer,
 	canDeleteChampionship,
 	canInvite,
+	canReactivatePlayer,
 	canRenameChampionship,
 	canSetRoles,
 	canTransferOwnership,
+	canUnlinkPlayer,
 	canUpdateRating,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
@@ -37,10 +40,13 @@ import {
 	useAddManualPlayer,
 	useChampionship,
 	useClaimPlayer,
+	useDeactivatePlayer,
 	useDeleteChampionship,
+	useReactivatePlayer,
 	useRenameChampionship,
 	useSetPlayerRole,
 	useTransferChampionshipOwner,
+	useUnlinkPlayer,
 	useUpdatePlayerRating,
 	useUploadChampionshipLogo,
 } from "@/hooks/championships/use-championships";
@@ -55,6 +61,9 @@ export function ChampionshipDetailPage() {
 	const { data, isPending, isError, error } = useChampionship(championshipId);
 	const addPlayer = useAddManualPlayer(championshipId);
 	const claimPlayer = useClaimPlayer();
+	const unlinkPlayer = useUnlinkPlayer();
+	const deactivatePlayer = useDeactivatePlayer();
+	const reactivatePlayer = useReactivatePlayer();
 	const updateRating = useUpdatePlayerRating();
 	const renameChampionship = useRenameChampionship(championshipId);
 	const setPlayerRole = useSetPlayerRole();
@@ -71,7 +80,7 @@ export function ChampionshipDetailPage() {
 	const [tab, setTab] = useState<ChampionshipTab>(CHAMPIONSHIP_TAB.roster);
 
 	const currentPlayer = data?.players.find(
-		(player) => player.user_id === user?.id,
+		(player) => !player.deleted_at && player.user_id === user?.id,
 	);
 	const actorRole = resolveChampionshipRole(
 		data?.created_by ?? "",
@@ -85,7 +94,23 @@ export function ChampionshipDetailPage() {
 		setRoles: canSetRoles(actorRole),
 		deleteChampionship: canDeleteChampionship(actorRole),
 		transferOwnership: canTransferOwnership(actorRole),
+		unlink: canUnlinkPlayer(actorRole),
+		deactivate: canDeactivatePlayer(actorRole),
+		reactivate: canReactivatePlayer(actorRole),
 	};
+	const activePlayers = (data?.players ?? []).filter(
+		(player) => !player.deleted_at,
+	);
+	const deactivatedPlayers = (data?.players ?? []).filter(
+		(player) => player.deleted_at,
+	);
+	const visibleTabs = CHAMPIONSHIP_TABS.filter(
+		(item) =>
+			item.id !== CHAMPIONSHIP_TAB.deactivated || permissions.reactivate,
+	);
+	const selectedTab = visibleTabs.some((item) => item.id === tab)
+		? tab
+		: CHAMPIONSHIP_TAB.roster;
 
 	function handleChangeRating(playerId: number, rating: number) {
 		if (!permissions.rating) {
@@ -93,6 +118,42 @@ export function ChampionshipDetailPage() {
 		}
 
 		updateRating.mutate({ playerId, rating });
+	}
+
+	function handleUnlink(playerId: number) {
+		if (!permissions.unlink) {
+			return;
+		}
+
+		if (!window.confirm("Desconectar esta conta?")) {
+			return;
+		}
+
+		unlinkPlayer.mutate(playerId);
+	}
+
+	function handleDeactivate(playerId: number) {
+		if (!permissions.deactivate) {
+			return;
+		}
+
+		if (!window.confirm("Desativar este jogador?")) {
+			return;
+		}
+
+		deactivatePlayer.mutate(playerId);
+	}
+
+	function handleReactivate(playerId: number) {
+		if (!permissions.reactivate) {
+			return;
+		}
+
+		if (!window.confirm("Ativar este jogador?")) {
+			return;
+		}
+
+		reactivatePlayer.mutate(playerId);
 	}
 
 	async function handleAddPlayer(event: FormEvent<HTMLFormElement>) {
@@ -282,8 +343,8 @@ export function ChampionshipDetailPage() {
 					}}
 				/>
 			)}
-			<Tabs value={tab} items={CHAMPIONSHIP_TABS} onChange={setTab} />
-			{tab === CHAMPIONSHIP_TAB.roster && (
+			<Tabs value={selectedTab} items={visibleTabs} onChange={setTab} />
+			{selectedTab === CHAMPIONSHIP_TAB.roster && (
 				<SectionCard
 					title="Elenco"
 					icon={<Users className="size-4 text-pitch" />}
@@ -324,7 +385,7 @@ export function ChampionshipDetailPage() {
 						<p className={`mb-4 ${ERROR_CLASS}`}>{addPlayer.error.message}</p>
 					)}
 					<ChampionshipRoster
-						players={data.players}
+						players={activePlayers}
 						createdBy={data.created_by}
 						currentUserId={user?.id ?? null}
 						claimingPlayerId={claimPlayer.variables ?? null}
@@ -341,9 +402,29 @@ export function ChampionshipDetailPage() {
 										setPlayerRole.mutate({ playerId, role })
 								: undefined
 						}
+						onUnlink={permissions.unlink ? handleUnlink : undefined}
+						unlinkingPlayerId={
+							unlinkPlayer.isPending ? (unlinkPlayer.variables ?? null) : null
+						}
+						onDeactivate={permissions.deactivate ? handleDeactivate : undefined}
+						deactivatingPlayerId={
+							deactivatePlayer.isPending
+								? (deactivatePlayer.variables ?? null)
+								: null
+						}
 					/>
 					{claimPlayer.isError && (
 						<p className={`mt-4 ${ERROR_CLASS}`}>{claimPlayer.error.message}</p>
+					)}
+					{unlinkPlayer.isError && (
+						<p className={`mt-4 ${ERROR_CLASS}`}>
+							{unlinkPlayer.error.message}
+						</p>
+					)}
+					{deactivatePlayer.isError && (
+						<p className={`mt-4 ${ERROR_CLASS}`}>
+							{deactivatePlayer.error.message}
+						</p>
 					)}
 					{updateRating.isError && (
 						<p className={`mt-4 ${ERROR_CLASS}`}>
@@ -357,7 +438,31 @@ export function ChampionshipDetailPage() {
 					)}
 				</SectionCard>
 			)}
-			{tab === CHAMPIONSHIP_TAB.settings && (
+			{selectedTab === CHAMPIONSHIP_TAB.deactivated && (
+				<SectionCard
+					title="Desativados"
+					icon={<UserX className="size-4 text-pitch" />}
+				>
+					<ChampionshipRoster
+						players={deactivatedPlayers}
+						createdBy={data.created_by}
+						currentUserId={user?.id ?? null}
+						onReactivate={handleReactivate}
+						reactivatingPlayerId={
+							reactivatePlayer.isPending
+								? (reactivatePlayer.variables ?? null)
+								: null
+						}
+						emptyTitle="Nenhum jogador desativado"
+					/>
+					{reactivatePlayer.isError && (
+						<p className={`mt-4 ${ERROR_CLASS}`}>
+							{reactivatePlayer.error.message}
+						</p>
+					)}
+				</SectionCard>
+			)}
+			{selectedTab === CHAMPIONSHIP_TAB.settings && (
 				<div className="space-y-6">
 					{!canConfigure && (
 						<EmptyState
@@ -422,7 +527,7 @@ export function ChampionshipDetailPage() {
 												className={`min-w-0 flex-1 ${FIELD_CLASS}`}
 											>
 												<option value="">Selecionar jogador</option>
-												{data.players
+												{activePlayers
 													.filter(
 														(player) =>
 															player.user_id &&
