@@ -447,6 +447,7 @@ export function ChampionshipDetailPage() {
 								: null
 						}
 						emptyTitle="Nenhum jogador desativado"
+						withStats={false}
 					/>
 					{reactivatePlayer.isError && (
 						<p className={`mt-4 ${ERROR_CLASS}`}>

@@ -6,7 +6,7 @@ import { ChampionshipLogo } from "@/components/championship-logo";
 import { ChampionshipRoster } from "@/components/championship-roster";
 import { SectionCard } from "@/components/section-card";
 import { ROUTES } from "@/const/routes";
-import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
+import { BUTTON_VARIANT, ERROR_CLASS, PAGE_SHELL_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
 import {
 	useChampionshipByInvite,
@@ -69,7 +69,7 @@ export function JoinChampionshipPage() {
 
 	if (isPending || isAuthLoading) {
 		return (
-			<main className="mx-auto max-w-3xl px-4 py-8">
+			<main className={PAGE_SHELL_CLASS}>
 				<p className="text-stone-600">Carregando campeonato...</p>
 			</main>
 		);
@@ -77,7 +77,7 @@ export function JoinChampionshipPage() {
 
 	if (isError) {
 		return (
-			<main className="mx-auto max-w-3xl px-4 py-8">
+			<main className={PAGE_SHELL_CLASS}>
 				<p className={ERROR_CLASS}>
 					Erro ao carregar campeonato: {error.message}
 				</p>
@@ -86,7 +86,7 @@ export function JoinChampionshipPage() {
 	}
 
 	return (
-		<main className="mx-auto max-w-3xl space-y-6 px-4 py-8">
+		<main className={`${PAGE_SHELL_CLASS} space-y-6`}>
 			<section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
 				<p className="mb-3 flex items-center gap-2 text-sm font-medium uppercase tracking-wide text-pitch">
 					<Trophy className="size-4" />

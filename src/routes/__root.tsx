@@ -1,6 +1,7 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { Trophy } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
+import { PAGE_SHELL_CLASS } from "@/const/ui";
 import { AuthProvider } from "@/contexts/auth";
 
 export const Route = createRootRoute({
@@ -18,7 +19,7 @@ function RootLayout() {
 
 function NotFound() {
 	return (
-		<main className="mx-auto flex min-h-screen max-w-3xl items-center px-4">
+		<main className={`${PAGE_SHELL_CLASS} flex min-h-screen items-center`}>
 			<EmptyState
 				icon={<Trophy className="size-10" />}
 				title="Página não encontrada."

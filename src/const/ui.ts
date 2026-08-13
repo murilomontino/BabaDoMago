@@ -23,6 +23,8 @@ export const FIELD_CLASS =
 
 export const ERROR_CLASS = "text-sm text-red-600";
 
+export const PAGE_SHELL_CLASS = "mx-auto max-w-7xl px-4 py-8 sm:px-6";
+
 export function buttonClassName(
 	variant: ButtonVariant,
 	className?: string,

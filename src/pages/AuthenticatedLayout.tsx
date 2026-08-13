@@ -2,7 +2,7 @@ import { Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { House, LogOut, Trophy } from "lucide-react";
 import { Button } from "@/components/button";
 import { ROUTES } from "@/const/routes";
-import { BUTTON_VARIANT } from "@/const/ui";
+import { BUTTON_VARIANT, PAGE_SHELL_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
 import { getUserAvatarUrl, getUserInitial } from "@/lib/user-profile";
 
@@ -19,14 +19,14 @@ export function AuthenticatedLayout() {
 
 	if (isLoading) {
 		return (
-			<div className="mx-auto max-w-3xl px-4 py-8">
+			<div className={PAGE_SHELL_CLASS}>
 				<p className="text-stone-600">Carregando sessão...</p>
 			</div>
 		);
 	}
 
 	return (
-		<div className="mx-auto max-w-3xl px-4 py-8">
+		<div className={PAGE_SHELL_CLASS}>
 			<header className="mb-8">
 				<div className="flex flex-wrap items-center justify-between gap-4">
 					<Link

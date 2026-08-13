@@ -1,20 +1,36 @@
-import { Formik } from "formik";
-import { Unlink, UserCheck, UserPlus, UserX } from "lucide-react";
-import { Button } from "@/components/button";
+import { createColumnHelper } from "@tanstack/react-table";
+import { UserPlus } from "lucide-react";
+import { useMemo } from "react";
 import { EmptyState } from "@/components/empty-state";
-import { PlayerRating } from "@/components/player-rating";
-import { PlayerRatingField } from "@/components/player-rating-field";
 import {
-	ASSIGNABLE_CHAMPIONSHIP_ROLES,
-	type AssignableChampionshipRole,
-	CHAMPIONSHIP_ROLE,
-	CHAMPIONSHIP_ROLE_LABEL,
-	resolveChampionshipRole,
-} from "@/const/championship-role";
-import { playerRatingSchema } from "@/const/form-schema";
+	RosterPlayerActions,
+	type RosterPlayerActionsProps,
+} from "@/components/molecules/roster-player-actions";
+import {
+	RosterPlayerCell,
+	type RosterPlayerCellProps,
+} from "@/components/molecules/roster-player-cell";
+import {
+	DataTable,
+	type DataTableFeatures,
+} from "@/components/organisms/data-table";
+import type { AssignableChampionshipRole } from "@/const/championship-role";
 import { championshipRatingCeiling } from "@/const/player-rating";
-import { BUTTON_VARIANT, FIELD_CLASS } from "@/const/ui";
+import {
+	formatRosterAverage,
+	formatRosterCount,
+	formatRosterWinRate,
+	ROSTER_COLUMN,
+	ROSTER_COLUMN_ABBR,
+	ROSTER_COLUMN_LABEL,
+	ROSTER_LEGEND_ITEMS,
+	ROSTER_STAT_COLUMN_OPTIONS,
+	type RosterRow,
+	toRosterRow,
+} from "@/const/roster-stats";
 import type { ChampionshipPlayer } from "@/types/championship";
+
+const rosterColumnHelper = createColumnHelper<DataTableFeatures, RosterRow>();
 
 type ChampionshipRosterProps = {
 	players: ChampionshipPlayer[];
@@ -32,7 +48,22 @@ type ChampionshipRosterProps = {
 	onReactivate?: (playerId: number) => void;
 	reactivatingPlayerId?: number | null;
 	emptyTitle?: string;
+	withStats?: boolean;
 };
+
+function rosterPlayerCellProps(
+	player: ChampionshipPlayer,
+	shared: Omit<RosterPlayerCellProps, "player">,
+): RosterPlayerCellProps {
+	return { ...shared, player };
+}
+
+function rosterPlayerActionsProps(
+	player: ChampionshipPlayer,
+	shared: Omit<RosterPlayerActionsProps, "player">,
+): RosterPlayerActionsProps {
+	return { ...shared, player };
+}
 
 export function ChampionshipRoster({
 	players,
@@ -50,11 +81,180 @@ export function ChampionshipRoster({
 	onReactivate,
 	reactivatingPlayerId,
 	emptyTitle = "Nenhum jogador ainda",
+	withStats = true,
 }: ChampionshipRosterProps) {
 	const alreadyMember = Boolean(
 		currentUserId && players.some((player) => player.user_id === currentUserId),
 	);
-	const isOwner = Boolean(currentUserId && currentUserId === createdBy);
+	const isOwnerViewer = Boolean(currentUserId && currentUserId === createdBy);
+	const ceiling = championshipRatingCeiling(
+		players.map((player) => player.rating),
+	);
+	const playerCellShared = useMemo(
+		() => ({
+			createdBy,
+			isOwnerViewer,
+			ceiling,
+			onChangeRating,
+			ratingPlayerId,
+			onChangeRole,
+		}),
+		[
+			createdBy,
+			isOwnerViewer,
+			ceiling,
+			onChangeRating,
+			ratingPlayerId,
+			onChangeRole,
+		],
+	);
+	const playerActionsShared = useMemo(
+		() => ({
+			createdBy,
+			alreadyMember,
+			claimingPlayerId,
+			onClaim,
+			onUnlink,
+			unlinkingPlayerId,
+			onDeactivate,
+			deactivatingPlayerId,
+			onReactivate,
+			reactivatingPlayerId,
+		}),
+		[
+			createdBy,
+			alreadyMember,
+			claimingPlayerId,
+			onClaim,
+			onUnlink,
+			unlinkingPlayerId,
+			onDeactivate,
+			deactivatingPlayerId,
+			onReactivate,
+			reactivatingPlayerId,
+		],
+	);
+
+	const rows = useMemo(
+		() => players.map((player) => toRosterRow(player)),
+		[players],
+	);
+
+	const columns = useMemo(
+		() =>
+			rosterColumnHelper.columns([
+				rosterColumnHelper.accessor("display_name", {
+					id: ROSTER_COLUMN.player,
+					header: ROSTER_COLUMN_ABBR.player,
+					enableHiding: false,
+					meta: { title: ROSTER_COLUMN_LABEL.player },
+					cell: ({ row }) => (
+						<RosterPlayerCell
+							{...rosterPlayerCellProps(row.original, playerCellShared)}
+						/>
+					),
+				}),
+				rosterColumnHelper.accessor("goals", {
+					id: ROSTER_COLUMN.goals,
+					header: ROSTER_COLUMN_ABBR.goals,
+					meta: { align: "right", title: ROSTER_COLUMN_LABEL.goals },
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatRosterCount(getValue())}
+						</span>
+					),
+				}),
+				rosterColumnHelper.accessor("assists", {
+					id: ROSTER_COLUMN.assists,
+					header: ROSTER_COLUMN_ABBR.assists,
+					meta: { align: "right", title: ROSTER_COLUMN_LABEL.assists },
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatRosterCount(getValue())}
+						</span>
+					),
+				}),
+				rosterColumnHelper.accessor("goalInvolvement", {
+					id: ROSTER_COLUMN.goalInvolvement,
+					header: ROSTER_COLUMN_ABBR.goalInvolvement,
+					meta: {
+						align: "right",
+						title: ROSTER_COLUMN_LABEL.goalInvolvement,
+					},
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatRosterCount(getValue())}
+						</span>
+					),
+				}),
+				rosterColumnHelper.accessor("wins", {
+					id: ROSTER_COLUMN.wins,
+					header: ROSTER_COLUMN_ABBR.wins,
+					meta: { align: "right", title: ROSTER_COLUMN_LABEL.wins },
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatRosterCount(getValue())}
+						</span>
+					),
+				}),
+				rosterColumnHelper.accessor("matches", {
+					id: ROSTER_COLUMN.matches,
+					header: ROSTER_COLUMN_ABBR.matches,
+					meta: { align: "right", title: ROSTER_COLUMN_LABEL.matches },
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatRosterCount(getValue())}
+						</span>
+					),
+				}),
+				rosterColumnHelper.accessor("goalsAverage", {
+					id: ROSTER_COLUMN.goalsAverage,
+					header: ROSTER_COLUMN_ABBR.goalsAverage,
+					meta: { align: "right", title: ROSTER_COLUMN_LABEL.goalsAverage },
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatRosterAverage(getValue())}
+						</span>
+					),
+				}),
+				rosterColumnHelper.accessor("assistsAverage", {
+					id: ROSTER_COLUMN.assistsAverage,
+					header: ROSTER_COLUMN_ABBR.assistsAverage,
+					meta: {
+						align: "right",
+						title: ROSTER_COLUMN_LABEL.assistsAverage,
+					},
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatRosterAverage(getValue())}
+						</span>
+					),
+				}),
+				rosterColumnHelper.accessor("winRate", {
+					id: ROSTER_COLUMN.winRate,
+					header: ROSTER_COLUMN_ABBR.winRate,
+					meta: { align: "right", title: ROSTER_COLUMN_LABEL.winRate },
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatRosterWinRate(getValue())}
+						</span>
+					),
+				}),
+				rosterColumnHelper.display({
+					id: ROSTER_COLUMN.actions,
+					header: ROSTER_COLUMN_ABBR.actions,
+					enableHiding: false,
+					enableSorting: false,
+					meta: { title: ROSTER_COLUMN_LABEL.actions },
+					cell: ({ row }) => (
+						<RosterPlayerActions
+							{...rosterPlayerActionsProps(row.original, playerActionsShared)}
+						/>
+					),
+				}),
+			]),
+		[playerCellShared, playerActionsShared],
+	);
 
 	if (players.length === 0) {
 		return (
@@ -62,163 +262,33 @@ export function ChampionshipRoster({
 		);
 	}
 
-	const ceiling = championshipRatingCeiling(
-		players.map((player) => player.rating),
-	);
-
-	return (
-		<ul className="divide-y divide-stone-100">
-			{players.map((player) => {
-				const displayRole = resolveChampionshipRole(
-					createdBy,
-					player.user_id,
-					player.role,
-				);
-				const isChampionshipOwner = displayRole === CHAMPIONSHIP_ROLE.owner;
-				const canClaim = Boolean(
-					onClaim && !player.user_id && !alreadyMember && !player.deleted_at,
-				);
-				const canEditRole = Boolean(
-					onChangeRole && player.user_id && !isChampionshipOwner,
-				);
-				const canUnlink = Boolean(
-					onUnlink &&
-						player.user_id &&
-						!isChampionshipOwner &&
-						!player.deleted_at,
-				);
-				const canDeactivate = Boolean(
-					onDeactivate && !isChampionshipOwner && !player.deleted_at,
-				);
-				const canReactivate = Boolean(onReactivate && player.deleted_at);
-
-				return (
+	if (!withStats) {
+		return (
+			<ul className="divide-y divide-stone-100">
+				{players.map((player) => (
 					<li
 						key={player.id}
 						className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
 					>
-						<div className="flex items-center gap-3">
-							{player.avatar_url && (
-								<img
-									src={player.avatar_url}
-									alt=""
-									referrerPolicy="no-referrer"
-									className="h-9 w-9 rounded-full object-cover"
-								/>
-							)}
-							{!player.avatar_url && (
-								<span className="flex h-9 w-9 items-center justify-center rounded-full bg-pitch-soft text-sm font-medium text-pitch">
-									{player.display_name.charAt(0).toUpperCase()}
-								</span>
-							)}
-							<div>
-								<p className="font-medium text-stone-900">
-									{player.display_name}
-								</p>
-								<div className="mt-1 flex items-center gap-2">
-									{onChangeRating && (
-										<Formik
-											initialValues={{ rating: player.rating }}
-											enableReinitialize
-											validationSchema={playerRatingSchema}
-											onSubmit={(values) =>
-												onChangeRating(player.id, values.rating)
-											}
-										>
-											<PlayerRatingField
-												ceiling={ceiling}
-												disabled={ratingPlayerId === player.id}
-												onCommit={(rating) => onChangeRating(player.id, rating)}
-											/>
-										</Formik>
-									)}
-									{!onChangeRating && (
-										<PlayerRating rating={player.rating} ceiling={ceiling} />
-									)}
-									{isOwner && (
-										<span className="rounded bg-stone-100 px-1.5 py-0.5 text-xs font-medium tabular-nums text-stone-700">
-											{player.rating}
-										</span>
-									)}
-								</div>
-								{player.user_id && (
-									<span className="mt-1 inline-flex rounded-full bg-pitch-soft px-2 py-0.5 text-xs font-medium text-pitch">
-										{CHAMPIONSHIP_ROLE_LABEL[displayRole]}
-									</span>
-								)}
-								{!player.user_id && (
-									<span className="mt-1 inline-flex rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600">
-										Sem conta
-									</span>
-								)}
-								{canEditRole && onChangeRole && (
-									<select
-										value={player.role}
-										onChange={(event) => {
-											const nextRole = ASSIGNABLE_CHAMPIONSHIP_ROLES.find(
-												(role) => role === event.target.value,
-											);
-											if (!nextRole) {
-												return;
-											}
-
-											onChangeRole(player.id, nextRole);
-										}}
-										className={`mt-1 ${FIELD_CLASS} py-1 text-xs`}
-									>
-										{ASSIGNABLE_CHAMPIONSHIP_ROLES.map((role) => (
-											<option key={role} value={role}>
-												{CHAMPIONSHIP_ROLE_LABEL[role]}
-											</option>
-										))}
-									</select>
-								)}
-							</div>
-						</div>
-						<div className="flex flex-wrap justify-end gap-2">
-							{canClaim && onClaim && (
-								<Button
-									variant={BUTTON_VARIANT.secondary}
-									onClick={() => onClaim(player.id)}
-									disabled={claimingPlayerId === player.id}
-								>
-									<UserPlus className="size-4" />
-									Conectar
-								</Button>
-							)}
-							{canUnlink && onUnlink && (
-								<Button
-									variant={BUTTON_VARIANT.secondary}
-									onClick={() => onUnlink(player.id)}
-									disabled={unlinkingPlayerId === player.id}
-								>
-									<Unlink className="size-4" />
-									Desconectar
-								</Button>
-							)}
-							{canDeactivate && onDeactivate && (
-								<Button
-									variant={BUTTON_VARIANT.danger}
-									onClick={() => onDeactivate(player.id)}
-									disabled={deactivatingPlayerId === player.id}
-								>
-									<UserX className="size-4" />
-									Desativar
-								</Button>
-							)}
-							{canReactivate && onReactivate && (
-								<Button
-									onClick={() => onReactivate(player.id)}
-									disabled={reactivatingPlayerId === player.id}
-								>
-									<UserCheck className="size-4" />
-									Ativar
-								</Button>
-							)}
-						</div>
+						<RosterPlayerCell
+							{...rosterPlayerCellProps(player, playerCellShared)}
+						/>
+						<RosterPlayerActions
+							{...rosterPlayerActionsProps(player, playerActionsShared)}
+						/>
 					</li>
-				);
-			})}
-		</ul>
+				))}
+			</ul>
+		);
+	}
+
+	return (
+		<DataTable
+			data={rows}
+			columns={columns}
+			getRowId={(row) => String(row.id)}
+			hideableColumns={ROSTER_STAT_COLUMN_OPTIONS}
+			legendItems={ROSTER_LEGEND_ITEMS}
+		/>
 	);
 }
