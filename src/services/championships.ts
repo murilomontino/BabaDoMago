@@ -3,6 +3,10 @@ import {
 	CHAMPIONSHIP_LOGO,
 	championshipLogoObjectPath,
 } from "@/const/championship-logo";
+import {
+	CHAMPIONSHIP_QUOTA,
+	championshipQuotaErrorMessage,
+} from "@/const/championship-quota";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
 import { PLAYER_RATING } from "@/const/player-rating";
 import { supabase } from "@/lib/supabase";
@@ -65,6 +69,14 @@ function asPlayer(value: unknown): ChampionshipPlayer {
 		rating,
 		role: typeof row.role === "string" ? row.role : CHAMPIONSHIP_ROLE.member,
 	};
+}
+
+function throwChampionshipWriteError(error: { message: string }): never {
+	if (error.message.includes(CHAMPIONSHIP_QUOTA.exceededCode)) {
+		throw new Error(championshipQuotaErrorMessage());
+	}
+
+	throw error;
 }
 
 export async function listChampionships(): Promise<Championship[]> {
@@ -146,7 +158,7 @@ export async function createChampionship(
 		.single();
 
 	if (error) {
-		throw error;
+		throwChampionshipWriteError(error);
 	}
 
 	const championship = asChampionship(data);
@@ -273,7 +285,7 @@ export async function transferChampionshipOwner(
 	});
 
 	if (error) {
-		throw error;
+		throwChampionshipWriteError(error);
 	}
 
 	return asChampionship(data);

@@ -3,11 +3,18 @@ import { ChevronRight, Plus, Trophy } from "lucide-react";
 import { ChampionshipLogo } from "@/components/championship-logo";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import {
+	championshipQuotaHint,
+	isChampionshipQuotaReached,
+	ownedChampionshipCount,
+} from "@/const/championship-quota";
 import { ROUTES } from "@/const/routes";
 import { BUTTON_VARIANT, buttonClassName, ERROR_CLASS } from "@/const/ui";
+import { useAuth } from "@/contexts/auth";
 import { useChampionships } from "@/hooks/championships/use-championships";
 
 export function ChampionshipsPage() {
+	const { user } = useAuth();
 	const { data: championships, isPending, isError, error } = useChampionships();
 
 	if (isPending) {
@@ -22,27 +29,17 @@ export function ChampionshipsPage() {
 		);
 	}
 
+	const atLimit = isChampionshipQuotaReached(
+		ownedChampionshipCount(championships, user?.id ?? ""),
+	);
+
 	return (
 		<main>
 			<PageHeader
 				title="Campeonatos"
 				description="Seus babas e peladas"
 				action={
-					<Link
-						to={ROUTES.championshipNew}
-						className={buttonClassName(BUTTON_VARIANT.primary)}
-					>
-						<Plus className="size-4" />
-						Novo campeonato
-					</Link>
-				}
-			/>
-			{championships.length === 0 && (
-				<EmptyState
-					icon={<Trophy className="size-10" />}
-					title="Nenhum campeonato ainda"
-					description="Você ainda não criou nem entrou em um campeonato."
-					action={
+					!atLimit && (
 						<Link
 							to={ROUTES.championshipNew}
 							className={buttonClassName(BUTTON_VARIANT.primary)}
@@ -50,6 +47,27 @@ export function ChampionshipsPage() {
 							<Plus className="size-4" />
 							Novo campeonato
 						</Link>
+					)
+				}
+			/>
+			{atLimit && (
+				<p className="mb-4 text-sm text-stone-600">{championshipQuotaHint()}</p>
+			)}
+			{championships.length === 0 && (
+				<EmptyState
+					icon={<Trophy className="size-10" />}
+					title="Nenhum campeonato ainda"
+					description="Você ainda não criou nem entrou em um campeonato."
+					action={
+						!atLimit && (
+							<Link
+								to={ROUTES.championshipNew}
+								className={buttonClassName(BUTTON_VARIANT.primary)}
+							>
+								<Plus className="size-4" />
+								Novo campeonato
+							</Link>
+						)
 					}
 				/>
 			)}

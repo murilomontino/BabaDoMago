@@ -1,6 +1,6 @@
+import { type FormEvent, useState } from "react";
 import { Button } from "@/components/button";
 import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
-import { useState, type FormEvent } from "react";
 
 type DeleteChampionshipModalProps = {
 	championshipName: string;
@@ -53,7 +53,9 @@ export function DeleteChampionshipModal({
 						className={`mt-1 ${FIELD_CLASS}`}
 					/>
 				</label>
-				{errorMessage && <p className={`mt-2 ${ERROR_CLASS}`}>{errorMessage}</p>}
+				{errorMessage && (
+					<p className={`mt-2 ${ERROR_CLASS}`}>{errorMessage}</p>
+				)}
 				<div className="mt-4 flex justify-end gap-2">
 					<Button
 						variant={BUTTON_VARIANT.secondary}

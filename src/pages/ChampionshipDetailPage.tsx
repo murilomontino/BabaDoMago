@@ -371,67 +371,84 @@ export function ChampionshipDetailPage() {
 							title="Configuração"
 							icon={<Shield className="size-4 text-pitch" />}
 						>
-							{permissions.rename && (
-								<form onSubmit={handleRename} className="mb-4 flex gap-2">
-									<input
-										value={nameDraft ?? data.name}
-										onChange={(event) => setNameDraft(event.target.value)}
-										aria-label="Nome do campeonato"
-										className={FIELD_CLASS}
-									/>
-									<Button
-										type="submit"
-										variant={BUTTON_VARIANT.secondary}
-										disabled={renameChampionship.isPending}
-									>
-										Salvar nome
-									</Button>
-								</form>
-							)}
-							{renameChampionship.isError && (
-								<p className={`mb-4 ${ERROR_CLASS}`}>
-									{renameChampionship.error.message}
-								</p>
-							)}
-							{permissions.transferOwnership && (
-								<form
-									onSubmit={handleTransfer}
-									className="flex flex-wrap items-center gap-2"
-								>
-									<select
-										value={transferPlayerId}
-										onChange={(event) =>
-											setTransferPlayerId(event.target.value)
-										}
-										required
-										className={FIELD_CLASS}
-									>
-										<option value="">Novo dono</option>
-										{data.players
-											.filter(
-												(player) =>
-													player.user_id && player.user_id !== data.created_by,
-											)
-											.map((player) => (
-												<option key={player.id} value={player.id}>
-													{player.display_name}
-												</option>
-											))}
-									</select>
-									<Button
-										type="submit"
-										variant={BUTTON_VARIANT.secondary}
-										disabled={transferOwner.isPending}
-									>
-										Transferir
-									</Button>
-								</form>
-							)}
-							{transferOwner.isError && (
-								<p className={`mt-4 ${ERROR_CLASS}`}>
-									{transferOwner.error.message}
-								</p>
-							)}
+							<div className="space-y-4">
+								{permissions.rename && (
+									<form onSubmit={handleRename} className="space-y-1.5">
+										<label
+											htmlFor="championship-name"
+											className="text-sm font-medium text-stone-700"
+										>
+											Nome
+										</label>
+										<div className="flex items-center gap-2">
+											<input
+												id="championship-name"
+												value={nameDraft ?? data.name}
+												onChange={(event) => setNameDraft(event.target.value)}
+												className={`min-w-0 flex-1 ${FIELD_CLASS}`}
+											/>
+											<Button
+												type="submit"
+												variant={BUTTON_VARIANT.secondary}
+												disabled={renameChampionship.isPending}
+												className="h-9 shrink-0"
+											>
+												Salvar
+											</Button>
+										</div>
+									</form>
+								)}
+								{renameChampionship.isError && (
+									<p className={ERROR_CLASS}>
+										{renameChampionship.error.message}
+									</p>
+								)}
+								{permissions.transferOwnership && (
+									<form onSubmit={handleTransfer} className="space-y-1.5">
+										<label
+											htmlFor="championship-owner"
+											className="text-sm font-medium text-stone-700"
+										>
+											Novo dono
+										</label>
+										<div className="flex items-center gap-2">
+											<select
+												id="championship-owner"
+												value={transferPlayerId}
+												onChange={(event) =>
+													setTransferPlayerId(event.target.value)
+												}
+												required
+												className={`min-w-0 flex-1 ${FIELD_CLASS}`}
+											>
+												<option value="">Selecionar jogador</option>
+												{data.players
+													.filter(
+														(player) =>
+															player.user_id &&
+															player.user_id !== data.created_by,
+													)
+													.map((player) => (
+														<option key={player.id} value={player.id}>
+															{player.display_name}
+														</option>
+													))}
+											</select>
+											<Button
+												type="submit"
+												variant={BUTTON_VARIANT.secondary}
+												disabled={transferOwner.isPending}
+												className="h-9 shrink-0"
+											>
+												Transferir
+											</Button>
+										</div>
+									</form>
+								)}
+								{transferOwner.isError && (
+									<p className={ERROR_CLASS}>{transferOwner.error.message}</p>
+								)}
+							</div>
 						</SectionCard>
 					)}
 					{permissions.deleteChampionship && (
