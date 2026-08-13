@@ -1203,6 +1203,11 @@ node-releases@^2.0.53:
   resolved "https://registry.yarnpkg.com/node-releases/-/node-releases-2.0.53.tgz#0fe5ad8a7935e075172f574e56f0c20f07fa41af"
   integrity sha512-D9UOmYG3UH1V+ENW56t5QXBwJw1YEY18ruVeus89Rw+SyIgjPkCO84bRzO3uNIYosJbNwiabWVn48o3uJLjxFQ==
 
+normalize-wheel@^1.0.1:
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/normalize-wheel/-/normalize-wheel-1.0.1.tgz#aec886affdb045070d856447df62ecf86146ec45"
+  integrity sha512-1OnlAPZ3zgrk8B91HyRj+eVv+kS5u+Z0SCsak6Xil/kmgEia50ga7zfkumayonZrImffAxPU/5WcyGhzetHNPA==
+
 pathe@^2.0.3:
   version "2.0.3"
   resolved "https://registry.yarnpkg.com/pathe/-/pathe-2.0.3.tgz#3ecbec55421685b70a9da872b2cff3e1cbed1716"
@@ -1238,6 +1243,13 @@ react-dom@^19.2.8:
   integrity sha512-rVprimfGBG3DR+Tq0IQG2DT5PxKth1WIGDmj5yPmlzr4YBe7uyE+Du4oVqTDXZSHGGGXRtTJEGSSePyQCMBglQ==
   dependencies:
     scheduler "^0.27.0"
+
+react-easy-crop@^6.2.3:
+  version "6.2.3"
+  resolved "https://registry.yarnpkg.com/react-easy-crop/-/react-easy-crop-6.2.3.tgz#5b5fb04bab2b15fc51c502611184d05f278296d0"
+  integrity sha512-ebimG3OGlzizjxEZ77Cj9CVLcg5vDZ6QVz8ud1rx4WmsCDWHIROEhgMi0GpJ/jKAuwHrH0M+QZUK4hyvxbYhOA==
+  dependencies:
+    normalize-wheel "^1.0.1"
 
 react@^19.2.8:
   version "19.2.8"

@@ -1,8 +1,12 @@
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { ChampionshipLogo } from "@/components/championship-logo";
+import { ChampionshipLogoCrop } from "@/components/championship-logo-crop";
 import { ChampionshipRoster } from "@/components/championship-roster";
-import { CHAMPIONSHIP_LOGO } from "@/const/championship-logo";
+import {
+	assertChampionshipLogoSource,
+	CHAMPIONSHIP_LOGO,
+} from "@/const/championship-logo";
 import {
 	type AssignableChampionshipRole,
 	CHAMPIONSHIP_ROLE,
@@ -48,6 +52,8 @@ export function ChampionshipDetailPage() {
 	const [copied, setCopied] = useState(false);
 	const [nameDraft, setNameDraft] = useState<string | null>(null);
 	const [transferPlayerId, setTransferPlayerId] = useState("");
+	const [logoCropSrc, setLogoCropSrc] = useState<string | null>(null);
+	const [logoSourceError, setLogoSourceError] = useState<string | null>(null);
 
 	const currentPlayer = data?.players.find(
 		(player) => player.user_id === user?.id,
@@ -135,11 +141,42 @@ export function ChampionshipDetailPage() {
 	function handleLogoChange(event: FormEvent<HTMLInputElement>) {
 		const file = event.currentTarget.files?.[0];
 		event.currentTarget.value = "";
+		setLogoSourceError(null);
 		if (!file || !data || data.created_by !== user?.id) {
 			return;
 		}
 
+		try {
+			assertChampionshipLogoSource(file);
+		} catch (error) {
+			setLogoSourceError(
+				error instanceof Error ? error.message : "Use PNG ou JPEG",
+			);
+			return;
+		}
+
+		if (logoCropSrc) {
+			URL.revokeObjectURL(logoCropSrc);
+		}
+
+		setLogoCropSrc(URL.createObjectURL(file));
+	}
+
+	function handleLogoCropCancel() {
+		if (logoCropSrc) {
+			URL.revokeObjectURL(logoCropSrc);
+		}
+
+		setLogoCropSrc(null);
+	}
+
+	function handleLogoCropConfirm(file: File) {
+		if (!data) {
+			return;
+		}
+
 		uploadLogo.mutate({ file, previousPath: data.logo_path });
+		handleLogoCropCancel();
 	}
 
 	if (isPending) {
@@ -171,6 +208,16 @@ export function ChampionshipDetailPage() {
 						className="sr-only"
 					/>
 				</label>
+			)}
+			{logoSourceError && (
+				<p className="mb-4 text-sm text-red-600">{logoSourceError}</p>
+			)}
+			{logoCropSrc && (
+				<ChampionshipLogoCrop
+					imageSrc={logoCropSrc}
+					onCancel={handleLogoCropCancel}
+					onConfirm={handleLogoCropConfirm}
+				/>
 			)}
 			{permissions.rename && (
 				<form onSubmit={handleRename} className="mb-4 flex max-w-md gap-2">

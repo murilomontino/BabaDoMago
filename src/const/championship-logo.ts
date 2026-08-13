@@ -36,12 +36,16 @@ export function championshipLogoObjectPath(
 	return `${championshipId}/logo.${extension}`;
 }
 
-export function assertChampionshipLogoFile(file: File): void {
-	if (file.size > CHAMPIONSHIP_LOGO.maxBytes) {
-		throw new Error("Logo deve ter no máximo 1 MB");
-	}
-
+export function assertChampionshipLogoSource(file: File): void {
 	if (!championshipLogoExtension(file.type)) {
 		throw new Error("Use PNG ou JPEG");
+	}
+}
+
+export function assertChampionshipLogoFile(file: File): void {
+	assertChampionshipLogoSource(file);
+
+	if (file.size > CHAMPIONSHIP_LOGO.maxBytes) {
+		throw new Error("Logo deve ter no máximo 1 MB");
 	}
 }
