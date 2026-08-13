@@ -1,3 +1,8 @@
+import {
+	assertChampionshipLogoFile,
+	CHAMPIONSHIP_LOGO,
+	championshipLogoObjectPath,
+} from "@/const/championship-logo";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
 import { PLAYER_RATING } from "@/const/player-rating";
 import { supabase } from "@/lib/supabase";
@@ -9,6 +14,9 @@ import type {
 
 const PLAYER_COLUMNS =
 	"id, championship_id, user_id, display_name, avatar_url, rating, role" as const;
+
+const CHAMPIONSHIP_COLUMNS =
+	"id, name, invite_code, created_by, logo_path" as const;
 
 function asChampionship(value: unknown): Championship {
 	if (!value || typeof value !== "object") {
@@ -25,6 +33,7 @@ function asChampionship(value: unknown): Championship {
 		name: row.name,
 		invite_code: String(row.invite_code),
 		created_by: String(row.created_by),
+		logo_path: typeof row.logo_path === "string" ? row.logo_path : null,
 	};
 }
 
@@ -60,7 +69,7 @@ function asPlayer(value: unknown): ChampionshipPlayer {
 export async function listChampionships(): Promise<Championship[]> {
 	const { data, error } = await supabase
 		.from("championships")
-		.select("id, name, invite_code, created_by")
+		.select(CHAMPIONSHIP_COLUMNS)
 		.order("id", { ascending: false });
 
 	if (error) {
@@ -75,7 +84,7 @@ export async function getChampionshipById(
 ): Promise<ChampionshipWithPlayers> {
 	const { data: championship, error: championshipError } = await supabase
 		.from("championships")
-		.select("id, name, invite_code, created_by")
+		.select(CHAMPIONSHIP_COLUMNS)
 		.eq("id", championshipId)
 		.single();
 
@@ -130,7 +139,7 @@ export async function createChampionship(
 	const { data, error } = await supabase
 		.from("championships")
 		.insert({ name })
-		.select("id, name, invite_code, created_by")
+		.select(CHAMPIONSHIP_COLUMNS)
 		.single();
 
 	if (error) {
@@ -253,6 +262,20 @@ export async function setPlayerRole(
 	return asPlayer(data);
 }
 
+export async function transferChampionshipOwner(
+	playerId: number,
+): Promise<Championship> {
+	const { data, error } = await supabase.rpc("transfer_championship_owner", {
+		player_id: playerId,
+	});
+
+	if (error) {
+		throw error;
+	}
+
+	return asChampionship(data);
+}
+
 export async function deleteChampionship(
 	championshipId: number,
 ): Promise<void> {
@@ -264,4 +287,53 @@ export async function deleteChampionship(
 	if (error) {
 		throw error;
 	}
+}
+
+export function championshipLogoPublicUrl(path: string): string {
+	const { data } = supabase.storage
+		.from(CHAMPIONSHIP_LOGO.bucket)
+		.getPublicUrl(path);
+
+	return data.publicUrl;
+}
+
+export async function uploadChampionshipLogo(
+	championshipId: number,
+	file: File,
+	previousPath: string | null,
+): Promise<string> {
+	assertChampionshipLogoFile(file);
+
+	const path = championshipLogoObjectPath(championshipId, file.type);
+	if (!path) {
+		throw new Error("Use PNG ou JPEG");
+	}
+
+	const { error: uploadError } = await supabase.storage
+		.from(CHAMPIONSHIP_LOGO.bucket)
+		.upload(path, file, {
+			upsert: true,
+			contentType: file.type,
+		});
+
+	if (uploadError) {
+		throw uploadError;
+	}
+
+	if (previousPath && previousPath !== path) {
+		await supabase.storage
+			.from(CHAMPIONSHIP_LOGO.bucket)
+			.remove([previousPath]);
+	}
+
+	const { error: updateError } = await supabase
+		.from("championships")
+		.update({ logo_path: path })
+		.eq("id", championshipId);
+
+	if (updateError) {
+		throw updateError;
+	}
+
+	return path;
 }

@@ -37,6 +37,9 @@ Rode no SQL Editor, nesta ordem:
 5. [`supabase/migrations/20260813170000_player_rating_100.sql`](supabase/migrations/20260813170000_player_rating_100.sql) — nota 1–100; estrelas relativas ao teto do baba
 6. [`supabase/migrations/20260813180000_player_rating_allow_zero.sql`](supabase/migrations/20260813180000_player_rating_allow_zero.sql) — nota 0–100, default 0; estrelas 1–5 = pontos até o teto crescer
 7. [`supabase/migrations/20260813190000_championship_roles.sql`](supabase/migrations/20260813190000_championship_roles.sql) — papéis dono / capitão / admin / normal
+8. [`supabase/migrations/20260813200000_championship_logo.sql`](supabase/migrations/20260813200000_championship_logo.sql) — logo PNG/JPEG até 1 MB no Storage
+9. [`supabase/migrations/20260813210000_transfer_championship_owner.sql`](supabase/migrations/20260813210000_transfer_championship_owner.sql) — transferir dono; o antigo vira Normal
+9. [`supabase/migrations/20260813210000_fix_championship_logo_storage_rls.sql`](supabase/migrations/20260813210000_fix_championship_logo_storage_rls.sql) — RLS do upload do logo (rode se o 8 já foi aplicado)
 
 O segundo cria `public.users` e vincula cada login Google (trigger + backfill). Sem ele o app não cadastra usuário na plataforma.
 
@@ -44,5 +47,5 @@ O segundo cria `public.users` e vincula cada login Google (trigger + backfill). 
 
 - `/` lista só os campeonatos que você criou ou entrou
 - `/championships/new` cria (você entra como jogador)
-- `/championships/:id` elenco; dono exclui e define papéis; capitão muda o nome; admin/capitão/dono convidam e editam estrelas
+- `/championships/:id` elenco; dono exclui, transfere e define papéis; capitão muda o nome; admin/capitão/dono convidam e editam estrelas
 - `/join/:codigo` público: vê o elenco, Conectar no nome livre, Inscrever-me

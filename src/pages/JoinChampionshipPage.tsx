@@ -1,5 +1,6 @@
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
+import { ChampionshipLogo } from "@/components/championship-logo";
 import { ChampionshipRoster } from "@/components/championship-roster";
 import { ROUTES } from "@/const/routes";
 import { useAuth } from "@/contexts/auth";
@@ -83,7 +84,14 @@ export function JoinChampionshipPage() {
 			<p className="mb-2 text-sm font-medium uppercase tracking-wide text-slate-500">
 				Campeonato
 			</p>
-			<h1 className="mb-6 text-2xl font-semibold">{data.name}</h1>
+			<div className="mb-6 flex items-center gap-3">
+				<ChampionshipLogo
+					path={data.logo_path}
+					name={data.name}
+					className="h-14 w-14 rounded-lg object-cover"
+				/>
+				<h1 className="text-2xl font-semibold">{data.name}</h1>
+			</div>
 			<ChampionshipRoster
 				players={data.players}
 				createdBy={data.created_by}

@@ -60,6 +60,7 @@
 			'name', c.name,
 			'invite_code', c.invite_code,
 			'created_by', c.created_by,
+			'logo_path', c.logo_path,
 			'players', coalesce((
 				select jsonb_agg(
 					jsonb_build_object(
@@ -297,7 +298,8 @@
 			'id', championship.id,
 			'name', championship.name,
 			'invite_code', championship.invite_code,
-			'created_by', championship.created_by
+			'created_by', championship.created_by,
+			'logo_path', championship.logo_path
 		);
 	end;
 	$$;

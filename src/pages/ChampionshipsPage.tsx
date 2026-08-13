@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { ChampionshipLogo } from "@/components/championship-logo";
 import { ROUTES } from "@/const/routes";
 import { useChampionships } from "@/hooks/championships/use-championships";
 
@@ -36,8 +37,12 @@ export function ChampionshipsPage() {
 							<Link
 								to={ROUTES.championship}
 								params={{ championshipId: String(championship.id) }}
-								className="block rounded-lg border border-slate-200 bg-white px-4 py-3 font-medium hover:bg-slate-50"
+								className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 font-medium hover:bg-slate-50"
 							>
+								<ChampionshipLogo
+									path={championship.logo_path}
+									name={championship.name}
+								/>
 								{championship.name}
 							</Link>
 						</li>

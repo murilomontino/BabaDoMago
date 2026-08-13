@@ -3,6 +3,7 @@ create table public.championships (
 	name text not null,
 	invite_code text not null unique default substr(replace(gen_random_uuid()::text, '-', ''), 1, 16),
 	created_by uuid not null default auth.uid() references auth.users (id) on delete cascade,
+	logo_path text,
 	created_at timestamptz not null default now()
 );
 
@@ -169,6 +170,7 @@ begin
 		'name', c.name,
 		'invite_code', c.invite_code,
 		'created_by', c.created_by,
+		'logo_path', c.logo_path,
 		'players', coalesce((
 			select jsonb_agg(
 				jsonb_build_object(
@@ -473,6 +475,75 @@ begin
 end;
 $$;
 
+create or replace function public.transfer_championship_owner(player_id bigint)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+	viewer uuid := (select auth.uid());
+	player public.championship_players%rowtype;
+	championship public.championships%rowtype;
+	previous_owner uuid;
+begin
+	if viewer is null then
+		raise exception 'not authenticated' using errcode = '42501';
+	end if;
+
+	select *
+	into player
+	from public.championship_players p
+	where p.id = transfer_championship_owner.player_id
+	for update;
+
+	if player.id is null then
+		raise exception 'player not found' using errcode = 'P0002';
+	end if;
+
+	select *
+	into championship
+	from public.championships c
+	where c.id = player.championship_id
+	for update;
+
+	if championship.id is null then
+		raise exception 'championship not found' using errcode = 'P0002';
+	end if;
+
+	if public.championship_actor_role(championship.id) is distinct from 'owner' then
+		raise exception 'not allowed' using errcode = '42501';
+	end if;
+
+	if player.user_id is null then
+		raise exception 'player has no account' using errcode = '23514';
+	end if;
+
+	if player.user_id = championship.created_by then
+		raise exception 'cannot transfer to self' using errcode = '23514';
+	end if;
+
+	previous_owner := championship.created_by;
+
+	update public.championships
+	set created_by = player.user_id
+	where id = championship.id
+	returning * into championship;
+
+	update public.championship_players
+	set role = 'member'
+	where championship_id = championship.id
+		and user_id = previous_owner;
+
+	return jsonb_build_object(
+		'id', championship.id,
+		'name', championship.name,
+		'invite_code', championship.invite_code,
+		'created_by', championship.created_by
+	);
+end;
+$$;
+
 revoke all on function public.is_championship_member(bigint) from public;
 revoke all on function public.championship_actor_role(bigint) from public;
 revoke all on function public.current_user_display_name() from public;
@@ -483,6 +554,7 @@ revoke all on function public.claim_player(bigint) from public;
 revoke all on function public.update_player_rating(bigint, smallint) from public;
 revoke all on function public.update_championship_name(bigint, text) from public;
 revoke all on function public.set_player_role(bigint, text) from public;
+revoke all on function public.transfer_championship_owner(bigint) from public;
 
 grant execute on function public.is_championship_member(bigint) to authenticated;
 grant execute on function public.championship_actor_role(bigint) to authenticated;
@@ -494,6 +566,7 @@ grant execute on function public.claim_player(bigint) to authenticated;
 grant execute on function public.update_player_rating(bigint, smallint) to authenticated;
 grant execute on function public.update_championship_name(bigint, text) to authenticated;
 grant execute on function public.set_player_role(bigint, text) to authenticated;
+grant execute on function public.transfer_championship_owner(bigint) to authenticated;
 
 grant select, insert, update, delete on public.championships to authenticated;
 grant select, insert on public.championship_players to authenticated;

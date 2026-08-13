@@ -3,6 +3,7 @@ export type Championship = {
 	name: string;
 	invite_code: string;
 	created_by: string;
+	logo_path: string | null;
 };
 
 export type ChampionshipPlayer = {

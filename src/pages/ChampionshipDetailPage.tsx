@@ -1,6 +1,8 @@
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
+import { ChampionshipLogo } from "@/components/championship-logo";
 import { ChampionshipRoster } from "@/components/championship-roster";
+import { CHAMPIONSHIP_LOGO } from "@/const/championship-logo";
 import {
 	type AssignableChampionshipRole,
 	CHAMPIONSHIP_ROLE,
@@ -8,6 +10,7 @@ import {
 	canInvite,
 	canRenameChampionship,
 	canSetRoles,
+	canTransferOwnership,
 	canUpdateRating,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
@@ -20,7 +23,9 @@ import {
 	useDeleteChampionship,
 	useRenameChampionship,
 	useSetPlayerRole,
+	useTransferChampionshipOwner,
 	useUpdatePlayerRating,
+	useUploadChampionshipLogo,
 } from "@/hooks/championships/use-championships";
 
 export function ChampionshipDetailPage() {
@@ -37,9 +42,12 @@ export function ChampionshipDetailPage() {
 	const renameChampionship = useRenameChampionship(championshipId);
 	const setPlayerRole = useSetPlayerRole();
 	const deleteChampionship = useDeleteChampionship();
+	const transferOwner = useTransferChampionshipOwner();
+	const uploadLogo = useUploadChampionshipLogo(championshipId);
 	const [playerName, setPlayerName] = useState("");
 	const [copied, setCopied] = useState(false);
 	const [nameDraft, setNameDraft] = useState<string | null>(null);
+	const [transferPlayerId, setTransferPlayerId] = useState("");
 
 	const currentPlayer = data?.players.find(
 		(player) => player.user_id === user?.id,
@@ -55,6 +63,7 @@ export function ChampionshipDetailPage() {
 		rename: canRenameChampionship(actorRole),
 		setRoles: canSetRoles(actorRole),
 		deleteChampionship: canDeleteChampionship(actorRole),
+		transferOwnership: canTransferOwnership(actorRole),
 	};
 
 	function handleChangeRating(playerId: number, rating: number) {
@@ -106,6 +115,33 @@ export function ChampionshipDetailPage() {
 		await navigate({ to: ROUTES.home });
 	}
 
+	async function handleTransfer(event: FormEvent<HTMLFormElement>) {
+		event.preventDefault();
+		const playerId = Number(transferPlayerId);
+		if (!Number.isFinite(playerId)) {
+			return;
+		}
+
+		if (!window.confirm("Transferir o campeonato? Você vira Normal.")) {
+			return;
+		}
+
+		await transferOwner.mutateAsync(playerId);
+		setTransferPlayerId("");
+	}
+
+	const isOwner = Boolean(user && data && data.created_by === user.id);
+
+	function handleLogoChange(event: FormEvent<HTMLInputElement>) {
+		const file = event.currentTarget.files?.[0];
+		event.currentTarget.value = "";
+		if (!file || !data || data.created_by !== user?.id) {
+			return;
+		}
+
+		uploadLogo.mutate({ file, previousPath: data.logo_path });
+	}
+
 	if (isPending) {
 		return <p>Carregando campeonato...</p>;
 	}
@@ -116,7 +152,26 @@ export function ChampionshipDetailPage() {
 
 	return (
 		<main>
-			<h1 className="mb-2 text-2xl font-semibold">{data.name}</h1>
+			<div className="mb-2 flex items-center gap-3">
+				<ChampionshipLogo
+					path={data.logo_path}
+					name={data.name}
+					className="h-14 w-14 rounded-lg object-cover"
+				/>
+				<h1 className="text-2xl font-semibold">{data.name}</h1>
+			</div>
+			{isOwner && (
+				<label className="mb-4 inline-block cursor-pointer text-sm text-slate-600 hover:text-slate-900">
+					{data.logo_path ? "Trocar logo" : "Enviar logo"}
+					<input
+						type="file"
+						accept={`${CHAMPIONSHIP_LOGO.mimePng},${CHAMPIONSHIP_LOGO.mimeJpeg}`}
+						disabled={uploadLogo.isPending}
+						onChange={handleLogoChange}
+						className="sr-only"
+					/>
+				</label>
+			)}
 			{permissions.rename && (
 				<form onSubmit={handleRename} className="mb-4 flex max-w-md gap-2">
 					<input
@@ -158,6 +213,38 @@ export function ChampionshipDetailPage() {
 					</button>
 				)}
 			</div>
+			{permissions.transferOwnership && (
+				<form
+					onSubmit={handleTransfer}
+					className="mb-6 flex max-w-md flex-wrap items-center gap-2"
+				>
+					<select
+						value={transferPlayerId}
+						onChange={(event) => setTransferPlayerId(event.target.value)}
+						required
+						className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+					>
+						<option value="">Novo dono</option>
+						{data.players
+							.filter(
+								(player) =>
+									player.user_id && player.user_id !== data.created_by,
+							)
+							.map((player) => (
+								<option key={player.id} value={player.id}>
+									{player.display_name}
+								</option>
+							))}
+					</select>
+					<button
+						type="submit"
+						disabled={transferOwner.isPending}
+						className="rounded-lg border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-50"
+					>
+						Transferir
+					</button>
+				</form>
+			)}
 			{permissions.invite && (
 				<form onSubmit={handleAddPlayer} className="mb-6 flex gap-2">
 					<input
@@ -188,6 +275,14 @@ export function ChampionshipDetailPage() {
 				<p className="mb-4 text-sm text-red-600">
 					{deleteChampionship.error.message}
 				</p>
+			)}
+			{transferOwner.isError && (
+				<p className="mb-4 text-sm text-red-600">
+					{transferOwner.error.message}
+				</p>
+			)}
+			{uploadLogo.isError && (
+				<p className="mb-4 text-sm text-red-600">{uploadLogo.error.message}</p>
 			)}
 			<ChampionshipRoster
 				players={data.players}

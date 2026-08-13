@@ -30,6 +30,7 @@ type ChampionshipPermissions = {
 	renameChampionship: boolean;
 	updateRating: boolean;
 	invite: boolean;
+	transferOwnership: boolean;
 };
 
 export function resolveChampionshipRole(
@@ -66,6 +67,7 @@ export function championshipPermissions(
 				renameChampionship: true,
 				updateRating: true,
 				invite: true,
+				transferOwnership: true,
 			};
 		case CHAMPIONSHIP_ROLE.captain:
 			return {
@@ -74,6 +76,7 @@ export function championshipPermissions(
 				renameChampionship: true,
 				updateRating: true,
 				invite: true,
+				transferOwnership: false,
 			};
 		case CHAMPIONSHIP_ROLE.admin:
 			return {
@@ -82,6 +85,7 @@ export function championshipPermissions(
 				renameChampionship: false,
 				updateRating: true,
 				invite: true,
+				transferOwnership: false,
 			};
 		case CHAMPIONSHIP_ROLE.member:
 			return {
@@ -90,6 +94,7 @@ export function championshipPermissions(
 				renameChampionship: false,
 				updateRating: false,
 				invite: false,
+				transferOwnership: false,
 			};
 		default: {
 			const _exhaustive: never = role;
@@ -116,4 +121,8 @@ export function canUpdateRating(role: ChampionshipRole): boolean {
 
 export function canInvite(role: ChampionshipRole): boolean {
 	return championshipPermissions(role).invite;
+}
+
+export function canTransferOwnership(role: ChampionshipRole): boolean {
+	return championshipPermissions(role).transferOwnership;
 }

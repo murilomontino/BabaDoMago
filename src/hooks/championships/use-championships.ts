@@ -10,7 +10,9 @@ import {
 	listChampionships,
 	renameChampionship,
 	setPlayerRole,
+	transferChampionshipOwner,
 	updatePlayerRating,
+	uploadChampionshipLogo,
 } from "@/services/championships";
 import {
 	CHAMPIONSHIP_BY_ID_QUERY_KEY,
@@ -161,6 +163,50 @@ export function useSetPlayerRole() {
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({
 				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,
+			});
+			await queryClient.invalidateQueries({
+				queryKey: CHAMPIONSHIP_BY_INVITE_QUERY_KEY,
+			});
+		},
+	});
+}
+
+export function useUploadChampionshipLogo(championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({
+			file,
+			previousPath,
+		}: {
+			file: File;
+			previousPath: string | null;
+		}) => uploadChampionshipLogo(championshipId, file, previousPath),
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({
+				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,
+			});
+			await queryClient.invalidateQueries({
+				queryKey: CHAMPIONSHIPS_QUERY_KEY,
+			});
+			await queryClient.invalidateQueries({
+				queryKey: CHAMPIONSHIP_BY_INVITE_QUERY_KEY,
+			});
+		},
+	});
+}
+
+export function useTransferChampionshipOwner() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (playerId: number) => transferChampionshipOwner(playerId),
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({
+				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,
+			});
+			await queryClient.invalidateQueries({
+				queryKey: CHAMPIONSHIPS_QUERY_KEY,
 			});
 			await queryClient.invalidateQueries({
 				queryKey: CHAMPIONSHIP_BY_INVITE_QUERY_KEY,
