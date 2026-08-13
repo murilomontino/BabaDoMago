@@ -14,9 +14,9 @@ create table public.championship_players (
 	user_id uuid references auth.users (id) on delete set null,
 	display_name text not null,
 	avatar_url text,
-	rating smallint not null default 50,
+	rating smallint not null default 0,
 	created_at timestamptz not null default now(),
-	constraint championship_players_rating_check check (rating between 1 and 100),
+	constraint championship_players_rating_check check (rating between 0 and 100),
 	unique (championship_id, user_id)
 );
 
@@ -312,7 +312,7 @@ begin
 		raise exception 'not authenticated' using errcode = '42501';
 	end if;
 
-	if update_player_rating.rating < 1 or update_player_rating.rating > 100 then
+	if update_player_rating.rating < 0 or update_player_rating.rating > 100 then
 		raise exception 'invalid rating' using errcode = '23514';
 	end if;
 

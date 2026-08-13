@@ -1,24 +1,29 @@
 export const PLAYER_RATING = {
-	min: 1,
+	min: 0,
 	max: 100,
-	default: 50,
+	default: 0,
 	starCount: 5,
+	initialCeiling: 5,
 } as const;
 
 export const PLAYER_STARS = [
-	{ id: "star-1" },
-	{ id: "star-2" },
-	{ id: "star-3" },
-	{ id: "star-4" },
-	{ id: "star-5" },
+	{ id: "star-1", index: 0 },
+	{ id: "star-2", index: 1 },
+	{ id: "star-3", index: 2 },
+	{ id: "star-4", index: 3 },
+	{ id: "star-5", index: 4 },
 ] as const;
 
-export function championshipRatingCeiling(ratings: readonly number[]): number {
-	if (ratings.length === 0) {
-		return PLAYER_RATING.min;
-	}
+export const STAR_SIDE = {
+	left: "left",
+	right: "right",
+} as const;
 
-	return Math.max(...ratings);
+export type StarSide = (typeof STAR_SIDE)[keyof typeof STAR_SIDE];
+
+export function championshipRatingCeiling(ratings: readonly number[]): number {
+	const maxRating = ratings.length === 0 ? 0 : Math.max(...ratings);
+	return Math.max(maxRating, PLAYER_RATING.initialCeiling);
 }
 
 export function ratingToStarFill(rating: number, ceiling: number): number {
@@ -27,4 +32,30 @@ export function ratingToStarFill(rating: number, ceiling: number): number {
 	}
 
 	return (rating / ceiling) * PLAYER_RATING.starCount;
+}
+
+export function snapStarFill(fill: number): number {
+	return Math.round(fill * 2) / 2;
+}
+
+export function starHalfToFill(starIndex: number, side: StarSide): number {
+	switch (side) {
+		case STAR_SIDE.left:
+			return starIndex + 0.5;
+		case STAR_SIDE.right:
+			return starIndex + 1;
+		default: {
+			const _exhaustive: never = side;
+			return _exhaustive;
+		}
+	}
+}
+
+export function starFillToRating(starFill: number, ceiling: number): number {
+	if (ceiling <= 0) {
+		return PLAYER_RATING.min;
+	}
+
+	const rating = Math.round((starFill / PLAYER_RATING.starCount) * ceiling);
+	return Math.min(PLAYER_RATING.max, Math.max(PLAYER_RATING.min, rating));
 }

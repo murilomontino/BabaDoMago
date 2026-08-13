@@ -1,8 +1,12 @@
-import { type FormEvent, useState } from "react";
+import { useState } from "react";
 import {
 	PLAYER_RATING,
 	PLAYER_STARS,
 	ratingToStarFill,
+	STAR_SIDE,
+	type StarSide,
+	snapStarFill,
+	starHalfToFill,
 } from "@/const/player-rating";
 
 const STAR_PATH =
@@ -11,11 +15,7 @@ const STAR_PATH =
 type PlayerRatingProps = {
 	rating: number;
 	ceiling: number;
-};
-
-type PlayerRatingInputProps = {
-	rating: number;
-	onCommit: (rating: number) => void;
+	onChange?: (starFill: number) => void;
 	disabled?: boolean;
 };
 
@@ -32,14 +32,38 @@ function StarIcon({ className }: { className?: string }) {
 	);
 }
 
-export function PlayerRating({ rating, ceiling }: PlayerRatingProps) {
+export function PlayerRating({
+	rating,
+	ceiling,
+	onChange,
+	disabled,
+}: PlayerRatingProps) {
+	const [hoverFill, setHoverFill] = useState<number | null>(null);
 	const fill = ratingToStarFill(rating, ceiling);
+	const currentFill = snapStarFill(fill);
+	const interactive = Boolean(onChange) && !disabled;
+	const displayFill = hoverFill ?? fill;
+
+	function handleHalfClick(starIndex: number, side: StarSide) {
+		if (!onChange) {
+			return;
+		}
+
+		const nextFill = starHalfToFill(starIndex, side);
+		if (nextFill === currentFill) {
+			if (starIndex === 0 && side === STAR_SIDE.left && currentFill === 0.5) {
+				onChange(0);
+			}
+			return;
+		}
+
+		onChange(nextFill);
+	}
 
 	return (
 		<div className="relative inline-flex">
 			<span className="sr-only">
-				Nota {rating} de {PLAYER_RATING.max}, {fill} de{" "}
-				{PLAYER_RATING.starCount} estrelas no baba
+				{currentFill} de {PLAYER_RATING.starCount} estrelas
 			</span>
 			<div className="flex text-slate-300" aria-hidden="true">
 				{PLAYER_STARS.map((star) => (
@@ -51,7 +75,7 @@ export function PlayerRating({ rating, ceiling }: PlayerRatingProps) {
 			</div>
 			<div
 				className="pointer-events-none absolute inset-y-0 left-0 overflow-hidden text-amber-400"
-				style={{ width: `${(fill / PLAYER_RATING.starCount) * 100}%` }}
+				style={{ width: `${(displayFill / PLAYER_RATING.starCount) * 100}%` }}
 				aria-hidden="true"
 			>
 				<div className="flex w-max">
@@ -63,59 +87,36 @@ export function PlayerRating({ rating, ceiling }: PlayerRatingProps) {
 					))}
 				</div>
 			</div>
+			{interactive && (
+				<fieldset
+					className="absolute inset-0 z-10 m-0 flex cursor-pointer border-0 p-0"
+					onMouseLeave={() => setHoverFill(null)}
+				>
+					<legend className="sr-only">Alterar estrelas</legend>
+					{PLAYER_STARS.map((star) => (
+						<span key={star.id} className="relative h-5 w-5">
+							<button
+								type="button"
+								className="absolute inset-y-0 left-0 w-1/2 cursor-pointer"
+								aria-label={`${starHalfToFill(star.index, STAR_SIDE.left)} estrelas`}
+								onMouseEnter={() =>
+									setHoverFill(starHalfToFill(star.index, STAR_SIDE.left))
+								}
+								onClick={() => handleHalfClick(star.index, STAR_SIDE.left)}
+							/>
+							<button
+								type="button"
+								className="absolute inset-y-0 right-0 w-1/2 cursor-pointer"
+								aria-label={`${starHalfToFill(star.index, STAR_SIDE.right)} estrelas`}
+								onMouseEnter={() =>
+									setHoverFill(starHalfToFill(star.index, STAR_SIDE.right))
+								}
+								onClick={() => handleHalfClick(star.index, STAR_SIDE.right)}
+							/>
+						</span>
+					))}
+				</fieldset>
+			)}
 		</div>
-	);
-}
-
-export function PlayerRatingInput({
-	rating,
-	onCommit,
-	disabled,
-}: PlayerRatingInputProps) {
-	const [value, setValue] = useState(String(rating));
-	const [prevRating, setPrevRating] = useState(rating);
-
-	if (rating !== prevRating) {
-		setPrevRating(rating);
-		setValue(String(rating));
-	}
-
-	function commit() {
-		const next = Number(value);
-		if (
-			!Number.isInteger(next) ||
-			next < PLAYER_RATING.min ||
-			next > PLAYER_RATING.max
-		) {
-			setValue(String(rating));
-			return;
-		}
-
-		if (next === rating) {
-			return;
-		}
-
-		onCommit(next);
-	}
-
-	function handleSubmit(event: FormEvent<HTMLFormElement>) {
-		event.preventDefault();
-		commit();
-	}
-
-	return (
-		<form onSubmit={handleSubmit}>
-			<input
-				type="number"
-				min={PLAYER_RATING.min}
-				max={PLAYER_RATING.max}
-				value={value}
-				disabled={disabled}
-				onChange={(event) => setValue(event.target.value)}
-				onBlur={commit}
-				aria-label={`Nota de ${PLAYER_RATING.min} a ${PLAYER_RATING.max}`}
-				className="w-16 rounded border border-slate-300 px-2 py-0.5 text-sm"
-			/>
-		</form>
 	);
 }

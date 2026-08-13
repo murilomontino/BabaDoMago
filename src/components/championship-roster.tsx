@@ -1,5 +1,8 @@
-import { PlayerRating, PlayerRatingInput } from "@/components/player-rating";
-import { championshipRatingCeiling } from "@/const/player-rating";
+import { PlayerRating } from "@/components/player-rating";
+import {
+	championshipRatingCeiling,
+	starFillToRating,
+} from "@/const/player-rating";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 type ChampionshipRosterProps = {
@@ -59,20 +62,20 @@ export function ChampionshipRoster({
 								<p className="font-medium text-slate-900">
 									{player.display_name}
 								</p>
-								<div className="mt-1 flex items-center gap-2">
-									<PlayerRating rating={player.rating} ceiling={ceiling} />
-									{!onChangeRating && (
-										<span className="text-xs text-slate-500">
-											{player.rating}
-										</span>
-									)}
-									{onChangeRating && (
-										<PlayerRatingInput
-											rating={player.rating}
-											disabled={ratingPlayerId === player.id}
-											onCommit={(rating) => onChangeRating(player.id, rating)}
-										/>
-									)}
+								<div className="mt-1">
+									<PlayerRating
+										rating={player.rating}
+										ceiling={ceiling}
+										disabled={ratingPlayerId === player.id}
+										onChange={
+											onChangeRating &&
+											((starFill) =>
+												onChangeRating(
+													player.id,
+													starFillToRating(starFill, ceiling),
+												))
+										}
+									/>
 								</div>
 								{player.user_id && (
 									<p className="text-xs text-slate-500">Conta conectada</p>

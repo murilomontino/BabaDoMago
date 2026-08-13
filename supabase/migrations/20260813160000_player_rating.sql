@@ -1,11 +1,11 @@
 alter table public.championship_players
-	add column if not exists rating smallint not null default 50;
+	add column if not exists rating smallint not null default 0;
 
 alter table public.championship_players
 	drop constraint if exists championship_players_rating_check;
 
 alter table public.championship_players
-	add constraint championship_players_rating_check check (rating between 1 and 100);
+	add constraint championship_players_rating_check check (rating between 0 and 100);
 
 create or replace function public.get_championship_by_invite(invite_code text)
 returns jsonb
@@ -185,7 +185,7 @@ begin
 		raise exception 'not authenticated' using errcode = '42501';
 	end if;
 
-	if update_player_rating.rating < 1 or update_player_rating.rating > 100 then
+	if update_player_rating.rating < 0 or update_player_rating.rating > 100 then
 		raise exception 'invalid rating' using errcode = '23514';
 	end if;
 

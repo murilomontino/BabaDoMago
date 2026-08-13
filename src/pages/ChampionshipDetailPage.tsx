@@ -104,7 +104,11 @@ export function ChampionshipDetailPage() {
 				claimingPlayerId={claimPlayer.variables ?? null}
 				onClaim={(playerId) => claimPlayer.mutate(playerId)}
 				onChangeRating={isOwner ? handleChangeRating : undefined}
-				ratingPlayerId={updateRating.variables?.playerId ?? null}
+				ratingPlayerId={
+					updateRating.isPending
+						? (updateRating.variables?.playerId ?? null)
+						: null
+				}
 			/>
 			{claimPlayer.isError && (
 				<p className="mt-4 text-sm text-red-600">{claimPlayer.error.message}</p>

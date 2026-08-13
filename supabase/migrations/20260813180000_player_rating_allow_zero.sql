@@ -1,14 +1,6 @@
 alter table public.championship_players
 	drop constraint if exists championship_players_rating_check;
 
-update public.championship_players
-set rating = rating * 10
-where not exists (
-	select 1
-	from public.championship_players p
-	where p.rating > 10
-);
-
 alter table public.championship_players
 	alter column rating set default 0;
 

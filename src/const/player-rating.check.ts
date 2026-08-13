@@ -3,6 +3,9 @@ import {
 	PLAYER_RATING,
 	PLAYER_STARS,
 	ratingToStarFill,
+	STAR_SIDE,
+	starFillToRating,
+	starHalfToFill,
 } from "./player-rating.ts";
 
 function check(condition: boolean, message: string) {
@@ -12,12 +15,24 @@ function check(condition: boolean, message: string) {
 }
 
 check(PLAYER_STARS.length === PLAYER_RATING.starCount, "5 star slots");
-check(championshipRatingCeiling([6, 3, 1]) === 6, "ceiling is max in baba");
-check(championshipRatingCeiling([50]) === 50, "single player is ceiling");
-check(ratingToStarFill(6, 6) === 5, "highest in baba -> 5 stars");
-check(ratingToStarFill(3, 6) === 2.5, "half of ceiling");
-check(ratingToStarFill(50, 100) === 2.5, "50 of 100");
-check(ratingToStarFill(100, 100) === PLAYER_RATING.starCount, "100 of 100");
-check(ratingToStarFill(1, 100) === 0.05, "min vs full scale");
+check(championshipRatingCeiling([]) === 5, "empty uses initial ceiling");
+check(championshipRatingCeiling([0, 0]) === 5, "unrated uses initial ceiling");
+check(championshipRatingCeiling([3, 1]) === 5, "below 5 keeps initial ceiling");
+check(championshipRatingCeiling([6, 3, 1]) === 6, "above 5 uses max");
+check(championshipRatingCeiling([10]) === 10, "teto 10");
+
+check(starFillToRating(5, 5) === 5, "initial 5 stars = 5 points");
+check(starFillToRating(3, 5) === 3, "initial 3 stars = 3 points");
+check(starFillToRating(2.5, 5) === 3, "teto 5 half star rounds");
+check(starFillToRating(2.5, 10) === 5, "teto 10 and 2.5 stars = 5");
+check(starFillToRating(5, 10) === 10, "teto 10 and 5 stars = 10");
+check(starFillToRating(0, 5) === 0, "0 stars = 0");
+
+check(ratingToStarFill(0, 5) === 0, "unrated shows empty");
+check(ratingToStarFill(5, 5) === 5, "5 points = 5 stars initially");
+check(ratingToStarFill(5, 10) === 2.5, "5 of 10 = 2.5 stars");
+
+check(starHalfToFill(0, STAR_SIDE.left) === 0.5, "first left = 0.5");
+check(starHalfToFill(4, STAR_SIDE.right) === 5, "last right = 5");
 
 console.log("player-rating ok");
