@@ -5,6 +5,7 @@ import {
 import {
 	type EventTeamColor,
 	isEventTeamColor,
+	normalizeEventTeamColor,
 } from "@/const/event-team-color";
 import { supabase } from "@/lib/supabase";
 import type {
@@ -100,7 +101,8 @@ function asTeam(value: unknown): ChampionshipEventTeam {
 		throw new Error("event team: invalid payload");
 	}
 
-	if (!isEventTeamColor(row.color)) {
+	const color = normalizeEventTeamColor(row.color);
+	if (!isEventTeamColor(color)) {
 		throw new Error("event team: invalid payload");
 	}
 
@@ -110,7 +112,7 @@ function asTeam(value: unknown): ChampionshipEventTeam {
 	return {
 		id: row.id,
 		event_id: Number(row.event_id),
-		color: row.color,
+		color,
 		sort_order: Number(row.sort_order),
 		players: [...players].sort((a, b) => a.id - b.id),
 	};
@@ -220,7 +222,7 @@ export async function startChampionshipEvent(
 		event_date: eventDate,
 		present_player_ids: [...presentPlayerIds],
 		teams: teams.map((team) => ({
-			color: team.color,
+			color: normalizeEventTeamColor(team.color),
 			player_ids: [...team.playerIds],
 		})),
 	});

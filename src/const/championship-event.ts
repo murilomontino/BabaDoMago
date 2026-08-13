@@ -2,6 +2,7 @@ import {
 	EVENT_TEAM_COLORS,
 	type EventTeamColor,
 	isEventTeamColor,
+	normalizeEventTeamColor,
 } from "./event-team-color.ts";
 
 export const CHAMPIONSHIP_EVENT = {
@@ -182,15 +183,16 @@ export function validateEventTeams(
 	const players = new Set<number>();
 
 	for (const team of teams) {
-		if (!isEventTeamColor(team.color)) {
+		const color = normalizeEventTeamColor(team.color);
+		if (!isEventTeamColor(color)) {
 			return EVENT_TEAM_MESSAGE.colorInvalid;
 		}
 
-		if (colors.has(team.color)) {
+		if (colors.has(color)) {
 			return EVENT_TEAM_MESSAGE.colorDuplicate;
 		}
 
-		colors.add(team.color);
+		colors.add(color);
 
 		if (team.playerIds.length === 0) {
 			return EVENT_TEAM_MESSAGE.playerEmpty;

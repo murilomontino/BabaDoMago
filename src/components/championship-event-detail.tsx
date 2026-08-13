@@ -12,9 +12,9 @@ import {
 } from "@/const/championship-event";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
 import {
-	EVENT_TEAM_COLOR_CLASS,
 	EVENT_TEAM_COLOR_LABEL,
 	type EventTeamColor,
+	eventTeamColorStyle,
 } from "@/const/event-team-color";
 import { addMatchFormSchema } from "@/const/form-schema";
 import { playerVisibleName } from "@/const/player-name";
@@ -45,9 +45,10 @@ type ChampionshipEventDetailProps = {
 function TeamChip({ color }: { color: EventTeamColor }) {
 	return (
 		<span
-			className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${EVENT_TEAM_COLOR_CLASS[color]}`}
+			className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+			style={eventTeamColorStyle(color)}
 		>
-			{EVENT_TEAM_COLOR_LABEL[color]}
+			{EVENT_TEAM_COLOR_LABEL[color] ?? color}
 		</span>
 	);
 }
@@ -166,11 +167,15 @@ export function ChampionshipEventDetail({
 			</div>
 			<ul className="space-y-2">
 				{event.teams.map((team) => (
-					<li key={team.id} className="text-sm text-fg">
-						<div className="mb-1">
-							<TeamChip color={team.color} />
-						</div>
-						<p className="text-fg-muted">
+					<li
+						key={team.id}
+						className="rounded-lg border border-line p-3 text-sm"
+						style={eventTeamColorStyle(team.color)}
+					>
+						<p className="mb-1 text-xs font-medium">
+							{EVENT_TEAM_COLOR_LABEL[team.color] ?? team.color}
+						</p>
+						<p className="opacity-80">
 							{team.players.map((player) => player.display_name).join(", ")}
 						</p>
 					</li>
@@ -236,7 +241,7 @@ export function ChampionshipEventDetail({
 										<option value="">Selecionar</option>
 										{event.teams.map((team) => (
 											<option key={team.id} value={team.id}>
-												{EVENT_TEAM_COLOR_LABEL[team.color]}
+												{EVENT_TEAM_COLOR_LABEL[team.color] ?? team.color}
 											</option>
 										))}
 									</Field>
@@ -255,7 +260,7 @@ export function ChampionshipEventDetail({
 										<option value="">Selecionar</option>
 										{event.teams.map((team) => (
 											<option key={team.id} value={team.id}>
-												{EVENT_TEAM_COLOR_LABEL[team.color]}
+												{EVENT_TEAM_COLOR_LABEL[team.color] ?? team.color}
 											</option>
 										))}
 									</Field>

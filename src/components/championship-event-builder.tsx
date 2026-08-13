@@ -17,11 +17,12 @@ import {
 	validateTeamsInAttendance,
 } from "@/const/championship-event";
 import {
-	EVENT_TEAM_COLOR_CLASS,
+	EVENT_TEAM_COLOR_CUSTOM_LABEL,
 	EVENT_TEAM_COLOR_LABEL,
 	EVENT_TEAM_COLORS,
-	type EventTeamColor,
+	eventTeamColorStyle,
 	isEventTeamColor,
+	normalizeEventTeamColor,
 } from "@/const/event-team-color";
 import { startEventFormSchema } from "@/const/form-schema";
 import { playerVisibleName } from "@/const/player-name";
@@ -130,9 +131,21 @@ export function ChampionshipEventBuilder({
 		setTeamsError(null);
 	}
 
-	function handleColorChange(key: string, color: EventTeamColor) {
+	function handleColorChange(key: string, color: string) {
+		const next = normalizeEventTeamColor(color);
+		if (!isEventTeamColor(next)) {
+			return;
+		}
+
+		const taken = teams.some((team) => team.key !== key && team.color === next);
+		if (taken) {
+			return;
+		}
+
 		setTeams((current) =>
-			current.map((team) => (team.key === key ? { ...team, color } : team)),
+			current.map((team) =>
+				team.key === key ? { ...team, color: next } : team,
+			),
 		);
 		setTeamsError(null);
 	}
@@ -276,101 +289,132 @@ export function ChampionshipEventBuilder({
 							Até {playersPerTeam} jogadores por time. Só quem está presente.
 						</p>
 						<div className="grid gap-3 md:grid-cols-2">
-							{teams.map((team) => (
-								<article
-									key={team.key}
-									className="space-y-3 rounded-lg border border-line p-3"
-								>
-									<div className="flex items-center gap-2">
-										<span
-											className={`inline-block size-3 rounded-full ${EVENT_TEAM_COLOR_CLASS[team.color]}`}
-										/>
-										<select
-											value={team.color}
-											onChange={(event) => {
-												const color = event.target.value;
-												if (!isEventTeamColor(color)) {
-													return;
+							{teams.map((team) => {
+								const isDefault = EVENT_TEAM_COLORS.some(
+									(color) => color === team.color,
+								);
+
+								return (
+									<article
+										key={team.key}
+										className="space-y-3 rounded-lg border border-line p-3"
+										style={eventTeamColorStyle(team.color)}
+									>
+										<div className="flex items-center gap-2">
+											<div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+												{EVENT_TEAM_COLORS.map((color) => {
+													const taken =
+														usedColors.includes(color) && color !== team.color;
+													const selected = team.color === color;
+
+													return (
+														<button
+															key={color}
+															type="button"
+															disabled={taken}
+															aria-label={
+																EVENT_TEAM_COLOR_LABEL[color] ?? color
+															}
+															aria-pressed={selected}
+															onClick={() => handleColorChange(team.key, color)}
+															className={`size-7 rounded-md border-2 disabled:opacity-30 ${selected ? "border-current" : "border-black/20"}`}
+															style={{ backgroundColor: color }}
+														/>
+													);
+												})}
+												<label className="relative size-7 shrink-0">
+													<input
+														type="color"
+														value={team.color}
+														aria-label={EVENT_TEAM_COLOR_CUSTOM_LABEL}
+														onChange={(event) => {
+															handleColorChange(team.key, event.target.value);
+														}}
+														className="absolute inset-0 cursor-pointer opacity-0"
+													/>
+													<span
+														aria-hidden
+														className={`block size-7 rounded-md border-2 ${isDefault ? "border-black/20" : "border-current"}`}
+														style={{
+															backgroundColor: isDefault
+																? "transparent"
+																: team.color,
+															backgroundImage: isDefault
+																? "conic-gradient(#dc2626, #facc15, #166534, #2563eb, #ec4899, #dc2626)"
+																: undefined,
+														}}
+													/>
+												</label>
+											</div>
+											{teams.length > CHAMPIONSHIP_EVENT.minTeams && (
+												<Button
+													variant={BUTTON_VARIANT.ghost}
+													aria-label="Remover time"
+													className="px-2 text-current hover:bg-black/10"
+													onClick={() => handleRemoveTeam(team.key)}
+												>
+													<X className="size-4" />
+												</Button>
+											)}
+										</div>
+										<ul className="space-y-1">
+											{team.playerIds.map((playerId) => {
+												const player = presentPlayers.find(
+													(item) => item.id === playerId,
+												);
+												if (!player) {
+													return null;
 												}
 
-												handleColorChange(team.key, color);
-											}}
-											className={`min-w-0 flex-1 ${FIELD_CLASS}`}
-										>
-											{EVENT_TEAM_COLORS.filter(
-												(color) =>
-													color === team.color || !usedColors.includes(color),
-											).map((color) => (
-												<option key={color} value={color}>
-													{EVENT_TEAM_COLOR_LABEL[color]}
-												</option>
-											))}
-										</select>
-										{teams.length > CHAMPIONSHIP_EVENT.minTeams && (
-											<Button
-												variant={BUTTON_VARIANT.ghost}
-												aria-label="Remover time"
-												className="px-2"
-												onClick={() => handleRemoveTeam(team.key)}
-											>
-												<X className="size-4" />
-											</Button>
-										)}
-									</div>
-									<ul className="space-y-1">
-										{team.playerIds.map((playerId) => {
-											const player = presentPlayers.find(
-												(item) => item.id === playerId,
-											);
-											if (!player) {
-												return null;
-											}
-
-											return (
-												<li
-													key={playerId}
-													className="flex items-center justify-between gap-2 text-sm text-fg"
-												>
-													{playerVisibleName(player)}
-													<Button
-														variant={BUTTON_VARIANT.ghost}
-														aria-label={`Remover ${playerVisibleName(player)}`}
-														className="px-2"
-														onClick={() =>
-															handleRemovePlayer(team.key, playerId)
-														}
+												return (
+													<li
+														key={playerId}
+														className="flex items-center justify-between gap-2 text-sm"
 													>
-														<X className="size-3.5" />
-													</Button>
-												</li>
-											);
-										})}
-									</ul>
-									{team.playerIds.length < playersPerTeam &&
-										pool.length > 0 && (
-											<select
-												value=""
-												onChange={(event) => {
-													handleAddPlayer(team.key, Number(event.target.value));
-													event.target.value = "";
-												}}
-												className={FIELD_CLASS}
-											>
-												<option value="">Adicionar jogador</option>
-												{pool.map((player) => (
-													<option key={player.id} value={player.id}>
 														{playerVisibleName(player)}
-													</option>
-												))}
-											</select>
-										)}
-									<p className="text-xs text-fg-muted">
-										{team.playerIds.length}/{playersPerTeam}
-									</p>
-								</article>
-							))}
+														<Button
+															variant={BUTTON_VARIANT.ghost}
+															aria-label={`Remover ${playerVisibleName(player)}`}
+															className="px-2 text-current hover:bg-black/10"
+															onClick={() =>
+																handleRemovePlayer(team.key, playerId)
+															}
+														>
+															<X className="size-3.5" />
+														</Button>
+													</li>
+												);
+											})}
+										</ul>
+										{team.playerIds.length < playersPerTeam &&
+											pool.length > 0 && (
+												<select
+													value=""
+													onChange={(event) => {
+														handleAddPlayer(
+															team.key,
+															Number(event.target.value),
+														);
+														event.target.value = "";
+													}}
+													className={FIELD_CLASS}
+												>
+													<option value="">Adicionar jogador</option>
+													{pool.map((player) => (
+														<option key={player.id} value={player.id}>
+															{playerVisibleName(player)}
+														</option>
+													))}
+												</select>
+											)}
+										<p className="text-xs opacity-80">
+											{team.playerIds.length}/{playersPerTeam}
+										</p>
+									</article>
+								);
+							})}
 						</div>
-						{nextColor && (
+						{teams.length < EVENT_TEAM_COLORS.length && nextColor && (
 							<Button
 								variant={BUTTON_VARIANT.secondary}
 								onClick={handleAddTeam}

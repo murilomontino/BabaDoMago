@@ -9,7 +9,7 @@ import {
 	validateEventTeams,
 	validateTeamsInAttendance,
 } from "./championship-event.ts";
-import { EVENT_TEAM_COLOR } from "./event-team-color.ts";
+import { EVENT_TEAM_COLOR, type EventTeamColor } from "./event-team-color.ts";
 
 function check(actual: unknown, expected: unknown): void {
 	if (actual !== expected) {
@@ -28,6 +28,39 @@ check(
 		5,
 	),
 	null,
+);
+
+check(
+	validateEventTeams(
+		[
+			{ color: "#7c3aed", playerIds: [1] },
+			{ color: EVENT_TEAM_COLOR.black, playerIds: [2] },
+		],
+		5,
+	),
+	null,
+);
+
+check(
+	validateEventTeams(
+		[
+			{ color: "#7c3aed", playerIds: [1] },
+			{ color: "#7c3aed", playerIds: [2] },
+		],
+		5,
+	),
+	EVENT_TEAM_MESSAGE.colorDuplicate,
+);
+
+check(
+	validateEventTeams(
+		[
+			{ color: "white" as EventTeamColor, playerIds: [1] },
+			{ color: EVENT_TEAM_COLOR.black, playerIds: [2] },
+		],
+		5,
+	),
+	EVENT_TEAM_MESSAGE.colorInvalid,
 );
 
 check(
