@@ -1,4 +1,5 @@
-import { createRootRoute, Link, Outlet } from "@tanstack/react-router";
+import { createRootRoute, Outlet } from "@tanstack/react-router";
+import { AuthProvider } from "@/contexts/auth";
 
 export const Route = createRootRoute({
 	component: RootLayout,
@@ -7,23 +8,9 @@ export const Route = createRootRoute({
 
 function RootLayout() {
 	return (
-		<div className="mx-auto min-h-screen max-w-3xl px-4 py-8">
-			<nav className="mb-8 flex gap-4">
-				<Link
-					to="/"
-					className="font-medium text-slate-700 hover:text-slate-900"
-				>
-					Início
-				</Link>
-				<Link
-					to="/todos"
-					className="font-medium text-slate-700 hover:text-slate-900"
-				>
-					Tarefas
-				</Link>
-			</nav>
+		<AuthProvider>
 			<Outlet />
-		</div>
+		</AuthProvider>
 	);
 }
 
