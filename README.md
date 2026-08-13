@@ -32,6 +32,7 @@ Rode no SQL Editor, nesta ordem:
 
 1. [`supabase/migrations/20260813120000_championships.sql`](supabase/migrations/20260813120000_championships.sql)
 2. [`supabase/migrations/20260813140000_users.sql`](supabase/migrations/20260813140000_users.sql)
+3. [`supabase/migrations/20260813150000_fix_championships_insert_rls.sql`](supabase/migrations/20260813150000_fix_championships_insert_rls.sql) — rode se o 1 já foi aplicado (corrige RLS no criar campeonato)
 
 O segundo cria `public.users` e vincula cada login Google (trigger + backfill). Sem ele o app não cadastra usuário na plataforma.
 

@@ -114,7 +114,7 @@ export async function createChampionship(
 ): Promise<Championship> {
 	const { data, error } = await supabase
 		.from("championships")
-		.insert({ name, created_by: userId })
+		.insert({ name })
 		.select("id, name, invite_code, created_by")
 		.single();
 

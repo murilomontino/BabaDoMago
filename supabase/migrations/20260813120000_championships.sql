@@ -2,7 +2,7 @@ create table public.championships (
 	id bigint generated always as identity primary key,
 	name text not null,
 	invite_code text not null unique default substr(replace(gen_random_uuid()::text, '-', ''), 1, 16),
-	created_by uuid not null references auth.users (id) on delete cascade,
+	created_by uuid not null default auth.uid() references auth.users (id) on delete cascade,
 	created_at timestamptz not null default now()
 );
 
@@ -85,7 +85,10 @@ create policy championships_select_member
 	on public.championships
 	for select
 	to authenticated
-	using (public.is_championship_member(id));
+	using (
+		created_by = (select auth.uid())
+		or public.is_championship_member(id)
+	);
 
 create policy championships_insert_own
 	on public.championships
