@@ -1,5 +1,7 @@
 import { useCallback, useState } from "react";
 import Cropper, { type Area } from "react-easy-crop";
+import { Button } from "@/components/button";
+import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
 import { getCroppedJpeg } from "@/lib/crop-image";
 
 type ChampionshipLogoCropProps = {
@@ -45,8 +47,10 @@ export function ChampionshipLogoCrop({
 	return (
 		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
 			<div className="w-full max-w-lg rounded-xl bg-white p-4 shadow-lg">
-				<p className="mb-3 text-sm font-medium text-slate-800">Ajustar logo</p>
-				<div className="relative h-72 overflow-hidden rounded-lg bg-slate-900">
+				<p className="mb-3 text-sm font-medium tracking-tight text-stone-800">
+					Ajustar logo
+				</p>
+				<div className="relative h-72 overflow-hidden rounded-lg bg-stone-900">
 					<Cropper
 						image={imageSrc}
 						crop={crop}
@@ -57,7 +61,7 @@ export function ChampionshipLogoCrop({
 						onCropComplete={handleCropComplete}
 					/>
 				</div>
-				<label className="mt-3 block text-sm text-slate-600">
+				<label className="mt-3 block text-sm text-stone-600">
 					Zoom
 					<input
 						type="range"
@@ -70,27 +74,24 @@ export function ChampionshipLogoCrop({
 					/>
 				</label>
 				{errorMessage && (
-					<p className="mt-2 text-sm text-red-600">{errorMessage}</p>
+					<p className={`mt-2 ${ERROR_CLASS}`}>{errorMessage}</p>
 				)}
 				<div className="mt-4 flex justify-end gap-2">
-					<button
-						type="button"
+					<Button
+						variant={BUTTON_VARIANT.secondary}
 						onClick={onCancel}
 						disabled={isCropping}
-						className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50"
 					>
 						Cancelar
-					</button>
-					<button
-						type="button"
+					</Button>
+					<Button
 						onClick={() => {
 							void handleConfirm();
 						}}
 						disabled={isCropping || !croppedAreaPixels}
-						className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
 					>
 						Usar
-					</button>
+					</Button>
 				</div>
 			</div>
 		</div>

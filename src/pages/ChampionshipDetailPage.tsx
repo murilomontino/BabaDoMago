@@ -1,8 +1,13 @@
 import { useNavigate, useParams } from "@tanstack/react-router";
+import { Copy, Shield, Trash2, Users } from "lucide-react";
 import { type FormEvent, useState } from "react";
+import { Button } from "@/components/button";
 import { ChampionshipLogo } from "@/components/championship-logo";
 import { ChampionshipLogoCrop } from "@/components/championship-logo-crop";
 import { ChampionshipRoster } from "@/components/championship-roster";
+import { EmptyState } from "@/components/empty-state";
+import { SectionCard } from "@/components/section-card";
+import { Tabs } from "@/components/tabs";
 import {
 	assertChampionshipLogoSource,
 	CHAMPIONSHIP_LOGO,
@@ -10,6 +15,7 @@ import {
 import {
 	type AssignableChampionshipRole,
 	CHAMPIONSHIP_ROLE,
+	CHAMPIONSHIP_ROLE_LABEL,
 	canDeleteChampionship,
 	canInvite,
 	canRenameChampionship,
@@ -18,7 +24,13 @@ import {
 	canUpdateRating,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
+import {
+	CHAMPIONSHIP_TAB,
+	CHAMPIONSHIP_TABS,
+	type ChampionshipTab,
+} from "@/const/championship-tab";
 import { ROUTES } from "@/const/routes";
+import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
 import {
 	useAddManualPlayer,
@@ -54,6 +66,7 @@ export function ChampionshipDetailPage() {
 	const [transferPlayerId, setTransferPlayerId] = useState("");
 	const [logoCropSrc, setLogoCropSrc] = useState<string | null>(null);
 	const [logoSourceError, setLogoSourceError] = useState<string | null>(null);
+	const [tab, setTab] = useState<ChampionshipTab>(CHAMPIONSHIP_TAB.roster);
 
 	const currentPlayer = data?.players.find(
 		(player) => player.user_id === user?.id,
@@ -137,6 +150,10 @@ export function ChampionshipDetailPage() {
 	}
 
 	const isOwner = Boolean(user && data && data.created_by === user.id);
+	const canConfigure =
+		permissions.rename ||
+		permissions.transferOwnership ||
+		permissions.deleteChampionship;
 
 	function handleLogoChange(event: FormEvent<HTMLInputElement>) {
 		const file = event.currentTarget.files?.[0];
@@ -180,38 +197,55 @@ export function ChampionshipDetailPage() {
 	}
 
 	if (isPending) {
-		return <p>Carregando campeonato...</p>;
+		return <p className="text-stone-600">Carregando campeonato...</p>;
 	}
 
 	if (isError) {
-		return <p>Erro ao carregar campeonato: {error.message}</p>;
+		return (
+			<p className={ERROR_CLASS}>
+				Erro ao carregar campeonato: {error.message}
+			</p>
+		);
 	}
 
 	return (
-		<main>
-			<div className="mb-2 flex items-center gap-3">
-				<ChampionshipLogo
-					path={data.logo_path}
-					name={data.name}
-					className="h-14 w-14 rounded-lg object-cover"
-				/>
-				<h1 className="text-2xl font-semibold">{data.name}</h1>
-			</div>
-			{isOwner && (
-				<label className="mb-4 inline-block cursor-pointer text-sm text-slate-600 hover:text-slate-900">
-					{data.logo_path ? "Trocar logo" : "Enviar logo"}
-					<input
-						type="file"
-						accept={`${CHAMPIONSHIP_LOGO.mimePng},${CHAMPIONSHIP_LOGO.mimeJpeg}`}
-						disabled={uploadLogo.isPending}
-						onChange={handleLogoChange}
-						className="sr-only"
+		<main className="space-y-6">
+			<section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+				<div className="flex items-start gap-4">
+					<ChampionshipLogo
+						path={data.logo_path}
+						name={data.name}
+						className="h-16 w-16"
 					/>
-				</label>
-			)}
-			{logoSourceError && (
-				<p className="mb-4 text-sm text-red-600">{logoSourceError}</p>
-			)}
+					<div className="min-w-0 flex-1">
+						<h1 className="text-2xl font-semibold tracking-tight text-stone-900">
+							{data.name}
+						</h1>
+						<span className="mt-2 inline-flex items-center gap-1 rounded-full bg-pitch-soft px-2 py-0.5 text-xs font-medium text-pitch">
+							<Shield className="size-3" />
+							{CHAMPIONSHIP_ROLE_LABEL[actorRole]}
+						</span>
+						{isOwner && (
+							<label className="mt-3 flex cursor-pointer items-center gap-1 text-sm text-pitch hover:underline">
+								{data.logo_path ? "Trocar logo" : "Enviar logo"}
+								<input
+									type="file"
+									accept={`${CHAMPIONSHIP_LOGO.mimePng},${CHAMPIONSHIP_LOGO.mimeJpeg}`}
+									disabled={uploadLogo.isPending}
+									onChange={handleLogoChange}
+									className="sr-only"
+								/>
+							</label>
+						)}
+					</div>
+				</div>
+				{logoSourceError && (
+					<p className={`mt-3 ${ERROR_CLASS}`}>{logoSourceError}</p>
+				)}
+				{uploadLogo.isError && (
+					<p className={`mt-3 ${ERROR_CLASS}`}>{uploadLogo.error.message}</p>
+				)}
+			</section>
 			{logoCropSrc && (
 				<ChampionshipLogoCrop
 					imageSrc={logoCropSrc}
@@ -219,149 +253,179 @@ export function ChampionshipDetailPage() {
 					onConfirm={handleLogoCropConfirm}
 				/>
 			)}
-			{permissions.rename && (
-				<form onSubmit={handleRename} className="mb-4 flex max-w-md gap-2">
-					<input
-						value={nameDraft ?? data.name}
-						onChange={(event) => setNameDraft(event.target.value)}
-						aria-label="Nome do campeonato"
-						className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
-					/>
-					<button
-						type="submit"
-						disabled={renameChampionship.isPending}
-						className="rounded-lg border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-50"
-					>
-						Salvar nome
-					</button>
-				</form>
-			)}
-			<div className="mb-6 flex flex-wrap items-center gap-3">
-				{permissions.invite && (
-					<button
-						type="button"
-						onClick={handleCopyLink}
-						className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50"
-					>
-						Copiar link de convite
-					</button>
-				)}
-				{copied && (
-					<span className="text-sm text-slate-500">Link copiado.</span>
-				)}
-				{permissions.deleteChampionship && (
-					<button
-						type="button"
-						onClick={handleDelete}
-						disabled={deleteChampionship.isPending}
-						className="rounded-lg border border-red-300 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50"
-					>
-						Excluir campeonato
-					</button>
-				)}
-			</div>
-			{permissions.transferOwnership && (
-				<form
-					onSubmit={handleTransfer}
-					className="mb-6 flex max-w-md flex-wrap items-center gap-2"
+			<Tabs value={tab} items={CHAMPIONSHIP_TABS} onChange={setTab} />
+			{tab === CHAMPIONSHIP_TAB.roster && (
+				<SectionCard
+					title="Elenco"
+					icon={<Users className="size-4 text-pitch" />}
+					action={
+						permissions.invite && (
+							<>
+								{copied && (
+									<span className="text-sm font-normal text-stone-500">
+										Link copiado.
+									</span>
+								)}
+								<Button
+									variant={BUTTON_VARIANT.secondary}
+									onClick={handleCopyLink}
+								>
+									<Copy className="size-4" />
+									Copiar link de convite
+								</Button>
+							</>
+						)
+					}
 				>
-					<select
-						value={transferPlayerId}
-						onChange={(event) => setTransferPlayerId(event.target.value)}
-						required
-						className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
-					>
-						<option value="">Novo dono</option>
-						{data.players
-							.filter(
-								(player) =>
-									player.user_id && player.user_id !== data.created_by,
-							)
-							.map((player) => (
-								<option key={player.id} value={player.id}>
-									{player.display_name}
-								</option>
-							))}
-					</select>
-					<button
-						type="submit"
-						disabled={transferOwner.isPending}
-						className="rounded-lg border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50 disabled:opacity-50"
-					>
-						Transferir
-					</button>
-				</form>
-			)}
-			{permissions.invite && (
-				<form onSubmit={handleAddPlayer} className="mb-6 flex gap-2">
-					<input
-						value={playerName}
-						onChange={(event) => setPlayerName(event.target.value)}
-						placeholder="Nome do jogador"
-						required
-						className="flex-1 rounded-lg border border-slate-300 px-3 py-2"
+					{permissions.invite && (
+						<form onSubmit={handleAddPlayer} className="mb-4 flex gap-2">
+							<input
+								value={playerName}
+								onChange={(event) => setPlayerName(event.target.value)}
+								placeholder="Nome do jogador"
+								required
+								className={FIELD_CLASS}
+							/>
+							<Button type="submit" disabled={addPlayer.isPending}>
+								Adicionar
+							</Button>
+						</form>
+					)}
+					{addPlayer.isError && (
+						<p className={`mb-4 ${ERROR_CLASS}`}>{addPlayer.error.message}</p>
+					)}
+					<ChampionshipRoster
+						players={data.players}
+						createdBy={data.created_by}
+						currentUserId={user?.id ?? null}
+						claimingPlayerId={claimPlayer.variables ?? null}
+						onClaim={(playerId) => claimPlayer.mutate(playerId)}
+						onChangeRating={permissions.rating ? handleChangeRating : undefined}
+						ratingPlayerId={
+							updateRating.isPending
+								? (updateRating.variables?.playerId ?? null)
+								: null
+						}
+						onChangeRole={
+							permissions.setRoles
+								? (playerId, role: AssignableChampionshipRole) =>
+										setPlayerRole.mutate({ playerId, role })
+								: undefined
+						}
 					/>
-					<button
-						type="submit"
-						disabled={addPlayer.isPending}
-						className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-					>
-						Adicionar
-					</button>
-				</form>
+					{claimPlayer.isError && (
+						<p className={`mt-4 ${ERROR_CLASS}`}>{claimPlayer.error.message}</p>
+					)}
+					{updateRating.isError && (
+						<p className={`mt-4 ${ERROR_CLASS}`}>
+							{updateRating.error.message}
+						</p>
+					)}
+					{setPlayerRole.isError && (
+						<p className={`mt-4 ${ERROR_CLASS}`}>
+							{setPlayerRole.error.message}
+						</p>
+					)}
+				</SectionCard>
 			)}
-			{addPlayer.isError && (
-				<p className="mb-4 text-sm text-red-600">{addPlayer.error.message}</p>
-			)}
-			{renameChampionship.isError && (
-				<p className="mb-4 text-sm text-red-600">
-					{renameChampionship.error.message}
-				</p>
-			)}
-			{deleteChampionship.isError && (
-				<p className="mb-4 text-sm text-red-600">
-					{deleteChampionship.error.message}
-				</p>
-			)}
-			{transferOwner.isError && (
-				<p className="mb-4 text-sm text-red-600">
-					{transferOwner.error.message}
-				</p>
-			)}
-			{uploadLogo.isError && (
-				<p className="mb-4 text-sm text-red-600">{uploadLogo.error.message}</p>
-			)}
-			<ChampionshipRoster
-				players={data.players}
-				createdBy={data.created_by}
-				currentUserId={user?.id ?? null}
-				claimingPlayerId={claimPlayer.variables ?? null}
-				onClaim={(playerId) => claimPlayer.mutate(playerId)}
-				onChangeRating={permissions.rating ? handleChangeRating : undefined}
-				ratingPlayerId={
-					updateRating.isPending
-						? (updateRating.variables?.playerId ?? null)
-						: null
-				}
-				onChangeRole={
-					permissions.setRoles
-						? (playerId, role: AssignableChampionshipRole) =>
-								setPlayerRole.mutate({ playerId, role })
-						: undefined
-				}
-			/>
-			{claimPlayer.isError && (
-				<p className="mt-4 text-sm text-red-600">{claimPlayer.error.message}</p>
-			)}
-			{updateRating.isError && (
-				<p className="mt-4 text-sm text-red-600">
-					{updateRating.error.message}
-				</p>
-			)}
-			{setPlayerRole.isError && (
-				<p className="mt-4 text-sm text-red-600">
-					{setPlayerRole.error.message}
-				</p>
+			{tab === CHAMPIONSHIP_TAB.settings && (
+				<div className="space-y-6">
+					{!canConfigure && (
+						<EmptyState
+							icon={<Shield className="size-10" />}
+							title="Nada para configurar"
+							description="Você não pode alterar este campeonato."
+						/>
+					)}
+					{(permissions.rename || permissions.transferOwnership) && (
+						<SectionCard
+							title="Configuração"
+							icon={<Shield className="size-4 text-pitch" />}
+						>
+							{permissions.rename && (
+								<form onSubmit={handleRename} className="mb-4 flex gap-2">
+									<input
+										value={nameDraft ?? data.name}
+										onChange={(event) => setNameDraft(event.target.value)}
+										aria-label="Nome do campeonato"
+										className={FIELD_CLASS}
+									/>
+									<Button
+										type="submit"
+										variant={BUTTON_VARIANT.secondary}
+										disabled={renameChampionship.isPending}
+									>
+										Salvar nome
+									</Button>
+								</form>
+							)}
+							{renameChampionship.isError && (
+								<p className={`mb-4 ${ERROR_CLASS}`}>
+									{renameChampionship.error.message}
+								</p>
+							)}
+							{permissions.transferOwnership && (
+								<form
+									onSubmit={handleTransfer}
+									className="flex flex-wrap items-center gap-2"
+								>
+									<select
+										value={transferPlayerId}
+										onChange={(event) =>
+											setTransferPlayerId(event.target.value)
+										}
+										required
+										className={FIELD_CLASS}
+									>
+										<option value="">Novo dono</option>
+										{data.players
+											.filter(
+												(player) =>
+													player.user_id && player.user_id !== data.created_by,
+											)
+											.map((player) => (
+												<option key={player.id} value={player.id}>
+													{player.display_name}
+												</option>
+											))}
+									</select>
+									<Button
+										type="submit"
+										variant={BUTTON_VARIANT.secondary}
+										disabled={transferOwner.isPending}
+									>
+										Transferir
+									</Button>
+								</form>
+							)}
+							{transferOwner.isError && (
+								<p className={`mt-4 ${ERROR_CLASS}`}>
+									{transferOwner.error.message}
+								</p>
+							)}
+						</SectionCard>
+					)}
+					{permissions.deleteChampionship && (
+						<SectionCard
+							title="Zona de perigo"
+							icon={<Trash2 className="size-4 text-red-700" />}
+						>
+							<Button
+								variant={BUTTON_VARIANT.danger}
+								onClick={handleDelete}
+								disabled={deleteChampionship.isPending}
+							>
+								<Trash2 className="size-4" />
+								Excluir campeonato
+							</Button>
+							{deleteChampionship.isError && (
+								<p className={`mt-4 ${ERROR_CLASS}`}>
+									{deleteChampionship.error.message}
+								</p>
+							)}
+						</SectionCard>
+					)}
+				</div>
 			)}
 		</main>
 	);

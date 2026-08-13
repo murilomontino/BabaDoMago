@@ -1,34 +1,57 @@
 import { Link } from "@tanstack/react-router";
+import { ChevronRight, Plus, Trophy } from "lucide-react";
 import { ChampionshipLogo } from "@/components/championship-logo";
+import { EmptyState } from "@/components/empty-state";
+import { PageHeader } from "@/components/page-header";
 import { ROUTES } from "@/const/routes";
+import { BUTTON_VARIANT, buttonClassName, ERROR_CLASS } from "@/const/ui";
 import { useChampionships } from "@/hooks/championships/use-championships";
 
 export function ChampionshipsPage() {
 	const { data: championships, isPending, isError, error } = useChampionships();
 
 	if (isPending) {
-		return <p>Carregando campeonatos...</p>;
+		return <p className="text-stone-600">Carregando campeonatos...</p>;
 	}
 
 	if (isError) {
-		return <p>Erro ao carregar campeonatos: {error.message}</p>;
+		return (
+			<p className={ERROR_CLASS}>
+				Erro ao carregar campeonatos: {error.message}
+			</p>
+		);
 	}
 
 	return (
 		<main>
-			<div className="mb-6 flex items-center justify-between gap-4">
-				<h1 className="text-2xl font-semibold">Campeonatos</h1>
-				<Link
-					to={ROUTES.championshipNew}
-					className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-				>
-					Novo campeonato
-				</Link>
-			</div>
+			<PageHeader
+				title="Campeonatos"
+				description="Seus babas e peladas"
+				action={
+					<Link
+						to={ROUTES.championshipNew}
+						className={buttonClassName(BUTTON_VARIANT.primary)}
+					>
+						<Plus className="size-4" />
+						Novo campeonato
+					</Link>
+				}
+			/>
 			{championships.length === 0 && (
-				<p className="text-slate-600">
-					Você ainda não criou nem entrou em um campeonato.
-				</p>
+				<EmptyState
+					icon={<Trophy className="size-10" />}
+					title="Nenhum campeonato ainda"
+					description="Você ainda não criou nem entrou em um campeonato."
+					action={
+						<Link
+							to={ROUTES.championshipNew}
+							className={buttonClassName(BUTTON_VARIANT.primary)}
+						>
+							<Plus className="size-4" />
+							Novo campeonato
+						</Link>
+					}
+				/>
 			)}
 			{championships.length > 0 && (
 				<ul className="space-y-2">
@@ -37,13 +60,16 @@ export function ChampionshipsPage() {
 							<Link
 								to={ROUTES.championship}
 								params={{ championshipId: String(championship.id) }}
-								className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 font-medium hover:bg-slate-50"
+								className="flex items-center gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3 shadow-sm hover:border-pitch/30 hover:bg-pitch-soft/40"
 							>
 								<ChampionshipLogo
 									path={championship.logo_path}
 									name={championship.name}
 								/>
-								{championship.name}
+								<span className="flex-1 font-semibold tracking-tight text-stone-900">
+									{championship.name}
+								</span>
+								<ChevronRight className="size-4 text-stone-400" />
 							</Link>
 						</li>
 					))}

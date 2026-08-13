@@ -1,8 +1,12 @@
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { Trophy, UserPlus, Users } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { Button } from "@/components/button";
 import { ChampionshipLogo } from "@/components/championship-logo";
 import { ChampionshipRoster } from "@/components/championship-roster";
+import { SectionCard } from "@/components/section-card";
 import { ROUTES } from "@/const/routes";
+import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
 import {
 	useChampionshipByInvite,
@@ -66,7 +70,7 @@ export function JoinChampionshipPage() {
 	if (isPending || isAuthLoading) {
 		return (
 			<main className="mx-auto max-w-3xl px-4 py-8">
-				<p>Carregando campeonato...</p>
+				<p className="text-stone-600">Carregando campeonato...</p>
 			</main>
 		);
 	}
@@ -74,62 +78,70 @@ export function JoinChampionshipPage() {
 	if (isError) {
 		return (
 			<main className="mx-auto max-w-3xl px-4 py-8">
-				<p>Erro ao carregar campeonato: {error.message}</p>
+				<p className={ERROR_CLASS}>
+					Erro ao carregar campeonato: {error.message}
+				</p>
 			</main>
 		);
 	}
 
 	return (
-		<main className="mx-auto max-w-3xl px-4 py-8">
-			<p className="mb-2 text-sm font-medium uppercase tracking-wide text-slate-500">
-				Campeonato
-			</p>
-			<div className="mb-6 flex items-center gap-3">
-				<ChampionshipLogo
-					path={data.logo_path}
-					name={data.name}
-					className="h-14 w-14 rounded-lg object-cover"
+		<main className="mx-auto max-w-3xl space-y-6 px-4 py-8">
+			<section className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+				<p className="mb-3 flex items-center gap-2 text-sm font-medium uppercase tracking-wide text-pitch">
+					<Trophy className="size-4" />
+					Campeonato
+				</p>
+				<div className="flex items-center gap-3">
+					<ChampionshipLogo
+						path={data.logo_path}
+						name={data.name}
+						className="h-16 w-16"
+					/>
+					<h1 className="text-2xl font-semibold tracking-tight text-stone-900">
+						{data.name}
+					</h1>
+				</div>
+			</section>
+			<SectionCard
+				title="Elenco"
+				icon={<Users className="size-4 text-pitch" />}
+			>
+				<ChampionshipRoster
+					players={data.players}
+					createdBy={data.created_by}
+					currentUserId={user?.id ?? null}
+					claimingPlayerId={claimPlayer.variables ?? null}
+					onClaim={handleClaim}
 				/>
-				<h1 className="text-2xl font-semibold">{data.name}</h1>
-			</div>
-			<ChampionshipRoster
-				players={data.players}
-				createdBy={data.created_by}
-				currentUserId={user?.id ?? null}
-				claimingPlayerId={claimPlayer.variables ?? null}
-				onClaim={handleClaim}
-			/>
+			</SectionCard>
 			{!alreadyMember && user && (
-				<button
-					type="button"
+				<Button
 					onClick={() => joinChampionship.mutate()}
 					disabled={joinChampionship.isPending}
-					className="mt-6 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
 				>
+					<UserPlus className="size-4" />
 					Inscrever-me
-				</button>
+				</Button>
 			)}
 			{!user && (
-				<button
-					type="button"
+				<Button
+					variant={BUTTON_VARIANT.secondary}
 					onClick={() =>
 						navigate({
 							to: ROUTES.login,
 							search: { redirect: `/join/${inviteCode}` },
 						})
 					}
-					className="mt-6 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50"
 				>
 					Entrar para se inscrever
-				</button>
+				</Button>
 			)}
 			{joinChampionship.isError && (
-				<p className="mt-4 text-sm text-red-600">
-					{joinChampionship.error.message}
-				</p>
+				<p className={ERROR_CLASS}>{joinChampionship.error.message}</p>
 			)}
 			{claimPlayer.isError && (
-				<p className="mt-4 text-sm text-red-600">{claimPlayer.error.message}</p>
+				<p className={ERROR_CLASS}>{claimPlayer.error.message}</p>
 			)}
 		</main>
 	);

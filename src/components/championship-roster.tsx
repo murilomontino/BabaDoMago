@@ -1,3 +1,6 @@
+import { UserPlus } from "lucide-react";
+import { Button } from "@/components/button";
+import { EmptyState } from "@/components/empty-state";
 import { PlayerRating } from "@/components/player-rating";
 import {
 	ASSIGNABLE_CHAMPIONSHIP_ROLES,
@@ -10,6 +13,7 @@ import {
 	championshipRatingCeiling,
 	starFillToRating,
 } from "@/const/player-rating";
+import { BUTTON_VARIANT, FIELD_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 type ChampionshipRosterProps = {
@@ -38,7 +42,12 @@ export function ChampionshipRoster({
 	);
 
 	if (players.length === 0) {
-		return <p className="text-slate-600">Nenhum jogador ainda.</p>;
+		return (
+			<EmptyState
+				icon={<UserPlus className="size-10" />}
+				title="Nenhum jogador ainda"
+			/>
+		);
 	}
 
 	const ceiling = championshipRatingCeiling(
@@ -46,7 +55,7 @@ export function ChampionshipRoster({
 	);
 
 	return (
-		<ul className="divide-y divide-slate-200 rounded-lg border border-slate-200">
+		<ul className="divide-y divide-stone-100">
 			{players.map((player) => {
 				const canClaim = !player.user_id && !alreadyMember;
 				const displayRole = resolveChampionshipRole(
@@ -63,7 +72,7 @@ export function ChampionshipRoster({
 				return (
 					<li
 						key={player.id}
-						className="flex items-center justify-between gap-3 px-4 py-3"
+						className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
 					>
 						<div className="flex items-center gap-3">
 							{player.avatar_url && (
@@ -75,12 +84,12 @@ export function ChampionshipRoster({
 								/>
 							)}
 							{!player.avatar_url && (
-								<span className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-sm font-medium text-slate-700">
+								<span className="flex h-9 w-9 items-center justify-center rounded-full bg-pitch-soft text-sm font-medium text-pitch">
 									{player.display_name.charAt(0).toUpperCase()}
 								</span>
 							)}
 							<div>
-								<p className="font-medium text-slate-900">
+								<p className="font-medium text-stone-900">
 									{player.display_name}
 								</p>
 								<div className="mt-1">
@@ -99,12 +108,14 @@ export function ChampionshipRoster({
 									/>
 								</div>
 								{player.user_id && (
-									<p className="text-xs text-slate-500">
+									<span className="mt-1 inline-flex rounded-full bg-pitch-soft px-2 py-0.5 text-xs font-medium text-pitch">
 										{CHAMPIONSHIP_ROLE_LABEL[displayRole]}
-									</p>
+									</span>
 								)}
 								{!player.user_id && (
-									<p className="text-xs text-slate-500">Sem conta</p>
+									<span className="mt-1 inline-flex rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600">
+										Sem conta
+									</span>
 								)}
 								{canEditRole && onChangeRole && (
 									<select
@@ -119,7 +130,7 @@ export function ChampionshipRoster({
 
 											onChangeRole(player.id, nextRole);
 										}}
-										className="mt-1 rounded border border-slate-300 px-2 py-1 text-xs"
+										className={`mt-1 ${FIELD_CLASS} py-1 text-xs`}
 									>
 										{ASSIGNABLE_CHAMPIONSHIP_ROLES.map((role) => (
 											<option key={role} value={role}>
@@ -131,14 +142,14 @@ export function ChampionshipRoster({
 							</div>
 						</div>
 						{canClaim && (
-							<button
-								type="button"
+							<Button
+								variant={BUTTON_VARIANT.secondary}
 								onClick={() => onClaim(player.id)}
 								disabled={claimingPlayerId === player.id}
-								className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-50 disabled:opacity-50"
 							>
+								<UserPlus className="size-4" />
 								Conectar
-							</button>
+							</Button>
 						)}
 					</li>
 				);

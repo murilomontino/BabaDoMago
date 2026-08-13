@@ -1,7 +1,10 @@
 import { useSearch } from "@tanstack/react-router";
+import { Trophy } from "lucide-react";
 import { useState } from "react";
+import { Button } from "@/components/button";
 import { GoogleIcon } from "@/components/google-icon";
 import { ROUTES } from "@/const/routes";
+import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
 import { isSafeInternalPath } from "@/lib/safe-path";
 
@@ -30,30 +33,29 @@ export function LoginPage() {
 	}
 
 	return (
-		<main className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
-			<section className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-				<p className="mb-2 text-sm font-medium uppercase tracking-wide text-slate-500">
+		<main className="flex min-h-screen items-center justify-center bg-gradient-to-b from-pitch-soft to-stone-50 px-4">
+			<section className="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
+				<p className="mb-2 flex items-center gap-2 text-sm font-medium uppercase tracking-wide text-pitch">
+					<Trophy className="size-4" />
 					Baba do Mago
 				</p>
-				<h1 className="mb-2 text-2xl font-semibold text-slate-900">
+				<h1 className="mb-2 text-2xl font-semibold tracking-tight text-stone-900">
 					Entrar na conta
 				</h1>
-				<p className="mb-8 text-slate-600">
+				<p className="mb-8 text-stone-600">
 					Use sua conta Google para acessar os campeonatos.
 				</p>
-				<button
-					type="button"
+				<Button
+					variant={BUTTON_VARIANT.secondary}
 					onClick={handleGoogleSignIn}
 					disabled={isSigningIn}
-					className="flex w-full items-center justify-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+					className="w-full py-3"
 				>
 					<GoogleIcon className="h-5 w-5" />
 					Entrar com Google
-				</button>
+				</Button>
 				{errorMessage && (
-					<p className="mt-4 text-center text-sm text-red-600">
-						{errorMessage}
-					</p>
+					<p className={`mt-4 text-center ${ERROR_CLASS}`}>{errorMessage}</p>
 				)}
 			</section>
 		</main>

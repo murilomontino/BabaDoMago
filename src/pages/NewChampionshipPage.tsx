@@ -1,6 +1,11 @@
 import { useNavigate } from "@tanstack/react-router";
+import { Trophy } from "lucide-react";
 import { type FormEvent, useState } from "react";
+import { Button } from "@/components/button";
+import { PageHeader } from "@/components/page-header";
+import { SectionCard } from "@/components/section-card";
 import { ROUTES } from "@/const/routes";
+import { ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
 import { useCreateChampionship } from "@/hooks/championships/use-championships";
 import { getUserAvatarUrl, getUserDisplayName } from "@/lib/user-profile";
@@ -38,30 +43,29 @@ export function NewChampionshipPage() {
 
 	return (
 		<main>
-			<h1 className="mb-6 text-2xl font-semibold">Novo campeonato</h1>
-			<form onSubmit={handleSubmit} className="max-w-md space-y-4">
-				<label className="block text-sm font-medium text-slate-700">
-					Nome
-					<input
-						value={name}
-						onChange={(event) => setName(event.target.value)}
-						required
-						className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-					/>
-				</label>
-				<button
-					type="submit"
-					disabled={createChampionship.isPending}
-					className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-				>
-					Criar
-				</button>
-				{createChampionship.isError && (
-					<p className="text-sm text-red-600">
-						{createChampionship.error.message}
-					</p>
-				)}
-			</form>
+			<PageHeader title="Novo campeonato" description="Dê um nome pro baba." />
+			<SectionCard
+				title="Dados"
+				icon={<Trophy className="size-4 text-pitch" />}
+			>
+				<form onSubmit={handleSubmit} className="space-y-4">
+					<label className="block text-sm font-medium text-stone-700">
+						Nome
+						<input
+							value={name}
+							onChange={(event) => setName(event.target.value)}
+							required
+							className={`mt-1 ${FIELD_CLASS}`}
+						/>
+					</label>
+					<Button type="submit" disabled={createChampionship.isPending}>
+						Criar
+					</Button>
+					{createChampionship.isError && (
+						<p className={ERROR_CLASS}>{createChampionship.error.message}</p>
+					)}
+				</form>
+			</SectionCard>
 		</main>
 	);
 }
