@@ -4,6 +4,7 @@ import { Button } from "@/components/button";
 import {
 	EventTeamColorDot,
 	EventTeamPlayerRow,
+	EventTeamRatingAverage,
 } from "@/components/event-team-player";
 import {
 	EVENT_ACTION,
@@ -218,6 +219,18 @@ export function AddEventTeamModal({
 								);
 							})}
 						</ul>
+						<EventTeamRatingAverage
+							ratings={teamSlotsToPlayerIds(slots).flatMap((playerId) => {
+								const player = presentPlayers.find(
+									(item) => item.id === playerId,
+								);
+								if (!player) {
+									return [];
+								}
+
+								return [player.rating];
+							})}
+						/>
 					</article>
 				)}
 				{localError && <p className={`mt-2 ${ERROR_CLASS}`}>{localError}</p>}

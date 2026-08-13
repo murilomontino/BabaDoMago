@@ -1,6 +1,11 @@
 import { X } from "lucide-react";
 import type { CSSProperties } from "react";
 import { PlayerRating } from "@/components/player-rating";
+import {
+	EVENT_TEAM_AVERAGE_LABEL,
+	eventTeamRatingAverage,
+	formatEventTeamRatingAverage,
+} from "@/const/championship-event";
 import { EVENT_TEAM_FG, eventTeamColorFg } from "@/const/event-team-color";
 import { playerVisibleName } from "@/const/player-name";
 import type { ChampionshipPlayer } from "@/types/championship";
@@ -93,5 +98,26 @@ export function EventTeamPlayerRow({
 				/>
 			)}
 		</div>
+	);
+}
+
+type EventTeamRatingAverageProps = {
+	ratings: readonly number[];
+};
+
+export function EventTeamRatingAverage({
+	ratings,
+}: EventTeamRatingAverageProps) {
+	if (ratings.length === 0) {
+		return null;
+	}
+
+	const average = formatEventTeamRatingAverage(eventTeamRatingAverage(ratings));
+
+	return (
+		<p className="mt-1 text-right text-xs font-medium tabular-nums">
+			<span className="sr-only">{EVENT_TEAM_AVERAGE_LABEL} </span>
+			{average}
+		</p>
 	);
 }

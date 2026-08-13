@@ -4,6 +4,7 @@ import {
 	isEventTeamColor,
 	normalizeEventTeamColor,
 } from "./event-team-color.ts";
+import { PLAYER_RATING } from "./player-rating.ts";
 
 export const CHAMPIONSHIP_EVENT = {
 	timeZone: "America/Sao_Paulo",
@@ -71,6 +72,7 @@ export const EVENT_ACTION = {
 	removeAttendance: "Excluir presença",
 	removeMatch: "Excluir partida",
 	removeTeam: "Excluir time",
+	drawTeams: "Sortear times",
 } as const;
 
 export const EVENT_TEAM_POSITION = {
@@ -85,6 +87,8 @@ export const EVENT_TEAM_POSITION_LABEL = {
 	goalkeeper: "gol",
 	player: "jog",
 } as const;
+
+export const EVENT_TEAM_AVERAGE_LABEL = "Média";
 
 export type EventTeamDraft = {
 	color: EventTeamColor;
@@ -102,6 +106,8 @@ export const EVENT_TEAM_MESSAGE = {
 	playerNotPresent: "Jogador não está presente",
 	goalkeeperMissing: "Informe o goleiro",
 	needAttendance: "Marque a presença primeiro",
+	drawing: "Buscando melhor cenário...",
+	drawFailed: "Não foi possível sortear os times",
 } as const;
 
 export const EVENT_ATTENDANCE_MESSAGE = {
@@ -219,6 +225,318 @@ export function eventTeamCount(
 		CHAMPIONSHIP_EVENT.minTeams,
 		Math.ceil(playerCount / playersPerTeam),
 	);
+}
+
+export function eventTeamRatingAverage(ratings: readonly number[]): number {
+	if (ratings.length === 0) {
+		return 0;
+	}
+
+	return ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length;
+}
+
+export function formatEventTeamRatingAverage(average: number): string {
+	return average.toFixed(1);
+}
+
+type EventTeamPartition = {
+	capacity: number;
+	playerIds: number[];
+	sum: number;
+};
+
+const EVENT_TEAM_RATING_EPSILON = 1e-9;
+
+function eventTeamCapacities(playerCount: number, teamCount: number): number[] {
+	const minimum = Math.floor(playerCount / teamCount);
+	const largerTeams = playerCount % teamCount;
+	return Array.from(
+		{ length: teamCount },
+		(_, index) => minimum + (index < largerTeams ? 1 : 0),
+	);
+}
+
+function eventTeamRatingSpread(teams: readonly EventTeamPartition[]): number {
+	const averages = teams.map((team) => team.sum / team.capacity);
+	return Math.max(...averages) - Math.min(...averages);
+}
+
+function minimumTheoreticalRatingSpread(
+	ratings: readonly number[],
+	capacities: readonly number[],
+): number {
+	const ratingQuantum =
+		ratings.reduce((divisor, rating) => {
+			let left = divisor;
+			let right = rating;
+			while (right !== 0) {
+				const remainder = left % right;
+				left = right;
+				right = remainder;
+			}
+			return left;
+		}, 0) || 1;
+	const totalRating = ratings.reduce((sum, rating) => sum + rating, 0);
+	const possibleAverages = [
+		...new Set(
+			capacities.flatMap((capacity) =>
+				Array.from(
+					{
+						length:
+							Math.floor((capacity * PLAYER_RATING.max * 10) / ratingQuantum) +
+							1,
+					},
+					(_, index) => (index * ratingQuantum) / capacity,
+				),
+			),
+		),
+	].sort((left, right) => left - right);
+	let best = Number.POSITIVE_INFINITY;
+	let right = 0;
+
+	possibleAverages.forEach((minimum, left) => {
+		const minimumTotal = capacities.reduce(
+			(sum, capacity) =>
+				sum +
+				Math.ceil(
+					(minimum * capacity - EVENT_TEAM_RATING_EPSILON) / ratingQuantum,
+				) *
+					ratingQuantum,
+			0,
+		);
+		if (minimumTotal > totalRating) {
+			return;
+		}
+
+		right = Math.max(right, left);
+		while (right < possibleAverages.length) {
+			const maximum = possibleAverages[right];
+			if (maximum === undefined) {
+				return;
+			}
+
+			const maximumTotal = capacities.reduce(
+				(sum, capacity) =>
+					sum +
+					Math.floor(
+						(maximum * capacity + EVENT_TEAM_RATING_EPSILON) / ratingQuantum,
+					) *
+						ratingQuantum,
+				0,
+			);
+			if (maximumTotal >= totalRating) {
+				best = Math.min(best, maximum - minimum);
+				return;
+			}
+
+			right += 1;
+		}
+	});
+
+	return best;
+}
+
+function initialEventTeamPartition(
+	players: readonly { id: number; rating: number }[],
+	capacities: readonly number[],
+	random: () => number,
+): EventTeamPartition[] {
+	const teams = capacities.map((capacity) => ({
+		capacity,
+		playerIds: [] as number[],
+		sum: 0,
+	}));
+
+	players.forEach((player) => {
+		const candidates = teams
+			.map((team, index) => ({ index, random: random(), team }))
+			.filter(({ team }) => team.playerIds.length < team.capacity)
+			.sort((left, right) => {
+				const leftLoad = left.team.sum / left.team.capacity;
+				const rightLoad = right.team.sum / right.team.capacity;
+				if (leftLoad !== rightLoad) {
+					return leftLoad - rightLoad;
+				}
+
+				return left.random - right.random;
+			});
+		const selected = candidates[0]?.team;
+		if (!selected) {
+			return;
+		}
+
+		selected.playerIds.push(player.id);
+		selected.sum += player.rating;
+	});
+
+	return teams;
+}
+
+function minimumPossibleRatingSpread(
+	teams: readonly EventTeamPartition[],
+	remainingRatings: readonly number[],
+): number {
+	let highestMinimum = Number.NEGATIVE_INFINITY;
+	let lowestMaximum = Number.POSITIVE_INFINITY;
+
+	teams.forEach((team) => {
+		const slots = team.capacity - team.playerIds.length;
+		if (slots === 0) {
+			const average = team.sum / team.capacity;
+			highestMinimum = Math.max(highestMinimum, average);
+			lowestMaximum = Math.min(lowestMaximum, average);
+			return;
+		}
+
+		const highestAddition = remainingRatings
+			.slice(0, slots)
+			.reduce((sum, rating) => sum + rating, 0);
+		const lowestAddition = remainingRatings
+			.slice(-slots)
+			.reduce((sum, rating) => sum + rating, 0);
+		const minimum = (team.sum + lowestAddition) / team.capacity;
+		const maximum = (team.sum + highestAddition) / team.capacity;
+		highestMinimum = Math.max(highestMinimum, minimum);
+		lowestMaximum = Math.min(lowestMaximum, maximum);
+	});
+
+	return Math.max(0, highestMinimum - lowestMaximum);
+}
+
+function eventTeamPartitionKey(
+	index: number,
+	teams: readonly EventTeamPartition[],
+): string {
+	const state = teams
+		.map(
+			(team) =>
+				`${team.capacity}:${team.playerIds.length}:${team.sum.toFixed(1)}`,
+		)
+		.sort()
+		.join("|");
+	return `${index}-${state}`;
+}
+
+export function drawBalancedEventTeams(
+	players: readonly { id: number; rating: number }[],
+	playersPerTeam: number,
+	random: () => number = Math.random,
+): EventTeamDraft[] {
+	const teamCount = eventTeamCount(players.length, playersPerTeam);
+	const capacities = eventTeamCapacities(players.length, teamCount);
+	const ordered = players
+		.map((player) => ({
+			id: player.id,
+			random: random(),
+			rating: Math.round(player.rating * 10),
+		}))
+		.sort((left, right) => {
+			if (left.rating !== right.rating) {
+				return right.rating - left.rating;
+			}
+
+			return left.random - right.random;
+		});
+	let best = initialEventTeamPartition(ordered, capacities, random);
+	let bestSpread = eventTeamRatingSpread(best);
+	const theoreticalSpread = minimumTheoreticalRatingSpread(
+		ordered.map((player) => player.rating),
+		capacities,
+	);
+	const teams = capacities.map((capacity) => ({
+		capacity,
+		playerIds: [] as number[],
+		sum: 0,
+	}));
+	const visited = new Set<string>();
+
+	function search(index: number): void {
+		if (bestSpread - theoreticalSpread <= EVENT_TEAM_RATING_EPSILON) {
+			return;
+		}
+
+		if (index === ordered.length) {
+			const spread = eventTeamRatingSpread(teams);
+			if (spread < bestSpread) {
+				bestSpread = spread;
+				best = teams.map((team) => ({
+					...team,
+					playerIds: [...team.playerIds],
+				}));
+			}
+			return;
+		}
+
+		const remainingRatings = ordered
+			.slice(index)
+			.map((player) => player.rating);
+		if (minimumPossibleRatingSpread(teams, remainingRatings) >= bestSpread) {
+			return;
+		}
+
+		const stateKey = eventTeamPartitionKey(index, teams);
+		if (visited.has(stateKey)) {
+			return;
+		}
+		visited.add(stateKey);
+
+		const player = ordered[index];
+		if (!player) {
+			return;
+		}
+
+		const seen = new Set<string>();
+		const candidates = teams
+			.map((team, teamIndex) => ({
+				load: (team.sum + player.rating) / team.capacity,
+				random: random(),
+				team,
+				teamIndex,
+			}))
+			.filter(({ team }) => team.playerIds.length < team.capacity)
+			.filter(({ team }) => {
+				const key = `${team.capacity}:${team.playerIds.length}:${team.sum}`;
+				if (seen.has(key)) {
+					return false;
+				}
+
+				seen.add(key);
+				return true;
+			})
+			.sort((left, right) => {
+				if (left.load !== right.load) {
+					return left.load - right.load;
+				}
+
+				return left.random - right.random;
+			});
+
+		candidates.forEach(({ teamIndex }) => {
+			const team = teams[teamIndex];
+			if (!team) {
+				return;
+			}
+
+			team.playerIds.push(player.id);
+			team.sum += player.rating;
+			search(index + 1);
+			team.sum -= player.rating;
+			team.playerIds.pop();
+		});
+	}
+
+	search(0);
+
+	const used: EventTeamColor[] = [];
+	return best.map((team) => {
+		const color = nextEventTeamColor(used);
+		used.push(color);
+		return {
+			color,
+			playerIds: team.playerIds,
+			goalkeeperId: team.playerIds[0] ?? 0,
+		};
+	});
 }
 
 export function nextEventTeamColor(
@@ -380,6 +698,28 @@ export function teamPlayerSlots(
 		next[slot] = String(player.player_id);
 		return next;
 	}, slots);
+}
+
+export function builderTeamsFromDrafts(
+	teams: readonly EventTeamDraft[],
+	playersPerTeam: number,
+): EventTeamBuilderTeam[] {
+	return teams.map((team, index) => ({
+		key: `team-draw-${index}`,
+		color: team.color,
+		slots: teamPlayerSlots(
+			[
+				{ player_id: team.goalkeeperId, is_goalkeeper: true },
+				...team.playerIds
+					.filter((playerId) => playerId !== team.goalkeeperId)
+					.map((playerId) => ({
+						player_id: playerId,
+						is_goalkeeper: false,
+					})),
+			],
+			playersPerTeam,
+		),
+	}));
 }
 
 export function teamHasMatches(

@@ -1,6 +1,7 @@
 import {
 	applyVisibleAttendance,
 	areAllVisiblePresent,
+	builderTeamsFromDrafts,
 	builderTeamsFromEvent,
 	canAddEventMatch,
 	canEditEventTeams,
@@ -9,6 +10,7 @@ import {
 	compareByAttendanceCount,
 	countPlayerAttendance,
 	draftAttendanceForEnd,
+	drawBalancedEventTeams,
 	EVENT_ATTENDANCE_MESSAGE,
 	EVENT_ERROR_MESSAGE,
 	EVENT_TEAM_MESSAGE,
@@ -18,7 +20,9 @@ import {
 	eventTeamCount,
 	eventTeamPlayerIds,
 	eventTeamPlayerPosition,
+	eventTeamRatingAverage,
 	eventTeamSlotPosition,
+	formatEventTeamRatingAverage,
 	initialBuilderTeams,
 	keepPresentSlots,
 	keepTeamPlayersPresent,
@@ -208,6 +212,9 @@ check(eventTeamCount(15, 5), 3);
 check(eventTeamCount(31, 10), 4);
 check(eventTeamCount(2, 5), 2);
 check(eventTeamCount(0, 5), 2);
+check(eventTeamRatingAverage([]), 0);
+check(eventTeamRatingAverage([10, 7, 6, 3]), 6.5);
+check(formatEventTeamRatingAverage(6.5), "6.5");
 check(initialBuilderTeams(2).length, 2);
 check(initialBuilderTeams(5, 4).length, 4);
 check(builderTeamsFromEvent([], 5, 16).length, 4);
@@ -243,6 +250,26 @@ check(
 				id: 11,
 				color: EVENT_TEAM_COLOR.black,
 				players: [{ player_id: 3, is_goalkeeper: true }],
+			},
+		],
+		3,
+	)
+		.map((team) => team.slots.join("|"))
+		.join("/"),
+	"1|2|/3||",
+);
+check(
+	builderTeamsFromDrafts(
+		[
+			{
+				color: EVENT_TEAM_COLOR.white,
+				playerIds: [1, 2],
+				goalkeeperId: 1,
+			},
+			{
+				color: EVENT_TEAM_COLOR.black,
+				playerIds: [3],
+				goalkeeperId: 3,
 			},
 		],
 		3,
@@ -345,4 +372,55 @@ check(
 		teamCount: 1,
 	}),
 	false,
+);
+
+const rated = [
+	{ id: 1, rating: 10 },
+	{ id: 2, rating: 9 },
+	{ id: 3, rating: 8 },
+	{ id: 4, rating: 7 },
+	{ id: 5, rating: 6 },
+	{ id: 6, rating: 5 },
+	{ id: 7, rating: 4 },
+	{ id: 8, rating: 3 },
+] as const;
+const drawn = drawBalancedEventTeams(rated, 5, () => 0.999);
+check(drawn.length, 2);
+check(drawn[0]?.color, EVENT_TEAM_COLOR.white);
+check(drawn[1]?.color, EVENT_TEAM_COLOR.black);
+check(String(drawn[0]?.playerIds), "1,4,5,8");
+check(String(drawn[1]?.playerIds), "2,3,6,7");
+check(drawn[0]?.goalkeeperId, 1);
+check(drawn[1]?.goalkeeperId, 2);
+check(
+	validateEventTeams(drawn, 5) ??
+		validateTeamsInAttendance(
+			drawn,
+			rated.map((player) => player.id),
+		),
+	null,
+);
+const drawnAvg = (playerIds: readonly number[]) =>
+	playerIds.reduce((sum, id) => {
+		const player = rated.find((item) => item.id === id);
+		return sum + (player?.rating ?? 0);
+	}, 0) / playerIds.length;
+check(drawnAvg(drawn[0]?.playerIds ?? []), 6.5);
+check(drawnAvg(drawn[1]?.playerIds ?? []), 6.5);
+const leftover = drawBalancedEventTeams(rated.slice(0, 5), 3, () => 0.999);
+check(leftover.length, 2);
+check(
+	leftover
+		.flatMap((team) => team.playerIds)
+		.sort((a, b) => a - b)
+		.join(","),
+	"1,2,3,4,5",
+);
+check(
+	leftover.every((team) => team.playerIds.length <= 3),
+	true,
+);
+check(
+	leftover.every((team) => team.playerIds.includes(team.goalkeeperId)),
+	true,
 );

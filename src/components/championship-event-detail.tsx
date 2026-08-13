@@ -13,6 +13,7 @@ import { EndEventModal } from "@/components/end-event-modal";
 import {
 	EventTeamColorDot,
 	EventTeamPlayerRow,
+	EventTeamRatingAverage,
 } from "@/components/event-team-player";
 import {
 	builderTeamsFromEvent,
@@ -308,8 +309,12 @@ export function ChampionshipEventDetail({
 					onPresentIdsChange={(playerIds) => {
 						draftPresentIdsRef.current = [...playerIds];
 					}}
-					onSubmit={async (values) => {
+					onSubmit={async (values, keepOpen) => {
 						await onSaveTeams(values);
+						if (keepOpen) {
+							return;
+						}
+
 						setIsEditingTeams(false);
 					}}
 				/>
@@ -318,6 +323,14 @@ export function ChampionshipEventDetail({
 				<ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
 					{event.teams.map((team) => {
 						const cardStyle = eventTeamColorStyle(team.color);
+						const teamRoster = team.players.map((row) => ({
+							row,
+							player: resolveRosterPlayer(
+								row.player_id,
+								row.display_name,
+								rosterById,
+							),
+						}));
 
 						return (
 							<li
@@ -353,12 +366,7 @@ export function ChampionshipEventDetail({
 										)}
 								</div>
 								<ul className="space-y-1">
-									{team.players.map((row) => {
-										const player = resolveRosterPlayer(
-											row.player_id,
-											row.display_name,
-											rosterById,
-										);
+									{teamRoster.map(({ row, player }) => {
 										const position = eventTeamPlayerPosition(row.is_goalkeeper);
 
 										return (
@@ -378,6 +386,9 @@ export function ChampionshipEventDetail({
 										);
 									})}
 								</ul>
+								<EventTeamRatingAverage
+									ratings={teamRoster.map(({ player }) => player.rating)}
+								/>
 							</li>
 						);
 					})}
