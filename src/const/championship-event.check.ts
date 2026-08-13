@@ -6,6 +6,7 @@ import {
 	canAddEventMatch,
 	canEditEventTeams,
 	canRemoveEventAttendance,
+	canStartEventMatch,
 	championshipEventErrorMessage,
 	compareByAttendanceCount,
 	countPlayerAttendance,
@@ -63,6 +64,8 @@ check(
 	),
 	null,
 );
+
+check(validateEventTeams([draft(null, [1]), draft(null, [2])], 5), null);
 
 check(
 	validateEventTeams(
@@ -145,6 +148,11 @@ check(
 	),
 	null,
 );
+check(validateEventTeam(draft(null, [1, 2]), 5, [], [], [1, 2, 3]), null);
+check(
+	validateEventTeam(draft(null, [1]), 5, [EVENT_TEAM_COLOR.white], [], [1, 2]),
+	null,
+);
 check(
 	validateEventTeam(
 		draft(EVENT_TEAM_COLOR.white, [1]),
@@ -221,15 +229,8 @@ check(initialBuilderTeams(2).length, 2);
 check(initialBuilderTeams(5, 4).length, 4);
 check(builderTeamsFromEvent([], 5, 16).length, 4);
 check(
-	initialBuilderTeams(5, 4)
-		.map((team) => team.color)
-		.join(","),
-	[
-		EVENT_TEAM_COLOR.white,
-		EVENT_TEAM_COLOR.black,
-		EVENT_TEAM_COLOR.red,
-		EVENT_TEAM_COLOR.blue,
-	].join(","),
+	initialBuilderTeams(5, 4).every((team) => team.color === null),
+	true,
 );
 check(
 	resizeBuilderTeams(initialBuilderTeams(5, 2), 4, 5, new Set([1, 2])).length,
@@ -341,8 +342,6 @@ check(canRemoveEventAttendance(1, 3, [1, 2]), false);
 check(canRemoveEventAttendance(3, 2, []), false);
 check(
 	canAddEventMatch({
-		canManage: true,
-		canOverrideEnded: false,
 		ended: false,
 		teamCount: 2,
 	}),
@@ -350,8 +349,6 @@ check(
 );
 check(
 	canAddEventMatch({
-		canManage: true,
-		canOverrideEnded: false,
 		ended: true,
 		teamCount: 2,
 	}),
@@ -359,17 +356,22 @@ check(
 );
 check(
 	canAddEventMatch({
-		canManage: false,
-		canOverrideEnded: true,
-		ended: true,
+		ended: false,
 		teamCount: 2,
 	}),
 	true,
 );
 check(
 	canAddEventMatch({
-		canManage: true,
-		canOverrideEnded: true,
+		ended: true,
+		teamCount: 2,
+	}),
+	false,
+);
+check(canStartEventMatch({ ended: false, teamCount: 2 }), true);
+check(canStartEventMatch({ ended: true, teamCount: 2 }), false);
+check(
+	canAddEventMatch({
 		ended: true,
 		teamCount: 1,
 	}),
@@ -388,8 +390,8 @@ const rated = [
 ] as const;
 const drawn = drawBalancedEventTeams(rated, 5, () => 0.999);
 check(drawn.length, 2);
-check(drawn[0]?.color, EVENT_TEAM_COLOR.white);
-check(drawn[1]?.color, EVENT_TEAM_COLOR.black);
+check(drawn[0]?.color, null);
+check(drawn[1]?.color, null);
 check(String(drawn[0]?.playerIds), "1,4,5,8");
 check(String(drawn[1]?.playerIds), "2,3,6,7");
 check(drawn[0]?.goalkeeperId, 1);
@@ -431,3 +433,5 @@ check(isEventBuilderStep(EVENT_BUILDER_STEP.attendance), true);
 check(isEventBuilderStep(EVENT_BUILDER_STEP.teams), true);
 check(isEventBuilderStep("nope"), false);
 check(isEventBuilderStep(null), false);
+
+console.log("championship-event ok");

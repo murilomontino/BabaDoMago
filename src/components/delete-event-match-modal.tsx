@@ -23,7 +23,7 @@ export function DeleteEventMatchModal({
 					{EVENT_ACTION.removeMatch}
 				</p>
 				<p className="mb-3 text-sm text-fg-muted">
-					A partida some da lista do evento.
+					A partida some da lista. Estatísticas voltam atrás.
 				</p>
 				{errorMessage && (
 					<p className={`mb-2 ${ERROR_CLASS}`}>{errorMessage}</p>

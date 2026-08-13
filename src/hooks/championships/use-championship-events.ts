@@ -1,22 +1,26 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { EventTeamColor } from "@/const/event-team-color";
 import {
-	addChampionshipEventMatch,
+	addChampionshipEventGoal,
 	addChampionshipEventTeam,
 	createChampionshipEvent,
 	deleteChampionshipEvent,
 	deleteChampionshipEventMatch,
 	deleteChampionshipEventTeam,
 	endChampionshipEvent,
+	endChampionshipEventMatch,
 	getChampionshipEventById,
 	listChampionshipEvents,
 	saveChampionshipEventAttendance,
 	saveChampionshipEventTeams,
+	setChampionshipEventMatchPlayer,
+	startChampionshipEventMatch,
 	updateChampionshipEventTeam,
 } from "@/services/championship-events";
 import {
 	CHAMPIONSHIP_EVENTS_QUERY_KEY,
 	invalidateChampionshipEventQueries,
+	invalidateChampionshipQueries,
 } from "./championships-query-keys";
 
 export function useChampionshipEvents(championshipId: number) {
@@ -59,7 +63,7 @@ export function useSaveChampionshipEventTeams(_championshipId: number) {
 			eventId: number;
 			presentPlayerIds: readonly number[];
 			teams: readonly {
-				color: EventTeamColor;
+				color: EventTeamColor | null;
 				playerIds: readonly number[];
 				goalkeeperId: number;
 			}[];
@@ -98,7 +102,7 @@ export function useAddChampionshipEventTeam(_championshipId: number) {
 			goalkeeperId,
 		}: {
 			eventId: number;
-			color: EventTeamColor;
+			color: EventTeamColor | null;
 			playerIds: readonly number[];
 			goalkeeperId: number;
 		}) =>
@@ -124,7 +128,7 @@ export function useUpdateChampionshipEventTeam(_championshipId: number) {
 			goalkeeperId,
 		}: {
 			teamId: number;
-			color: EventTeamColor;
+			color: EventTeamColor | null;
 			playerIds: readonly number[];
 			goalkeeperId: number;
 		}) =>
@@ -150,7 +154,7 @@ export function useDeleteChampionshipEventTeam(_championshipId: number) {
 	});
 }
 
-export function useAddChampionshipEventMatch(_championshipId: number) {
+export function useStartChampionshipEventMatch(_championshipId: number) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
@@ -162,9 +166,75 @@ export function useAddChampionshipEventMatch(_championshipId: number) {
 			eventId: number;
 			teamAId: number;
 			teamBId: number;
-		}) => addChampionshipEventMatch(eventId, teamAId, teamBId),
+		}) => startChampionshipEventMatch(eventId, teamAId, teamBId),
 		onSuccess: async () => {
 			await invalidateChampionshipEventQueries(queryClient);
+		},
+	});
+}
+
+export function useAddChampionshipEventMatch(_championshipId: number) {
+	return useStartChampionshipEventMatch(_championshipId);
+}
+
+export function useSetChampionshipEventMatchPlayer(_championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({
+			matchId,
+			teamId,
+			slot,
+			playerId,
+		}: {
+			matchId: number;
+			teamId: number;
+			slot: number;
+			playerId: number | null;
+		}) => setChampionshipEventMatchPlayer(matchId, teamId, slot, playerId),
+		onSuccess: async () => {
+			await invalidateChampionshipEventQueries(queryClient);
+		},
+	});
+}
+
+export function useAddChampionshipEventGoal(_championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({
+			matchId,
+			scorerPlayerId,
+			assistPlayerId,
+			isOwnGoal,
+		}: {
+			matchId: number;
+			scorerPlayerId: number;
+			assistPlayerId: number | null;
+			isOwnGoal: boolean;
+		}) =>
+			addChampionshipEventGoal(
+				matchId,
+				scorerPlayerId,
+				assistPlayerId,
+				isOwnGoal,
+			),
+		onSuccess: async () => {
+			await invalidateChampionshipEventQueries(queryClient);
+		},
+	});
+}
+
+export function useEndChampionshipEventMatch(_championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (matchId: number) => endChampionshipEventMatch(matchId),
+		onSuccess: async () => {
+			await Promise.all([
+				invalidateChampionshipEventQueries(queryClient),
+				invalidateChampionshipQueries(queryClient),
+			]);
 		},
 	});
 }
@@ -175,7 +245,10 @@ export function useDeleteChampionshipEventMatch(_championshipId: number) {
 	return useMutation({
 		mutationFn: (matchId: number) => deleteChampionshipEventMatch(matchId),
 		onSuccess: async () => {
-			await invalidateChampionshipEventQueries(queryClient);
+			await Promise.all([
+				invalidateChampionshipEventQueries(queryClient),
+				invalidateChampionshipQueries(queryClient),
+			]);
 		},
 	});
 }

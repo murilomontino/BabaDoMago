@@ -3,6 +3,7 @@ import { AppDialog } from "@/components/atoms/app-dialog";
 import { Button } from "@/components/button";
 import {
 	EventTeamColorDot,
+	EventTeamColorNoneButton,
 	EventTeamPlayerRow,
 	EventTeamRatingAverage,
 } from "@/components/event-team-player";
@@ -12,7 +13,6 @@ import {
 	EVENT_TEAM_POSITION_LABEL,
 	emptyTeamSlots,
 	eventTeamSlotPosition,
-	nextEventTeamColor,
 	teamPlayerSlots,
 	teamSlotsToPlayerIds,
 	validateEventTeam,
@@ -21,6 +21,7 @@ import {
 	EVENT_TEAM_COLOR,
 	EVENT_TEAM_COLOR_CUSTOM_LABEL,
 	EVENT_TEAM_COLOR_LABEL,
+	EVENT_TEAM_COLOR_NONE,
 	EVENT_TEAM_COLORS,
 	type EventTeamColor,
 	eventTeamColorStyle,
@@ -44,14 +45,14 @@ type AddEventTeamModalProps = {
 	usedColors: readonly EventTeamColor[];
 	takenPlayerIds: readonly number[];
 	initialTeam?: {
-		color: EventTeamColor;
+		color: EventTeamColor | null;
 		players: readonly { player_id: number; is_goalkeeper: boolean }[];
 	};
 	isPending: boolean;
 	errorMessage: string | null;
 	onCancel: () => void;
 	onAdd: (values: {
-		color: EventTeamColor;
+		color: EventTeamColor | null;
 		playerIds: number[];
 		goalkeeperId: number;
 	}) => Promise<void>;
@@ -72,8 +73,8 @@ export function AddEventTeamModal({
 	const ceiling = championshipRatingCeiling(
 		presentPlayers.map((player) => player.rating),
 	);
-	const [color, setColor] = useState<EventTeamColor>(
-		() => initialTeam?.color ?? nextEventTeamColor(usedColors),
+	const [color, setColor] = useState<EventTeamColor | null>(
+		() => initialTeam?.color ?? EVENT_TEAM_COLOR_NONE,
 	);
 	const [slots, setSlots] = useState(() =>
 		initialTeam
@@ -86,18 +87,25 @@ export function AddEventTeamModal({
 	const pool = presentPlayers.filter(
 		(player) => !assignedIds.has(player.id) && !taken.has(player.id),
 	);
-	const isDefault = EVENT_TEAM_COLORS.some((item) => item === color);
+	const isCustom =
+		color !== null && !EVENT_TEAM_COLORS.some((item) => item === color);
 	const cardStyle = eventTeamColorStyle(color);
 	const slotIndexes = Array.from({ length: playersPerTeam }, (_, slot) => slot);
 	const presentIds = presentPlayers.map((player) => player.id);
 
-	function handleColorChange(nextValue: string) {
-		const next = normalizeEventTeamColor(nextValue);
-		if (!isEventTeamColor(next)) {
+	function handleColorChange(nextValue: string | null) {
+		if (nextValue === null) {
+			setColor(null);
+			setLocalError(null);
 			return;
 		}
 
-		if (usedColors.includes(next)) {
+		const next = normalizeEventTeamColor(nextValue);
+		if (next === null || !isEventTeamColor(next)) {
+			return;
+		}
+
+		if (usedColors.includes(next) && color !== next) {
 			return;
 		}
 
@@ -118,13 +126,17 @@ export function AddEventTeamModal({
 				)}
 				{presentPlayers.length > 0 && (
 					<article
-						className="relative space-y-2 rounded-lg border border-line p-2"
+						className="relative space-y-2 rounded-lg border border-line bg-surface p-2"
 						style={cardStyle}
 					>
 						<EventTeamColorDot color={color} />
 						<div className="flex min-w-0 flex-wrap items-center gap-1">
+							<EventTeamColorNoneButton
+								selected={color === null}
+								onSelect={() => handleColorChange(null)}
+							/>
 							{EVENT_TEAM_COLORS.map((item) => {
-								const takenColor = usedColors.includes(item);
+								const takenColor = usedColors.includes(item) && color !== item;
 								const selected = color === item;
 
 								return (
@@ -143,7 +155,7 @@ export function AddEventTeamModal({
 							<label className="relative size-5 shrink-0">
 								<input
 									type="color"
-									value={color}
+									value={color ?? EVENT_TEAM_COLOR.white}
 									aria-label={EVENT_TEAM_COLOR_CUSTOM_LABEL}
 									onChange={(event) => {
 										handleColorChange(event.target.value);
@@ -152,12 +164,12 @@ export function AddEventTeamModal({
 								/>
 								<span
 									aria-hidden
-									className={`block size-5 rounded-md border-2 ${isDefault ? "border-black/20" : "border-current"}`}
+									className={`block size-5 rounded-md border-2 ${isCustom ? "border-current" : "border-black/20"}`}
 									style={{
-										backgroundColor: isDefault ? "transparent" : color,
-										backgroundImage: isDefault
-											? "conic-gradient(#dc2626, #facc15, #166534, #2563eb, #ec4899, #dc2626)"
-											: undefined,
+										backgroundColor: isCustom ? color : "transparent",
+										backgroundImage: isCustom
+											? undefined
+											: "conic-gradient(#dc2626, #facc15, #166534, #2563eb, #ec4899, #dc2626)",
 									}}
 								/>
 							</label>

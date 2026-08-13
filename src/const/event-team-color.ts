@@ -22,6 +22,8 @@ export const EVENT_TEAM_COLORS = [
 	EVENT_TEAM_COLOR.pink,
 ] as const;
 
+export const EVENT_TEAM_COLOR_NONE = null;
+
 export const EVENT_TEAM_COLOR_LABEL: Record<string, string> = {
 	[EVENT_TEAM_COLOR.white]: "Branco",
 	[EVENT_TEAM_COLOR.black]: "Preto",
@@ -33,6 +35,7 @@ export const EVENT_TEAM_COLOR_LABEL: Record<string, string> = {
 	[EVENT_TEAM_COLOR.pink]: "Rosa",
 };
 
+export const EVENT_TEAM_COLOR_NONE_LABEL = "Sem cor";
 export const EVENT_TEAM_COLOR_CUSTOM_LABEL = "Cor personalizada";
 
 export const EVENT_TEAM_FG = {
@@ -48,8 +51,20 @@ export const EVENT_TEAM_PASTEL = {
 
 const EVENT_TEAM_COLOR_HEX = /^#[0-9a-f]{6}$/;
 
-export function normalizeEventTeamColor(value: string): string {
+export function normalizeEventTeamColor(value: string | null): string | null {
+	if (value === null) {
+		return null;
+	}
+
 	return value.toLowerCase();
+}
+
+export function eventTeamName(color: string | null, sortOrder: number): string {
+	if (color === null) {
+		return `Time ${sortOrder + 1}`;
+	}
+
+	return EVENT_TEAM_COLOR_LABEL[color] ?? color;
 }
 
 export function isEventTeamColor(value: string): value is EventTeamColor {
@@ -123,10 +138,14 @@ export function eventTeamColorFg(hex: string): string {
 	return EVENT_TEAM_FG.dark;
 }
 
-export function eventTeamColorStyle(hex: string): {
-	backgroundColor: string;
-	color: string;
+export function eventTeamColorStyle(hex: string | null): {
+	backgroundColor?: string;
+	color?: string;
 } {
+	if (hex === null) {
+		return {};
+	}
+
 	const backgroundColor = eventTeamColorPastel(hex);
 
 	return {

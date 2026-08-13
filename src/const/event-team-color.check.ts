@@ -1,10 +1,12 @@
 import {
 	EVENT_TEAM_COLOR,
+	EVENT_TEAM_COLOR_NONE,
 	EVENT_TEAM_FG,
 	EVENT_TEAM_PASTEL,
 	eventTeamColorFg,
 	eventTeamColorPastel,
 	eventTeamColorStyle,
+	eventTeamName,
 	isEventTeamColor,
 	normalizeEventTeamColor,
 } from "./event-team-color.ts";
@@ -21,6 +23,9 @@ check(isEventTeamColor("white"), false);
 check(isEventTeamColor("#FFFFFF"), false);
 check(isEventTeamColor("#fff"), false);
 check(normalizeEventTeamColor("#ABC123"), "#abc123");
+check(normalizeEventTeamColor(EVENT_TEAM_COLOR_NONE), EVENT_TEAM_COLOR_NONE);
+check(eventTeamName(EVENT_TEAM_COLOR_NONE, 0), "Time 1");
+check(eventTeamName(EVENT_TEAM_COLOR.red, 0), "Vermelho");
 check(EVENT_TEAM_FG.hover, "#e7e5e4");
 check(eventTeamColorFg("#ffffff"), EVENT_TEAM_FG.dark);
 check(eventTeamColorFg("#1c1917"), EVENT_TEAM_FG.light);
@@ -38,6 +43,7 @@ check(
 );
 check(eventTeamColorStyle("#ffffff").backgroundColor, "#ffffff");
 check(eventTeamColorStyle("#ffffff").color, EVENT_TEAM_FG.dark);
+check(eventTeamColorStyle(EVENT_TEAM_COLOR_NONE).backgroundColor, undefined);
 check(
 	eventTeamColorStyle(EVENT_TEAM_COLOR.red).backgroundColor,
 	eventTeamColorPastel(EVENT_TEAM_COLOR.red),

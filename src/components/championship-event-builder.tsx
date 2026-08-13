@@ -6,6 +6,7 @@ import { Button } from "@/components/button";
 import { EventAttendanceTable } from "@/components/event-attendance-table";
 import {
 	EventTeamColorDot,
+	EventTeamColorNoneButton,
 	EventTeamPlayerRow,
 	EventTeamRatingAverage,
 	EventTeamRemoveButton,
@@ -29,7 +30,6 @@ import {
 	initialBuilderTeams,
 	resizeBuilderTeams,
 	teamSlotsToPlayerIds,
-	unusedEventTeamColor,
 	validateEventAttendance,
 	validateEventTeams,
 	validateTeamsInAttendance,
@@ -38,6 +38,7 @@ import {
 	EVENT_TEAM_COLOR,
 	EVENT_TEAM_COLOR_CUSTOM_LABEL,
 	EVENT_TEAM_COLOR_LABEL,
+	EVENT_TEAM_COLOR_NONE,
 	EVENT_TEAM_COLORS,
 	eventTeamColorStyle,
 	isEventTeamColor,
@@ -279,8 +280,9 @@ export function ChampionshipEventBuilder({
 				}}
 			>
 				{({ values, setFieldValue }) => {
-					const usedColors = values.teams.map((team) => team.color);
-					const nextColor = unusedEventTeamColor(usedColors);
+					const usedColors = values.teams.flatMap((team) =>
+						team.color === null ? [] : [team.color],
+					);
 					const assignedIds = new Set(
 						values.teams.flatMap((team) => teamSlotsToPlayerIds(team.slots)),
 					);
@@ -288,16 +290,20 @@ export function ChampionshipEventBuilder({
 						(player) => !assignedIds.has(player.id),
 					);
 
-					function handleColorChange(teamIndex: number, color: string) {
-						const next = normalizeEventTeamColor(color);
-						if (!isEventTeamColor(next)) {
+					function handleColorChange(teamIndex: number, color: string | null) {
+						if (color === null) {
+							setFieldValue(`teams.${teamIndex}.color`, null);
+							setTeamsError(null);
 							return;
 						}
 
-						const taken = values.teams.some(
-							(team, index) => index !== teamIndex && team.color === next,
-						);
-						if (taken) {
+						const next = normalizeEventTeamColor(color);
+						if (next === null || !isEventTeamColor(next)) {
+							return;
+						}
+
+						const taken = usedColors.includes(next);
+						if (taken && values.teams[teamIndex]?.color !== next) {
 							return;
 						}
 
@@ -369,9 +375,11 @@ export function ChampionshipEventBuilder({
 											</p>
 											<div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
 												{values.teams.map((team, teamIndex) => {
-													const isDefault = EVENT_TEAM_COLORS.some(
-														(color) => color === team.color,
-													);
+													const isCustom =
+														team.color !== null &&
+														!EVENT_TEAM_COLORS.some(
+															(color) => color === team.color,
+														);
 													const cardStyle = eventTeamColorStyle(team.color);
 													const slotIndexes = Array.from(
 														{ length: playersPerTeam },
@@ -381,12 +389,18 @@ export function ChampionshipEventBuilder({
 													return (
 														<article
 															key={team.key}
-															className="relative space-y-2 rounded-lg border border-line p-2"
+															className="relative space-y-2 rounded-lg border border-line bg-surface p-2"
 															style={cardStyle}
 														>
 															<EventTeamColorDot color={team.color} />
 															<div className="flex items-center gap-2">
 																<div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+																	<EventTeamColorNoneButton
+																		selected={team.color === null}
+																		onSelect={() =>
+																			handleColorChange(teamIndex, null)
+																		}
+																	/>
 																	{EVENT_TEAM_COLORS.map((color) => {
 																		const taken =
 																			usedColors.includes(color) &&
@@ -413,7 +427,9 @@ export function ChampionshipEventBuilder({
 																	<label className="relative size-5 shrink-0">
 																		<input
 																			type="color"
-																			value={team.color}
+																			value={
+																				team.color ?? EVENT_TEAM_COLOR.white
+																			}
 																			aria-label={EVENT_TEAM_COLOR_CUSTOM_LABEL}
 																			onChange={(event) => {
 																				handleColorChange(
@@ -425,14 +441,14 @@ export function ChampionshipEventBuilder({
 																		/>
 																		<span
 																			aria-hidden
-																			className={`block size-5 rounded-md border-2 ${isDefault ? "border-black/20" : "border-current"}`}
+																			className={`block size-5 rounded-md border-2 ${isCustom ? "border-current" : "border-black/20"}`}
 																			style={{
-																				backgroundColor: isDefault
-																					? "transparent"
-																					: team.color,
-																				backgroundImage: isDefault
-																					? "conic-gradient(#dc2626, #facc15, #166534, #2563eb, #ec4899, #dc2626)"
-																					: undefined,
+																				backgroundColor: isCustom
+																					? (team.color ?? undefined)
+																					: "transparent",
+																				backgroundImage: isCustom
+																					? undefined
+																					: "conic-gradient(#dc2626, #facc15, #166534, #2563eb, #ec4899, #dc2626)",
 																			}}
 																		/>
 																	</label>
@@ -441,7 +457,7 @@ export function ChampionshipEventBuilder({
 																	CHAMPIONSHIP_EVENT.minTeams && (
 																	<EventTeamRemoveButton
 																		label="Remover time"
-																		color={cardStyle.color}
+																		color={cardStyle.color ?? "currentColor"}
 																		iconClassName="size-4"
 																		onClick={() => {
 																			remove(teamIndex);
@@ -530,23 +546,22 @@ export function ChampionshipEventBuilder({
 												})}
 											</div>
 											<div className="flex flex-wrap gap-2">
-												{values.teams.length < EVENT_TEAM_COLORS.length &&
-													nextColor && (
-														<Button
-															variant={BUTTON_VARIANT.secondary}
-															onClick={() => {
-																push({
-																	key: `team-${Date.now()}`,
-																	color: nextColor,
-																	slots: emptyTeamSlots(playersPerTeam),
-																});
-																setTeamsError(null);
-															}}
-														>
-															<Plus className="size-4" />
-															Adicionar time
-														</Button>
-													)}
+												{values.teams.length < presentPlayers.length && (
+													<Button
+														variant={BUTTON_VARIANT.secondary}
+														onClick={() => {
+															push({
+																key: `team-${Date.now()}`,
+																color: EVENT_TEAM_COLOR_NONE,
+																slots: emptyTeamSlots(playersPerTeam),
+															});
+															setTeamsError(null);
+														}}
+													>
+														<Plus className="size-4" />
+														Adicionar time
+													</Button>
+												)}
 												<Button
 													variant={BUTTON_VARIANT.secondary}
 													disabled={isPending || isDrawing}

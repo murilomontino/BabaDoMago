@@ -19,7 +19,6 @@ import { ROUTES } from "@/const/routes";
 import { ERROR_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
 import {
-	useAddChampionshipEventMatch,
 	useAddChampionshipEventTeam,
 	useChampionshipEvent,
 	useChampionshipEvents,
@@ -36,7 +35,7 @@ import { useChampionship } from "@/hooks/championships/use-championships";
 export function ChampionshipEventDetailPage() {
 	const { championshipId: championshipIdParam, eventId: eventIdParam } =
 		useParams({
-			from: "/_authenticated/championships/$championshipId/events/$eventId",
+			from: "/_authenticated/championships/$championshipId/events/$eventId/",
 		});
 	const championshipId = Number(championshipIdParam);
 	const eventId = Number(eventIdParam);
@@ -50,7 +49,6 @@ export function ChampionshipEventDetailPage() {
 	const addTeam = useAddChampionshipEventTeam(championshipId);
 	const updateTeam = useUpdateChampionshipEventTeam(championshipId);
 	const deleteTeam = useDeleteChampionshipEventTeam(championshipId);
-	const addMatch = useAddChampionshipEventMatch(championshipId);
 	const deleteMatch = useDeleteChampionshipEventMatch(championshipId);
 	const endEvent = useEndChampionshipEvent(championshipId);
 	const deleteEvent = useDeleteChampionshipEvent(championshipId);
@@ -132,8 +130,6 @@ export function ChampionshipEventDetailPage() {
 				updateTeamError={updateTeam.isError ? updateTeam.error.message : null}
 				deletingTeam={deleteTeam.isPending}
 				deleteTeamError={deleteTeam.isError ? deleteTeam.error.message : null}
-				addingMatch={addMatch.isPending}
-				addMatchError={addMatch.isError ? addMatch.error.message : null}
 				deletingMatch={deleteMatch.isPending}
 				deleteMatchError={
 					deleteMatch.isError ? deleteMatch.error.message : null
@@ -173,13 +169,6 @@ export function ChampionshipEventDetailPage() {
 				}}
 				onDeleteTeam={async (teamId) => {
 					await deleteTeam.mutateAsync(teamId);
-				}}
-				onAddMatch={async ({ teamAId, teamBId }) => {
-					await addMatch.mutateAsync({
-						eventId: event.id,
-						teamAId,
-						teamBId,
-					});
 				}}
 				onDeleteMatch={async (matchId) => {
 					await deleteMatch.mutateAsync(matchId);

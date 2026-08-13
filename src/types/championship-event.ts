@@ -19,9 +19,30 @@ export type ChampionshipEventTeamPlayer = {
 export type ChampionshipEventTeam = {
 	id: number;
 	event_id: number;
-	color: EventTeamColor;
+	color: EventTeamColor | null;
 	sort_order: number;
 	players: ChampionshipEventTeamPlayer[];
+};
+
+export type ChampionshipEventMatchPlayer = {
+	id: number;
+	match_id: number;
+	event_id: number;
+	team_id: number;
+	player_id: number;
+	display_name: string;
+	is_goalkeeper: boolean;
+	slot: number;
+};
+
+export type ChampionshipEventGoal = {
+	id: number;
+	match_id: number;
+	event_id: number;
+	scorer_player_id: number;
+	assist_player_id: number | null;
+	is_own_goal: boolean;
+	created_at: string;
 };
 
 export type ChampionshipEventMatch = {
@@ -30,6 +51,10 @@ export type ChampionshipEventMatch = {
 	team_a_id: number;
 	team_b_id: number;
 	created_at: string;
+	ended_at: string | null;
+	winner_team_id: number | null;
+	players: ChampionshipEventMatchPlayer[];
+	goals: ChampionshipEventGoal[];
 };
 
 export type ChampionshipEvent = {

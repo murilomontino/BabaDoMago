@@ -6,21 +6,55 @@ import {
 	eventTeamRatingAverage,
 	formatEventTeamRatingAverage,
 } from "@/const/championship-event";
-import { EVENT_TEAM_FG, eventTeamColorFg } from "@/const/event-team-color";
+import {
+	EVENT_TEAM_COLOR_NONE_LABEL,
+	EVENT_TEAM_FG,
+	eventTeamColorFg,
+} from "@/const/event-team-color";
 import { playerVisibleName } from "@/const/player-name";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 type EventTeamColorDotProps = {
-	color: string;
+	color: string | null;
 };
 
 export function EventTeamColorDot({ color }: EventTeamColorDotProps) {
+	if (color === null) {
+		return null;
+	}
+
 	return (
 		<span
 			aria-hidden
 			className="absolute right-2 top-2 size-3 rounded-full border border-black/25"
 			style={{ backgroundColor: color }}
 		/>
+	);
+}
+
+type EventTeamColorNoneButtonProps = {
+	selected: boolean;
+	onSelect: () => void;
+};
+
+export function EventTeamColorNoneButton({
+	selected,
+	onSelect,
+}: EventTeamColorNoneButtonProps) {
+	return (
+		<button
+			type="button"
+			aria-label={EVENT_TEAM_COLOR_NONE_LABEL}
+			aria-pressed={selected}
+			onClick={onSelect}
+			className={`relative size-5 overflow-hidden rounded-md border-2 ${selected ? "border-current" : "border-black/20"}`}
+			style={{ backgroundColor: "var(--color-surface)" }}
+		>
+			<span
+				aria-hidden
+				className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top_right,transparent_calc(50%-1px),var(--color-danger)_50%,transparent_calc(50%+1px))]"
+			/>
+		</button>
 	);
 }
 

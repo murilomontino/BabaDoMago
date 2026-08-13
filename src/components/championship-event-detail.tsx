@@ -1,6 +1,6 @@
-import { Pencil, X } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Copy, Pencil, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { AddEventMatchModal } from "@/components/add-event-match-modal";
 import { AddEventTeamModal } from "@/components/add-event-team-modal";
 import { Button } from "@/components/button";
 import { ChampionshipEventBuilder } from "@/components/championship-event-builder";
@@ -18,9 +18,9 @@ import {
 import {
 	builderTeamsFromEvent,
 	CHAMPIONSHIP_EVENT,
-	canAddEventMatch,
 	canEditEventTeams,
 	canRemoveEventAttendance,
+	canStartEventMatch,
 	draftAttendanceForEnd,
 	EVENT_ACTION,
 	EVENT_BUILDER_STEP,
@@ -34,16 +34,25 @@ import {
 	formatEventStartsAt,
 	teamHasMatches,
 } from "@/const/championship-event";
+import {
+	EVENT_MATCH_LABEL,
+	formatMatchScore,
+	isOpenMatch,
+	matchPlayUrl,
+	matchScore,
+	openEventMatch,
+} from "@/const/championship-event-match";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
 import {
 	EVENT_TEAM_COLOR,
-	EVENT_TEAM_COLOR_LABEL,
 	type EventTeamColor,
 	eventTeamColorFg,
 	eventTeamColorStyle,
+	eventTeamName,
 } from "@/const/event-team-color";
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
+import { ROUTES } from "@/const/routes";
 import { BUTTON_VARIANT, CHIP_CLASS } from "@/const/ui";
 import { useEventBuilderStep } from "@/hooks/use-event-builder-step";
 import type { ChampionshipPlayer } from "@/types/championship";
@@ -65,18 +74,17 @@ type ChampionshipEventDetailProps = {
 	}) => Promise<void>;
 	onSaveAttendance: (presentPlayerIds: number[]) => Promise<void>;
 	onAddTeam: (values: {
-		color: EventTeamColor;
+		color: EventTeamColor | null;
 		playerIds: number[];
 		goalkeeperId: number;
 	}) => Promise<void>;
 	onUpdateTeam: (values: {
 		teamId: number;
-		color: EventTeamColor;
+		color: EventTeamColor | null;
 		playerIds: number[];
 		goalkeeperId: number;
 	}) => Promise<void>;
 	onDeleteTeam: (teamId: number) => Promise<void>;
-	onAddMatch: (values: { teamAId: number; teamBId: number }) => Promise<void>;
 	onDeleteMatch: (matchId: number) => Promise<void>;
 	onEnd: (presentPlayerIds: number[] | null) => Promise<void>;
 	onDelete: () => Promise<void>;
@@ -90,8 +98,6 @@ type ChampionshipEventDetailProps = {
 	updateTeamError: string | null;
 	deletingTeam: boolean;
 	deleteTeamError: string | null;
-	addingMatch: boolean;
-	addMatchError: string | null;
 	deletingMatch: boolean;
 	deleteMatchError: string | null;
 	ending: boolean;
@@ -100,7 +106,22 @@ type ChampionshipEventDetailProps = {
 	deleteError: string | null;
 };
 
-function TeamChip({ color }: { color: EventTeamColor }) {
+function TeamChip({
+	color,
+	sortOrder,
+}: {
+	color: EventTeamColor | null;
+	sortOrder: number;
+}) {
+	const label = eventTeamName(color, sortOrder);
+	if (color === null) {
+		return (
+			<span className="inline-flex items-center rounded-full border border-line bg-surface px-2 py-0.5 text-xs font-medium text-fg">
+				{label}
+			</span>
+		);
+	}
+
 	return (
 		<span
 			className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
@@ -109,7 +130,7 @@ function TeamChip({ color }: { color: EventTeamColor }) {
 				color: eventTeamColorFg(color),
 			}}
 		>
-			{EVENT_TEAM_COLOR_LABEL[color] ?? color}
+			{label}
 		</span>
 	);
 }
@@ -163,7 +184,6 @@ export function ChampionshipEventDetail({
 	onAddTeam,
 	onUpdateTeam,
 	onDeleteTeam,
-	onAddMatch,
 	onDeleteMatch,
 	onEnd,
 	onDelete,
@@ -177,8 +197,6 @@ export function ChampionshipEventDetail({
 	updateTeamError,
 	deletingTeam,
 	deleteTeamError,
-	addingMatch,
-	addMatchError,
 	deletingMatch,
 	deleteMatchError,
 	ending,
@@ -204,14 +222,14 @@ export function ChampionshipEventDetail({
 	const builderStep = step ?? EVENT_BUILDER_STEP.attendance;
 	const showAttendanceActions = canOverrideEnded && !showTeamBuilder;
 	const showAddTeam = canOverrideEnded && !showTeamBuilder;
-	const showAddMatch =
+	const showStartMatch =
 		!showTeamBuilder &&
-		canAddEventMatch({
-			canManage,
-			canOverrideEnded,
+		canStartEventMatch({
 			ended,
 			teamCount: event.teams.length,
 		});
+	const openMatch = openEventMatch(event.matches);
+	const [copied, setCopied] = useState(false);
 	const showMatchDelete = canOverrideEnded && !showTeamBuilder;
 	const [isEndOpen, setIsEndOpen] = useState(false);
 	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -222,7 +240,6 @@ export function ChampionshipEventDetail({
 	);
 	const [teamToRemove, setTeamToRemove] =
 		useState<ChampionshipEventTeam | null>(null);
-	const [isAddMatchOpen, setIsAddMatchOpen] = useState(false);
 	const [attendanceToRemove, setAttendanceToRemove] =
 		useState<ChampionshipPlayer | null>(null);
 	const [matchToRemove, setMatchToRemove] =
@@ -250,9 +267,41 @@ export function ChampionshipEventDetail({
 					{when.date} · {when.time}
 				</p>
 				<span className={CHIP_CLASS}>{EVENT_STATUS_LABEL[status]}</span>
-				{canManage && (
+				{(canManage || showStartMatch) && (
 					<div className="ml-auto flex flex-wrap items-center gap-2">
-						{teamsEditable && !showTeamBuilder && (
+						{showStartMatch && (
+							<Link
+								to={ROUTES.championshipEventPlay}
+								params={{
+									championshipId: String(event.championship_id),
+									eventId: String(event.id),
+								}}
+								className="inline-flex items-center justify-center gap-2 rounded-lg bg-pitch px-4 py-2 text-sm font-medium text-white hover:bg-pitch-dark"
+							>
+								{openMatch
+									? EVENT_ACTION.continueMatch
+									: EVENT_ACTION.startMatch}
+							</Link>
+						)}
+						{showStartMatch && (
+							<Button
+								variant={BUTTON_VARIANT.secondary}
+								onClick={async () => {
+									const url = matchPlayUrl(
+										window.location.origin,
+										event.championship_id,
+										event.id,
+										ROUTES.championshipEventPlay,
+									);
+									await navigator.clipboard.writeText(url);
+									setCopied(true);
+								}}
+							>
+								<Copy className="size-4" />
+								{copied ? EVENT_MATCH_LABEL.copied : EVENT_ACTION.copyMatchLink}
+							</Button>
+						)}
+						{canManage && teamsEditable && !showTeamBuilder && (
 							<Button
 								variant={BUTTON_VARIANT.secondary}
 								onClick={() => {
@@ -262,7 +311,7 @@ export function ChampionshipEventDetail({
 								{EVENT_ACTION.editTeams}
 							</Button>
 						)}
-						{showAttendanceActions && (
+						{canManage && showAttendanceActions && (
 							<Button
 								variant={BUTTON_VARIANT.secondary}
 								onClick={() => setIsAttendanceOpen(true)}
@@ -270,7 +319,7 @@ export function ChampionshipEventDetail({
 								{EVENT_ACTION.addAttendance}
 							</Button>
 						)}
-						{showAddTeam && (
+						{canManage && showAddTeam && (
 							<Button
 								variant={BUTTON_VARIANT.secondary}
 								onClick={() => setIsAddTeamOpen(true)}
@@ -278,15 +327,7 @@ export function ChampionshipEventDetail({
 								{EVENT_ACTION.addTeam}
 							</Button>
 						)}
-						{showAddMatch && (
-							<Button
-								variant={BUTTON_VARIANT.secondary}
-								onClick={() => setIsAddMatchOpen(true)}
-							>
-								{EVENT_ACTION.addMatch}
-							</Button>
-						)}
-						{status === EVENT_STATUS.open && (
+						{canManage && status === EVENT_STATUS.open && (
 							<Button
 								variant={BUTTON_VARIANT.ghost}
 								onClick={() => setIsEndOpen(true)}
@@ -294,12 +335,14 @@ export function ChampionshipEventDetail({
 								Encerrar
 							</Button>
 						)}
-						<Button
-							variant={BUTTON_VARIANT.danger}
-							onClick={() => setIsDeleteOpen(true)}
-						>
-							Excluir
-						</Button>
+						{canManage && (
+							<Button
+								variant={BUTTON_VARIANT.danger}
+								onClick={() => setIsDeleteOpen(true)}
+							>
+								Excluir
+							</Button>
+						)}
 					</div>
 				)}
 			</div>
@@ -356,13 +399,13 @@ export function ChampionshipEventDetail({
 						return (
 							<li
 								key={team.id}
-								className="relative rounded-lg border border-line p-2 text-sm"
+								className="relative rounded-lg border border-line bg-surface p-2 text-sm"
 								style={cardStyle}
 							>
 								<EventTeamColorDot color={team.color} />
 								<div className="mb-1 flex items-center gap-1 pr-5">
 									<p className="min-w-0 flex-1 text-xs font-medium">
-										{EVENT_TEAM_COLOR_LABEL[team.color] ?? team.color}
+										{eventTeamName(team.color, team.sort_order)}
 									</p>
 									{canOverrideEnded && (
 										<button
@@ -421,10 +464,10 @@ export function ChampionshipEventDetail({
 						Partidas
 					</p>
 					{event.matches.length === 0 && (
-						<p className="text-sm text-fg-muted">Nenhuma partida ainda.</p>
+						<p className="text-sm text-fg-muted">{EVENT_MATCH_LABEL.none}</p>
 					)}
 					{event.matches.length > 0 && (
-						<ul className="space-y-1">
+						<ul className="space-y-2">
 							{event.matches.map((match) => {
 								const teamA = teamById.get(match.team_a_id);
 								const teamB = teamById.get(match.team_b_id);
@@ -432,23 +475,99 @@ export function ChampionshipEventDetail({
 									return null;
 								}
 
+								const teamAIds = new Set(
+									match.players
+										.filter((player) => player.team_id === match.team_a_id)
+										.map((player) => player.player_id),
+								);
+								const score = matchScore(match.goals, teamAIds);
+								const winner =
+									match.winner_team_id === null
+										? null
+										: teamById.get(match.winner_team_id);
+								const open = isOpenMatch(match);
+								const playedA = match.players.filter(
+									(player) => player.team_id === match.team_a_id,
+								);
+								const playedB = match.players.filter(
+									(player) => player.team_id === match.team_b_id,
+								);
+
 								return (
 									<li
 										key={match.id}
-										className="flex items-center gap-2 text-sm text-fg"
+										className={`rounded-lg border border-line p-2 text-sm ${
+											open ? "ring-1 ring-pitch/40" : ""
+										}`}
 									>
-										<TeamChip color={teamA.color} />
-										<span className="text-fg-muted">x</span>
-										<TeamChip color={teamB.color} />
-										{showMatchDelete && (
-											<button
-												type="button"
-												aria-label={EVENT_ACTION.removeMatch}
-												className="ml-auto inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-muted hover:text-danger-fg"
-												onClick={() => setMatchToRemove(match)}
-											>
-												<X className="size-4" />
-											</button>
+										<div className="flex flex-wrap items-center gap-2">
+											<TeamChip
+												color={teamA.color}
+												sortOrder={teamA.sort_order}
+											/>
+											<span className="tabular-nums text-fg">
+												{formatMatchScore(score.teamA, score.teamB)}
+											</span>
+											<TeamChip
+												color={teamB.color}
+												sortOrder={teamB.sort_order}
+											/>
+											<span className="text-xs text-fg-muted">
+												{EVENT_MATCH_LABEL.winner}
+											</span>
+											{open && (
+												<span className={CHIP_CLASS}>
+													{EVENT_MATCH_LABEL.open}
+												</span>
+											)}
+											{!open && winner && (
+												<TeamChip
+													color={winner.color}
+													sortOrder={winner.sort_order}
+												/>
+											)}
+											{!open && !winner && (
+												<span className={CHIP_CLASS}>
+													{EVENT_MATCH_LABEL.draw}
+												</span>
+											)}
+											{showMatchDelete && (
+												<button
+													type="button"
+													aria-label={EVENT_ACTION.removeMatch}
+													className="ml-auto inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-muted hover:text-danger-fg"
+													onClick={() => setMatchToRemove(match)}
+												>
+													<X className="size-4" />
+												</button>
+											)}
+										</div>
+										{match.players.length > 0 && (
+											<p className="mt-1 text-xs text-fg-muted">
+												{playedA
+													.map((row) =>
+														playerVisibleName(
+															resolveRosterPlayer(
+																row.player_id,
+																row.display_name,
+																rosterById,
+															),
+														),
+													)
+													.join(", ")}
+												{" · "}
+												{playedB
+													.map((row) =>
+														playerVisibleName(
+															resolveRosterPlayer(
+																row.player_id,
+																row.display_name,
+																rosterById,
+															),
+														),
+													)
+													.join(", ")}
+											</p>
 										)}
 									</li>
 								);
@@ -534,7 +653,9 @@ export function ChampionshipEventDetail({
 				<AddEventTeamModal
 					playersPerTeam={event.players_per_team}
 					presentPlayers={presentPlayers}
-					usedColors={event.teams.map((team) => team.color)}
+					usedColors={event.teams.flatMap((team) =>
+						team.color === null ? [] : [team.color],
+					)}
 					takenPlayerIds={teamPlayerIds}
 					isPending={addingTeam}
 					errorMessage={addTeamError}
@@ -557,7 +678,7 @@ export function ChampionshipEventDetail({
 					presentPlayers={presentPlayers}
 					usedColors={event.teams
 						.filter((team) => team.id !== teamToEdit.id)
-						.map((team) => team.color)}
+						.flatMap((team) => (team.color === null ? [] : [team.color]))}
 					takenPlayerIds={eventTeamPlayerIds(
 						event.teams.filter((team) => team.id !== teamToEdit.id),
 					)}
@@ -603,24 +724,6 @@ export function ChampionshipEventDetail({
 								return;
 							}
 						})();
-					}}
-				/>
-			)}
-			{isAddMatchOpen && (
-				<AddEventMatchModal
-					teams={event.teams}
-					isPending={addingMatch}
-					errorMessage={addMatchError}
-					onCancel={() => {
-						if (addingMatch) {
-							return;
-						}
-
-						setIsAddMatchOpen(false);
-					}}
-					onAdd={async (values) => {
-						await onAddMatch(values);
-						setIsAddMatchOpen(false);
 					}}
 				/>
 			)}

@@ -65,24 +65,30 @@ export type Database = {
 			championship_event_matches: {
 				Row: {
 					created_at: string;
+					ended_at: string | null;
 					event_id: number;
 					id: number;
 					team_a_id: number;
 					team_b_id: number;
+					winner_team_id: number | null;
 				};
 				Insert: {
 					created_at?: string;
+					ended_at?: string | null;
 					event_id: number;
 					id?: number;
 					team_a_id: number;
 					team_b_id: number;
+					winner_team_id?: number | null;
 				};
 				Update: {
 					created_at?: string;
+					ended_at?: string | null;
 					event_id?: number;
 					id?: number;
 					team_a_id?: number;
 					team_b_id?: number;
+					winner_team_id?: number | null;
 				};
 				Relationships: [
 					{
@@ -91,6 +97,92 @@ export type Database = {
 						isOneToOne: false;
 						referencedRelation: "championship_events";
 						referencedColumns: ["id"];
+					},
+				];
+			};
+			championship_event_match_players: {
+				Row: {
+					display_name: string;
+					event_id: number;
+					id: number;
+					is_goalkeeper: boolean;
+					match_id: number;
+					player_id: number;
+					slot: number;
+					team_id: number;
+				};
+				Insert: {
+					display_name: string;
+					event_id: number;
+					id?: number;
+					is_goalkeeper?: boolean;
+					match_id: number;
+					player_id: number;
+					slot: number;
+					team_id: number;
+				};
+				Update: {
+					display_name?: string;
+					event_id?: number;
+					id?: number;
+					is_goalkeeper?: boolean;
+					match_id?: number;
+					player_id?: number;
+					slot?: number;
+					team_id?: number;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "championship_event_match_players_match_id_event_id_fkey";
+						columns: ["match_id", "event_id"];
+						isOneToOne: false;
+						referencedRelation: "championship_event_matches";
+						referencedColumns: ["id", "event_id"];
+					},
+					{
+						foreignKeyName: "championship_event_match_players_player_id_fkey";
+						columns: ["player_id"];
+						isOneToOne: false;
+						referencedRelation: "championship_players";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			championship_event_goals: {
+				Row: {
+					assist_player_id: number | null;
+					created_at: string;
+					event_id: number;
+					id: number;
+					is_own_goal: boolean;
+					match_id: number;
+					scorer_player_id: number;
+				};
+				Insert: {
+					assist_player_id?: number | null;
+					created_at?: string;
+					event_id: number;
+					id?: number;
+					is_own_goal?: boolean;
+					match_id: number;
+					scorer_player_id: number;
+				};
+				Update: {
+					assist_player_id?: number | null;
+					created_at?: string;
+					event_id?: number;
+					id?: number;
+					is_own_goal?: boolean;
+					match_id?: number;
+					scorer_player_id?: number;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "championship_event_goals_match_id_event_id_fkey";
+						columns: ["match_id", "event_id"];
+						isOneToOne: false;
+						referencedRelation: "championship_event_matches";
+						referencedColumns: ["id", "event_id"];
 					},
 				];
 			};
@@ -138,19 +230,19 @@ export type Database = {
 			};
 			championship_event_teams: {
 				Row: {
-					color: string;
+					color: string | null;
 					event_id: number;
 					id: number;
 					sort_order: number;
 				};
 				Insert: {
-					color: string;
+					color?: string | null;
 					event_id: number;
 					id?: number;
 					sort_order: number;
 				};
 				Update: {
-					color?: string;
+					color?: string | null;
 					event_id?: number;
 					id?: number;
 					sort_order?: number;
@@ -324,7 +416,7 @@ export type Database = {
 			add_championship_event_team: {
 				Args: {
 					event_id: number;
-					team_color: string;
+					team_color: string | null;
 					player_ids: Json;
 					goalkeeper_id: number;
 				};
@@ -335,6 +427,15 @@ export type Database = {
 					event_id: number;
 					team_a_id: number;
 					team_b_id: number;
+				};
+				Returns: Json;
+			};
+			add_championship_event_goal: {
+				Args: {
+					match_id: number;
+					scorer_player_id: number;
+					assist_player_id: number | null;
+					is_own_goal: boolean;
 				};
 				Returns: Json;
 			};
@@ -364,6 +465,10 @@ export type Database = {
 			};
 			end_championship_event: {
 				Args: { event_id: number; present_player_ids?: Json | null };
+				Returns: Json;
+			};
+			end_championship_event_match: {
+				Args: { match_id: number };
 				Returns: Json;
 			};
 			get_championship_by_invite: {
@@ -413,6 +518,23 @@ export type Database = {
 				Args: { match_id: number };
 				Returns: Json;
 			};
+			set_championship_event_match_player: {
+				Args: {
+					match_id: number;
+					team_id: number;
+					slot: number;
+					player_id: number | null;
+				};
+				Returns: Json;
+			};
+			start_championship_event_match: {
+				Args: {
+					event_id: number;
+					team_a_id: number;
+					team_b_id: number;
+				};
+				Returns: Json;
+			};
 			save_championship_event_attendance: {
 				Args: {
 					event_id: number;
@@ -439,7 +561,7 @@ export type Database = {
 			update_championship_event_team: {
 				Args: {
 					team_id: number;
-					team_color: string;
+					team_color: string | null;
 					player_ids: Json;
 					goalkeeper_id: number;
 				};

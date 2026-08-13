@@ -11,7 +11,9 @@ import { supabase } from "@/lib/supabase";
 import type {
 	ChampionshipEvent,
 	ChampionshipEventAttendance,
+	ChampionshipEventGoal,
 	ChampionshipEventMatch,
+	ChampionshipEventMatchPlayer,
 	ChampionshipEventTeam,
 	ChampionshipEventTeamPlayer,
 } from "@/types/championship-event";
@@ -47,7 +49,28 @@ const EVENT_COLUMNS = `
 		event_id,
 		team_a_id,
 		team_b_id,
-		created_at
+		created_at,
+		ended_at,
+		winner_team_id,
+		championship_event_match_players (
+			id,
+			match_id,
+			event_id,
+			team_id,
+			player_id,
+			display_name,
+			is_goalkeeper,
+			slot
+		),
+		championship_event_goals (
+			id,
+			match_id,
+			event_id,
+			scorer_player_id,
+			assist_player_id,
+			is_own_goal,
+			created_at
+		)
 	)
 ` as const;
 
@@ -99,22 +122,29 @@ function asTeam(value: unknown): ChampionshipEventTeam {
 	}
 
 	const row = value as Record<string, unknown>;
-	if (typeof row.id !== "number" || typeof row.color !== "string") {
+	if (typeof row.id !== "number") {
 		throw new Error("event team: invalid payload");
 	}
 
-	const color = normalizeEventTeamColor(row.color);
-	if (!isEventTeamColor(color)) {
+	if (row.color !== null && typeof row.color !== "string") {
+		throw new Error("event team: invalid payload");
+	}
+
+	const color = normalizeEventTeamColor(
+		typeof row.color === "string" ? row.color : null,
+	);
+	if (color !== null && !isEventTeamColor(color)) {
 		throw new Error("event team: invalid payload");
 	}
 
 	const nested = row.championship_event_team_players;
 	const players = Array.isArray(nested) ? nested.map(asTeamPlayer) : [];
+	const teamColor = color !== null && isEventTeamColor(color) ? color : null;
 
 	return {
 		id: row.id,
 		event_id: Number(row.event_id),
-		color,
+		color: teamColor,
 		sort_order: Number(row.sort_order),
 		players: [...players].sort((a, b) => {
 			if (a.is_goalkeeper !== b.is_goalkeeper) {
@@ -130,6 +160,50 @@ function asTeam(value: unknown): ChampionshipEventTeam {
 	};
 }
 
+function asMatchPlayer(value: unknown): ChampionshipEventMatchPlayer {
+	if (!value || typeof value !== "object") {
+		throw new Error("event match player: invalid payload");
+	}
+
+	const row = value as Record<string, unknown>;
+	if (typeof row.id !== "number" || typeof row.display_name !== "string") {
+		throw new Error("event match player: invalid payload");
+	}
+
+	return {
+		id: row.id,
+		match_id: Number(row.match_id),
+		event_id: Number(row.event_id),
+		team_id: Number(row.team_id),
+		player_id: Number(row.player_id),
+		display_name: row.display_name,
+		is_goalkeeper: row.is_goalkeeper === true,
+		slot: Number(row.slot),
+	};
+}
+
+function asGoal(value: unknown): ChampionshipEventGoal {
+	if (!value || typeof value !== "object") {
+		throw new Error("event goal: invalid payload");
+	}
+
+	const row = value as Record<string, unknown>;
+	if (typeof row.id !== "number") {
+		throw new Error("event goal: invalid payload");
+	}
+
+	return {
+		id: row.id,
+		match_id: Number(row.match_id),
+		event_id: Number(row.event_id),
+		scorer_player_id: Number(row.scorer_player_id),
+		assist_player_id:
+			typeof row.assist_player_id === "number" ? row.assist_player_id : null,
+		is_own_goal: row.is_own_goal === true,
+		created_at: String(row.created_at),
+	};
+}
+
 function asMatch(value: unknown): ChampionshipEventMatch {
 	if (!value || typeof value !== "object") {
 		throw new Error("event match: invalid payload");
@@ -140,12 +214,32 @@ function asMatch(value: unknown): ChampionshipEventMatch {
 		throw new Error("event match: invalid payload");
 	}
 
+	const players = Array.isArray(row.championship_event_match_players)
+		? row.championship_event_match_players.map(asMatchPlayer)
+		: [];
+	const goals = Array.isArray(row.championship_event_goals)
+		? row.championship_event_goals.map(asGoal)
+		: [];
+
 	return {
 		id: row.id,
 		event_id: Number(row.event_id),
 		team_a_id: Number(row.team_a_id),
 		team_b_id: Number(row.team_b_id),
 		created_at: String(row.created_at),
+		ended_at: typeof row.ended_at === "string" ? row.ended_at : null,
+		winner_team_id:
+			typeof row.winner_team_id === "number" ? row.winner_team_id : null,
+		players: [...players].sort((left, right) => {
+			if (left.team_id !== right.team_id) {
+				return left.team_id - right.team_id;
+			}
+
+			return left.slot - right.slot;
+		}),
+		goals: [...goals].sort((left, right) =>
+			left.created_at.localeCompare(right.created_at),
+		),
 	};
 }
 
@@ -256,7 +350,7 @@ export async function saveChampionshipEventTeams(
 	eventId: number,
 	presentPlayerIds: readonly number[],
 	teams: readonly {
-		color: EventTeamColor;
+		color: EventTeamColor | null;
 		playerIds: readonly number[];
 		goalkeeperId: number;
 	}[],
@@ -293,7 +387,7 @@ export async function saveChampionshipEventAttendance(
 export async function addChampionshipEventTeam(
 	eventId: number,
 	team: {
-		color: EventTeamColor;
+		color: EventTeamColor | null;
 		playerIds: readonly number[];
 		goalkeeperId: number;
 	},
@@ -313,7 +407,7 @@ export async function addChampionshipEventTeam(
 export async function updateChampionshipEventTeam(
 	teamId: number,
 	team: {
-		color: EventTeamColor;
+		color: EventTeamColor | null;
 		playerIds: readonly number[];
 		goalkeeperId: number;
 	},
@@ -342,15 +436,71 @@ export async function deleteChampionshipEventTeam(
 	}
 }
 
+export async function startChampionshipEventMatch(
+	eventId: number,
+	teamAId: number,
+	teamBId: number,
+): Promise<void> {
+	const { error } = await supabase.rpc("start_championship_event_match", {
+		event_id: eventId,
+		team_a_id: teamAId,
+		team_b_id: teamBId,
+	});
+
+	if (error) {
+		throwEventError(error);
+	}
+}
+
 export async function addChampionshipEventMatch(
 	eventId: number,
 	teamAId: number,
 	teamBId: number,
 ): Promise<void> {
-	const { error } = await supabase.rpc("add_championship_event_match", {
-		event_id: eventId,
-		team_a_id: teamAId,
-		team_b_id: teamBId,
+	await startChampionshipEventMatch(eventId, teamAId, teamBId);
+}
+
+export async function setChampionshipEventMatchPlayer(
+	matchId: number,
+	teamId: number,
+	slot: number,
+	playerId: number | null,
+): Promise<void> {
+	const { error } = await supabase.rpc("set_championship_event_match_player", {
+		match_id: matchId,
+		team_id: teamId,
+		slot,
+		player_id: playerId,
+	});
+
+	if (error) {
+		throwEventError(error);
+	}
+}
+
+export async function addChampionshipEventGoal(
+	matchId: number,
+	scorerPlayerId: number,
+	assistPlayerId: number | null,
+	isOwnGoal: boolean,
+): Promise<void> {
+	const { error } = await supabase.rpc("add_championship_event_goal", {
+		match_id: matchId,
+		scorer_player_id: scorerPlayerId,
+		assist_player_id: assistPlayerId,
+		is_own_goal: isOwnGoal,
+	});
+
+	if (error) {
+		throwEventError(error);
+	}
+}
+
+export async function endChampionshipEventMatch(
+	matchId: number,
+): Promise<void> {
+	const { error } = await supabase.rpc("end_championship_event_match", {
+		match_id: matchId,
 	});
 
 	if (error) {

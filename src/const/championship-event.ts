@@ -1,4 +1,5 @@
 import {
+	EVENT_TEAM_COLOR_NONE,
 	EVENT_TEAM_COLORS,
 	type EventTeamColor,
 	isEventTeamColor,
@@ -76,6 +77,15 @@ export const EVENT_ERROR_MESSAGE = {
 	"event already ended": "Evento já encerrado",
 	"event has matches": "Evento já tem partidas",
 	"team has matches": "Time já tem partidas",
+	"match already open": "Já tem partida em andamento",
+	"match already ended": "Partida já encerrada",
+	"match not found": "Partida não encontrada",
+	"player already in match": "Jogador já está na partida",
+	"player has goals": "Jogador já tem gol nesta partida",
+	"invalid slot": "Vaga inválida",
+	"team not in match": "Time não está na partida",
+	"player not in match": "Jogador não está na partida",
+	"assist not in team": "Assistência de outro time",
 } as const;
 
 export const EVENT_ACTION = {
@@ -85,6 +95,14 @@ export const EVENT_ACTION = {
 	newEvent: "Novo evento",
 	addAttendance: "Adicionar presença",
 	addMatch: "Adicionar partida",
+	startMatch: "Iniciar partida",
+	continueMatch: "Continuar partida",
+	nextMatch: "Próxima partida",
+	endMatch: "Encerrar",
+	copyMatchLink: "Copiar link",
+	markGoal: "Marcar gol",
+	swapPlayer: "Trocar",
+	fillSlot: "Adicionar",
 	addTeam: "Adicionar time",
 	editTeam: "Editar time",
 	saveTeam: "Salvar time",
@@ -111,7 +129,7 @@ export const EVENT_TEAM_POSITION_LABEL = {
 export const EVENT_TEAM_AVERAGE_LABEL = "Média";
 
 export type EventTeamDraft = {
-	color: EventTeamColor;
+	color: EventTeamColor | null;
 	playerIds: number[];
 	goalkeeperId: number;
 };
@@ -547,16 +565,11 @@ export function drawBalancedEventTeams(
 
 	search(0);
 
-	const used: EventTeamColor[] = [];
-	return best.map((team) => {
-		const color = nextEventTeamColor(used);
-		used.push(color);
-		return {
-			color,
-			playerIds: team.playerIds,
-			goalkeeperId: team.playerIds[0] ?? 0,
-		};
-	});
+	return best.map((team) => ({
+		color: EVENT_TEAM_COLOR_NONE,
+		playerIds: team.playerIds,
+		goalkeeperId: team.playerIds[0] ?? 0,
+	}));
 }
 
 export function nextEventTeamColor(
@@ -582,7 +595,7 @@ export function nextEventTeamColor(
 
 export type EventTeamBuilderTeam = {
 	key: string;
-	color: EventTeamColor;
+	color: EventTeamColor | null;
 	slots: string[];
 };
 
@@ -613,17 +626,12 @@ export function initialBuilderTeams(
 	teamCount: number = CHAMPIONSHIP_EVENT.minTeams,
 ): EventTeamBuilderTeam[] {
 	const count = Math.max(CHAMPIONSHIP_EVENT.minTeams, teamCount);
-	const used: EventTeamColor[] = [];
 
-	return Array.from({ length: count }, (_, index) => {
-		const color = nextEventTeamColor(used);
-		used.push(color);
-		return {
-			key: `team-${index}`,
-			color,
-			slots: emptyTeamSlots(playersPerTeam),
-		};
-	});
+	return Array.from({ length: count }, (_, index) => ({
+		key: `team-${index}`,
+		color: EVENT_TEAM_COLOR_NONE,
+		slots: emptyTeamSlots(playersPerTeam),
+	}));
 }
 
 export function resizeBuilderTeams(
@@ -642,16 +650,11 @@ export function resizeBuilderTeams(
 		return kept;
 	}
 
-	const used = kept.map((team) => team.color);
-	const extra = Array.from({ length: count - kept.length }, (_, index) => {
-		const color = nextEventTeamColor(used);
-		used.push(color);
-		return {
-			key: `team-${kept.length + index}`,
-			color,
-			slots: emptyTeamSlots(playersPerTeam),
-		};
-	});
+	const extra = Array.from({ length: count - kept.length }, (_, index) => ({
+		key: `team-${kept.length + index}`,
+		color: EVENT_TEAM_COLOR_NONE,
+		slots: emptyTeamSlots(playersPerTeam),
+	}));
 
 	return [...kept, ...extra];
 }
@@ -659,7 +662,7 @@ export function resizeBuilderTeams(
 export function builderTeamsFromEvent(
 	teams: readonly {
 		id: number;
-		color: EventTeamColor;
+		color: EventTeamColor | null;
 		players: readonly { player_id: number; is_goalkeeper: boolean }[];
 	}[],
 	playersPerTeam: number,
@@ -798,9 +801,7 @@ export function canRemoveEventAttendance(
 	return !teamPlayerIds.includes(playerId);
 }
 
-export function canAddEventMatch(options: {
-	canManage: boolean;
-	canOverrideEnded: boolean;
+export function canStartEventMatch(options: {
 	ended: boolean;
 	teamCount: number;
 }): boolean {
@@ -808,11 +809,14 @@ export function canAddEventMatch(options: {
 		return false;
 	}
 
-	if (options.ended) {
-		return options.canOverrideEnded;
-	}
+	return !options.ended;
+}
 
-	return options.canManage;
+export function canAddEventMatch(options: {
+	ended: boolean;
+	teamCount: number;
+}): boolean {
+	return canStartEventMatch(options);
 }
 
 export function draftAttendanceForEnd(
@@ -865,15 +869,17 @@ export function validateEventTeams(
 
 	for (const team of teams) {
 		const color = normalizeEventTeamColor(team.color);
-		if (!isEventTeamColor(color)) {
+		if (color !== null && !isEventTeamColor(color)) {
 			return EVENT_TEAM_MESSAGE.colorInvalid;
 		}
 
-		if (colors.has(color)) {
+		if (color !== null && colors.has(color)) {
 			return EVENT_TEAM_MESSAGE.colorDuplicate;
 		}
 
-		colors.add(color);
+		if (color !== null) {
+			colors.add(color);
+		}
 
 		if (team.playerIds.length === 0) {
 			return EVENT_TEAM_MESSAGE.playerEmpty;
@@ -907,11 +913,11 @@ export function validateEventTeam(
 	presentIds: readonly number[],
 ): string | null {
 	const color = normalizeEventTeamColor(team.color);
-	if (!isEventTeamColor(color)) {
+	if (color !== null && !isEventTeamColor(color)) {
 		return EVENT_TEAM_MESSAGE.colorInvalid;
 	}
 
-	if (usedColors.includes(color)) {
+	if (color !== null && usedColors.includes(color)) {
 		return EVENT_TEAM_MESSAGE.colorDuplicate;
 	}
 
