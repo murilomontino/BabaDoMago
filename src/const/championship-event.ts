@@ -159,7 +159,6 @@ export const EVENT_ATTENDANCE_MESSAGE = {
 	notInRoster: "Jogador fora do elenco",
 	duplicate: "Jogador repetido na presença",
 	invalidStats: "Números inválidos",
-	invalidRating: "Nota inválida",
 	winsExceedMatches: "Vitórias acima dos jogos",
 } as const;
 
@@ -240,7 +239,6 @@ export const ATTENDANCE_STAT_META = [
 
 export type EventAttendanceStatsDraft = {
 	player_id: number;
-	rating: number;
 	goals: number;
 	assists: number;
 	own_goals: number;
@@ -1079,24 +1077,11 @@ export function isAttendanceStatCount(value: unknown): value is number {
 	return typeof value === "number" && Number.isInteger(value) && value >= 0;
 }
 
-export function isAttendanceRating(value: unknown): value is number {
-	if (typeof value !== "number" || !Number.isFinite(value)) {
-		return false;
-	}
-
-	if (value < PLAYER_RATING.min || value > PLAYER_RATING.max) {
-		return false;
-	}
-
-	return Math.round(value * 10) / 10 === value;
-}
-
 export function attendanceStatsFromRows(
 	rows: readonly EventAttendanceStatsDraft[],
 ): EventAttendanceStatsDraft[] {
 	return rows.map((row) => ({
 		player_id: row.player_id,
-		rating: row.rating,
 		goals: row.goals,
 		assists: row.assists,
 		own_goals: row.own_goals,
@@ -1133,25 +1118,7 @@ export function setAttendanceStat(
 	});
 }
 
-export function setAttendanceRating(
-	rows: readonly EventAttendanceStatsDraft[],
-	playerId: number,
-	rating: number,
-): EventAttendanceStatsDraft[] {
-	return rows.map((row) => {
-		if (row.player_id !== playerId) {
-			return row;
-		}
-
-		return { ...row, rating };
-	});
-}
-
 function isAttendanceStatRow(row: EventAttendanceStatsDraft): boolean {
-	if (!isAttendanceRating(row.rating)) {
-		return false;
-	}
-
 	if (!isAttendanceStatCount(row.goals)) {
 		return false;
 	}
@@ -1199,10 +1166,6 @@ export function validateEventAttendanceStats(
 	});
 
 	if (invalid) {
-		if (!isAttendanceRating(invalid.rating)) {
-			return EVENT_ATTENDANCE_MESSAGE.invalidRating;
-		}
-
 		if (
 			isAttendanceStatCount(invalid.wins) &&
 			isAttendanceStatCount(invalid.matches) &&

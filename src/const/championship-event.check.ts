@@ -38,7 +38,6 @@ import {
 	parseAttendanceStatInput,
 	pickTeamGoalkeeper,
 	resizeBuilderTeams,
-	setAttendanceRating,
 	setAttendanceStat,
 	teamHasMatches,
 	teamPlayerSlots,
@@ -529,7 +528,6 @@ check(EVENT_ATTENDANCE_STAT_ABBR.ownGoals, "GC");
 const statsDraft = [
 	{
 		player_id: 1,
-		rating: 7.5,
 		goals: 2,
 		assists: 1,
 		own_goals: 0,
@@ -538,7 +536,6 @@ const statsDraft = [
 	},
 	{
 		player_id: 2,
-		rating: 5,
 		goals: 0,
 		assists: 0,
 		own_goals: 0,
@@ -565,18 +562,10 @@ check(
 	),
 	EVENT_ATTENDANCE_MESSAGE.invalidStats,
 );
-check(
-	validateEventAttendanceStats(
-		[{ ...statsDraft[0], rating: 101 }, statsDraft[1]],
-		[1, 2],
-	),
-	EVENT_ATTENDANCE_MESSAGE.invalidRating,
-);
 check(parseAttendanceStatInput(""), 0);
 check(parseAttendanceStatInput("4"), 4);
 check(parseAttendanceStatInput("-1"), null);
 check(setAttendanceStat(statsDraft, 1, "goals", 9)[0]?.goals, 9);
-check(setAttendanceRating(statsDraft, 1, 8)[0]?.rating, 8);
 check(
 	championshipEventErrorMessage("invalid attendance stats"),
 	EVENT_ERROR_MESSAGE["invalid attendance stats"],

@@ -771,7 +771,6 @@ export function ChampionshipEventDetail({
 				<EditEventAttendanceStatsModal
 					attendance={event.attendance}
 					players={players}
-					ceiling={ceiling}
 					isPending={savingAttendanceStats}
 					errorMessage={saveAttendanceStatsError}
 					onCancel={() => {

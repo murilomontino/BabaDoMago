@@ -1,33 +1,23 @@
 import { useState } from "react";
 import { AppDialog } from "@/components/atoms/app-dialog";
 import { Button } from "@/components/button";
-import { PlayerRating } from "@/components/player-rating";
 import {
 	ATTENDANCE_STAT_META,
 	attendanceStatsFromRows,
 	EVENT_ACTION,
-	EVENT_ATTENDANCE_COLUMN_LABEL,
 	type EventAttendanceStatsDraft,
 	parseAttendanceStatInput,
-	setAttendanceRating,
 	setAttendanceStat,
 	validateEventAttendanceStats,
 } from "@/const/championship-event";
 import { playerVisibleName } from "@/const/player-name";
-import { starFillToRating } from "@/const/player-rating";
-import {
-	BUTTON_VARIANT,
-	CHIP_CLASS,
-	ERROR_CLASS,
-	FIELD_CLASS,
-} from "@/const/ui";
+import { BUTTON_VARIANT, ERROR_CLASS, STAT_FIELD_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type { ChampionshipEventAttendance } from "@/types/championship-event";
 
 type EditEventAttendanceStatsModalProps = {
 	attendance: readonly ChampionshipEventAttendance[];
 	players: ChampionshipPlayer[];
-	ceiling: number;
 	isPending: boolean;
 	errorMessage: string | null;
 	onCancel: () => void;
@@ -37,7 +27,6 @@ type EditEventAttendanceStatsModalProps = {
 export function EditEventAttendanceStatsModal({
 	attendance,
 	players,
-	ceiling,
 	isPending,
 	errorMessage,
 	onCancel,
@@ -51,11 +40,11 @@ export function EditEventAttendanceStatsModal({
 
 	return (
 		<AppDialog onClose={onCancel}>
-			<div className="max-h-[90dvh] w-full max-w-2xl overflow-y-auto rounded-xl bg-surface p-4 shadow-lg">
-				<p className="mb-3 text-sm font-medium tracking-tight text-fg">
+			<div className="max-h-[90dvh] w-full max-w-2xl overflow-y-auto rounded-xl bg-surface p-6 shadow-lg">
+				<p className="mb-5 text-sm font-medium tracking-tight text-fg">
 					{EVENT_ACTION.markAttendanceStats}
 				</p>
-				<ul className="divide-y divide-line">
+				<ul className="space-y-3">
 					{draft.map((row) => {
 						const player = rosterById.get(row.player_id);
 						const name = playerVisibleName({
@@ -70,7 +59,7 @@ export function EditEventAttendanceStatsModal({
 						return (
 							<li
 								key={row.player_id}
-								className="space-y-2 py-3 first:pt-0 last:pb-0"
+								className="space-y-4 rounded-xl bg-surface-muted p-4"
 							>
 								<div className="flex min-w-0 items-center gap-3">
 									{avatarUrl && (
@@ -78,11 +67,11 @@ export function EditEventAttendanceStatsModal({
 											src={avatarUrl}
 											alt=""
 											referrerPolicy="no-referrer"
-											className="h-8 w-8 rounded-full object-cover"
+											className="h-9 w-9 rounded-full object-cover"
 										/>
 									)}
 									{!avatarUrl && (
-										<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-pitch-soft text-xs font-medium text-pitch-fg">
+										<span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pitch-soft text-xs font-medium text-pitch-fg">
 											{name.charAt(0).toUpperCase()}
 										</span>
 									)}
@@ -90,27 +79,7 @@ export function EditEventAttendanceStatsModal({
 										{name}
 									</p>
 								</div>
-								<div className="flex items-center gap-2">
-									<span className="text-xs text-fg-muted">
-										{EVENT_ATTENDANCE_COLUMN_LABEL.rating}
-									</span>
-									<PlayerRating
-										rating={row.rating}
-										ceiling={ceiling}
-										onChange={(starFill) => {
-											setLocalError(null);
-											setDraft((current) =>
-												setAttendanceRating(
-													current,
-													row.player_id,
-													starFillToRating(starFill, ceiling),
-												),
-											);
-										}}
-									/>
-									<span className={CHIP_CLASS}>{row.rating}</span>
-								</div>
-								<div className="grid grid-cols-5 gap-2">
+								<div className="grid grid-cols-5 gap-3">
 									{ATTENDANCE_STAT_META.map((field) => {
 										const inputId = `attendance-stat-${row.player_id}-${field.id}`;
 
@@ -118,7 +87,7 @@ export function EditEventAttendanceStatsModal({
 											<label
 												key={field.id}
 												htmlFor={inputId}
-												className="block text-xs text-fg-muted"
+												className="flex flex-col items-center gap-1.5 text-xs font-medium text-fg-muted"
 											>
 												<span title={field.label}>{field.abbr}</span>
 												<input
@@ -128,7 +97,7 @@ export function EditEventAttendanceStatsModal({
 													step={1}
 													inputMode="numeric"
 													value={row[field.id]}
-													className={`mt-1 ${FIELD_CLASS} px-2 text-center tabular-nums`}
+													className={STAT_FIELD_CLASS}
 													onChange={(event) => {
 														const next = parseAttendanceStatInput(
 															event.target.value,
@@ -160,7 +129,7 @@ export function EditEventAttendanceStatsModal({
 				{errorMessage && (
 					<p className={`mt-2 ${ERROR_CLASS}`}>{errorMessage}</p>
 				)}
-				<div className="mt-4 flex justify-end gap-2">
+				<div className="mt-6 flex justify-end gap-2">
 					<Button
 						variant={BUTTON_VARIANT.secondary}
 						onClick={onCancel}
