@@ -11,6 +11,7 @@ export type ChampionshipPlayer = {
 	user_id: string | null;
 	display_name: string;
 	avatar_url: string | null;
+	rating: number;
 };
 
 export type ChampionshipWithPlayers = Championship & {

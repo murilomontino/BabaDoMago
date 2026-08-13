@@ -33,6 +33,8 @@ Rode no SQL Editor, nesta ordem:
 1. [`supabase/migrations/20260813120000_championships.sql`](supabase/migrations/20260813120000_championships.sql)
 2. [`supabase/migrations/20260813140000_users.sql`](supabase/migrations/20260813140000_users.sql)
 3. [`supabase/migrations/20260813150000_fix_championships_insert_rls.sql`](supabase/migrations/20260813150000_fix_championships_insert_rls.sql) — rode se o 1 já foi aplicado (corrige RLS no criar campeonato)
+4. [`supabase/migrations/20260813160000_player_rating.sql`](supabase/migrations/20260813160000_player_rating.sql) — nota no jogador (rode se o 1 já foi aplicado)
+5. [`supabase/migrations/20260813170000_player_rating_100.sql`](supabase/migrations/20260813170000_player_rating_100.sql) — nota 1–100; estrelas relativas ao teto do baba
 
 O segundo cria `public.users` e vincula cada login Google (trigger + backfill). Sem ele o app não cadastra usuário na plataforma.
 
@@ -40,5 +42,5 @@ O segundo cria `public.users` e vincula cada login Google (trigger + backfill). 
 
 - `/` lista só os campeonatos que você criou ou entrou
 - `/championships/new` cria (você entra como jogador)
-- `/championships/:id` elenco, copiar convite, adicionar jogador sem conta
+- `/championships/:id` elenco, copiar convite, adicionar jogador sem conta; dono define nota 1–100; 5 estrelas = maior nota do baba
 - `/join/:codigo` público: vê o elenco, Conectar no nome livre, Inscrever-me

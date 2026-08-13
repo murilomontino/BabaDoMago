@@ -7,6 +7,7 @@ import {
 	useAddManualPlayer,
 	useChampionship,
 	useClaimPlayer,
+	useUpdatePlayerRating,
 } from "@/hooks/championships/use-championships";
 
 export function ChampionshipDetailPage() {
@@ -18,10 +19,19 @@ export function ChampionshipDetailPage() {
 	const { data, isPending, isError, error } = useChampionship(championshipId);
 	const addPlayer = useAddManualPlayer(championshipId);
 	const claimPlayer = useClaimPlayer();
+	const updateRating = useUpdatePlayerRating();
 	const [playerName, setPlayerName] = useState("");
 	const [copied, setCopied] = useState(false);
 
 	const isOwner = Boolean(user && data && data.created_by === user.id);
+
+	function handleChangeRating(playerId: number, rating: number) {
+		if (!isOwner) {
+			return;
+		}
+
+		updateRating.mutate({ playerId, rating });
+	}
 
 	async function handleAddPlayer(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -93,9 +103,16 @@ export function ChampionshipDetailPage() {
 				currentUserId={user?.id ?? null}
 				claimingPlayerId={claimPlayer.variables ?? null}
 				onClaim={(playerId) => claimPlayer.mutate(playerId)}
+				onChangeRating={isOwner ? handleChangeRating : undefined}
+				ratingPlayerId={updateRating.variables?.playerId ?? null}
 			/>
 			{claimPlayer.isError && (
 				<p className="mt-4 text-sm text-red-600">{claimPlayer.error.message}</p>
+			)}
+			{updateRating.isError && (
+				<p className="mt-4 text-sm text-red-600">
+					{updateRating.error.message}
+				</p>
 			)}
 		</main>
 	);

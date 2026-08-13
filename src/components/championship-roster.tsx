@@ -1,3 +1,5 @@
+import { PlayerRating, PlayerRatingInput } from "@/components/player-rating";
+import { championshipRatingCeiling } from "@/const/player-rating";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 type ChampionshipRosterProps = {
@@ -5,6 +7,8 @@ type ChampionshipRosterProps = {
 	currentUserId: string | null;
 	claimingPlayerId: number | null;
 	onClaim: (playerId: number) => void;
+	onChangeRating?: (playerId: number, rating: number) => void;
+	ratingPlayerId?: number | null;
 };
 
 export function ChampionshipRoster({
@@ -12,6 +16,8 @@ export function ChampionshipRoster({
 	currentUserId,
 	claimingPlayerId,
 	onClaim,
+	onChangeRating,
+	ratingPlayerId,
 }: ChampionshipRosterProps) {
 	const alreadyMember = Boolean(
 		currentUserId && players.some((player) => player.user_id === currentUserId),
@@ -20,6 +26,10 @@ export function ChampionshipRoster({
 	if (players.length === 0) {
 		return <p className="text-slate-600">Nenhum jogador ainda.</p>;
 	}
+
+	const ceiling = championshipRatingCeiling(
+		players.map((player) => player.rating),
+	);
 
 	return (
 		<ul className="divide-y divide-slate-200 rounded-lg border border-slate-200">
@@ -49,6 +59,21 @@ export function ChampionshipRoster({
 								<p className="font-medium text-slate-900">
 									{player.display_name}
 								</p>
+								<div className="mt-1 flex items-center gap-2">
+									<PlayerRating rating={player.rating} ceiling={ceiling} />
+									{!onChangeRating && (
+										<span className="text-xs text-slate-500">
+											{player.rating}
+										</span>
+									)}
+									{onChangeRating && (
+										<PlayerRatingInput
+											rating={player.rating}
+											disabled={ratingPlayerId === player.id}
+											onCommit={(rating) => onChangeRating(player.id, rating)}
+										/>
+									)}
+								</div>
 								{player.user_id && (
 									<p className="text-xs text-slate-500">Conta conectada</p>
 								)}

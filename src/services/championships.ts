@@ -1,9 +1,13 @@
+import { PLAYER_RATING } from "@/const/player-rating";
 import { supabase } from "@/lib/supabase";
 import type {
 	Championship,
 	ChampionshipPlayer,
 	ChampionshipWithPlayers,
 } from "@/types/championship";
+
+const PLAYER_COLUMNS =
+	"id, championship_id, user_id, display_name, avatar_url, rating" as const;
 
 function asChampionship(value: unknown): Championship {
 	if (!value || typeof value !== "object") {
@@ -33,12 +37,21 @@ function asPlayer(value: unknown): ChampionshipPlayer {
 		throw new Error("player: invalid payload");
 	}
 
+	if (
+		typeof row.rating !== "number" ||
+		row.rating < PLAYER_RATING.min ||
+		row.rating > PLAYER_RATING.max
+	) {
+		throw new Error("player: invalid payload");
+	}
+
 	return {
 		id: row.id,
 		championship_id: Number(row.championship_id),
 		user_id: typeof row.user_id === "string" ? row.user_id : null,
 		display_name: row.display_name,
 		avatar_url: typeof row.avatar_url === "string" ? row.avatar_url : null,
+		rating: row.rating,
 	};
 }
 
@@ -70,7 +83,7 @@ export async function getChampionshipById(
 
 	const { data: players, error: playersError } = await supabase
 		.from("championship_players")
-		.select("id, championship_id, user_id, display_name, avatar_url")
+		.select(PLAYER_COLUMNS)
 		.eq("championship_id", championshipId)
 		.order("id", { ascending: true });
 
@@ -143,14 +156,16 @@ export async function createChampionship(
 export async function addManualPlayer(
 	championshipId: number,
 	displayName: string,
+	rating = PLAYER_RATING.default,
 ): Promise<ChampionshipPlayer> {
 	const { data, error } = await supabase
 		.from("championship_players")
 		.insert({
 			championship_id: championshipId,
 			display_name: displayName,
+			rating,
 		})
-		.select("id, championship_id, user_id, display_name, avatar_url")
+		.select(PLAYER_COLUMNS)
 		.single();
 
 	if (error) {
@@ -179,6 +194,22 @@ export async function claimPlayer(
 ): Promise<ChampionshipPlayer> {
 	const { data, error } = await supabase.rpc("claim_player", {
 		player_id: playerId,
+	});
+
+	if (error) {
+		throw error;
+	}
+
+	return asPlayer(data);
+}
+
+export async function updatePlayerRating(
+	playerId: number,
+	rating: number,
+): Promise<ChampionshipPlayer> {
+	const { data, error } = await supabase.rpc("update_player_rating", {
+		player_id: playerId,
+		rating,
 	});
 
 	if (error) {

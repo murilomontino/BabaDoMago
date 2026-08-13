@@ -7,6 +7,7 @@ import {
 	getChampionshipByInvite,
 	joinChampionship,
 	listChampionships,
+	updatePlayerRating,
 } from "@/services/championships";
 import {
 	CHAMPIONSHIP_BY_ID_QUERY_KEY,
@@ -110,6 +111,23 @@ export function useClaimPlayer() {
 			});
 			await queryClient.invalidateQueries({
 				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,
+			});
+		},
+	});
+}
+
+export function useUpdatePlayerRating() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({ playerId, rating }: { playerId: number; rating: number }) =>
+			updatePlayerRating(playerId, rating),
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({
+				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,
+			});
+			await queryClient.invalidateQueries({
+				queryKey: CHAMPIONSHIP_BY_INVITE_QUERY_KEY,
 			});
 		},
 	});
