@@ -15,6 +15,10 @@ export type ChampionshipPlayer = {
 	rating: number;
 	role: string;
 	deleted_at: string | null;
+	goals: number;
+	assists: number;
+	wins: number;
+	matches: number;
 };
 
 export type ChampionshipWithPlayers = Championship & {

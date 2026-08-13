@@ -54,78 +54,73 @@ export const ROSTER_STAT_COLUMNS = [
 
 export type RosterStatColumnId = (typeof ROSTER_STAT_COLUMNS)[number];
 
-export const EMPTY_ROSTER_STATS = {
-	goals: 0,
-	assists: 0,
-	wins: 0,
-	matches: 0,
-} as const;
-
-export type RosterStatsInput = {
-	goals: number;
-	assists: number;
-	wins: number;
-	matches: number;
-};
-
 export type RosterRow = ChampionshipPlayer & {
-	goals: number;
-	assists: number;
 	goalInvolvement: number;
-	wins: number;
-	matches: number;
 	goalsAverage: number;
 	assistsAverage: number;
 	winRate: number;
 };
 
+export function rosterSafeCount(value: unknown): number {
+	const n = Number(value);
+	if (!Number.isFinite(n) || n < 0) {
+		return 0;
+	}
+
+	return n;
+}
+
 export function rosterGoalInvolvement(goals: number, assists: number): number {
-	return goals + assists;
+	return rosterSafeCount(goals) + rosterSafeCount(assists);
 }
 
 export function rosterAverage(value: number, matches: number): number {
-	if (matches === 0) {
+	const safeMatches = rosterSafeCount(matches);
+	if (safeMatches === 0) {
 		return 0;
 	}
 
-	return value / matches;
+	return rosterSafeCount(value) / safeMatches;
 }
 
 export function rosterWinRate(wins: number, matches: number): number {
-	if (matches === 0) {
+	const safeMatches = rosterSafeCount(matches);
+	if (safeMatches === 0) {
 		return 0;
 	}
 
-	return wins / matches;
+	return rosterSafeCount(wins) / safeMatches;
 }
 
-export function toRosterRow(
-	player: ChampionshipPlayer,
-	stats: RosterStatsInput = EMPTY_ROSTER_STATS,
-): RosterRow {
+export function toRosterRow(player: ChampionshipPlayer): RosterRow {
+	const goals = rosterSafeCount(player.goals);
+	const assists = rosterSafeCount(player.assists);
+	const wins = rosterSafeCount(player.wins);
+	const matches = rosterSafeCount(player.matches);
+
 	return {
 		...player,
-		goals: stats.goals,
-		assists: stats.assists,
-		goalInvolvement: rosterGoalInvolvement(stats.goals, stats.assists),
-		wins: stats.wins,
-		matches: stats.matches,
-		goalsAverage: rosterAverage(stats.goals, stats.matches),
-		assistsAverage: rosterAverage(stats.assists, stats.matches),
-		winRate: rosterWinRate(stats.wins, stats.matches),
+		goals,
+		assists,
+		wins,
+		matches,
+		goalInvolvement: rosterGoalInvolvement(goals, assists),
+		goalsAverage: rosterAverage(goals, matches),
+		assistsAverage: rosterAverage(assists, matches),
+		winRate: rosterWinRate(wins, matches),
 	};
 }
 
 export function formatRosterCount(value: number): string {
-	return String(value);
+	return String(rosterSafeCount(value));
 }
 
 export function formatRosterAverage(value: number): string {
-	return value.toFixed(1);
+	return rosterSafeCount(value).toFixed(1);
 }
 
 export function formatRosterWinRate(value: number): string {
-	return `${Math.round(value * 100)}%`;
+	return `${Math.round(rosterSafeCount(value) * 100)}%`;
 }
 
 export const ROSTER_STAT_COLUMN_OPTIONS = ROSTER_STAT_COLUMNS.map((id) => ({

@@ -9,6 +9,7 @@ import {
 } from "@/const/championship-quota";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
 import { PLAYER_RATING } from "@/const/player-rating";
+import { rosterSafeCount } from "@/const/roster-stats";
 import { supabase } from "@/lib/supabase";
 import type {
 	Championship,
@@ -17,7 +18,7 @@ import type {
 } from "@/types/championship";
 
 const PLAYER_COLUMNS =
-	"id, championship_id, user_id, display_name, avatar_url, rating, role, deleted_at" as const;
+	"id, championship_id, user_id, display_name, avatar_url, rating, role, deleted_at, goals, assists, wins, matches" as const;
 
 const CHAMPIONSHIP_COLUMNS =
 	"id, name, invite_code, created_by, logo_path" as const;
@@ -69,6 +70,10 @@ function asPlayer(value: unknown): ChampionshipPlayer {
 		rating,
 		role: typeof row.role === "string" ? row.role : CHAMPIONSHIP_ROLE.member,
 		deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
+		goals: rosterSafeCount(row.goals),
+		assists: rosterSafeCount(row.assists),
+		wins: rosterSafeCount(row.wins),
+		matches: rosterSafeCount(row.matches),
 	};
 }
 
