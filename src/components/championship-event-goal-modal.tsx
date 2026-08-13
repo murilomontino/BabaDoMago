@@ -73,21 +73,6 @@ export function ChampionshipEventGoalModal({
 							{EVENT_GOAL_LABEL.none}
 						</Button>
 					</li>
-					<li>
-						<Button
-							variant={BUTTON_VARIANT.ghost}
-							className="w-full justify-start"
-							disabled={isPending}
-							onClick={() => {
-								void onConfirm({
-									kind: EVENT_GOAL_KIND.ownGoal,
-									assistPlayerId: null,
-								});
-							}}
-						>
-							{EVENT_GOAL_LABEL.ownGoal}
-						</Button>
-					</li>
 				</ul>
 				{errorMessage && (
 					<p className={`mt-2 ${ERROR_CLASS}`}>{errorMessage}</p>

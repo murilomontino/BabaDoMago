@@ -7,6 +7,7 @@ import type { ChampionshipPlayer } from "@/types/championship";
 type ChampionshipEventBenchModalProps = {
 	title: string;
 	players: readonly ChampionshipPlayer[];
+	emptyMessage?: string;
 	isPending: boolean;
 	errorMessage: string | null;
 	onCancel: () => void;
@@ -16,6 +17,7 @@ type ChampionshipEventBenchModalProps = {
 export function ChampionshipEventBenchModal({
 	title,
 	players,
+	emptyMessage = "Ninguém no banco.",
 	isPending,
 	errorMessage,
 	onCancel,
@@ -28,7 +30,7 @@ export function ChampionshipEventBenchModal({
 					{title}
 				</p>
 				{players.length === 0 && (
-					<p className="text-sm text-fg-muted">Ninguém no banco.</p>
+					<p className="text-sm text-fg-muted">{emptyMessage}</p>
 				)}
 				{players.length > 0 && (
 					<ul className="max-h-72 space-y-1 overflow-y-auto">

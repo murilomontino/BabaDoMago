@@ -24,6 +24,7 @@ import {
 	matchGoalPayload,
 	matchGoalTimeline,
 	matchScore,
+	matchTeamPlayers,
 	matchTeamSlots,
 	matchTeamStarName,
 	toggleMatchTeamSelection,
@@ -333,6 +334,26 @@ function GoalTimelineEvent({
 	);
 }
 
+function OwnGoalButton({
+	disabled,
+	onClick,
+}: {
+	disabled: boolean;
+	onClick: () => void;
+}) {
+	return (
+		<button
+			type="button"
+			aria-label={EVENT_GOAL_LABEL.ownGoal}
+			disabled={disabled}
+			className="inline-flex shrink-0 text-danger-fg hover:opacity-80 disabled:opacity-50"
+			onClick={onClick}
+		>
+			<Goal className="size-3.5" />
+		</button>
+	);
+}
+
 export function ChampionshipEventPlay({
 	event,
 	match,
@@ -360,6 +381,7 @@ export function ChampionshipEventPlay({
 	const [selected, setSelected] = useState<number[]>([]);
 	const [slotTarget, setSlotTarget] = useState<SlotTarget | null>(null);
 	const [goalTarget, setGoalTarget] = useState<GoalTarget | null>(null);
+	const [ownGoalTeamId, setOwnGoalTeamId] = useState<number | null>(null);
 	const busy = starting || savingPlayer || savingGoal || ending;
 	const canStartSelected = canConfirmMatchTeams(selected);
 
@@ -429,12 +451,11 @@ export function ChampionshipEventPlay({
 		matchTeamStarName(match.players, match.team_b_id, rosterById) ??
 		eventTeamName(teamB.color, teamB.sort_order);
 	const timeline = matchGoalTimeline(match.goals);
-	const ownGoalsA = timeline.filter(
-		(goal) => goal.is_own_goal && teamAIds.has(goal.scorer_player_id),
-	);
-	const ownGoalsB = timeline.filter(
-		(goal) => goal.is_own_goal && !teamAIds.has(goal.scorer_player_id),
-	);
+	const ownGoalPlayers = ownGoalTeamId
+		? matchTeamPlayers(match.players, ownGoalTeamId).map((row) =>
+				resolvePlayer(row.player_id, row.display_name, rosterById),
+			)
+		: [];
 	const matchPlayerById = new Map(
 		match.players.map((row) => [row.player_id, row]),
 	);
@@ -490,13 +511,16 @@ export function ChampionshipEventPlay({
 			/>
 			<div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-2 gap-y-0.5">
 				<p className="flex min-w-0 items-center justify-end gap-1 text-sm font-medium text-fg">
-					{ownGoalsA.map((goal) => (
-						<Goal
-							key={goal.id}
-							className="size-3.5 shrink-0 text-danger-fg"
-							aria-label={EVENT_GOAL_LABEL.ownGoal}
-						/>
-					))}
+					<OwnGoalButton
+						disabled={busy}
+						onClick={() => {
+							if (busy) {
+								return;
+							}
+
+							setOwnGoalTeamId(match.team_a_id);
+						}}
+					/>
 					<span className="truncate">{starA}</span>
 				</p>
 				<p className="text-2xl font-semibold tabular-nums text-fg">
@@ -504,13 +528,16 @@ export function ChampionshipEventPlay({
 				</p>
 				<p className="flex min-w-0 items-center justify-start gap-1 text-sm font-medium text-fg">
 					<span className="truncate">{starB}</span>
-					{ownGoalsB.map((goal) => (
-						<Goal
-							key={goal.id}
-							className="size-3.5 shrink-0 text-danger-fg"
-							aria-label={EVENT_GOAL_LABEL.ownGoal}
-						/>
-					))}
+					<OwnGoalButton
+						disabled={busy}
+						onClick={() => {
+							if (busy) {
+								return;
+							}
+
+							setOwnGoalTeamId(match.team_b_id);
+						}}
+					/>
 				</p>
 				{timeline.map((goal) => {
 					const scorer = matchPlayerById.get(goal.scorer_player_id);
@@ -647,6 +674,30 @@ export function ChampionshipEventPlay({
 						});
 						await onAddGoal(payload);
 						setGoalTarget(null);
+					}}
+				/>
+			)}
+			{ownGoalTeamId !== null && (
+				<ChampionshipEventBenchModal
+					title={EVENT_GOAL_LABEL.ownGoal}
+					players={ownGoalPlayers}
+					emptyMessage={EVENT_MATCH_LABEL.emptyTeam}
+					isPending={savingGoal}
+					errorMessage={goalError}
+					onCancel={() => {
+						if (savingGoal) {
+							return;
+						}
+
+						setOwnGoalTeamId(null);
+					}}
+					onSelect={async (playerId) => {
+						await onAddGoal({
+							scorerPlayerId: playerId,
+							assistPlayerId: null,
+							isOwnGoal: true,
+						});
+						setOwnGoalTeamId(null);
 					}}
 				/>
 			)}
