@@ -55,6 +55,8 @@ type DataTableProps<TData extends RowData> = {
 	getRowId: (row: TData) => string;
 	hideableColumns?: readonly DataTableHideableColumn[];
 	legendItems?: readonly DataTableLegendItem[];
+	onRowClick?: (row: TData) => void;
+	getRowClassName?: (row: TData) => string;
 };
 
 export function DataTable<TData extends RowData>({
@@ -63,6 +65,8 @@ export function DataTable<TData extends RowData>({
 	getRowId,
 	hideableColumns = [],
 	legendItems = [],
+	onRowClick,
+	getRowClassName,
 }: DataTableProps<TData>) {
 	const table = useTable(
 		{
@@ -132,7 +136,22 @@ export function DataTable<TData extends RowData>({
 					</thead>
 					<tbody className="divide-y divide-line">
 						{table.getRowModel().rows.map((row) => (
-							<tr key={row.id}>
+							<tr
+								key={row.id}
+								className={[
+									onRowClick ? "cursor-pointer" : "",
+									getRowClassName?.(row.original) ?? "even:bg-surface-muted",
+								]
+									.filter(Boolean)
+									.join(" ")}
+								onClick={
+									onRowClick
+										? () => {
+												onRowClick(row.original);
+											}
+										: undefined
+								}
+							>
 								{row.getVisibleCells().map((cell) => {
 									const align = cell.column.columnDef.meta?.align ?? "left";
 									const alignClass = TABLE_CELL_ALIGN[align];

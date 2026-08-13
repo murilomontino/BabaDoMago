@@ -1,4 +1,9 @@
 import {
+	championshipEventErrorMessage,
+	parseEventTime,
+	parsePlayersPerTeam,
+} from "@/const/championship-event";
+import {
 	assertChampionshipLogoFile,
 	CHAMPIONSHIP_LOGO,
 	championshipLogoObjectPath,
@@ -18,10 +23,10 @@ import type {
 } from "@/types/championship";
 
 const PLAYER_COLUMNS =
-	"id, championship_id, user_id, display_name, avatar_url, rating, role, deleted_at, goals, assists, wins, matches" as const;
+	"id, championship_id, user_id, display_name, nickname, avatar_url, rating, role, deleted_at, goals, assists, own_goals, wins, matches" as const;
 
 const CHAMPIONSHIP_COLUMNS =
-	"id, name, invite_code, created_by, logo_path" as const;
+	"id, name, invite_code, created_by, logo_path, event_time, players_per_team, is_visible" as const;
 
 function asChampionship(value: unknown): Championship {
 	if (!value || typeof value !== "object") {
@@ -39,6 +44,9 @@ function asChampionship(value: unknown): Championship {
 		invite_code: String(row.invite_code),
 		created_by: String(row.created_by),
 		logo_path: typeof row.logo_path === "string" ? row.logo_path : null,
+		event_time: parseEventTime(row.event_time),
+		players_per_team: parsePlayersPerTeam(row.players_per_team),
+		is_visible: row.is_visible !== false,
 	};
 }
 
@@ -66,12 +74,14 @@ function asPlayer(value: unknown): ChampionshipPlayer {
 		championship_id: Number(row.championship_id),
 		user_id: typeof row.user_id === "string" ? row.user_id : null,
 		display_name: row.display_name,
+		nickname: typeof row.nickname === "string" ? row.nickname : null,
 		avatar_url: typeof row.avatar_url === "string" ? row.avatar_url : null,
 		rating,
 		role: typeof row.role === "string" ? row.role : CHAMPIONSHIP_ROLE.member,
 		deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
 		goals: rosterSafeCount(row.goals),
 		assists: rosterSafeCount(row.assists),
+		own_goals: rosterSafeCount(row.own_goals),
 		wins: rosterSafeCount(row.wins),
 		matches: rosterSafeCount(row.matches),
 	};
@@ -85,11 +95,14 @@ function throwChampionshipWriteError(error: { message: string }): never {
 	throw error;
 }
 
-export async function listChampionships(): Promise<Championship[]> {
+export async function listChampionships(
+	userId: string,
+): Promise<Championship[]> {
 	const { data, error } = await supabase
 		.from("championships")
 		.select(CHAMPIONSHIP_COLUMNS)
 		.is("deleted_at", null)
+		.or(`is_visible.eq.true,created_by.eq.${userId}`)
 		.order("id", { ascending: false });
 
 	if (error) {
@@ -185,26 +198,48 @@ export async function createChampionship(
 	return championship;
 }
 
-export async function addManualPlayer(
+export async function addManualPlayers(
 	championshipId: number,
-	displayName: string,
+	displayNames: string[],
 	rating: number = PLAYER_RATING.default,
-): Promise<ChampionshipPlayer> {
+): Promise<ChampionshipPlayer[]> {
+	if (displayNames.length === 0) {
+		return [];
+	}
+
 	const { data, error } = await supabase
 		.from("championship_players")
-		.insert({
-			championship_id: championshipId,
-			display_name: displayName,
-			rating,
-		})
-		.select(PLAYER_COLUMNS)
-		.single();
+		.insert(
+			displayNames.map((displayName) => ({
+				championship_id: championshipId,
+				display_name: displayName,
+				rating,
+			})),
+		)
+		.select(PLAYER_COLUMNS);
 
 	if (error) {
 		throw error;
 	}
 
-	return asPlayer(data);
+	return (data ?? []).map(asPlayer);
+}
+
+export async function addManualPlayer(
+	championshipId: number,
+	displayName: string,
+	rating: number = PLAYER_RATING.default,
+): Promise<ChampionshipPlayer> {
+	const [player] = await addManualPlayers(
+		championshipId,
+		[displayName],
+		rating,
+	);
+	if (!player) {
+		throw new Error("player: invalid payload");
+	}
+
+	return player;
 }
 
 export async function joinChampionship(
@@ -251,6 +286,22 @@ export async function updatePlayerRating(
 	return asPlayer(data);
 }
 
+export async function updatePlayerNickname(
+	playerId: number,
+	nickname: string,
+): Promise<ChampionshipPlayer> {
+	const { data, error } = await supabase.rpc("update_player_nickname", {
+		player_id: playerId,
+		nickname,
+	});
+
+	if (error) {
+		throw error;
+	}
+
+	return asPlayer(data);
+}
+
 export async function renameChampionship(
 	championshipId: number,
 	name: string,
@@ -258,6 +309,43 @@ export async function renameChampionship(
 	const { data, error } = await supabase.rpc("update_championship_name", {
 		championship_id: championshipId,
 		name,
+	});
+
+	if (error) {
+		throw error;
+	}
+
+	return asChampionship(data);
+}
+
+export async function updateChampionshipEventConfig(
+	championshipId: number,
+	eventTime: string,
+	playersPerTeam: number,
+): Promise<Championship> {
+	const { data, error } = await supabase.rpc(
+		"update_championship_event_config",
+		{
+			championship_id: championshipId,
+			event_time: eventTime,
+			players_per_team: playersPerTeam,
+		},
+	);
+
+	if (error) {
+		throw new Error(championshipEventErrorMessage(error.message));
+	}
+
+	return asChampionship(data);
+}
+
+export async function updateChampionshipVisibility(
+	championshipId: number,
+	isVisible: boolean,
+): Promise<Championship> {
+	const { data, error } = await supabase.rpc("update_championship_visibility", {
+		championship_id: championshipId,
+		is_visible: isVisible,
 	});
 
 	if (error) {

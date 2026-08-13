@@ -2,6 +2,7 @@ import type { ChampionshipPlayer } from "../types/championship.ts";
 import {
 	formatRosterAverage,
 	formatRosterCount,
+	formatRosterStat,
 	formatRosterWinRate,
 	ROSTER_COLUMN,
 	ROSTER_COLUMN_ABBR,
@@ -29,6 +30,24 @@ check(formatRosterCount(0) === "0", "count format");
 check(formatRosterAverage(0) === "0.0", "average format");
 check(formatRosterWinRate(0) === "0%", "win rate zero format");
 check(formatRosterWinRate(0.5) === "50%", "win rate percent");
+check(formatRosterStat(ROSTER_COLUMN.goals, 4) === "4", "stat goals");
+check(formatRosterStat(ROSTER_COLUMN.assists, 2) === "2", "stat assists");
+check(formatRosterStat(ROSTER_COLUMN.own_goals, 1) === "1", "stat own goals");
+check(
+	formatRosterStat(ROSTER_COLUMN.goalInvolvement, 6) === "6",
+	"stat involvement",
+);
+check(formatRosterStat(ROSTER_COLUMN.wins, 3) === "3", "stat wins");
+check(formatRosterStat(ROSTER_COLUMN.matches, 6) === "6", "stat matches");
+check(
+	formatRosterStat(ROSTER_COLUMN.goalsAverage, 0.5) === "0.5",
+	"stat goals average",
+);
+check(
+	formatRosterStat(ROSTER_COLUMN.assistsAverage, 1) === "1.0",
+	"stat assists average",
+);
+check(formatRosterStat(ROSTER_COLUMN.winRate, 0.5) === "50%", "stat win rate");
 check(
 	Object.keys(ROSTER_COLUMN).every((id) => id in ROSTER_COLUMN_ABBR),
 	"every column has abbr",
@@ -37,8 +56,12 @@ check(
 	Object.keys(ROSTER_COLUMN).every((id) => id in ROSTER_COLUMN_LABEL),
 	"every column has label",
 );
+check(ROSTER_COLUMN_ABBR.own_goals === "GC", "own goals abbr");
+check(ROSTER_COLUMN_LABEL.own_goals === "Gols contra", "own goals label");
 check(ROSTER_COLUMN_ABBR.goals === "G", "goals abbr");
 check(ROSTER_COLUMN_LABEL.goals === "Gols", "goals label");
+check(ROSTER_COLUMN_ABBR.rating === "Rat", "rating abbr");
+check(ROSTER_COLUMN_LABEL.rating === "Rating", "rating label");
 check(ROSTER_COLUMN_ABBR.actions === "Ações", "actions abbr");
 check(ROSTER_COLUMN_LABEL.actions === "Ações", "actions label");
 
@@ -47,18 +70,21 @@ const player: ChampionshipPlayer = {
 	championship_id: 1,
 	user_id: null,
 	display_name: "Ana",
+	nickname: null,
 	avatar_url: null,
 	rating: 5,
 	role: "member",
 	deleted_at: null,
 	goals: 4,
 	assists: 2,
+	own_goals: 1,
 	wins: 3,
 	matches: 6,
 };
 const row = toRosterRow(player);
 check(row.goals === 4, "row keeps goals");
 check(row.assists === 2, "row keeps assists");
+check(row.own_goals === 1, "row keeps own goals");
 check(row.wins === 3, "row keeps wins");
 check(row.matches === 6, "row keeps matches");
 check(row.goalInvolvement === 6, "row involvement");

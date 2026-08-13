@@ -12,10 +12,13 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
-import { Route as AuthenticatedTodosRouteImport } from './routes/_authenticated/todos'
 import { Route as JoinInviteCodeRouteImport } from './routes/join.$inviteCode'
 import { Route as AuthenticatedChampionshipsChampionshipIdRouteImport } from './routes/_authenticated/championships.$championshipId'
 import { Route as AuthenticatedChampionshipsNewRouteImport } from './routes/_authenticated/championships.new'
+import { Route as AuthenticatedChampionshipsChampionshipIdIndexRouteImport } from './routes/_authenticated/championships.$championshipId.index'
+import { Route as AuthenticatedChampionshipsChampionshipIdEventsEventIdRouteImport } from './routes/_authenticated/championships.$championshipId.events.$eventId'
+import { Route as AuthenticatedChampionshipsChampionshipIdEventsEventIdIndexRouteImport } from './routes/_authenticated/championships.$championshipId.events.$eventId.index'
+import { Route as AuthenticatedChampionshipsChampionshipIdEventsEventIdPlayRouteImport } from './routes/_authenticated/championships.$championshipId.events.$eventId.play'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
@@ -29,11 +32,6 @@ const LoginRoute = LoginRouteImport.update({
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedTodosRoute = AuthenticatedTodosRouteImport.update({
-  id: '/todos',
-  path: '/todos',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const JoinInviteCodeRoute = JoinInviteCodeRouteImport.update({
@@ -53,59 +51,99 @@ const AuthenticatedChampionshipsNewRoute =
     path: '/championships/new',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedChampionshipsChampionshipIdIndexRoute =
+  AuthenticatedChampionshipsChampionshipIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedChampionshipsChampionshipIdRoute,
+  } as any)
+const AuthenticatedChampionshipsChampionshipIdEventsEventIdRoute =
+  AuthenticatedChampionshipsChampionshipIdEventsEventIdRouteImport.update({
+    id: '/events/$eventId',
+    path: '/events/$eventId',
+    getParentRoute: () => AuthenticatedChampionshipsChampionshipIdRoute,
+  } as any)
+const AuthenticatedChampionshipsChampionshipIdEventsEventIdIndexRoute =
+  AuthenticatedChampionshipsChampionshipIdEventsEventIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () =>
+      AuthenticatedChampionshipsChampionshipIdEventsEventIdRoute,
+  } as any)
+const AuthenticatedChampionshipsChampionshipIdEventsEventIdPlayRoute =
+  AuthenticatedChampionshipsChampionshipIdEventsEventIdPlayRouteImport.update({
+    id: '/play',
+    path: '/play',
+    getParentRoute: () =>
+      AuthenticatedChampionshipsChampionshipIdEventsEventIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/login': typeof LoginRoute
-  '/todos': typeof AuthenticatedTodosRoute
   '/join/$inviteCode': typeof JoinInviteCodeRoute
-  '/championships/$championshipId': typeof AuthenticatedChampionshipsChampionshipIdRoute
+  '/championships/$championshipId': typeof AuthenticatedChampionshipsChampionshipIdRouteWithChildren
   '/championships/new': typeof AuthenticatedChampionshipsNewRoute
+  '/championships/$championshipId/': typeof AuthenticatedChampionshipsChampionshipIdIndexRoute
+  '/championships/$championshipId/events/$eventId': typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdRouteWithChildren
+  '/championships/$championshipId/events/$eventId/play': typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdPlayRoute
+  '/championships/$championshipId/events/$eventId/': typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
-  '/todos': typeof AuthenticatedTodosRoute
   '/join/$inviteCode': typeof JoinInviteCodeRoute
   '/': typeof AuthenticatedIndexRoute
-  '/championships/$championshipId': typeof AuthenticatedChampionshipsChampionshipIdRoute
   '/championships/new': typeof AuthenticatedChampionshipsNewRoute
+  '/championships/$championshipId': typeof AuthenticatedChampionshipsChampionshipIdIndexRoute
+  '/championships/$championshipId/events/$eventId/play': typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdPlayRoute
+  '/championships/$championshipId/events/$eventId': typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
-  '/_authenticated/todos': typeof AuthenticatedTodosRoute
   '/join/$inviteCode': typeof JoinInviteCodeRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
-  '/_authenticated/championships/$championshipId': typeof AuthenticatedChampionshipsChampionshipIdRoute
+  '/_authenticated/championships/$championshipId': typeof AuthenticatedChampionshipsChampionshipIdRouteWithChildren
   '/_authenticated/championships/new': typeof AuthenticatedChampionshipsNewRoute
+  '/_authenticated/championships/$championshipId/': typeof AuthenticatedChampionshipsChampionshipIdIndexRoute
+  '/_authenticated/championships/$championshipId/events/$eventId': typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdRouteWithChildren
+  '/_authenticated/championships/$championshipId/events/$eventId/play': typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdPlayRoute
+  '/_authenticated/championships/$championshipId/events/$eventId/': typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/login'
-    | '/todos'
     | '/join/$inviteCode'
     | '/championships/$championshipId'
     | '/championships/new'
+    | '/championships/$championshipId/'
+    | '/championships/$championshipId/events/$eventId'
+    | '/championships/$championshipId/events/$eventId/play'
+    | '/championships/$championshipId/events/$eventId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
-    | '/todos'
     | '/join/$inviteCode'
     | '/'
-    | '/championships/$championshipId'
     | '/championships/new'
+    | '/championships/$championshipId'
+    | '/championships/$championshipId/events/$eventId/play'
+    | '/championships/$championshipId/events/$eventId'
   id:
     | '__root__'
     | '/_authenticated'
     | '/login'
-    | '/_authenticated/todos'
     | '/join/$inviteCode'
     | '/_authenticated/'
     | '/_authenticated/championships/$championshipId'
     | '/_authenticated/championships/new'
+    | '/_authenticated/championships/$championshipId/'
+    | '/_authenticated/championships/$championshipId/events/$eventId'
+    | '/_authenticated/championships/$championshipId/events/$eventId/play'
+    | '/_authenticated/championships/$championshipId/events/$eventId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -137,13 +175,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/todos': {
-      id: '/_authenticated/todos'
-      path: '/todos'
-      fullPath: '/todos'
-      preLoaderRoute: typeof AuthenticatedTodosRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
     '/join/$inviteCode': {
       id: '/join/$inviteCode'
       path: '/join/$inviteCode'
@@ -165,21 +196,83 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedChampionshipsNewRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/championships/$championshipId/': {
+      id: '/_authenticated/championships/$championshipId/'
+      path: '/'
+      fullPath: '/championships/$championshipId/'
+      preLoaderRoute: typeof AuthenticatedChampionshipsChampionshipIdIndexRouteImport
+      parentRoute: typeof AuthenticatedChampionshipsChampionshipIdRoute
+    }
+    '/_authenticated/championships/$championshipId/events/$eventId': {
+      id: '/_authenticated/championships/$championshipId/events/$eventId'
+      path: '/events/$eventId'
+      fullPath: '/championships/$championshipId/events/$eventId'
+      preLoaderRoute: typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdRouteImport
+      parentRoute: typeof AuthenticatedChampionshipsChampionshipIdRoute
+    }
+    '/_authenticated/championships/$championshipId/events/$eventId/': {
+      id: '/_authenticated/championships/$championshipId/events/$eventId/'
+      path: '/'
+      fullPath: '/championships/$championshipId/events/$eventId/'
+      preLoaderRoute: typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdIndexRouteImport
+      parentRoute: typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdRoute
+    }
+    '/_authenticated/championships/$championshipId/events/$eventId/play': {
+      id: '/_authenticated/championships/$championshipId/events/$eventId/play'
+      path: '/play'
+      fullPath: '/championships/$championshipId/events/$eventId/play'
+      preLoaderRoute: typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdPlayRouteImport
+      parentRoute: typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdRoute
+    }
   }
 }
 
+interface AuthenticatedChampionshipsChampionshipIdEventsEventIdRouteChildren {
+  AuthenticatedChampionshipsChampionshipIdEventsEventIdPlayRoute: typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdPlayRoute
+  AuthenticatedChampionshipsChampionshipIdEventsEventIdIndexRoute: typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdIndexRoute
+}
+
+const AuthenticatedChampionshipsChampionshipIdEventsEventIdRouteChildren: AuthenticatedChampionshipsChampionshipIdEventsEventIdRouteChildren =
+  {
+    AuthenticatedChampionshipsChampionshipIdEventsEventIdPlayRoute:
+      AuthenticatedChampionshipsChampionshipIdEventsEventIdPlayRoute,
+    AuthenticatedChampionshipsChampionshipIdEventsEventIdIndexRoute:
+      AuthenticatedChampionshipsChampionshipIdEventsEventIdIndexRoute,
+  }
+
+const AuthenticatedChampionshipsChampionshipIdEventsEventIdRouteWithChildren =
+  AuthenticatedChampionshipsChampionshipIdEventsEventIdRoute._addFileChildren(
+    AuthenticatedChampionshipsChampionshipIdEventsEventIdRouteChildren,
+  )
+
+interface AuthenticatedChampionshipsChampionshipIdRouteChildren {
+  AuthenticatedChampionshipsChampionshipIdIndexRoute: typeof AuthenticatedChampionshipsChampionshipIdIndexRoute
+  AuthenticatedChampionshipsChampionshipIdEventsEventIdRoute: typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdRouteWithChildren
+}
+
+const AuthenticatedChampionshipsChampionshipIdRouteChildren: AuthenticatedChampionshipsChampionshipIdRouteChildren =
+  {
+    AuthenticatedChampionshipsChampionshipIdIndexRoute:
+      AuthenticatedChampionshipsChampionshipIdIndexRoute,
+    AuthenticatedChampionshipsChampionshipIdEventsEventIdRoute:
+      AuthenticatedChampionshipsChampionshipIdEventsEventIdRouteWithChildren,
+  }
+
+const AuthenticatedChampionshipsChampionshipIdRouteWithChildren =
+  AuthenticatedChampionshipsChampionshipIdRoute._addFileChildren(
+    AuthenticatedChampionshipsChampionshipIdRouteChildren,
+  )
+
 interface AuthenticatedRouteChildren {
-  AuthenticatedTodosRoute: typeof AuthenticatedTodosRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
-  AuthenticatedChampionshipsChampionshipIdRoute: typeof AuthenticatedChampionshipsChampionshipIdRoute
+  AuthenticatedChampionshipsChampionshipIdRoute: typeof AuthenticatedChampionshipsChampionshipIdRouteWithChildren
   AuthenticatedChampionshipsNewRoute: typeof AuthenticatedChampionshipsNewRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
-  AuthenticatedTodosRoute: AuthenticatedTodosRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedChampionshipsChampionshipIdRoute:
-    AuthenticatedChampionshipsChampionshipIdRoute,
+    AuthenticatedChampionshipsChampionshipIdRouteWithChildren,
   AuthenticatedChampionshipsNewRoute: AuthenticatedChampionshipsNewRoute,
 }
 

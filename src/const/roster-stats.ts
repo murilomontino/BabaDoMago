@@ -1,9 +1,11 @@
-import type { ChampionshipPlayer } from "@/types/championship";
+import type { ChampionshipPlayer } from "../types/championship.ts";
 
 export const ROSTER_COLUMN = {
 	player: "player",
+	rating: "rating",
 	goals: "goals",
 	assists: "assists",
+	own_goals: "own_goals",
 	goalInvolvement: "goalInvolvement",
 	wins: "wins",
 	matches: "matches",
@@ -17,8 +19,10 @@ export type RosterColumnId = (typeof ROSTER_COLUMN)[keyof typeof ROSTER_COLUMN];
 
 export const ROSTER_COLUMN_ABBR = {
 	player: "Jog",
+	rating: "Rat",
 	goals: "G",
 	assists: "A",
+	own_goals: "GC",
 	goalInvolvement: "PG",
 	wins: "V",
 	matches: "J",
@@ -30,8 +34,10 @@ export const ROSTER_COLUMN_ABBR = {
 
 export const ROSTER_COLUMN_LABEL = {
 	player: "Jogador",
+	rating: "Rating",
 	goals: "Gols",
 	assists: "Assistências",
+	own_goals: "Gols contra",
 	goalInvolvement: "Participação em Gols",
 	wins: "Vitórias",
 	matches: "Jogos",
@@ -44,6 +50,7 @@ export const ROSTER_COLUMN_LABEL = {
 export const ROSTER_STAT_COLUMNS = [
 	ROSTER_COLUMN.goals,
 	ROSTER_COLUMN.assists,
+	ROSTER_COLUMN.own_goals,
 	ROSTER_COLUMN.goalInvolvement,
 	ROSTER_COLUMN.wins,
 	ROSTER_COLUMN.matches,
@@ -95,6 +102,7 @@ export function rosterWinRate(wins: number, matches: number): number {
 export function toRosterRow(player: ChampionshipPlayer): RosterRow {
 	const goals = rosterSafeCount(player.goals);
 	const assists = rosterSafeCount(player.assists);
+	const ownGoals = rosterSafeCount(player.own_goals);
 	const wins = rosterSafeCount(player.wins);
 	const matches = rosterSafeCount(player.matches);
 
@@ -102,6 +110,7 @@ export function toRosterRow(player: ChampionshipPlayer): RosterRow {
 		...player,
 		goals,
 		assists,
+		own_goals: ownGoals,
 		wins,
 		matches,
 		goalInvolvement: rosterGoalInvolvement(goals, assists),
@@ -123,6 +132,30 @@ export function formatRosterWinRate(value: number): string {
 	return `${Math.round(rosterSafeCount(value) * 100)}%`;
 }
 
+export function formatRosterStat(
+	column: RosterStatColumnId,
+	value: number,
+): string {
+	switch (column) {
+		case ROSTER_COLUMN.goals:
+		case ROSTER_COLUMN.assists:
+		case ROSTER_COLUMN.own_goals:
+		case ROSTER_COLUMN.goalInvolvement:
+		case ROSTER_COLUMN.wins:
+		case ROSTER_COLUMN.matches:
+			return formatRosterCount(value);
+		case ROSTER_COLUMN.goalsAverage:
+		case ROSTER_COLUMN.assistsAverage:
+			return formatRosterAverage(value);
+		case ROSTER_COLUMN.winRate:
+			return formatRosterWinRate(value);
+		default: {
+			const _exhaustive: never = column;
+			return _exhaustive;
+		}
+	}
+}
+
 export const ROSTER_STAT_COLUMN_OPTIONS = ROSTER_STAT_COLUMNS.map((id) => ({
 	id,
 	label: ROSTER_COLUMN_LABEL[id],
@@ -130,6 +163,7 @@ export const ROSTER_STAT_COLUMN_OPTIONS = ROSTER_STAT_COLUMNS.map((id) => ({
 
 export const ROSTER_COLUMN_IDS = [
 	ROSTER_COLUMN.player,
+	ROSTER_COLUMN.rating,
 	...ROSTER_STAT_COLUMNS,
 ] as const;
 

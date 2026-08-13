@@ -29,11 +29,15 @@ type ChampionshipPermissions = {
 	setRoles: boolean;
 	renameChampionship: boolean;
 	updateRating: boolean;
+	updateNickname: boolean;
 	invite: boolean;
 	transferOwnership: boolean;
 	unlinkPlayer: boolean;
 	deactivatePlayer: boolean;
 	reactivatePlayer: boolean;
+	updateEventConfig: boolean;
+	updateVisibility: boolean;
+	manageEvent: boolean;
 };
 
 export function resolveChampionshipRole(
@@ -69,11 +73,15 @@ export function championshipPermissions(
 				setRoles: true,
 				renameChampionship: true,
 				updateRating: true,
+				updateNickname: true,
 				invite: true,
 				transferOwnership: true,
 				unlinkPlayer: true,
 				deactivatePlayer: true,
 				reactivatePlayer: true,
+				updateEventConfig: true,
+				updateVisibility: true,
+				manageEvent: true,
 			};
 		case CHAMPIONSHIP_ROLE.captain:
 			return {
@@ -81,11 +89,15 @@ export function championshipPermissions(
 				setRoles: false,
 				renameChampionship: true,
 				updateRating: true,
+				updateNickname: true,
 				invite: true,
 				transferOwnership: false,
 				unlinkPlayer: true,
 				deactivatePlayer: true,
 				reactivatePlayer: false,
+				updateEventConfig: true,
+				updateVisibility: true,
+				manageEvent: true,
 			};
 		case CHAMPIONSHIP_ROLE.admin:
 			return {
@@ -93,11 +105,15 @@ export function championshipPermissions(
 				setRoles: false,
 				renameChampionship: false,
 				updateRating: true,
+				updateNickname: true,
 				invite: true,
 				transferOwnership: false,
 				unlinkPlayer: true,
 				deactivatePlayer: true,
 				reactivatePlayer: false,
+				updateEventConfig: false,
+				updateVisibility: false,
+				manageEvent: true,
 			};
 		case CHAMPIONSHIP_ROLE.member:
 			return {
@@ -105,11 +121,15 @@ export function championshipPermissions(
 				setRoles: false,
 				renameChampionship: false,
 				updateRating: false,
+				updateNickname: false,
 				invite: false,
 				transferOwnership: false,
 				unlinkPlayer: false,
 				deactivatePlayer: false,
 				reactivatePlayer: false,
+				updateEventConfig: false,
+				updateVisibility: false,
+				manageEvent: false,
 			};
 		default: {
 			const _exhaustive: never = role;
@@ -134,6 +154,22 @@ export function canUpdateRating(role: ChampionshipRole): boolean {
 	return championshipPermissions(role).updateRating;
 }
 
+export function canUpdateNickname(role: ChampionshipRole): boolean {
+	return championshipPermissions(role).updateNickname;
+}
+
+export function canEditPlayerNickname(
+	role: ChampionshipRole,
+	playerUserId: string | null,
+	viewerUserId: string | null,
+): boolean {
+	if (championshipPermissions(role).updateNickname) {
+		return true;
+	}
+
+	return Boolean(viewerUserId && playerUserId && viewerUserId === playerUserId);
+}
+
 export function canInvite(role: ChampionshipRole): boolean {
 	return championshipPermissions(role).invite;
 }
@@ -152,4 +188,20 @@ export function canDeactivatePlayer(role: ChampionshipRole): boolean {
 
 export function canReactivatePlayer(role: ChampionshipRole): boolean {
 	return championshipPermissions(role).reactivatePlayer;
+}
+
+export function canUpdateEventConfig(role: ChampionshipRole): boolean {
+	return championshipPermissions(role).updateEventConfig;
+}
+
+export function canUpdateVisibility(role: ChampionshipRole): boolean {
+	return championshipPermissions(role).updateVisibility;
+}
+
+export function canManageEvent(role: ChampionshipRole): boolean {
+	return championshipPermissions(role).manageEvent;
+}
+
+export function canOverrideEndedEvent(role: ChampionshipRole): boolean {
+	return role === CHAMPIONSHIP_ROLE.owner;
 }

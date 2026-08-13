@@ -1,4 +1,5 @@
 import { Field, Form, Formik } from "formik";
+import { AppDialog } from "@/components/atoms/app-dialog";
 import { Button } from "@/components/button";
 import { FormError } from "@/components/form-error";
 import { deleteChampionshipSchema } from "@/const/form-schema";
@@ -25,7 +26,7 @@ export function DeleteChampionshipModal({
 	onConfirm,
 }: DeleteChampionshipModalProps) {
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+		<AppDialog onClose={onCancel}>
 			<Formik
 				initialValues={{ typedName: "" }}
 				validationSchema={deleteChampionshipSchema(championshipName)}
@@ -80,6 +81,6 @@ export function DeleteChampionshipModal({
 					</Form>
 				)}
 			</Formik>
-		</div>
+		</AppDialog>
 	);
 }

@@ -4,6 +4,9 @@ export type Championship = {
 	invite_code: string;
 	created_by: string;
 	logo_path: string | null;
+	event_time: string;
+	players_per_team: number;
+	is_visible: boolean;
 };
 
 export type ChampionshipPlayer = {
@@ -11,12 +14,14 @@ export type ChampionshipPlayer = {
 	championship_id: number;
 	user_id: string | null;
 	display_name: string;
+	nickname: string | null;
 	avatar_url: string | null;
 	rating: number;
 	role: string;
 	deleted_at: string | null;
 	goals: number;
 	assists: number;
+	own_goals: number;
 	wins: number;
 	matches: number;
 };

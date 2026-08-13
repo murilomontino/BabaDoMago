@@ -8,8 +8,14 @@ import {
 	isChampionshipQuotaReached,
 	ownedChampionshipCount,
 } from "@/const/championship-quota";
+import { CHAMPIONSHIP_VISIBILITY } from "@/const/championship-visibility";
 import { ROUTES } from "@/const/routes";
-import { BUTTON_VARIANT, buttonClassName, ERROR_CLASS } from "@/const/ui";
+import {
+	BUTTON_VARIANT,
+	buttonClassName,
+	CHIP_CLASS,
+	ERROR_CLASS,
+} from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
 import { useChampionships } from "@/hooks/championships/use-championships";
 
@@ -84,8 +90,15 @@ export function ChampionshipsPage() {
 									path={championship.logo_path}
 									name={championship.name}
 								/>
-								<span className="flex-1 font-semibold tracking-tight text-fg">
-									{championship.name}
+								<span className="flex min-w-0 flex-1 items-center gap-2">
+									<span className="truncate font-semibold tracking-tight text-fg">
+										{championship.name}
+									</span>
+									{!championship.is_visible && (
+										<span className={CHIP_CLASS}>
+											{CHAMPIONSHIP_VISIBILITY.hiddenLabel}
+										</span>
+									)}
 								</span>
 								<ChevronRight className="size-4 text-fg-subtle" />
 							</Link>

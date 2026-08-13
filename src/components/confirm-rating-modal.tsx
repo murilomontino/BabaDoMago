@@ -1,3 +1,4 @@
+import { AppDialog } from "@/components/atoms/app-dialog";
 import { Button } from "@/components/button";
 import { PlayerRating } from "@/components/player-rating";
 import {
@@ -46,7 +47,7 @@ export function ConfirmRatingModal({
 	onConfirm,
 }: ConfirmRatingModalProps) {
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+		<AppDialog onClose={onCancel}>
 			<div className={`${MODAL_CLASS} text-center`}>
 				<p className="mb-3 text-sm font-medium tracking-tight text-fg">
 					Alterar nota
@@ -88,6 +89,6 @@ export function ConfirmRatingModal({
 					</Button>
 				</div>
 			</div>
-		</div>
+		</AppDialog>
 	);
 }
