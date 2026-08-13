@@ -12,6 +12,7 @@ export type ChampionshipEventAttendance = {
 	own_goals: number;
 	wins: number;
 	matches: number;
+	rating: number;
 };
 
 export type ChampionshipEventTeamPlayer = {

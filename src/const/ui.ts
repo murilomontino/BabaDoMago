@@ -21,6 +21,9 @@ export const BUTTON_CLASS: Record<ButtonVariant, string> = {
 export const FIELD_CLASS =
 	"h-9 w-full rounded-lg border border-line bg-surface px-3 py-1.5 text-sm leading-5 text-fg placeholder:text-fg-subtle focus:border-pitch focus:outline-none focus:ring-2 focus:ring-pitch/20";
 
+export const STAT_FIELD_CLASS =
+	"h-11 w-full rounded-xl border border-line bg-surface px-2 text-center text-base font-medium tabular-nums text-fg [appearance:textfield] focus:border-pitch focus:outline-none focus:ring-2 focus:ring-pitch/20 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
+
 export const ERROR_CLASS = "text-sm text-danger";
 
 export const PAGE_SHELL_CLASS = "mx-auto max-w-7xl px-4 py-8 sm:px-6";
@@ -33,6 +36,8 @@ export const MODAL_CLASS =
 
 export const CHIP_CLASS =
 	"rounded bg-surface-muted px-1.5 py-0.5 text-xs font-medium tabular-nums text-fg-muted";
+
+export const PLAYER_AVATAR_CLASS = "ml-2 size-10 shrink-0 md:ml-0 md:size-9";
 
 export function buttonClassName(
 	variant: ButtonVariant,

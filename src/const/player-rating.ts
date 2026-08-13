@@ -6,6 +6,11 @@ export const PLAYER_RATING = {
 	initialCeiling: 5,
 } as const;
 
+export const PLAYER_STAR_CLASS = {
+	default: "h-5 w-5 shrink-0 fill-current",
+	compact: "h-3.5 w-3.5 shrink-0 fill-current",
+} as const;
+
 export const PLAYER_STARS = [
 	{ id: "star-1", index: 0 },
 	{ id: "star-2", index: 1 },
@@ -23,7 +28,10 @@ export type StarSide = (typeof STAR_SIDE)[keyof typeof STAR_SIDE];
 
 export function championshipRatingCeiling(ratings: readonly number[]): number {
 	const maxRating = ratings.length === 0 ? 0 : Math.max(...ratings);
-	return Math.max(maxRating, PLAYER_RATING.initialCeiling);
+	return Math.min(
+		PLAYER_RATING.max,
+		Math.max(maxRating, PLAYER_RATING.initialCeiling),
+	);
 }
 
 export function ratingToStarFill(rating: number, ceiling: number): number {

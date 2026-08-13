@@ -20,6 +20,8 @@ check(championshipRatingCeiling([0, 0]) === 5, "unrated uses initial ceiling");
 check(championshipRatingCeiling([3, 1]) === 5, "below 5 keeps initial ceiling");
 check(championshipRatingCeiling([6, 3, 1]) === 6, "above 5 uses max");
 check(championshipRatingCeiling([10]) === 10, "teto 10");
+check(championshipRatingCeiling([100]) === 100, "teto 100");
+check(championshipRatingCeiling([150, 80]) === 100, "teto geral 100");
 
 check(starFillToRating(5, 5) === 5, "initial 5 stars = 5 points");
 check(starFillToRating(3, 5) === 3, "initial 3 stars = 3 points");

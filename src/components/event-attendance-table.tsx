@@ -16,7 +16,7 @@ import {
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import { filterPlayersBySearch, PLAYER_SEARCH } from "@/const/player-search";
-import { BUTTON_VARIANT, FIELD_CLASS } from "@/const/ui";
+import { BUTTON_VARIANT, FIELD_CLASS, PLAYER_AVATAR_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 type AttendanceRow = {
@@ -54,15 +54,19 @@ function AttendancePlayerCell({ player }: { player: AttendanceRow }) {
 					src={player.avatar_url}
 					alt=""
 					referrerPolicy="no-referrer"
-					className="h-9 w-9 rounded-full object-cover"
+					className={`${PLAYER_AVATAR_CLASS} rounded-full object-cover`}
 				/>
 			)}
 			{!player.avatar_url && (
-				<span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pitch-soft text-sm font-medium text-pitch-fg">
+				<span
+					className={`flex items-center justify-center rounded-full bg-pitch-soft text-sm font-medium text-pitch-fg ${PLAYER_AVATAR_CLASS}`}
+				>
 					{player.display_name.charAt(0).toUpperCase()}
 				</span>
 			)}
-			<p className="min-w-0 font-medium text-fg">{player.display_name}</p>
+			<p className="min-w-0 truncate font-medium text-fg">
+				{player.display_name}
+			</p>
 		</div>
 	);
 }

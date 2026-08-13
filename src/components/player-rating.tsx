@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
 	PLAYER_RATING,
+	PLAYER_STAR_CLASS,
 	PLAYER_STARS,
 	ratingToStarFill,
 	STAR_SIDE,
@@ -17,6 +18,7 @@ type PlayerRatingProps = {
 	ceiling: number;
 	onChange?: (starFill: number) => void;
 	disabled?: boolean;
+	starClassName?: string;
 };
 
 function StarIcon({ className }: { className?: string }) {
@@ -37,6 +39,7 @@ export function PlayerRating({
 	ceiling,
 	onChange,
 	disabled,
+	starClassName = PLAYER_STAR_CLASS.default,
 }: PlayerRatingProps) {
 	const [hoverFill, setHoverFill] = useState<number | null>(null);
 	const fill = ratingToStarFill(rating, ceiling);
@@ -67,10 +70,7 @@ export function PlayerRating({
 			</span>
 			<div className="flex text-fg-subtle" aria-hidden="true">
 				{PLAYER_STARS.map((star) => (
-					<StarIcon
-						key={`empty-${star.id}`}
-						className="h-5 w-5 shrink-0 fill-current"
-					/>
+					<StarIcon key={`empty-${star.id}`} className={starClassName} />
 				))}
 			</div>
 			<div
@@ -80,10 +80,7 @@ export function PlayerRating({
 			>
 				<div className="flex w-max">
 					{PLAYER_STARS.map((star) => (
-						<StarIcon
-							key={`fill-${star.id}`}
-							className="h-5 w-5 shrink-0 fill-current"
-						/>
+						<StarIcon key={`fill-${star.id}`} className={starClassName} />
 					))}
 				</div>
 			</div>
@@ -94,7 +91,7 @@ export function PlayerRating({
 				>
 					<legend className="sr-only">Alterar estrelas</legend>
 					{PLAYER_STARS.map((star) => (
-						<span key={star.id} className="relative h-5 w-5">
+						<span key={star.id} className={`relative ${starClassName}`}>
 							<button
 								type="button"
 								className="absolute inset-y-0 left-0 w-1/2 cursor-pointer"
