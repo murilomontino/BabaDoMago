@@ -18,8 +18,10 @@ import {
 	type EventTeamBuilderTeam,
 	type EventTeamDraft,
 	emptyTeamSlots,
+	eventTeamCount,
 	eventTeamSlotPosition,
 	initialBuilderTeams,
+	resizeBuilderTeams,
 	teamSlotsToPlayerIds,
 	unusedEventTeamColor,
 	validateEventAttendance,
@@ -64,24 +66,6 @@ type ChampionshipEventBuilderProps = {
 	}) => Promise<void>;
 };
 
-function keepPresentSlots(
-	slots: readonly string[],
-	present: ReadonlySet<number>,
-): string[] {
-	return slots.map((slot) => {
-		if (!slot) {
-			return "";
-		}
-
-		const playerId = Number(slot);
-		if (!present.has(playerId)) {
-			return "";
-		}
-
-		return slot;
-	});
-}
-
 export function ChampionshipEventBuilder({
 	playersPerTeam,
 	players,
@@ -108,7 +92,12 @@ export function ChampionshipEventBuilder({
 	const presentPlayers = players.filter((player) =>
 		presentIds.includes(player.id),
 	);
-	const teamsStart = initialTeams ?? initialBuilderTeams(playersPerTeam);
+	const teamsStart =
+		initialTeams ??
+		initialBuilderTeams(
+			playersPerTeam,
+			eventTeamCount(initialPresentIds.length, playersPerTeam),
+		);
 
 	function handleSetPresent(playerIds: readonly number[], present: boolean) {
 		setPresentIds((current) =>
@@ -135,10 +124,12 @@ export function ChampionshipEventBuilder({
 					const present = new Set(presentIds);
 					helpers.setFieldValue(
 						"teams",
-						values.teams.map((team) => ({
-							...team,
-							slots: keepPresentSlots(team.slots, present),
-						})),
+						resizeBuilderTeams(
+							values.teams,
+							eventTeamCount(presentIds.length, playersPerTeam),
+							playersPerTeam,
+							present,
+						),
 					);
 					setTeamsError(null);
 					setStep(EVENT_BUILDER_STEP.teams);
@@ -237,7 +228,7 @@ export function ChampionshipEventBuilder({
 											Até {playersPerTeam} jogadores por time. Só quem está
 											presente.
 										</p>
-										<div className="grid gap-3 md:grid-cols-2">
+										<div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
 											{values.teams.map((team, teamIndex) => {
 												const isDefault = EVENT_TEAM_COLORS.some(
 													(color) => color === team.color,
@@ -251,12 +242,12 @@ export function ChampionshipEventBuilder({
 												return (
 													<article
 														key={team.key}
-														className="relative space-y-3 rounded-lg border border-line p-3"
+														className="relative space-y-2 rounded-lg border border-line p-2"
 														style={cardStyle}
 													>
 														<EventTeamColorDot color={team.color} />
 														<div className="flex items-center gap-2">
-															<div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+															<div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
 																{EVENT_TEAM_COLORS.map((color) => {
 																	const taken =
 																		usedColors.includes(color) &&
@@ -275,12 +266,12 @@ export function ChampionshipEventBuilder({
 																			onClick={() =>
 																				handleColorChange(teamIndex, color)
 																			}
-																			className={`size-7 rounded-md border-2 disabled:opacity-30 ${selected ? "border-current" : "border-black/20"}`}
+																			className={`size-5 rounded-md border-2 disabled:opacity-30 ${selected ? "border-current" : "border-black/20"}`}
 																			style={{ backgroundColor: color }}
 																		/>
 																	);
 																})}
-																<label className="relative size-7 shrink-0">
+																<label className="relative size-5 shrink-0">
 																	<input
 																		type="color"
 																		value={team.color}
@@ -295,7 +286,7 @@ export function ChampionshipEventBuilder({
 																	/>
 																	<span
 																		aria-hidden
-																		className={`block size-7 rounded-md border-2 ${isDefault ? "border-black/20" : "border-current"}`}
+																		className={`block size-5 rounded-md border-2 ${isDefault ? "border-black/20" : "border-current"}`}
 																		style={{
 																			backgroundColor: isDefault
 																				? "transparent"
@@ -330,7 +321,7 @@ export function ChampionshipEventBuilder({
 																return (
 																	<li
 																		key={`${team.key}-slot-${slot}`}
-																		className="flex min-h-9 items-center gap-2 rounded-lg bg-white px-2 py-1.5"
+																		className="flex min-h-7 items-center gap-1.5 rounded-md bg-white px-1.5 py-1"
 																	>
 																		<span className={`${CHIP_CLASS} shrink-0`}>
 																			{

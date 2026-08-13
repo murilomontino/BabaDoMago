@@ -12,9 +12,13 @@ import {
 	EVENT_TEAM_POSITION,
 	type EventTeamDraft,
 	emptyTeamSlots,
+	eventTeamCount,
 	eventTeamPlayerPosition,
 	eventTeamSlotPosition,
 	initialBuilderTeams,
+	keepPresentSlots,
+	nextEventTeamColor,
+	resizeBuilderTeams,
 	teamSlotsToPlayerIds,
 	validateEventAttendance,
 	validateEventTeams,
@@ -163,7 +167,31 @@ check(
 );
 
 check(emptyTeamSlots(3).join(","), ",,");
+check(eventTeamCount(16, 5), 4);
+check(eventTeamCount(15, 5), 3);
+check(eventTeamCount(31, 10), 4);
+check(eventTeamCount(2, 5), 2);
+check(eventTeamCount(0, 5), 2);
 check(initialBuilderTeams(2).length, 2);
+check(initialBuilderTeams(5, 4).length, 4);
+check(builderTeamsFromEvent([], 5, 16).length, 4);
+check(
+	initialBuilderTeams(5, 4)
+		.map((team) => team.color)
+		.join(","),
+	[
+		EVENT_TEAM_COLOR.white,
+		EVENT_TEAM_COLOR.black,
+		EVENT_TEAM_COLOR.red,
+		EVENT_TEAM_COLOR.blue,
+	].join(","),
+);
+check(
+	resizeBuilderTeams(initialBuilderTeams(5, 2), 4, 5, new Set([1, 2])).length,
+	4,
+);
+check(keepPresentSlots(["1", "9", ""], new Set([1, 2])).join("|"), "1||");
+check(nextEventTeamColor([EVENT_TEAM_COLOR.white]), EVENT_TEAM_COLOR.black);
 check(
 	builderTeamsFromEvent(
 		[

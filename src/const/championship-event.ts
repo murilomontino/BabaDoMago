@@ -196,6 +196,41 @@ export function unusedEventTeamColor(
 	return EVENT_TEAM_COLORS.find((color) => !used.includes(color)) ?? null;
 }
 
+export function eventTeamCount(
+	playerCount: number,
+	playersPerTeam: number,
+): number {
+	if (playersPerTeam < 1) {
+		return CHAMPIONSHIP_EVENT.minTeams;
+	}
+
+	return Math.max(
+		CHAMPIONSHIP_EVENT.minTeams,
+		Math.ceil(playerCount / playersPerTeam),
+	);
+}
+
+export function nextEventTeamColor(
+	used: readonly EventTeamColor[],
+): EventTeamColor {
+	const unused = unusedEventTeamColor(used);
+	if (unused) {
+		return unused;
+	}
+
+	const taken = new Set(used);
+	// ponytail: walk 24-bit hex; ceiling 16M unique colors, upgrade: named extra palette
+	const found = Array.from({ length: 4096 }, (_, index) => {
+		const n = (index * 9973 + 0x1a6b3c) % 0x1000000;
+		return `#${n.toString(16).padStart(6, "0")}`;
+	}).find(
+		(color): color is EventTeamColor =>
+			isEventTeamColor(color) && !taken.has(color),
+	);
+
+	return found ?? EVENT_TEAM_COLORS[0];
+}
+
 export type EventTeamBuilderTeam = {
 	key: string;
 	color: EventTeamColor;
@@ -206,21 +241,70 @@ export function emptyTeamSlots(count: number): string[] {
 	return Array.from({ length: count }, () => "");
 }
 
+export function keepPresentSlots(
+	slots: readonly string[],
+	present: ReadonlySet<number>,
+): string[] {
+	return slots.map((slot) => {
+		if (!slot) {
+			return "";
+		}
+
+		const playerId = Number(slot);
+		if (!present.has(playerId)) {
+			return "";
+		}
+
+		return slot;
+	});
+}
+
 export function initialBuilderTeams(
 	playersPerTeam: number,
+	teamCount: number = CHAMPIONSHIP_EVENT.minTeams,
 ): EventTeamBuilderTeam[] {
-	return [
-		{
-			key: "team-0",
-			color: EVENT_TEAM_COLORS[0],
+	const count = Math.max(CHAMPIONSHIP_EVENT.minTeams, teamCount);
+	const used: EventTeamColor[] = [];
+
+	return Array.from({ length: count }, (_, index) => {
+		const color = nextEventTeamColor(used);
+		used.push(color);
+		return {
+			key: `team-${index}`,
+			color,
 			slots: emptyTeamSlots(playersPerTeam),
-		},
-		{
-			key: "team-1",
-			color: EVENT_TEAM_COLORS[1],
+		};
+	});
+}
+
+export function resizeBuilderTeams(
+	teams: readonly EventTeamBuilderTeam[],
+	teamCount: number,
+	playersPerTeam: number,
+	present: ReadonlySet<number>,
+): EventTeamBuilderTeam[] {
+	const count = Math.max(CHAMPIONSHIP_EVENT.minTeams, teamCount);
+	const kept = teams.slice(0, count).map((team) => ({
+		...team,
+		slots: keepPresentSlots(team.slots, present),
+	}));
+
+	if (kept.length >= count) {
+		return kept;
+	}
+
+	const used = kept.map((team) => team.color);
+	const extra = Array.from({ length: count - kept.length }, (_, index) => {
+		const color = nextEventTeamColor(used);
+		used.push(color);
+		return {
+			key: `team-${kept.length + index}`,
+			color,
 			slots: emptyTeamSlots(playersPerTeam),
-		},
-	];
+		};
+	});
+
+	return [...kept, ...extra];
 }
 
 export function builderTeamsFromEvent(
@@ -230,9 +314,13 @@ export function builderTeamsFromEvent(
 		players: readonly { player_id: number; is_goalkeeper: boolean }[];
 	}[],
 	playersPerTeam: number,
+	presentCount: number = 0,
 ): EventTeamBuilderTeam[] {
 	if (teams.length < CHAMPIONSHIP_EVENT.minTeams) {
-		return initialBuilderTeams(playersPerTeam);
+		return initialBuilderTeams(
+			playersPerTeam,
+			eventTeamCount(presentCount, playersPerTeam),
+		);
 	}
 
 	return teams.map((team) => {

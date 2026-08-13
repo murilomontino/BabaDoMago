@@ -195,6 +195,7 @@ export function ChampionshipEventDetail({
 					initialTeams={builderTeamsFromEvent(
 						event.teams,
 						event.players_per_team,
+						event.attendance.length,
 					)}
 					isPending={savingTeams}
 					errorMessage={saveTeamsError}
@@ -247,14 +248,14 @@ export function ChampionshipEventDetail({
 				</div>
 			)}
 			{!showTeamBuilder && (
-				<ul className="space-y-2">
+				<ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
 					{event.teams.map((team) => {
 						const cardStyle = eventTeamColorStyle(team.color);
 
 						return (
 							<li
 								key={team.id}
-								className="relative rounded-lg border border-line p-3 text-sm"
+								className="relative rounded-lg border border-line p-2 text-sm"
 								style={cardStyle}
 							>
 								<EventTeamColorDot color={team.color} />
@@ -273,7 +274,7 @@ export function ChampionshipEventDetail({
 										return (
 											<li
 												key={row.id}
-												className="flex min-h-9 items-center gap-2 rounded-lg bg-white px-2 py-1.5"
+												className="flex min-h-7 items-center gap-1.5 rounded-md bg-white px-1.5 py-1"
 											>
 												<span className={`${CHIP_CLASS} shrink-0`}>
 													{EVENT_TEAM_POSITION_LABEL[position]}

@@ -67,21 +67,21 @@ export function EventTeamPlayerRow({
 	const fg = eventTeamColorFg(backgroundColor);
 
 	return (
-		<div className="flex min-w-0 flex-1 items-center gap-2">
+		<div className="flex min-w-0 flex-1 items-center gap-1.5">
 			{player.avatar_url && (
 				<img
 					src={player.avatar_url}
 					alt=""
 					referrerPolicy="no-referrer"
-					className="h-8 w-8 shrink-0 rounded-full object-cover"
+					className="h-6 w-6 shrink-0 rounded-full object-cover"
 				/>
 			)}
 			{!player.avatar_url && (
-				<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black/20 text-xs font-medium">
+				<span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-black/20 text-[10px] font-medium">
 					{visibleName.charAt(0).toUpperCase()}
 				</span>
 			)}
-			<p className="min-w-0 flex-1 truncate text-sm font-medium">
+			<p className="min-w-0 flex-1 truncate text-xs font-medium">
 				{visibleName}
 			</p>
 			<PlayerRating rating={player.rating} ceiling={ceiling} />
