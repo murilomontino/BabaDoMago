@@ -1,10 +1,21 @@
 import {
 	applyVisibleAttendance,
 	areAllVisiblePresent,
+	builderTeamsFromEvent,
+	canEditEventTeams,
+	championshipEventErrorMessage,
 	compareByAttendanceCount,
 	countPlayerAttendance,
 	EVENT_ATTENDANCE_MESSAGE,
+	EVENT_ERROR_MESSAGE,
 	EVENT_TEAM_MESSAGE,
+	EVENT_TEAM_POSITION,
+	type EventTeamDraft,
+	emptyTeamSlots,
+	eventTeamPlayerPosition,
+	eventTeamSlotPosition,
+	initialBuilderTeams,
+	teamSlotsToPlayerIds,
 	validateEventAttendance,
 	validateEventTeams,
 	validateTeamsInAttendance,
@@ -17,14 +28,19 @@ function check(actual: unknown, expected: unknown): void {
 	}
 }
 
+function draft(
+	color: EventTeamDraft["color"],
+	playerIds: number[],
+	goalkeeperId = playerIds[0] ?? 0,
+): EventTeamDraft {
+	return { color, playerIds, goalkeeperId };
+}
+
 check(validateEventTeams([], 5), EVENT_TEAM_MESSAGE.minTeams);
 
 check(
 	validateEventTeams(
-		[
-			{ color: EVENT_TEAM_COLOR.white, playerIds: [1] },
-			{ color: EVENT_TEAM_COLOR.black, playerIds: [2] },
-		],
+		[draft(EVENT_TEAM_COLOR.white, [1]), draft(EVENT_TEAM_COLOR.black, [2])],
 		5,
 	),
 	null,
@@ -32,32 +48,20 @@ check(
 
 check(
 	validateEventTeams(
-		[
-			{ color: "#7c3aed", playerIds: [1] },
-			{ color: EVENT_TEAM_COLOR.black, playerIds: [2] },
-		],
+		[draft("#7c3aed", [1]), draft(EVENT_TEAM_COLOR.black, [2])],
 		5,
 	),
 	null,
 );
 
 check(
-	validateEventTeams(
-		[
-			{ color: "#7c3aed", playerIds: [1] },
-			{ color: "#7c3aed", playerIds: [2] },
-		],
-		5,
-	),
+	validateEventTeams([draft("#7c3aed", [1]), draft("#7c3aed", [2])], 5),
 	EVENT_TEAM_MESSAGE.colorDuplicate,
 );
 
 check(
 	validateEventTeams(
-		[
-			{ color: "white" as EventTeamColor, playerIds: [1] },
-			{ color: EVENT_TEAM_COLOR.black, playerIds: [2] },
-		],
+		[draft("white" as EventTeamColor, [1]), draft(EVENT_TEAM_COLOR.black, [2])],
 		5,
 	),
 	EVENT_TEAM_MESSAGE.colorInvalid,
@@ -65,10 +69,7 @@ check(
 
 check(
 	validateEventTeams(
-		[
-			{ color: EVENT_TEAM_COLOR.white, playerIds: [1] },
-			{ color: EVENT_TEAM_COLOR.white, playerIds: [2] },
-		],
+		[draft(EVENT_TEAM_COLOR.white, [1]), draft(EVENT_TEAM_COLOR.white, [2])],
 		5,
 	),
 	EVENT_TEAM_MESSAGE.colorDuplicate,
@@ -76,10 +77,7 @@ check(
 
 check(
 	validateEventTeams(
-		[
-			{ color: EVENT_TEAM_COLOR.white, playerIds: [1] },
-			{ color: EVENT_TEAM_COLOR.black, playerIds: [1] },
-		],
+		[draft(EVENT_TEAM_COLOR.white, [1]), draft(EVENT_TEAM_COLOR.black, [1])],
 		5,
 	),
 	EVENT_TEAM_MESSAGE.playerDuplicate,
@@ -87,10 +85,7 @@ check(
 
 check(
 	validateEventTeams(
-		[
-			{ color: EVENT_TEAM_COLOR.white, playerIds: [] },
-			{ color: EVENT_TEAM_COLOR.black, playerIds: [2] },
-		],
+		[draft(EVENT_TEAM_COLOR.white, []), draft(EVENT_TEAM_COLOR.black, [2])],
 		5,
 	),
 	EVENT_TEAM_MESSAGE.playerEmpty,
@@ -99,12 +94,23 @@ check(
 check(
 	validateEventTeams(
 		[
-			{ color: EVENT_TEAM_COLOR.white, playerIds: [1, 2, 3] },
-			{ color: EVENT_TEAM_COLOR.black, playerIds: [4] },
+			draft(EVENT_TEAM_COLOR.white, [1, 2, 3]),
+			draft(EVENT_TEAM_COLOR.black, [4]),
 		],
 		2,
 	),
 	EVENT_TEAM_MESSAGE.playerLimit,
+);
+
+check(
+	validateEventTeams(
+		[
+			draft(EVENT_TEAM_COLOR.white, [1, 2], 9),
+			draft(EVENT_TEAM_COLOR.black, [3]),
+		],
+		5,
+	),
+	EVENT_TEAM_MESSAGE.goalkeeperMissing,
 );
 
 check(
@@ -126,10 +132,7 @@ check(
 
 check(
 	validateTeamsInAttendance(
-		[
-			{ color: EVENT_TEAM_COLOR.white, playerIds: [1] },
-			{ color: EVENT_TEAM_COLOR.black, playerIds: [2] },
-		],
+		[draft(EVENT_TEAM_COLOR.white, [1]), draft(EVENT_TEAM_COLOR.black, [2])],
 		[1, 2, 3],
 	),
 	null,
@@ -137,10 +140,7 @@ check(
 
 check(
 	validateTeamsInAttendance(
-		[
-			{ color: EVENT_TEAM_COLOR.white, playerIds: [1] },
-			{ color: EVENT_TEAM_COLOR.black, playerIds: [9] },
-		],
+		[draft(EVENT_TEAM_COLOR.white, [1]), draft(EVENT_TEAM_COLOR.black, [9])],
 		[1, 2, 3],
 	),
 	EVENT_TEAM_MESSAGE.playerNotPresent,
@@ -161,6 +161,48 @@ check(
 	) > 0,
 	true,
 );
+
+check(emptyTeamSlots(3).join(","), ",,");
+check(initialBuilderTeams(2).length, 2);
+check(
+	builderTeamsFromEvent(
+		[
+			{
+				id: 10,
+				color: EVENT_TEAM_COLOR.white,
+				players: [
+					{ player_id: 2, is_goalkeeper: false },
+					{ player_id: 1, is_goalkeeper: true },
+				],
+			},
+			{
+				id: 11,
+				color: EVENT_TEAM_COLOR.black,
+				players: [{ player_id: 3, is_goalkeeper: true }],
+			},
+		],
+		3,
+	)
+		.map((team) => team.slots.join("|"))
+		.join("/"),
+	"1|2|/3||",
+);
+check(canEditEventTeams({ ended_at: null, matches: [] }), true);
+check(canEditEventTeams({ ended_at: "2026-08-13", matches: [] }), false);
+check(canEditEventTeams({ ended_at: null, matches: [{}] }), false);
+check(
+	championshipEventErrorMessage("event already ended"),
+	EVENT_ERROR_MESSAGE["event already ended"],
+);
+check(
+	championshipEventErrorMessage("event has matches"),
+	EVENT_ERROR_MESSAGE["event has matches"],
+);
+check(String(teamSlotsToPlayerIds(["1", "", "2"])), "1,2");
+check(eventTeamSlotPosition(0), EVENT_TEAM_POSITION.goalkeeper);
+check(eventTeamSlotPosition(1), EVENT_TEAM_POSITION.player);
+check(eventTeamPlayerPosition(true), EVENT_TEAM_POSITION.goalkeeper);
+check(eventTeamPlayerPosition(false), EVENT_TEAM_POSITION.player);
 
 check(String(applyVisibleAttendance([3], [1, 2], true)), "3,1,2");
 check(String(applyVisibleAttendance([1, 2, 3], [1, 2], false)), "3");

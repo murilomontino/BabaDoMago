@@ -2,11 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { EventTeamColor } from "@/const/event-team-color";
 import {
 	addChampionshipEventMatch,
+	createChampionshipEvent,
 	deleteChampionshipEvent,
 	endChampionshipEvent,
 	getChampionshipEventById,
 	listChampionshipEvents,
-	startChampionshipEvent,
+	saveChampionshipEventTeams,
 } from "@/services/championship-events";
 import {
 	CHAMPIONSHIP_EVENTS_QUERY_KEY,
@@ -29,25 +30,35 @@ export function useChampionshipEvent(championshipId: number, eventId: number) {
 	});
 }
 
-export function useStartChampionshipEvent(championshipId: number) {
+export function useCreateChampionshipEvent(championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (eventDate: string) =>
+			createChampionshipEvent(championshipId, eventDate),
+		onSuccess: async () => {
+			await invalidateChampionshipEventQueries(queryClient);
+		},
+	});
+}
+
+export function useSaveChampionshipEventTeams(_championshipId: number) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: ({
-			eventDate,
+			eventId,
 			presentPlayerIds,
 			teams,
 		}: {
-			eventDate: string;
+			eventId: number;
 			presentPlayerIds: readonly number[];
-			teams: readonly { color: EventTeamColor; playerIds: readonly number[] }[];
-		}) =>
-			startChampionshipEvent(
-				championshipId,
-				eventDate,
-				presentPlayerIds,
-				teams,
-			),
+			teams: readonly {
+				color: EventTeamColor;
+				playerIds: readonly number[];
+				goalkeeperId: number;
+			}[];
+		}) => saveChampionshipEventTeams(eventId, presentPlayerIds, teams),
 		onSuccess: async () => {
 			await invalidateChampionshipEventQueries(queryClient);
 		},

@@ -461,8 +461,6 @@ export function ChampionshipDetailPage() {
 				<ChampionshipEvents
 					championshipId={championshipId}
 					eventTime={data.event_time}
-					playersPerTeam={data.players_per_team}
-					players={activePlayers}
 					canManage={permissions.manageEvent}
 				/>
 			)}

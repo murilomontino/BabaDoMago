@@ -51,11 +51,35 @@ export const EVENT_ERROR_MESSAGE = {
 	"invalid attendance": "Lista de presença inválida",
 	"duplicate attendance": "Jogador repetido na presença",
 	"player not present": "Jogador não está presente",
+	"invalid goalkeeper": "Informe o goleiro",
+	"event already ended": "Evento já encerrado",
+	"event has matches": "Evento já tem partidas",
+} as const;
+
+export const EVENT_ACTION = {
+	create: "Criar evento",
+	saveTeams: "Salvar times",
+	editTeams: "Editar times",
+	newEvent: "Novo evento",
+} as const;
+
+export const EVENT_TEAM_POSITION = {
+	goalkeeper: "goalkeeper",
+	player: "player",
+} as const;
+
+export type EventTeamPosition =
+	(typeof EVENT_TEAM_POSITION)[keyof typeof EVENT_TEAM_POSITION];
+
+export const EVENT_TEAM_POSITION_LABEL = {
+	goalkeeper: "gol",
+	player: "jog",
 } as const;
 
 export type EventTeamDraft = {
 	color: EventTeamColor;
 	playerIds: number[];
+	goalkeeperId: number;
 };
 
 export const EVENT_TEAM_MESSAGE = {
@@ -66,6 +90,7 @@ export const EVENT_TEAM_MESSAGE = {
 	playerEmpty: "Time sem jogador",
 	playerLimit: "Time acima do limite",
 	playerNotPresent: "Jogador não está presente",
+	goalkeeperMissing: "Informe o goleiro",
 } as const;
 
 export const EVENT_ATTENDANCE_MESSAGE = {
@@ -171,6 +196,99 @@ export function unusedEventTeamColor(
 	return EVENT_TEAM_COLORS.find((color) => !used.includes(color)) ?? null;
 }
 
+export type EventTeamBuilderTeam = {
+	key: string;
+	color: EventTeamColor;
+	slots: string[];
+};
+
+export function emptyTeamSlots(count: number): string[] {
+	return Array.from({ length: count }, () => "");
+}
+
+export function initialBuilderTeams(
+	playersPerTeam: number,
+): EventTeamBuilderTeam[] {
+	return [
+		{
+			key: "team-0",
+			color: EVENT_TEAM_COLORS[0],
+			slots: emptyTeamSlots(playersPerTeam),
+		},
+		{
+			key: "team-1",
+			color: EVENT_TEAM_COLORS[1],
+			slots: emptyTeamSlots(playersPerTeam),
+		},
+	];
+}
+
+export function builderTeamsFromEvent(
+	teams: readonly {
+		id: number;
+		color: EventTeamColor;
+		players: readonly { player_id: number; is_goalkeeper: boolean }[];
+	}[],
+	playersPerTeam: number,
+): EventTeamBuilderTeam[] {
+	if (teams.length < CHAMPIONSHIP_EVENT.minTeams) {
+		return initialBuilderTeams(playersPerTeam);
+	}
+
+	return teams.map((team) => {
+		const slots = emptyTeamSlots(playersPerTeam);
+		const goalkeeper = team.players.find((player) => player.is_goalkeeper);
+		const others = team.players.filter((player) => !player.is_goalkeeper);
+
+		if (goalkeeper) {
+			slots[0] = String(goalkeeper.player_id);
+		}
+
+		return {
+			key: `team-${team.id}`,
+			color: team.color,
+			slots: others.reduce((next, player, index) => {
+				const slot = index + 1;
+				if (slot >= next.length) {
+					return next;
+				}
+
+				next[slot] = String(player.player_id);
+				return next;
+			}, slots),
+		};
+	});
+}
+
+export function canEditEventTeams(event: {
+	ended_at: string | null;
+	matches: readonly unknown[];
+}): boolean {
+	return event.ended_at === null && event.matches.length === 0;
+}
+
+export function teamSlotsToPlayerIds(slots: readonly string[]): number[] {
+	return slots.filter(Boolean).map(Number);
+}
+
+export function eventTeamSlotPosition(slot: number): EventTeamPosition {
+	if (slot === 0) {
+		return EVENT_TEAM_POSITION.goalkeeper;
+	}
+
+	return EVENT_TEAM_POSITION.player;
+}
+
+export function eventTeamPlayerPosition(
+	isGoalkeeper: boolean,
+): EventTeamPosition {
+	if (isGoalkeeper) {
+		return EVENT_TEAM_POSITION.goalkeeper;
+	}
+
+	return EVENT_TEAM_POSITION.player;
+}
+
 export function validateEventTeams(
 	teams: readonly EventTeamDraft[],
 	playersPerTeam: number,
@@ -204,6 +322,10 @@ export function validateEventTeams(
 
 		if (team.playerIds.some((playerId) => players.has(playerId))) {
 			return EVENT_TEAM_MESSAGE.playerDuplicate;
+		}
+
+		if (!team.playerIds.includes(team.goalkeeperId)) {
+			return EVENT_TEAM_MESSAGE.goalkeeperMissing;
 		}
 
 		for (const playerId of team.playerIds) {

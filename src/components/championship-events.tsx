@@ -1,56 +1,50 @@
 import { Link, useNavigate } from "@tanstack/react-router";
+import { Field, Form, Formik } from "formik";
 import { CalendarDays, ChevronRight, Plus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/button";
-import { ChampionshipEventBuilder } from "@/components/championship-event-builder";
 import { EmptyState } from "@/components/empty-state";
+import { FormError } from "@/components/form-error";
 import { SectionCard } from "@/components/section-card";
 import {
-	countPlayerAttendance,
+	championshipEventToday,
+	EVENT_ACTION,
 	EVENT_STATUS_LABEL,
-	type EventTeamDraft,
 	eventStatus,
 	formatEventStartsAt,
 } from "@/const/championship-event";
+import { startEventFormSchema } from "@/const/form-schema";
 import { ROUTES } from "@/const/routes";
-import { CHIP_CLASS, ERROR_CLASS } from "@/const/ui";
+import {
+	BUTTON_VARIANT,
+	CHIP_CLASS,
+	ERROR_CLASS,
+	FIELD_CLASS,
+} from "@/const/ui";
 import {
 	useChampionshipEvents,
-	useStartChampionshipEvent,
+	useCreateChampionshipEvent,
 } from "@/hooks/championships/use-championship-events";
-import type { ChampionshipPlayer } from "@/types/championship";
 
 type ChampionshipEventsProps = {
 	championshipId: number;
 	eventTime: string;
-	playersPerTeam: number;
-	players: ChampionshipPlayer[];
 	canManage: boolean;
 };
 
 export function ChampionshipEvents({
 	championshipId,
 	eventTime,
-	playersPerTeam,
-	players,
 	canManage,
 }: ChampionshipEventsProps) {
 	const navigate = useNavigate();
 	const eventsQuery = useChampionshipEvents(championshipId);
-	const startEvent = useStartChampionshipEvent(championshipId);
+	const createEvent = useCreateChampionshipEvent(championshipId);
 	const [isCreating, setIsCreating] = useState(false);
 	const events = eventsQuery.data ?? [];
-	const attendanceCounts = useMemo(
-		() => countPlayerAttendance(events),
-		[events],
-	);
 
-	async function handleStart(values: {
-		eventDate: string;
-		presentPlayerIds: number[];
-		teams: EventTeamDraft[];
-	}) {
-		const eventId = await startEvent.mutateAsync(values);
+	async function handleCreate(eventDate: string) {
+		const eventId = await createEvent.mutateAsync(eventDate);
 		await navigate({
 			to: ROUTES.championshipEvent,
 			params: {
@@ -81,36 +75,79 @@ export function ChampionshipEvents({
 				!isCreating && (
 					<Button onClick={() => setIsCreating(true)}>
 						<Plus className="size-4" />
-						Novo evento
+						{EVENT_ACTION.newEvent}
 					</Button>
 				)
 			}
 		>
 			{isCreating && (
-				<ChampionshipEventBuilder
-					eventTime={eventTime}
-					playersPerTeam={playersPerTeam}
-					players={players}
-					attendanceCounts={attendanceCounts}
-					isPending={startEvent.isPending}
-					errorMessage={startEvent.isError ? startEvent.error.message : null}
-					onCancel={() => {
-						startEvent.reset();
-						setIsCreating(false);
+				<Formik
+					initialValues={{ eventDate: championshipEventToday() }}
+					validationSchema={startEventFormSchema}
+					onSubmit={async (values) => {
+						await handleCreate(values.eventDate);
 					}}
-					onSubmit={handleStart}
-				/>
+				>
+					<Form className="space-y-4">
+						<div className="grid gap-3 sm:grid-cols-2">
+							<label
+								htmlFor="event-date"
+								className="block text-sm font-medium text-fg-muted"
+							>
+								Data
+								<Field
+									id="event-date"
+									type="date"
+									name="eventDate"
+									className={`mt-1 ${FIELD_CLASS}`}
+								/>
+							</label>
+							<label
+								htmlFor="event-time"
+								className="block text-sm font-medium text-fg-muted"
+							>
+								Hora
+								<input
+									id="event-time"
+									type="time"
+									value={eventTime}
+									readOnly
+									className={`mt-1 ${FIELD_CLASS} cursor-not-allowed opacity-80`}
+								/>
+							</label>
+						</div>
+						<FormError name="eventDate" />
+						{createEvent.isError && (
+							<p className={ERROR_CLASS}>{createEvent.error.message}</p>
+						)}
+						<div className="flex justify-end gap-2">
+							<Button
+								variant={BUTTON_VARIANT.secondary}
+								onClick={() => {
+									createEvent.reset();
+									setIsCreating(false);
+								}}
+								disabled={createEvent.isPending}
+							>
+								Cancelar
+							</Button>
+							<Button type="submit" disabled={createEvent.isPending}>
+								{EVENT_ACTION.create}
+							</Button>
+						</div>
+					</Form>
+				</Formik>
 			)}
 			{!isCreating && events.length === 0 && (
 				<EmptyState
 					icon={<CalendarDays className="size-10" />}
 					title="Nenhum evento ainda"
-					description="Inicie um evento para montar os times da pelada."
+					description="Crie um evento para montar os times depois."
 					action={
 						canManage && (
 							<Button onClick={() => setIsCreating(true)}>
 								<Plus className="size-4" />
-								Novo evento
+								{EVENT_ACTION.newEvent}
 							</Button>
 						)
 					}

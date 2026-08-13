@@ -99,6 +99,7 @@ export type Database = {
 					display_name: string;
 					event_id: number;
 					id: number;
+					is_goalkeeper: boolean;
 					player_id: number;
 					team_id: number;
 				};
@@ -106,6 +107,7 @@ export type Database = {
 					display_name: string;
 					event_id: number;
 					id?: number;
+					is_goalkeeper?: boolean;
 					player_id: number;
 					team_id: number;
 				};
@@ -113,6 +115,7 @@ export type Database = {
 					display_name?: string;
 					event_id?: number;
 					id?: number;
+					is_goalkeeper?: boolean;
 					player_id?: number;
 					team_id?: number;
 				};
@@ -386,10 +389,16 @@ export type Database = {
 				Args: { event_id: number };
 				Returns: undefined;
 			};
-			start_championship_event: {
+			create_championship_event: {
 				Args: {
 					championship_id: number;
 					event_date: string;
+				};
+				Returns: Json;
+			};
+			save_championship_event_teams: {
+				Args: {
+					event_id: number;
 					present_player_ids: Json;
 					teams: Json;
 				};

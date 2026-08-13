@@ -13,6 +13,7 @@ export type ChampionshipEventTeamPlayer = {
 	team_id: number;
 	player_id: number;
 	display_name: string;
+	is_goalkeeper: boolean;
 };
 
 export type ChampionshipEventTeam = {

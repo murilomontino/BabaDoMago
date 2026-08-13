@@ -32,7 +32,8 @@ const EVENT_COLUMNS = `
 			event_id,
 			team_id,
 			player_id,
-			display_name
+			display_name,
+			is_goalkeeper
 		)
 	),
 	championship_event_attendance (
@@ -88,6 +89,7 @@ function asTeamPlayer(value: unknown): ChampionshipEventTeamPlayer {
 		team_id: Number(row.team_id),
 		player_id: Number(row.player_id),
 		display_name: row.display_name,
+		is_goalkeeper: row.is_goalkeeper === true,
 	};
 }
 
@@ -114,7 +116,17 @@ function asTeam(value: unknown): ChampionshipEventTeam {
 		event_id: Number(row.event_id),
 		color,
 		sort_order: Number(row.sort_order),
-		players: [...players].sort((a, b) => a.id - b.id),
+		players: [...players].sort((a, b) => {
+			if (a.is_goalkeeper !== b.is_goalkeeper) {
+				if (a.is_goalkeeper) {
+					return -1;
+				}
+
+				return 1;
+			}
+
+			return a.id - b.id;
+		}),
 	};
 }
 
@@ -211,26 +223,7 @@ export async function getChampionshipEventById(
 	return asEvent(data);
 }
 
-export async function startChampionshipEvent(
-	championshipId: number,
-	eventDate: string,
-	presentPlayerIds: readonly number[],
-	teams: readonly { color: EventTeamColor; playerIds: readonly number[] }[],
-): Promise<number> {
-	const { data, error } = await supabase.rpc("start_championship_event", {
-		championship_id: championshipId,
-		event_date: eventDate,
-		present_player_ids: [...presentPlayerIds],
-		teams: teams.map((team) => ({
-			color: normalizeEventTeamColor(team.color),
-			player_ids: [...team.playerIds],
-		})),
-	});
-
-	if (error) {
-		throwEventError(error);
-	}
-
+function eventIdFromRpc(data: unknown): number {
 	if (!data || typeof data !== "object") {
 		throw new Error("event: invalid payload");
 	}
@@ -241,6 +234,46 @@ export async function startChampionshipEvent(
 	}
 
 	return id;
+}
+
+export async function createChampionshipEvent(
+	championshipId: number,
+	eventDate: string,
+): Promise<number> {
+	const { data, error } = await supabase.rpc("create_championship_event", {
+		championship_id: championshipId,
+		event_date: eventDate,
+	});
+
+	if (error) {
+		throwEventError(error);
+	}
+
+	return eventIdFromRpc(data);
+}
+
+export async function saveChampionshipEventTeams(
+	eventId: number,
+	presentPlayerIds: readonly number[],
+	teams: readonly {
+		color: EventTeamColor;
+		playerIds: readonly number[];
+		goalkeeperId: number;
+	}[],
+): Promise<void> {
+	const { error } = await supabase.rpc("save_championship_event_teams", {
+		event_id: eventId,
+		present_player_ids: [...presentPlayerIds],
+		teams: teams.map((team) => ({
+			color: normalizeEventTeamColor(team.color),
+			player_ids: [...team.playerIds],
+			goalkeeper_id: team.goalkeeperId,
+		})),
+	});
+
+	if (error) {
+		throwEventError(error);
+	}
 }
 
 export async function addChampionshipEventMatch(

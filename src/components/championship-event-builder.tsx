@@ -1,22 +1,33 @@
-import { Field, Form, Formik } from "formik";
-import { Plus, X } from "lucide-react";
+import { Field, FieldArray, Form, Formik } from "formik";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/button";
 import { EventAttendanceTable } from "@/components/event-attendance-table";
-import { FormError } from "@/components/form-error";
+import {
+	EventTeamColorDot,
+	EventTeamPlayerRow,
+	EventTeamRemoveButton,
+} from "@/components/event-team-player";
 import {
 	applyVisibleAttendance,
 	CHAMPIONSHIP_EVENT,
-	championshipEventToday,
+	EVENT_ACTION,
 	EVENT_BUILDER_STEP,
+	EVENT_TEAM_POSITION_LABEL,
 	type EventBuilderStep,
+	type EventTeamBuilderTeam,
 	type EventTeamDraft,
+	emptyTeamSlots,
+	eventTeamSlotPosition,
+	initialBuilderTeams,
+	teamSlotsToPlayerIds,
 	unusedEventTeamColor,
 	validateEventAttendance,
 	validateEventTeams,
 	validateTeamsInAttendance,
 } from "@/const/championship-event";
 import {
+	EVENT_TEAM_COLOR,
 	EVENT_TEAM_COLOR_CUSTOM_LABEL,
 	EVENT_TEAM_COLOR_LABEL,
 	EVENT_TEAM_COLORS,
@@ -24,40 +35,59 @@ import {
 	isEventTeamColor,
 	normalizeEventTeamColor,
 } from "@/const/event-team-color";
-import { startEventFormSchema } from "@/const/form-schema";
 import { playerVisibleName } from "@/const/player-name";
-import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
+import { championshipRatingCeiling } from "@/const/player-rating";
+import {
+	BUTTON_VARIANT,
+	CHIP_CLASS,
+	ERROR_CLASS,
+	FIELD_CLASS,
+} from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 
-type BuilderTeam = EventTeamDraft & { key: string };
+type EventBuilderValues = {
+	teams: EventTeamBuilderTeam[];
+};
 
 type ChampionshipEventBuilderProps = {
-	eventTime: string;
 	playersPerTeam: number;
 	players: ChampionshipPlayer[];
 	attendanceCounts: ReadonlyMap<number, number>;
+	initialPresentIds?: readonly number[];
+	initialTeams?: EventTeamBuilderTeam[];
 	isPending: boolean;
 	errorMessage: string | null;
-	onCancel: () => void;
+	onCancel?: () => void;
 	onSubmit: (values: {
-		eventDate: string;
 		presentPlayerIds: number[];
 		teams: EventTeamDraft[];
 	}) => Promise<void>;
 };
 
-function initialTeams(): BuilderTeam[] {
-	return [
-		{ key: "team-0", color: EVENT_TEAM_COLORS[0], playerIds: [] },
-		{ key: "team-1", color: EVENT_TEAM_COLORS[1], playerIds: [] },
-	];
+function keepPresentSlots(
+	slots: readonly string[],
+	present: ReadonlySet<number>,
+): string[] {
+	return slots.map((slot) => {
+		if (!slot) {
+			return "";
+		}
+
+		const playerId = Number(slot);
+		if (!present.has(playerId)) {
+			return "";
+		}
+
+		return slot;
+	});
 }
 
 export function ChampionshipEventBuilder({
-	eventTime,
 	playersPerTeam,
 	players,
 	attendanceCounts,
+	initialPresentIds = [],
+	initialTeams,
 	isPending,
 	errorMessage,
 	onCancel,
@@ -66,19 +96,19 @@ export function ChampionshipEventBuilder({
 	const [step, setStep] = useState<EventBuilderStep>(
 		EVENT_BUILDER_STEP.attendance,
 	);
-	const [presentIds, setPresentIds] = useState<number[]>([]);
+	const [presentIds, setPresentIds] = useState<number[]>([
+		...initialPresentIds,
+	]);
 	const [attendanceError, setAttendanceError] = useState<string | null>(null);
-	const [teams, setTeams] = useState<BuilderTeam[]>(initialTeams);
 	const [teamsError, setTeamsError] = useState<string | null>(null);
-	const [nextKey, setNextKey] = useState(2);
 	const rosterIds = players.map((player) => player.id);
-	const usedColors = teams.map((team) => team.color);
-	const nextColor = unusedEventTeamColor(usedColors);
-	const assignedIds = new Set(teams.flatMap((team) => team.playerIds));
+	const ceiling = championshipRatingCeiling(
+		players.map((player) => player.rating),
+	);
 	const presentPlayers = players.filter((player) =>
 		presentIds.includes(player.id),
 	);
-	const pool = presentPlayers.filter((player) => !assignedIds.has(player.id));
+	const teamsStart = initialTeams ?? initialBuilderTeams(playersPerTeam);
 
 	function handleSetPresent(playerIds: readonly number[], present: boolean) {
 		setPresentIds((current) =>
@@ -87,121 +117,38 @@ export function ChampionshipEventBuilder({
 		setAttendanceError(null);
 	}
 
-	function handleContinueToTeams() {
-		const invalid = validateEventAttendance(presentIds, rosterIds);
-		if (invalid) {
-			setAttendanceError(invalid);
-			return;
-		}
-
-		const present = new Set(presentIds);
-		setTeams((current) =>
-			current.map((team) => ({
-				...team,
-				playerIds: team.playerIds.filter((id) => present.has(id)),
-			})),
-		);
-		setTeamsError(null);
-		setStep(EVENT_BUILDER_STEP.teams);
-	}
-
 	function handleBackToAttendance() {
 		setStep(EVENT_BUILDER_STEP.attendance);
 	}
 
-	function handleAddTeam() {
-		if (!nextColor) {
-			return;
-		}
-
-		setTeams((current) => [
-			...current,
-			{ key: `team-${nextKey}`, color: nextColor, playerIds: [] },
-		]);
-		setNextKey((value) => value + 1);
-		setTeamsError(null);
-	}
-
-	function handleRemoveTeam(key: string) {
-		if (teams.length <= CHAMPIONSHIP_EVENT.minTeams) {
-			return;
-		}
-
-		setTeams((current) => current.filter((team) => team.key !== key));
-		setTeamsError(null);
-	}
-
-	function handleColorChange(key: string, color: string) {
-		const next = normalizeEventTeamColor(color);
-		if (!isEventTeamColor(next)) {
-			return;
-		}
-
-		const taken = teams.some((team) => team.key !== key && team.color === next);
-		if (taken) {
-			return;
-		}
-
-		setTeams((current) =>
-			current.map((team) =>
-				team.key === key ? { ...team, color: next } : team,
-			),
-		);
-		setTeamsError(null);
-	}
-
-	function handleAddPlayer(key: string, playerId: number) {
-		if (!Number.isFinite(playerId)) {
-			return;
-		}
-
-		setTeams((current) =>
-			current.map((team) => {
-				if (team.key !== key) {
-					return team;
-				}
-
-				if (team.playerIds.length >= playersPerTeam) {
-					return team;
-				}
-
-				if (team.playerIds.includes(playerId)) {
-					return team;
-				}
-
-				return { ...team, playerIds: [...team.playerIds, playerId] };
-			}),
-		);
-		setTeamsError(null);
-	}
-
-	function handleRemovePlayer(key: string, playerId: number) {
-		setTeams((current) =>
-			current.map((team) =>
-				team.key === key
-					? {
-							...team,
-							playerIds: team.playerIds.filter((id) => id !== playerId),
-						}
-					: team,
-			),
-		);
-		setTeamsError(null);
-	}
-
 	return (
-		<Formik
-			initialValues={{ eventDate: championshipEventToday() }}
-			validationSchema={startEventFormSchema}
-			onSubmit={async (values) => {
+		<Formik<EventBuilderValues>
+			initialValues={{ teams: teamsStart }}
+			onSubmit={async (values, helpers) => {
 				if (step === EVENT_BUILDER_STEP.attendance) {
-					handleContinueToTeams();
+					const invalid = validateEventAttendance(presentIds, rosterIds);
+					if (invalid) {
+						setAttendanceError(invalid);
+						return;
+					}
+
+					const present = new Set(presentIds);
+					helpers.setFieldValue(
+						"teams",
+						values.teams.map((team) => ({
+							...team,
+							slots: keepPresentSlots(team.slots, present),
+						})),
+					);
+					setTeamsError(null);
+					setStep(EVENT_BUILDER_STEP.teams);
 					return;
 				}
 
-				const drafts = teams.map(({ color, playerIds }) => ({
-					color,
-					playerIds,
+				const drafts = values.teams.map((team) => ({
+					color: team.color,
+					playerIds: teamSlotsToPlayerIds(team.slots),
+					goalkeeperId: Number(team.slots[0]),
 				}));
 				const attendanceInvalid = validateEventAttendance(
 					presentIds,
@@ -222,224 +169,258 @@ export function ChampionshipEventBuilder({
 				}
 
 				await onSubmit({
-					eventDate: values.eventDate,
 					presentPlayerIds: presentIds,
 					teams: drafts,
 				});
 			}}
 		>
-			<Form className="space-y-4">
-				{step === EVENT_BUILDER_STEP.attendance && (
-					<>
-						<div className="grid gap-3 sm:grid-cols-2">
-							<label
-								htmlFor="event-date"
-								className="block text-sm font-medium text-fg-muted"
-							>
-								Data
-								<Field
-									id="event-date"
-									type="date"
-									name="eventDate"
-									className={`mt-1 ${FIELD_CLASS}`}
+			{({ values, setFieldValue }) => {
+				const usedColors = values.teams.map((team) => team.color);
+				const nextColor = unusedEventTeamColor(usedColors);
+				const assignedIds = new Set(
+					values.teams.flatMap((team) => teamSlotsToPlayerIds(team.slots)),
+				);
+				const pool = presentPlayers.filter(
+					(player) => !assignedIds.has(player.id),
+				);
+
+				function handleColorChange(teamIndex: number, color: string) {
+					const next = normalizeEventTeamColor(color);
+					if (!isEventTeamColor(next)) {
+						return;
+					}
+
+					const taken = values.teams.some(
+						(team, index) => index !== teamIndex && team.color === next,
+					);
+					if (taken) {
+						return;
+					}
+
+					setFieldValue(`teams.${teamIndex}.color`, next);
+					setTeamsError(null);
+				}
+
+				return (
+					<Form className="space-y-4">
+						{step === EVENT_BUILDER_STEP.attendance && (
+							<>
+								<p className="text-sm font-medium text-fg">Presentes</p>
+								<EventAttendanceTable
+									players={players}
+									attendanceCounts={attendanceCounts}
+									presentIds={presentIds}
+									onSetPresent={handleSetPresent}
 								/>
-							</label>
-							<label
-								htmlFor="event-time"
-								className="block text-sm font-medium text-fg-muted"
-							>
-								Hora
-								<input
-									id="event-time"
-									type="time"
-									value={eventTime}
-									readOnly
-									className={`mt-1 ${FIELD_CLASS} cursor-not-allowed opacity-80`}
-								/>
-							</label>
-						</div>
-						<FormError name="eventDate" />
-						<p className="text-sm font-medium text-fg">Presentes</p>
-						<EventAttendanceTable
-							players={players}
-							attendanceCounts={attendanceCounts}
-							presentIds={presentIds}
-							onSetPresent={handleSetPresent}
-						/>
-						{attendanceError && (
-							<p className={ERROR_CLASS}>{attendanceError}</p>
+								{attendanceError && (
+									<p className={ERROR_CLASS}>{attendanceError}</p>
+								)}
+								<div className="flex justify-end gap-2">
+									{onCancel && (
+										<Button
+											variant={BUTTON_VARIANT.secondary}
+											onClick={onCancel}
+											disabled={isPending}
+										>
+											Cancelar
+										</Button>
+									)}
+									<Button type="submit">Continuar</Button>
+								</div>
+							</>
 						)}
-						<div className="flex justify-end gap-2">
-							<Button
-								variant={BUTTON_VARIANT.secondary}
-								onClick={onCancel}
-								disabled={isPending}
-							>
-								Cancelar
-							</Button>
-							<Button type="button" onClick={handleContinueToTeams}>
-								Continuar
-							</Button>
-						</div>
-					</>
-				)}
-				{step === EVENT_BUILDER_STEP.teams && (
-					<>
-						<p className="text-sm text-fg-muted">
-							Até {playersPerTeam} jogadores por time. Só quem está presente.
-						</p>
-						<div className="grid gap-3 md:grid-cols-2">
-							{teams.map((team) => {
-								const isDefault = EVENT_TEAM_COLORS.some(
-									(color) => color === team.color,
-								);
-
-								return (
-									<article
-										key={team.key}
-										className="space-y-3 rounded-lg border border-line p-3"
-										style={eventTeamColorStyle(team.color)}
-									>
-										<div className="flex items-center gap-2">
-											<div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-												{EVENT_TEAM_COLORS.map((color) => {
-													const taken =
-														usedColors.includes(color) && color !== team.color;
-													const selected = team.color === color;
-
-													return (
-														<button
-															key={color}
-															type="button"
-															disabled={taken}
-															aria-label={
-																EVENT_TEAM_COLOR_LABEL[color] ?? color
-															}
-															aria-pressed={selected}
-															onClick={() => handleColorChange(team.key, color)}
-															className={`size-7 rounded-md border-2 disabled:opacity-30 ${selected ? "border-current" : "border-black/20"}`}
-															style={{ backgroundColor: color }}
-														/>
-													);
-												})}
-												<label className="relative size-7 shrink-0">
-													<input
-														type="color"
-														value={team.color}
-														aria-label={EVENT_TEAM_COLOR_CUSTOM_LABEL}
-														onChange={(event) => {
-															handleColorChange(team.key, event.target.value);
-														}}
-														className="absolute inset-0 cursor-pointer opacity-0"
-													/>
-													<span
-														aria-hidden
-														className={`block size-7 rounded-md border-2 ${isDefault ? "border-black/20" : "border-current"}`}
-														style={{
-															backgroundColor: isDefault
-																? "transparent"
-																: team.color,
-															backgroundImage: isDefault
-																? "conic-gradient(#dc2626, #facc15, #166534, #2563eb, #ec4899, #dc2626)"
-																: undefined,
-														}}
-													/>
-												</label>
-											</div>
-											{teams.length > CHAMPIONSHIP_EVENT.minTeams && (
-												<Button
-													variant={BUTTON_VARIANT.ghost}
-													aria-label="Remover time"
-													className="px-2 text-current hover:bg-black/10"
-													onClick={() => handleRemoveTeam(team.key)}
-												>
-													<X className="size-4" />
-												</Button>
-											)}
-										</div>
-										<ul className="space-y-1">
-											{team.playerIds.map((playerId) => {
-												const player = presentPlayers.find(
-													(item) => item.id === playerId,
+						{step === EVENT_BUILDER_STEP.teams && (
+							<FieldArray name="teams">
+								{({ push, remove }) => (
+									<>
+										<p className="text-sm text-fg-muted">
+											Até {playersPerTeam} jogadores por time. Só quem está
+											presente.
+										</p>
+										<div className="grid gap-3 md:grid-cols-2">
+											{values.teams.map((team, teamIndex) => {
+												const isDefault = EVENT_TEAM_COLORS.some(
+													(color) => color === team.color,
 												);
-												if (!player) {
-													return null;
-												}
+												const cardStyle = eventTeamColorStyle(team.color);
+												const slotIndexes = Array.from(
+													{ length: playersPerTeam },
+													(_, slot) => slot,
+												);
 
 												return (
-													<li
-														key={playerId}
-														className="flex items-center justify-between gap-2 text-sm"
+													<article
+														key={team.key}
+														className="relative space-y-3 rounded-lg border border-line p-3"
+														style={cardStyle}
 													>
-														{playerVisibleName(player)}
-														<Button
-															variant={BUTTON_VARIANT.ghost}
-															aria-label={`Remover ${playerVisibleName(player)}`}
-															className="px-2 text-current hover:bg-black/10"
-															onClick={() =>
-																handleRemovePlayer(team.key, playerId)
-															}
-														>
-															<X className="size-3.5" />
-														</Button>
-													</li>
+														<EventTeamColorDot color={team.color} />
+														<div className="flex items-center gap-2">
+															<div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+																{EVENT_TEAM_COLORS.map((color) => {
+																	const taken =
+																		usedColors.includes(color) &&
+																		color !== team.color;
+																	const selected = team.color === color;
+
+																	return (
+																		<button
+																			key={color}
+																			type="button"
+																			disabled={taken}
+																			aria-label={
+																				EVENT_TEAM_COLOR_LABEL[color] ?? color
+																			}
+																			aria-pressed={selected}
+																			onClick={() =>
+																				handleColorChange(teamIndex, color)
+																			}
+																			className={`size-7 rounded-md border-2 disabled:opacity-30 ${selected ? "border-current" : "border-black/20"}`}
+																			style={{ backgroundColor: color }}
+																		/>
+																	);
+																})}
+																<label className="relative size-7 shrink-0">
+																	<input
+																		type="color"
+																		value={team.color}
+																		aria-label={EVENT_TEAM_COLOR_CUSTOM_LABEL}
+																		onChange={(event) => {
+																			handleColorChange(
+																				teamIndex,
+																				event.target.value,
+																			);
+																		}}
+																		className="absolute inset-0 cursor-pointer opacity-0"
+																	/>
+																	<span
+																		aria-hidden
+																		className={`block size-7 rounded-md border-2 ${isDefault ? "border-black/20" : "border-current"}`}
+																		style={{
+																			backgroundColor: isDefault
+																				? "transparent"
+																				: team.color,
+																			backgroundImage: isDefault
+																				? "conic-gradient(#dc2626, #facc15, #166534, #2563eb, #ec4899, #dc2626)"
+																				: undefined,
+																		}}
+																	/>
+																</label>
+															</div>
+															{values.teams.length >
+																CHAMPIONSHIP_EVENT.minTeams && (
+																<EventTeamRemoveButton
+																	label="Remover time"
+																	color={cardStyle.color}
+																	iconClassName="size-4"
+																	onClick={() => {
+																		remove(teamIndex);
+																		setTeamsError(null);
+																	}}
+																/>
+															)}
+														</div>
+														<ul className="space-y-1">
+															{slotIndexes.map((slot) => {
+																const slotValue = team.slots[slot] ?? "";
+																const player = presentPlayers.find(
+																	(item) => String(item.id) === slotValue,
+																);
+
+																return (
+																	<li
+																		key={`${team.key}-slot-${slot}`}
+																		className="flex min-h-9 items-center gap-2 rounded-lg bg-white px-2 py-1.5"
+																	>
+																		<span className={`${CHIP_CLASS} shrink-0`}>
+																			{
+																				EVENT_TEAM_POSITION_LABEL[
+																					eventTeamSlotPosition(slot)
+																				]
+																			}
+																		</span>
+																		{player && (
+																			<EventTeamPlayerRow
+																				player={player}
+																				ceiling={ceiling}
+																				backgroundColor={EVENT_TEAM_COLOR.white}
+																				onRemove={() => {
+																					setFieldValue(
+																						`teams.${teamIndex}.slots.${slot}`,
+																						"",
+																					);
+																					setTeamsError(null);
+																				}}
+																			/>
+																		)}
+																		{!player && (
+																			<Field
+																				as="select"
+																				name={`teams.${teamIndex}.slots.${slot}`}
+																				disabled={pool.length === 0}
+																				className={FIELD_CLASS}
+																			>
+																				<option value="">
+																					Adicionar jogador
+																				</option>
+																				{pool.map((item) => (
+																					<option
+																						key={item.id}
+																						value={String(item.id)}
+																					>
+																						{playerVisibleName(item)}
+																					</option>
+																				))}
+																			</Field>
+																		)}
+																	</li>
+																);
+															})}
+														</ul>
+													</article>
 												);
 											})}
-										</ul>
-										{team.playerIds.length < playersPerTeam &&
-											pool.length > 0 && (
-												<select
-													value=""
-													onChange={(event) => {
-														handleAddPlayer(
-															team.key,
-															Number(event.target.value),
-														);
-														event.target.value = "";
+										</div>
+										{values.teams.length < EVENT_TEAM_COLORS.length &&
+											nextColor && (
+												<Button
+													variant={BUTTON_VARIANT.secondary}
+													onClick={() => {
+														push({
+															key: `team-${Date.now()}`,
+															color: nextColor,
+															slots: emptyTeamSlots(playersPerTeam),
+														});
+														setTeamsError(null);
 													}}
-													className={FIELD_CLASS}
 												>
-													<option value="">Adicionar jogador</option>
-													{pool.map((player) => (
-														<option key={player.id} value={player.id}>
-															{playerVisibleName(player)}
-														</option>
-													))}
-												</select>
+													<Plus className="size-4" />
+													Adicionar time
+												</Button>
 											)}
-										<p className="text-xs opacity-80">
-											{team.playerIds.length}/{playersPerTeam}
-										</p>
-									</article>
-								);
-							})}
-						</div>
-						{teams.length < EVENT_TEAM_COLORS.length && nextColor && (
-							<Button
-								variant={BUTTON_VARIANT.secondary}
-								onClick={handleAddTeam}
-							>
-								<Plus className="size-4" />
-								Adicionar time
-							</Button>
+										{teamsError && <p className={ERROR_CLASS}>{teamsError}</p>}
+										{errorMessage && (
+											<p className={ERROR_CLASS}>{errorMessage}</p>
+										)}
+										<div className="flex justify-end gap-2">
+											<Button
+												variant={BUTTON_VARIANT.secondary}
+												onClick={handleBackToAttendance}
+												disabled={isPending}
+											>
+												Voltar
+											</Button>
+											<Button type="submit" disabled={isPending}>
+												{EVENT_ACTION.saveTeams}
+											</Button>
+										</div>
+									</>
+								)}
+							</FieldArray>
 						)}
-						{teamsError && <p className={ERROR_CLASS}>{teamsError}</p>}
-						{errorMessage && <p className={ERROR_CLASS}>{errorMessage}</p>}
-						<div className="flex justify-end gap-2">
-							<Button
-								variant={BUTTON_VARIANT.secondary}
-								onClick={handleBackToAttendance}
-								disabled={isPending}
-							>
-								Voltar
-							</Button>
-							<Button type="submit" disabled={isPending}>
-								Iniciar evento
-							</Button>
-						</div>
-					</>
-				)}
-			</Form>
+					</Form>
+				);
+			}}
 		</Formik>
 	);
 }

@@ -38,6 +38,12 @@ export const EVENT_TEAM_COLOR_CUSTOM_LABEL = "Cor personalizada";
 export const EVENT_TEAM_FG = {
 	light: "#ffffff",
 	dark: "#1c1917",
+	hover: "#e7e5e4",
+} as const;
+
+export const EVENT_TEAM_PASTEL = {
+	mix: 0.55,
+	white: "#ffffff",
 } as const;
 
 const EVENT_TEAM_COLOR_HEX = /^#[0-9a-f]{6}$/;
@@ -50,25 +56,81 @@ export function isEventTeamColor(value: string): value is EventTeamColor {
 	return EVENT_TEAM_COLOR_HEX.test(value);
 }
 
-export function eventTeamColorFg(hex: string): string {
-	const r = Number.parseInt(hex.slice(1, 3), 16);
-	const g = Number.parseInt(hex.slice(3, 5), 16);
-	const b = Number.parseInt(hex.slice(5, 7), 16);
-	const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+function hexChannel(hex: string, offset: number): number {
+	return Number.parseInt(hex.slice(offset, offset + 2), 16);
+}
 
-	if (luminance > 0.55) {
-		return EVENT_TEAM_FG.dark;
+function hexRgb(hex: string): { r: number; g: number; b: number } {
+	return {
+		r: hexChannel(hex, 1),
+		g: hexChannel(hex, 3),
+		b: hexChannel(hex, 5),
+	};
+}
+
+function toHexChannel(value: number): string {
+	return Math.round(value).toString(16).padStart(2, "0");
+}
+
+function rgbToHex(r: number, g: number, b: number): string {
+	return `#${toHexChannel(r)}${toHexChannel(g)}${toHexChannel(b)}`;
+}
+
+function srgbChannel(value: number): number {
+	const srgb = value / 255;
+	if (srgb <= 0.04045) {
+		return srgb / 12.92;
 	}
 
-	return EVENT_TEAM_FG.light;
+	return ((srgb + 0.055) / 1.055) ** 2.4;
+}
+
+function relativeLuminance(hex: string): number {
+	const { r, g, b } = hexRgb(hex);
+	return (
+		0.2126 * srgbChannel(r) + 0.7152 * srgbChannel(g) + 0.0722 * srgbChannel(b)
+	);
+}
+
+function contrastRatio(left: number, right: number): number {
+	const max = Math.max(left, right);
+	const min = Math.min(left, right);
+	return (max + 0.05) / (min + 0.05);
+}
+
+export function eventTeamColorPastel(hex: string): string {
+	const source = hexRgb(hex);
+	const white = hexRgb(EVENT_TEAM_PASTEL.white);
+	const mix = EVENT_TEAM_PASTEL.mix;
+	const rest = 1 - mix;
+
+	return rgbToHex(
+		source.r * mix + white.r * rest,
+		source.g * mix + white.g * rest,
+		source.b * mix + white.b * rest,
+	);
+}
+
+export function eventTeamColorFg(hex: string): string {
+	const background = relativeLuminance(hex);
+	const light = relativeLuminance(EVENT_TEAM_FG.light);
+	const dark = relativeLuminance(EVENT_TEAM_FG.dark);
+
+	if (contrastRatio(background, light) >= contrastRatio(background, dark)) {
+		return EVENT_TEAM_FG.light;
+	}
+
+	return EVENT_TEAM_FG.dark;
 }
 
 export function eventTeamColorStyle(hex: string): {
 	backgroundColor: string;
 	color: string;
 } {
+	const backgroundColor = eventTeamColorPastel(hex);
+
 	return {
-		backgroundColor: hex,
-		color: eventTeamColorFg(hex),
+		backgroundColor,
+		color: eventTeamColorFg(backgroundColor),
 	};
 }

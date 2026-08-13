@@ -1,8 +1,10 @@
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
+import { useMemo } from "react";
 import { ChampionshipEventDetail } from "@/components/championship-event-detail";
 import { PageHeader } from "@/components/page-header";
 import {
+	countPlayerAttendance,
 	EVENT_STATUS_LABEL,
 	eventStatus,
 	formatEventStartsAt,
@@ -18,8 +20,10 @@ import { useAuth } from "@/contexts/auth";
 import {
 	useAddChampionshipEventMatch,
 	useChampionshipEvent,
+	useChampionshipEvents,
 	useDeleteChampionshipEvent,
 	useEndChampionshipEvent,
+	useSaveChampionshipEventTeams,
 } from "@/hooks/championships/use-championship-events";
 import { useChampionship } from "@/hooks/championships/use-championships";
 
@@ -34,9 +38,15 @@ export function ChampionshipEventDetailPage() {
 	const { user } = useAuth();
 	const championshipQuery = useChampionship(championshipId);
 	const eventQuery = useChampionshipEvent(championshipId, eventId);
+	const eventsQuery = useChampionshipEvents(championshipId);
+	const saveTeams = useSaveChampionshipEventTeams(championshipId);
 	const addMatch = useAddChampionshipEventMatch(championshipId);
 	const endEvent = useEndChampionshipEvent(championshipId);
 	const deleteEvent = useDeleteChampionshipEvent(championshipId);
+	const attendanceCounts = useMemo(
+		() => countPlayerAttendance(eventsQuery.data ?? []),
+		[eventsQuery.data],
+	);
 
 	const championship = championshipQuery.data;
 	const currentPlayer = championship?.players.find(
@@ -95,13 +105,23 @@ export function ChampionshipEventDetailPage() {
 			<ChampionshipEventDetail
 				event={event}
 				players={activePlayers}
+				attendanceCounts={attendanceCounts}
 				canManage={canManage}
+				savingTeams={saveTeams.isPending}
+				saveTeamsError={saveTeams.isError ? saveTeams.error.message : null}
 				addingMatch={addMatch.isPending}
 				addMatchError={addMatch.isError ? addMatch.error.message : null}
 				ending={endEvent.isPending}
 				endError={endEvent.isError ? endEvent.error.message : null}
 				deleting={deleteEvent.isPending}
 				deleteError={deleteEvent.isError ? deleteEvent.error.message : null}
+				onSaveTeams={async ({ presentPlayerIds, teams }) => {
+					await saveTeams.mutateAsync({
+						eventId: event.id,
+						presentPlayerIds,
+						teams,
+					});
+				}}
 				onAddMatch={async ({ teamAId, teamBId }) => {
 					await addMatch.mutateAsync({
 						eventId: event.id,
