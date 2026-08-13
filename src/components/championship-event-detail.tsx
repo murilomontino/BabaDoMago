@@ -1,8 +1,8 @@
 import { Field, Form, Formik } from "formik";
 import { useState } from "react";
 import { Button } from "@/components/button";
+import { DeleteEventModal } from "@/components/delete-event-modal";
 import { EndEventModal } from "@/components/end-event-modal";
-import { EventAttendanceTable } from "@/components/event-attendance-table";
 import { FormError } from "@/components/form-error";
 import {
 	EVENT_STATUS,
@@ -29,14 +29,16 @@ import type { ChampionshipEvent } from "@/types/championship-event";
 type ChampionshipEventDetailProps = {
 	event: ChampionshipEvent;
 	players: ChampionshipPlayer[];
-	attendanceCounts: ReadonlyMap<number, number>;
 	canManage: boolean;
 	onAddMatch: (values: { teamAId: number; teamBId: number }) => Promise<void>;
 	onEnd: () => Promise<void>;
+	onDelete: () => Promise<void>;
 	addingMatch: boolean;
 	addMatchError: string | null;
 	ending: boolean;
 	endError: string | null;
+	deleting: boolean;
+	deleteError: string | null;
 };
 
 function TeamChip({ color }: { color: EventTeamColor }) {
@@ -81,20 +83,23 @@ function attendancePlayers(
 export function ChampionshipEventDetail({
 	event,
 	players,
-	attendanceCounts,
 	canManage,
 	onAddMatch,
 	onEnd,
+	onDelete,
 	addingMatch,
 	addMatchError,
 	ending,
 	endError,
+	deleting,
+	deleteError,
 }: ChampionshipEventDetailProps) {
 	const when = formatEventStartsAt(event.starts_at);
 	const status = eventStatus(event.ended_at);
 	const teamById = new Map(event.teams.map((team) => [team.id, team]));
 	const presentPlayers = attendancePlayers(event.attendance, players);
 	const [isEndOpen, setIsEndOpen] = useState(false);
+	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
 	return (
 		<article className="space-y-6">
@@ -103,14 +108,23 @@ export function ChampionshipEventDetail({
 					{when.date} · {when.time}
 				</p>
 				<span className={CHIP_CLASS}>{EVENT_STATUS_LABEL[status]}</span>
-				{canManage && status === EVENT_STATUS.open && (
-					<Button
-						variant={BUTTON_VARIANT.ghost}
-						className="ml-auto"
-						onClick={() => setIsEndOpen(true)}
-					>
-						Encerrar
-					</Button>
+				{canManage && (
+					<div className="ml-auto flex items-center gap-2">
+						{status === EVENT_STATUS.open && (
+							<Button
+								variant={BUTTON_VARIANT.ghost}
+								onClick={() => setIsEndOpen(true)}
+							>
+								Encerrar
+							</Button>
+						)}
+						<Button
+							variant={BUTTON_VARIANT.danger}
+							onClick={() => setIsDeleteOpen(true)}
+						>
+							Excluir
+						</Button>
+					</div>
 				)}
 			</div>
 			<div>
@@ -121,10 +135,31 @@ export function ChampionshipEventDetail({
 					<p className="text-sm text-fg-muted">Ninguém marcado.</p>
 				)}
 				{event.attendance.length > 0 && (
-					<EventAttendanceTable
-						players={presentPlayers}
-						attendanceCounts={attendanceCounts}
-					/>
+					<ul className="divide-y divide-line">
+						{presentPlayers.map((player) => (
+							<li
+								key={player.id}
+								className="flex items-center gap-3 py-2 first:pt-0 last:pb-0"
+							>
+								{player.avatar_url && (
+									<img
+										src={player.avatar_url}
+										alt=""
+										referrerPolicy="no-referrer"
+										className="h-8 w-8 rounded-full object-cover"
+									/>
+								)}
+								{!player.avatar_url && (
+									<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-pitch-soft text-xs font-medium text-pitch-fg">
+										{player.display_name.charAt(0).toUpperCase()}
+									</span>
+								)}
+								<p className="min-w-0 truncate text-sm font-medium text-fg">
+									{player.display_name}
+								</p>
+							</li>
+						))}
+					</ul>
 				)}
 			</div>
 			<ul className="space-y-2">
@@ -255,6 +290,28 @@ export function ChampionshipEventDetail({
 							try {
 								await onEnd();
 								setIsEndOpen(false);
+							} catch {
+								return;
+							}
+						})();
+					}}
+				/>
+			)}
+			{isDeleteOpen && (
+				<DeleteEventModal
+					isPending={deleting}
+					errorMessage={deleteError}
+					onCancel={() => {
+						if (deleting) {
+							return;
+						}
+
+						setIsDeleteOpen(false);
+					}}
+					onConfirm={() => {
+						void (async () => {
+							try {
+								await onDelete();
 							} catch {
 								return;
 							}

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { EventTeamColor } from "@/const/event-team-color";
 import {
 	addChampionshipEventMatch,
+	deleteChampionshipEvent,
 	endChampionshipEvent,
 	getChampionshipEventById,
 	listChampionshipEvents,
@@ -78,6 +79,19 @@ export function useEndChampionshipEvent(championshipId: number) {
 
 	return useMutation({
 		mutationFn: (eventId: number) => endChampionshipEvent(eventId),
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({
+				queryKey: [...CHAMPIONSHIP_EVENTS_QUERY_KEY, championshipId],
+			});
+		},
+	});
+}
+
+export function useDeleteChampionshipEvent(championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (eventId: number) => deleteChampionshipEvent(eventId),
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({
 				queryKey: [...CHAMPIONSHIP_EVENTS_QUERY_KEY, championshipId],

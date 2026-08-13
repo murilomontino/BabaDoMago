@@ -130,7 +130,10 @@ export function EventAttendanceTable({
 					const inputId = `event-present-${row.original.id}`;
 
 					return (
-						<label htmlFor={inputId} className="inline-flex cursor-pointer">
+						<label
+							htmlFor={inputId}
+							className="pointer-events-none inline-flex"
+						>
 							<input
 								id={inputId}
 								type="checkbox"
@@ -151,6 +154,16 @@ export function EventAttendanceTable({
 			data={rows}
 			columns={columns}
 			getRowId={(row) => String(row.id)}
+			onRowClick={
+				onToggle
+					? (row) => {
+							onToggle(row.id);
+						}
+					: undefined
+			}
+			getRowClassName={(row) =>
+				row.present ? "bg-pitch-soft" : "even:bg-surface-muted"
+			}
 		/>
 	);
 }

@@ -176,6 +176,7 @@ export async function listChampionshipEvents(
 		.from("championship_events")
 		.select(EVENT_COLUMNS)
 		.eq("championship_id", championshipId)
+		.is("deleted_at", null)
 		.order("starts_at", { ascending: false });
 
 	if (error) {
@@ -194,6 +195,7 @@ export async function getChampionshipEventById(
 		.select(EVENT_COLUMNS)
 		.eq("id", eventId)
 		.eq("championship_id", championshipId)
+		.is("deleted_at", null)
 		.maybeSingle();
 
 	if (error) {
@@ -257,6 +259,16 @@ export async function addChampionshipEventMatch(
 
 export async function endChampionshipEvent(eventId: number): Promise<void> {
 	const { error } = await supabase.rpc("end_championship_event", {
+		event_id: eventId,
+	});
+
+	if (error) {
+		throwEventError(error);
+	}
+}
+
+export async function deleteChampionshipEvent(eventId: number): Promise<void> {
+	const { error } = await supabase.rpc("soft_delete_championship_event", {
 		event_id: eventId,
 	});
 
