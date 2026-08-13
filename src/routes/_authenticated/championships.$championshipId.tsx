@@ -1,8 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { ChampionshipDetailPage } from "@/pages/ChampionshipDetailPage";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 export const Route = createFileRoute(
 	"/_authenticated/championships/$championshipId",
 )({
-	component: ChampionshipDetailPage,
+	component: ChampionshipLayout,
 });
+
+function ChampionshipLayout() {
+	return <Outlet />;
+}

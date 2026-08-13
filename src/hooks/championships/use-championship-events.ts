@@ -3,6 +3,7 @@ import type { EventTeamColor } from "@/const/event-team-color";
 import {
 	addChampionshipEventMatch,
 	endChampionshipEvent,
+	getChampionshipEventById,
 	listChampionshipEvents,
 	startChampionshipEvent,
 } from "@/services/championship-events";
@@ -16,17 +17,33 @@ export function useChampionshipEvents(championshipId: number) {
 	});
 }
 
+export function useChampionshipEvent(championshipId: number, eventId: number) {
+	return useQuery({
+		queryKey: [...CHAMPIONSHIP_EVENTS_QUERY_KEY, championshipId, eventId],
+		queryFn: () => getChampionshipEventById(championshipId, eventId),
+		enabled: Number.isFinite(championshipId) && Number.isFinite(eventId),
+	});
+}
+
 export function useStartChampionshipEvent(championshipId: number) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: ({
 			eventDate,
+			presentPlayerIds,
 			teams,
 		}: {
 			eventDate: string;
+			presentPlayerIds: readonly number[];
 			teams: readonly { color: EventTeamColor; playerIds: readonly number[] }[];
-		}) => startChampionshipEvent(championshipId, eventDate, teams),
+		}) =>
+			startChampionshipEvent(
+				championshipId,
+				eventDate,
+				presentPlayerIds,
+				teams,
+			),
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({
 				queryKey: CHAMPIONSHIP_EVENTS_QUERY_KEY,

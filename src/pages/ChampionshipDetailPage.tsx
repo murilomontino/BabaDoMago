@@ -77,7 +77,7 @@ import {
 
 export function ChampionshipDetailPage() {
 	const { championshipId: championshipIdParam } = useParams({
-		from: "/_authenticated/championships/$championshipId",
+		from: "/_authenticated/championships/$championshipId/",
 	});
 	const championshipId = Number(championshipIdParam);
 	const { user } = useAuth();

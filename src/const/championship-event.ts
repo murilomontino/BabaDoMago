@@ -11,7 +11,16 @@ export const CHAMPIONSHIP_EVENT = {
 	playersPerTeamMax: 11,
 	playersPerTeamDefault: 5,
 	minTeams: 2,
+	minAttendance: 2,
 } as const;
+
+export const EVENT_BUILDER_STEP = {
+	attendance: "attendance",
+	teams: "teams",
+} as const;
+
+export type EventBuilderStep =
+	(typeof EVENT_BUILDER_STEP)[keyof typeof EVENT_BUILDER_STEP];
 
 export const EVENT_STATUS = {
 	open: "open",
@@ -38,6 +47,9 @@ export const EVENT_ERROR_MESSAGE = {
 	"same team": "Escolha dois times",
 	"team not in event": "Time não pertence ao evento",
 	"event not found": "Evento não encontrado",
+	"invalid attendance": "Lista de presença inválida",
+	"duplicate attendance": "Jogador repetido na presença",
+	"player not present": "Jogador não está presente",
 } as const;
 
 export type EventTeamDraft = {
@@ -52,6 +64,25 @@ export const EVENT_TEAM_MESSAGE = {
 	playerDuplicate: "Jogador em mais de um time",
 	playerEmpty: "Time sem jogador",
 	playerLimit: "Time acima do limite",
+	playerNotPresent: "Jogador não está presente",
+} as const;
+
+export const EVENT_ATTENDANCE_MESSAGE = {
+	minPresent: "Marque pelo menos dois presentes",
+	notInRoster: "Jogador fora do elenco",
+	duplicate: "Jogador repetido na presença",
+} as const;
+
+export const EVENT_ATTENDANCE_COLUMN = {
+	present: "present",
+	player: "player",
+	count: "count",
+} as const;
+
+export const EVENT_ATTENDANCE_COLUMN_LABEL = {
+	present: "Presente",
+	player: "Jogador",
+	count: "Presenças",
 } as const;
 
 export function parseEventTime(value: unknown): string {
@@ -172,4 +203,74 @@ export function validateEventTeams(
 	}
 
 	return null;
+}
+
+export function validateEventAttendance(
+	presentIds: readonly number[],
+	rosterIds: readonly number[],
+): string | null {
+	if (presentIds.length < CHAMPIONSHIP_EVENT.minAttendance) {
+		return EVENT_ATTENDANCE_MESSAGE.minPresent;
+	}
+
+	const roster = new Set(rosterIds);
+	const seen = new Set<number>();
+
+	for (const playerId of presentIds) {
+		if (seen.has(playerId)) {
+			return EVENT_ATTENDANCE_MESSAGE.duplicate;
+		}
+
+		if (!roster.has(playerId)) {
+			return EVENT_ATTENDANCE_MESSAGE.notInRoster;
+		}
+
+		seen.add(playerId);
+	}
+
+	return null;
+}
+
+export function validateTeamsInAttendance(
+	teams: readonly EventTeamDraft[],
+	presentIds: readonly number[],
+): string | null {
+	const present = new Set(presentIds);
+
+	const missing = teams.some((team) =>
+		team.playerIds.some((playerId) => !present.has(playerId)),
+	);
+
+	if (missing) {
+		return EVENT_TEAM_MESSAGE.playerNotPresent;
+	}
+
+	return null;
+}
+
+export function countPlayerAttendance(
+	events: readonly {
+		attendance: readonly { player_id: number }[];
+	}[],
+): Map<number, number> {
+	const counts = new Map<number, number>();
+
+	for (const event of events) {
+		for (const row of event.attendance) {
+			counts.set(row.player_id, (counts.get(row.player_id) ?? 0) + 1);
+		}
+	}
+
+	return counts;
+}
+
+export function compareByAttendanceCount(
+	a: { attendanceCount: number; display_name: string },
+	b: { attendanceCount: number; display_name: string },
+): number {
+	if (b.attendanceCount !== a.attendanceCount) {
+		return b.attendanceCount - a.attendanceCount;
+	}
+
+	return a.display_name.localeCompare(b.display_name, "pt-BR");
 }

@@ -1,5 +1,12 @@
 import type { EventTeamColor } from "@/const/event-team-color";
 
+export type ChampionshipEventAttendance = {
+	id: number;
+	event_id: number;
+	player_id: number;
+	display_name: string;
+};
+
 export type ChampionshipEventTeamPlayer = {
 	id: number;
 	event_id: number;
@@ -30,6 +37,7 @@ export type ChampionshipEvent = {
 	starts_at: string;
 	players_per_team: number;
 	ended_at: string | null;
+	attendance: ChampionshipEventAttendance[];
 	teams: ChampionshipEventTeam[];
 	matches: ChampionshipEventMatch[];
 };
