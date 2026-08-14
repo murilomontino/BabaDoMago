@@ -78,6 +78,52 @@ export function applyEventRatingDelta(rating: number, delta: number): number {
 	);
 }
 
+export function recomputePlayerEventRating(
+	rating: number,
+	oldDelta: number,
+	wins: number,
+	matches: number,
+	ceiling: number,
+): number {
+	return applyEventRatingDelta(
+		rating,
+		-oldDelta + eventRatingDelta(wins, matches, rating, ceiling),
+	);
+}
+
+export function playerEventRatingAfterSave({
+	rating,
+	storedDelta,
+	oldWins,
+	oldMatches,
+	wins,
+	matches,
+	ceiling,
+}: {
+	rating: number;
+	storedDelta: number;
+	oldWins: number;
+	oldMatches: number;
+	wins: number;
+	matches: number;
+	ceiling: number;
+}): number {
+	if (
+		storedDelta === 0 &&
+		eventRatingDelta(oldWins, oldMatches, rating, ceiling) !== 0
+	) {
+		return rating;
+	}
+
+	return recomputePlayerEventRating(
+		rating,
+		storedDelta,
+		wins,
+		matches,
+		ceiling,
+	);
+}
+
 export function formatEventRating(rating: number): string {
 	return rating.toFixed(1);
 }

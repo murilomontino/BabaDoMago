@@ -1,10 +1,19 @@
-import { Unlink, UserCheck, UserPen, UserPlus, UserX } from "lucide-react";
+import {
+	ChartColumn,
+	Unlink,
+	UserCheck,
+	UserPen,
+	UserPlus,
+	UserX,
+} from "lucide-react";
 import { Button } from "@/components/button";
 import { IconTooltipButton } from "@/components/molecules/icon-tooltip-button";
+import { EVENT_ACTION } from "@/const/championship-event";
 import {
 	CHAMPIONSHIP_ROLE,
 	type ChampionshipRole,
 	canEditPlayerNickname,
+	canOverrideEndedEvent,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
 import { PLAYER_LABEL } from "@/const/player-name";
@@ -28,6 +37,8 @@ export type RosterPlayerActionsProps = {
 	onClaim?: (playerId: number) => void;
 	onEditNickname?: (playerId: number) => void;
 	nicknamePlayerId?: number | null;
+	onEditEventStats?: (playerId: number) => void;
+	eventStatsPlayerId?: number | null;
 	onUnlink?: (playerId: number) => void;
 	unlinkingPlayerId?: number | null;
 	onDeactivate?: (playerId: number) => void;
@@ -46,6 +57,8 @@ export function RosterPlayerActions({
 	onClaim,
 	onEditNickname,
 	nicknamePlayerId,
+	onEditEventStats,
+	eventStatsPlayerId,
 	onUnlink,
 	unlinkingPlayerId,
 	onDeactivate,
@@ -74,10 +87,14 @@ export function RosterPlayerActions({
 			!player.deleted_at &&
 			canEditPlayerNickname(actorRole, player.user_id, currentUserId),
 	);
+	const canEditEventStats = Boolean(
+		onEditEventStats && !player.deleted_at && canOverrideEndedEvent(actorRole),
+	);
 
 	if (
 		!canClaim &&
 		!canEditNickname &&
+		!canEditEventStats &&
 		!canUnlink &&
 		!canDeactivate &&
 		!canReactivate
@@ -93,6 +110,14 @@ export function RosterPlayerActions({
 					icon={<UserPen className="size-4" />}
 					onClick={() => onEditNickname(player.id)}
 					disabled={nicknamePlayerId === player.id}
+				/>
+			)}
+			{canEditEventStats && onEditEventStats && (
+				<IconTooltipButton
+					label={EVENT_ACTION.editPlayerEventStats}
+					icon={<ChartColumn className="size-4" />}
+					onClick={() => onEditEventStats(player.id)}
+					disabled={eventStatsPlayerId === player.id}
 				/>
 			)}
 			{canClaim && onClaim && (

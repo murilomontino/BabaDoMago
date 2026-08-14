@@ -89,6 +89,7 @@ export const EVENT_ERROR_MESSAGE = {
 	"invalid attendance stats": "Números inválidos",
 	"wins exceed matches": "Vitórias acima dos jogos",
 	"invalid rating": "Nota inválida",
+	"event still open": "Evento ainda aberto",
 } as const;
 
 export const EVENT_ACTION = {
@@ -113,6 +114,8 @@ export const EVENT_ACTION = {
 	saveAttendance: "Salvar presença",
 	markAttendanceStats: "Marcar stats",
 	saveAttendanceStats: "Salvar stats",
+	editPlayerEventStats: "Corrigir stats",
+	savePlayerEventStats: "Salvar stats",
 	removeAttendance: "Excluir presença",
 	removeMatch: "Excluir partida",
 	removeTeam: "Excluir time",
@@ -244,6 +247,47 @@ export const ATTENDANCE_STAT_META = [
 		label: EVENT_ATTENDANCE_COLUMN_LABEL.matches,
 	},
 ] as const;
+
+export const PLAYER_EVENT_STAT_META = [
+	{
+		id: ATTENDANCE_STAT.goals,
+		abbr: EVENT_ATTENDANCE_STAT_ABBR.goals,
+		label: EVENT_ATTENDANCE_COLUMN_LABEL.goals,
+	},
+	{
+		id: ATTENDANCE_STAT.assists,
+		abbr: EVENT_ATTENDANCE_STAT_ABBR.assists,
+		label: EVENT_ATTENDANCE_COLUMN_LABEL.assists,
+	},
+	{
+		id: ATTENDANCE_STAT.wins,
+		abbr: EVENT_ATTENDANCE_STAT_ABBR.wins,
+		label: EVENT_ATTENDANCE_COLUMN_LABEL.wins,
+	},
+	{
+		id: ATTENDANCE_STAT.matches,
+		abbr: EVENT_ATTENDANCE_STAT_ABBR.matches,
+		label: EVENT_ATTENDANCE_COLUMN_LABEL.matches,
+	},
+] as const;
+
+export type PlayerEventStatField =
+	(typeof PLAYER_EVENT_STAT_META)[number]["id"];
+
+export type PlayerEventStatsDraft = {
+	goals: number;
+	assists: number;
+	wins: number;
+	matches: number;
+};
+
+export const PLAYER_EVENT_STATS_LABEL = {
+	title: "Stats do evento",
+	event: "Evento",
+	emptyEvents: "Nenhum evento encerrado",
+	ratingHint:
+		"O rate só muda neste jogador se ainda não tinha sido aplicado neste evento.",
+} as const;
 
 export type EventAttendanceStatsDraft = {
 	player_id: number;
@@ -1148,6 +1192,56 @@ function isAttendanceStatRow(row: EventAttendanceStatsDraft): boolean {
 	}
 
 	return row.wins <= row.matches;
+}
+
+export function playerEventStatsFromAttendance(
+	row: {
+		goals: number;
+		assists: number;
+		wins: number;
+		matches: number;
+	} | null,
+): PlayerEventStatsDraft {
+	return {
+		goals: row?.goals ?? 0,
+		assists: row?.assists ?? 0,
+		wins: row?.wins ?? 0,
+		matches: row?.matches ?? 0,
+	};
+}
+
+export function setPlayerEventStat(
+	draft: PlayerEventStatsDraft,
+	field: PlayerEventStatField,
+	value: number,
+): PlayerEventStatsDraft {
+	return { ...draft, [field]: value };
+}
+
+export function validatePlayerEventStats(
+	draft: PlayerEventStatsDraft,
+): string | null {
+	if (!isAttendanceStatCount(draft.goals)) {
+		return EVENT_ATTENDANCE_MESSAGE.invalidStats;
+	}
+
+	if (!isAttendanceStatCount(draft.assists)) {
+		return EVENT_ATTENDANCE_MESSAGE.invalidStats;
+	}
+
+	if (!isAttendanceStatCount(draft.wins)) {
+		return EVENT_ATTENDANCE_MESSAGE.invalidStats;
+	}
+
+	if (!isAttendanceStatCount(draft.matches)) {
+		return EVENT_ATTENDANCE_MESSAGE.invalidStats;
+	}
+
+	if (draft.wins > draft.matches) {
+		return EVENT_ATTENDANCE_MESSAGE.winsExceedMatches;
+	}
+
+	return null;
 }
 
 export function validateEventAttendanceStats(

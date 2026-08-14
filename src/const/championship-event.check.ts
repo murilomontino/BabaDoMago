@@ -35,10 +35,13 @@ import {
 	keepPresentSlots,
 	keepTeamPlayersPresent,
 	nextEventTeamColor,
+	PLAYER_EVENT_STAT_META,
 	parseAttendanceStatInput,
 	pickTeamGoalkeeper,
+	playerEventStatsFromAttendance,
 	resizeBuilderTeams,
 	setAttendanceStat,
+	setPlayerEventStat,
 	teamHasMatches,
 	teamPlayerSlots,
 	teamSlotsToPlayerIds,
@@ -46,6 +49,7 @@ import {
 	validateEventAttendanceStats,
 	validateEventTeam,
 	validateEventTeams,
+	validatePlayerEventStats,
 	validateTeamsInAttendance,
 } from "./championship-event.ts";
 import { EVENT_TEAM_COLOR, type EventTeamColor } from "./event-team-color.ts";
@@ -577,6 +581,37 @@ check(
 check(
 	championshipEventErrorMessage("invalid rating"),
 	EVENT_ERROR_MESSAGE["invalid rating"],
+);
+check(
+	championshipEventErrorMessage("event still open"),
+	EVENT_ERROR_MESSAGE["event still open"],
+);
+
+const playerEventDraft = playerEventStatsFromAttendance({
+	goals: 2,
+	assists: 1,
+	wins: 4,
+	matches: 6,
+});
+check(playerEventDraft.goals, 2);
+check(playerEventDraft.assists, 1);
+check(playerEventDraft.wins, 4);
+check(playerEventDraft.matches, 6);
+check(playerEventStatsFromAttendance(null).matches, 0);
+check(setPlayerEventStat(playerEventDraft, "goals", 9).goals, 9);
+check(validatePlayerEventStats(playerEventDraft), null);
+check(
+	validatePlayerEventStats({ ...playerEventDraft, wins: 7 }),
+	EVENT_ATTENDANCE_MESSAGE.winsExceedMatches,
+);
+check(
+	validatePlayerEventStats({ ...playerEventDraft, goals: -1 }),
+	EVENT_ATTENDANCE_MESSAGE.invalidStats,
+);
+check(PLAYER_EVENT_STAT_META.length, 4);
+check(
+	PLAYER_EVENT_STAT_META.map((field) => field.id).join(","),
+	"goals,assists,wins,matches",
 );
 
 console.log("championship-event ok");

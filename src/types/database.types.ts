@@ -40,6 +40,7 @@ export type Database = {
 					own_goals: number;
 					player_id: number;
 					rating: number;
+					rating_delta: number;
 					wins: number;
 				};
 				Insert: {
@@ -54,6 +55,7 @@ export type Database = {
 					own_goals?: number;
 					player_id: number;
 					rating?: number;
+					rating_delta?: number;
 					wins?: number;
 				};
 				Update: {
@@ -68,6 +70,7 @@ export type Database = {
 					own_goals?: number;
 					player_id?: number;
 					rating?: number;
+					rating_delta?: number;
 					wins?: number;
 				};
 				Relationships: [
@@ -582,6 +585,17 @@ export type Database = {
 				Args: {
 					event_id: number;
 					stats: Json;
+				};
+				Returns: Json;
+			};
+			save_championship_player_event_stats: {
+				Args: {
+					player_id: number;
+					event_id: number;
+					goals: number;
+					assists: number;
+					wins: number;
+					matches: number;
 				};
 				Returns: Json;
 			};

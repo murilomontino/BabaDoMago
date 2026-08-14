@@ -52,6 +52,8 @@ type ChampionshipRosterProps = {
 	ratingPlayerId?: number | null;
 	onEditNickname?: (playerId: number) => void;
 	nicknamePlayerId?: number | null;
+	onEditEventStats?: (playerId: number) => void;
+	eventStatsPlayerId?: number | null;
 	onChangeRole?: (playerId: number, role: AssignableChampionshipRole) => void;
 	onUnlink?: (playerId: number) => void;
 	unlinkingPlayerId?: number | null;
@@ -94,6 +96,8 @@ export function ChampionshipRoster({
 	ratingPlayerId,
 	onEditNickname,
 	nicknamePlayerId,
+	onEditEventStats,
+	eventStatsPlayerId,
 	onChangeRole,
 	onUnlink,
 	unlinkingPlayerId,
@@ -144,6 +148,8 @@ export function ChampionshipRoster({
 			onClaim,
 			onEditNickname,
 			nicknamePlayerId,
+			onEditEventStats,
+			eventStatsPlayerId,
 			onUnlink,
 			unlinkingPlayerId,
 			onDeactivate,
@@ -160,6 +166,8 @@ export function ChampionshipRoster({
 			onClaim,
 			onEditNickname,
 			nicknamePlayerId,
+			onEditEventStats,
+			eventStatsPlayerId,
 			onUnlink,
 			unlinkingPlayerId,
 			onDeactivate,
