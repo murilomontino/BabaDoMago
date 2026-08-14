@@ -1,10 +1,11 @@
-import { ArrowLeftRight, Goal } from "lucide-react";
-import { useState } from "react";
+import { ArrowLeftRight, Goal, Pause, Play } from "lucide-react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/button";
 import { ChampionshipEventBenchModal } from "@/components/championship-event-bench-modal";
 import { ChampionshipEventGoalModal } from "@/components/championship-event-goal-modal";
 import { ChampionshipEventSubstitutionModal } from "@/components/championship-event-substitution-modal";
 import { EndEventMatchModal } from "@/components/end-event-match-modal";
+import { EventTeamColorModal } from "@/components/event-team-color-modal";
 import {
 	EVENT_TEAM_PLAYER_SLOT_CLASS,
 	EVENT_TEAM_POSITION_CHIP_CLASS,
@@ -25,18 +26,20 @@ import {
 import {
 	canConfirmMatchTeams,
 	EVENT_GOAL_LABEL,
+	EVENT_MATCH_CLOCK_LABEL,
 	EVENT_MATCH_END_INTENT,
 	EVENT_MATCH_LABEL,
-	EVENT_MATCH_SUBSTITUTION_LABEL,
 	type EventMatchEndIntent,
+	formatMatchClock,
 	formatMatchScore,
 	matchActiveTeamPlayers,
 	matchAssistCandidates,
 	matchBenchPlayerIds,
+	matchClockIsPaused,
+	matchClockIsStarted,
 	matchEndWinnerLabel,
 	matchGoalPayload,
 	matchScore,
-	matchSubstitutedTeamPlayers,
 	matchTeamSlots,
 	matchTeamStarName,
 	matchWinnerTeamId,
@@ -51,6 +54,7 @@ import {
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
+import { useMatchClock } from "@/hooks/use-match-clock";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type {
 	ChampionshipEvent,
@@ -121,6 +125,8 @@ type ChampionshipEventPlayProps = {
 	undoError: string | null;
 	ending: boolean;
 	endError: string | null;
+	clockError: string | null;
+	pausing: boolean;
 	onStart: (teamAId: number, teamBId: number) => Promise<void>;
 	onSetPlayer: (
 		teamId: number,
@@ -128,7 +134,6 @@ type ChampionshipEventPlayProps = {
 		playerId: number | null,
 		includeStats?: boolean,
 	) => Promise<void>;
-	onSetGoalkeeper: (teamId: number, playerId: number) => Promise<void>;
 	onAddGoal: (values: {
 		scorerPlayerId: number;
 		assistPlayerId: number | null;
@@ -137,7 +142,19 @@ type ChampionshipEventPlayProps = {
 	onUndoGoal: (goalId: number) => Promise<void>;
 	onEnd: () => Promise<void>;
 	onNext: () => Promise<void>;
+	onStartClock: () => Promise<void>;
+	onPause: () => Promise<void>;
+	onResume: () => Promise<void>;
+	onChangeTeamColor: (
+		teamId: number,
+		color: EventTeamColor | null,
+	) => Promise<void>;
+	savingColor: boolean;
+	colorError: string | null;
 };
+
+const TEAM_CARD_LONG_PRESS_MS = 500;
+const TEAM_CARD_LONG_PRESS_MOVE_PX = 8;
 
 function TeamPick({
 	team,
@@ -146,6 +163,7 @@ function TeamPick({
 	rosterById,
 	ceiling,
 	onSelect,
+	onLongPress,
 }: {
 	team: ChampionshipEventTeam;
 	selected: boolean;
@@ -153,16 +171,86 @@ function TeamPick({
 	rosterById: Map<number, ChampionshipPlayer>;
 	ceiling: number;
 	onSelect: () => void;
+	onLongPress: () => void;
 }) {
 	const style = eventTeamColorStyle(team.color);
 	const teamRoster = team.players.map((row) => ({
 		row,
 		player: resolvePlayer(row.player_id, row.display_name, rosterById),
 	}));
+	const timerRef = useRef<number | null>(null);
+	const originRef = useRef<{ x: number; y: number } | null>(null);
+	const skipClickRef = useRef(false);
+	const openedRef = useRef(false);
+
+	function clearTimer() {
+		if (timerRef.current === null) {
+			return;
+		}
+
+		window.clearTimeout(timerRef.current);
+		timerRef.current = null;
+	}
+
+	function openColor() {
+		if (openedRef.current) {
+			return;
+		}
+
+		openedRef.current = true;
+		skipClickRef.current = true;
+		clearTimer();
+		onLongPress();
+	}
 
 	return (
-		<article
-			className={`relative rounded-lg border bg-surface p-2 text-sm ${
+		<button
+			type="button"
+			onClick={() => {
+				if (skipClickRef.current) {
+					skipClickRef.current = false;
+					return;
+				}
+
+				onSelect();
+			}}
+			onPointerDown={(event) => {
+				if (event.button !== 0) {
+					return;
+				}
+
+				openedRef.current = false;
+				skipClickRef.current = false;
+				originRef.current = { x: event.clientX, y: event.clientY };
+				clearTimer();
+				timerRef.current = window.setTimeout(() => {
+					openColor();
+				}, TEAM_CARD_LONG_PRESS_MS);
+			}}
+			onPointerMove={(event) => {
+				const origin = originRef.current;
+				if (!origin || timerRef.current === null) {
+					return;
+				}
+
+				const movedX = Math.abs(event.clientX - origin.x);
+				const movedY = Math.abs(event.clientY - origin.y);
+				if (
+					movedX < TEAM_CARD_LONG_PRESS_MOVE_PX &&
+					movedY < TEAM_CARD_LONG_PRESS_MOVE_PX
+				) {
+					return;
+				}
+
+				clearTimer();
+			}}
+			onPointerUp={clearTimer}
+			onPointerCancel={clearTimer}
+			onContextMenu={(event) => {
+				event.preventDefault();
+				openColor();
+			}}
+			className={`relative w-full select-none rounded-lg border bg-surface p-2 text-left text-sm touch-manipulation ${
 				selected ? "border-pitch ring-2 ring-pitch" : "border-line"
 			}`}
 			style={style}
@@ -172,15 +260,17 @@ function TeamPick({
 				<p className="min-w-0 flex-1 text-xs font-medium">
 					{eventTeamName(team.color, team.sort_order)}
 				</p>
-				<Button
-					variant={selected ? BUTTON_VARIANT.primary : BUTTON_VARIANT.secondary}
-					className="h-7 shrink-0 px-2 text-xs"
-					onClick={onSelect}
+				<span
+					className={`inline-flex h-7 shrink-0 items-center rounded-lg px-2 text-xs font-medium ${
+						selected
+							? "bg-pitch text-white"
+							: "border border-line bg-surface text-fg"
+					}`}
 				>
 					{pickOrder !== null
 						? `${EVENT_MATCH_LABEL.picked} ${pickOrder}`
 						: EVENT_MATCH_LABEL.select}
-				</Button>
+				</span>
 			</div>
 			<ul className="space-y-1">
 				{teamRoster.map(({ row, player }) => {
@@ -199,43 +289,42 @@ function TeamPick({
 			<EventTeamRatingAverage
 				ratings={teamRoster.map(({ player }) => player.rating)}
 			/>
-		</article>
+		</button>
 	);
 }
+
+const MATCH_PLAY_SLOT_CLASS =
+	"flex min-h-0 flex-1 items-center gap-1 rounded-md bg-surface-muted px-1 py-0.5 text-fg";
 
 function MatchTeamBlock({
 	color,
 	sortOrder,
 	slots,
-	substituted,
 	rosterById,
 	disabled,
 	onMarkGoal,
 	onEditSlot,
-	onSetGoalkeeper,
 }: {
 	color: EventTeamColor | null;
 	sortOrder: number;
 	slots: readonly (ChampionshipEventMatchPlayer | null)[];
-	substituted: readonly ChampionshipEventMatchPlayer[];
 	rosterById: Map<number, ChampionshipPlayer>;
 	disabled: boolean;
 	onMarkGoal: (player: ChampionshipEventMatchPlayer) => void;
 	onEditSlot: (slot: number) => void;
-	onSetGoalkeeper: (player: ChampionshipEventMatchPlayer) => void;
 }) {
 	const style = eventTeamColorStyle(color);
 
 	return (
 		<section
-			className="relative rounded-lg border border-line bg-surface p-2"
+			className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-line bg-surface p-1.5"
 			style={style}
 		>
 			<EventTeamColorDot color={color} />
-			<p className="mb-2 pr-5 text-sm font-medium">
+			<p className="mb-1 shrink-0 pr-5 text-xs font-medium">
 				{eventTeamName(color, sortOrder)}
 			</p>
-			<ul className="space-y-1">
+			<ul className="flex min-h-0 flex-1 flex-col gap-0.5">
 				{Array.from({ length: slots.length }, (_, index) => index).map(
 					(slot) => {
 						const row = slots[slot] ?? null;
@@ -248,45 +337,33 @@ function MatchTeamBlock({
 							: eventTeamSlotPosition(slot);
 
 						return (
-							<li key={`slot-${slot}`} className={EVENT_TEAM_PLAYER_SLOT_CLASS}>
+							<li key={`slot-${slot}`} className={MATCH_PLAY_SLOT_CLASS}>
 								<span className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}>
 									{EVENT_TEAM_POSITION_LABEL[position]}
 								</span>
-								{player && (
-									<p className="min-w-0 flex-1 truncate text-xs font-medium text-fg">
-										{playerVisibleName(player)}
-									</p>
+								{row && player && (
+									<button
+										type="button"
+										className="inline-flex min-h-7 min-w-0 flex-1 items-center justify-between gap-1 self-stretch rounded-md px-1.5 hover:bg-black/10 disabled:opacity-50"
+										aria-label={EVENT_ACTION.markGoal}
+										disabled={disabled}
+										onClick={() => onMarkGoal(row)}
+									>
+										<span className="min-w-0 flex-1 truncate text-left text-xs font-medium">
+											{playerVisibleName(player)}
+										</span>
+										<SoccerBallIcon className="size-4 shrink-0" />
+									</button>
 								)}
 								{!player && (
 									<p className="min-w-0 flex-1 truncate text-xs text-fg-muted">
 										{EVENT_MATCH_LABEL.emptySlot}
 									</p>
 								)}
-								{row && !row.is_goalkeeper && (
-									<Button
-										variant={BUTTON_VARIANT.secondary}
-										className="h-7 px-2 text-xs"
-										disabled={disabled}
-										onClick={() => onSetGoalkeeper(row)}
-									>
-										{EVENT_ACTION.setGoalkeeper}
-									</Button>
-								)}
-								{row && (
-									<Button
-										variant={BUTTON_VARIANT.ghost}
-										className="h-7 px-2"
-										aria-label={EVENT_ACTION.markGoal}
-										disabled={disabled}
-										onClick={() => onMarkGoal(row)}
-									>
-										<Goal className="size-4" />
-									</Button>
-								)}
 								{occupied && (
 									<Button
 										variant={BUTTON_VARIANT.ghost}
-										className="h-7 px-2"
+										className="h-7 shrink-0 px-1.5"
 										aria-label={EVENT_ACTION.swapPlayer}
 										disabled={disabled}
 										onClick={() => onEditSlot(slot)}
@@ -297,7 +374,7 @@ function MatchTeamBlock({
 								{!occupied && (
 									<Button
 										variant={BUTTON_VARIANT.ghost}
-										className="h-7 px-2 text-xs"
+										className="h-7 shrink-0 px-1.5 text-xs"
 										disabled={disabled}
 										onClick={() => onEditSlot(slot)}
 									>
@@ -309,23 +386,31 @@ function MatchTeamBlock({
 					},
 				)}
 			</ul>
-			{substituted.length > 0 && (
-				<ul className="mt-2 space-y-1 border-t border-line pt-2">
-					{substituted.map((row) => (
-						<li key={row.id} className={EVENT_TEAM_PLAYER_SLOT_CLASS}>
-							<span className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}>
-								{EVENT_MATCH_SUBSTITUTION_LABEL.chip}
-							</span>
-							<p className="min-w-0 flex-1 truncate text-xs text-fg-muted">
-								{playerVisibleName(
-									resolvePlayer(row.player_id, row.display_name, rosterById),
-								)}
-							</p>
-						</li>
-					))}
-				</ul>
-			)}
 		</section>
+	);
+}
+
+function SoccerBallIcon({ className }: { className?: string }) {
+	return (
+		<svg
+			className={className}
+			viewBox="0 0 24 24"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth={2}
+			strokeLinecap="round"
+			strokeLinejoin="round"
+			aria-hidden="true"
+			focusable="false"
+		>
+			<circle cx="12" cy="12" r="10" />
+			<path d="M12 7.5 16.2 10.5 14.6 15.5h-5.2L7.8 10.5z" />
+			<path d="M12 7.5V2" />
+			<path d="m16.2 10.5 5.3-1.8" />
+			<path d="m7.8 10.5-5.3-1.8" />
+			<path d="m14.6 15.5 2.6 5.8" />
+			<path d="m9.4 15.5-2.6 5.8" />
+		</svg>
 	);
 }
 
@@ -349,6 +434,91 @@ function OwnGoalButton({
 	);
 }
 
+const MATCH_CLOCK_ACTION = {
+	start: "start",
+	pause: "pause",
+	resume: "resume",
+} as const;
+
+type MatchClockAction =
+	(typeof MATCH_CLOCK_ACTION)[keyof typeof MATCH_CLOCK_ACTION];
+
+function matchClockAction(started: boolean, paused: boolean): MatchClockAction {
+	if (!started) {
+		return MATCH_CLOCK_ACTION.start;
+	}
+
+	if (paused) {
+		return MATCH_CLOCK_ACTION.resume;
+	}
+
+	return MATCH_CLOCK_ACTION.pause;
+}
+
+function MatchClockBar({
+	elapsedSeconds,
+	started,
+	paused,
+	busy,
+	onStartClock,
+	onPause,
+	onResume,
+}: {
+	elapsedSeconds: number;
+	started: boolean;
+	paused: boolean;
+	busy: boolean;
+	onStartClock: () => void;
+	onPause: () => void;
+	onResume: () => void;
+}) {
+	const action = matchClockAction(started, paused);
+	const playing = action !== MATCH_CLOCK_ACTION.pause;
+
+	function handleClick() {
+		if (busy) {
+			return;
+		}
+
+		switch (action) {
+			case MATCH_CLOCK_ACTION.start:
+				onStartClock();
+				return;
+			case MATCH_CLOCK_ACTION.resume:
+				onResume();
+				return;
+			case MATCH_CLOCK_ACTION.pause:
+				onPause();
+				return;
+			default: {
+				const _exhaustive: never = action;
+				return _exhaustive;
+			}
+		}
+	}
+
+	return (
+		<button
+			type="button"
+			disabled={busy}
+			aria-label={EVENT_MATCH_CLOCK_LABEL[action]}
+			onClick={handleClick}
+			className="flex w-full shrink-0 flex-col items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 disabled:opacity-50"
+		>
+			<span className="w-full text-center text-4xl font-semibold tabular-nums tracking-tight text-fg">
+				{formatMatchClock(elapsedSeconds)}
+			</span>
+			<span
+				className={`inline-flex items-center gap-2 text-sm font-medium ${playing ? "text-pitch-fg" : "text-fg-muted"}`}
+			>
+				{playing && <Play className="size-4" />}
+				{!playing && <Pause className="size-4" />}
+				{EVENT_MATCH_CLOCK_LABEL[action]}
+			</span>
+		</button>
+	);
+}
+
 export function ChampionshipEventPlay({
 	event,
 	match,
@@ -363,13 +533,20 @@ export function ChampionshipEventPlay({
 	undoError,
 	ending,
 	endError,
+	clockError,
+	pausing,
 	onStart,
 	onSetPlayer,
-	onSetGoalkeeper,
 	onAddGoal,
 	onUndoGoal,
 	onEnd,
 	onNext,
+	onStartClock,
+	onPause,
+	onResume,
+	onChangeTeamColor,
+	savingColor,
+	colorError,
 }: ChampionshipEventPlayProps) {
 	const rosterById = new Map(players.map((player) => [player.id, player]));
 	const teamById = new Map(event.teams.map((team) => [team.id, team]));
@@ -382,13 +559,18 @@ export function ChampionshipEventPlay({
 	const [goalTarget, setGoalTarget] = useState<GoalTarget | null>(null);
 	const [ownGoalTeamId, setOwnGoalTeamId] = useState<number | null>(null);
 	const [endIntent, setEndIntent] = useState<EventMatchEndIntent | null>(null);
-	const busy = starting || savingPlayer || savingGoal || undoing || ending;
+	const [colorTeam, setColorTeam] = useState<ChampionshipEventTeam | null>(
+		null,
+	);
+	const busy =
+		starting || savingPlayer || savingGoal || undoing || ending || pausing;
+	const elapsedSeconds = useMatchClock(match);
 	const canStartSelected = canConfirmMatchTeams(selected);
 
 	if (!match) {
 		return (
-			<div className="space-y-4">
-				<ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+			<div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+				<ul className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
 					{event.teams.map((team) => {
 						const pickIndex = selected.indexOf(team.id);
 						const pickOrder = pickIndex >= 0 ? pickIndex + 1 : null;
@@ -408,26 +590,68 @@ export function ChampionshipEventPlay({
 
 										setSelected(toggleMatchTeamSelection(selected, team.id));
 									}}
+									onLongPress={() => {
+										if (starting) {
+											return;
+										}
+
+										setColorTeam(team);
+									}}
 								/>
 							</li>
 						);
 					})}
 				</ul>
-				{startError && <p className={ERROR_CLASS}>{startError}</p>}
-				<Button
-					disabled={starting || !canStartSelected}
-					onClick={() => {
-						const teamAId = selected[0];
-						const teamBId = selected[1];
-						if (teamAId === undefined || teamBId === undefined) {
-							return;
-						}
+				<div className="shrink-0 space-y-2 pt-2">
+					{startError && <p className={ERROR_CLASS}>{startError}</p>}
+					<div className="flex justify-end">
+						<Button
+							className="w-full md:w-auto"
+							disabled={starting || !canStartSelected}
+							onClick={() => {
+								const teamAId = selected[0];
+								const teamBId = selected[1];
+								if (teamAId === undefined || teamBId === undefined) {
+									return;
+								}
 
-						void onStart(teamAId, teamBId);
-					}}
-				>
-					{EVENT_ACTION.startMatch}
-				</Button>
+								void onStart(teamAId, teamBId);
+							}}
+						>
+							{EVENT_ACTION.startMatch}
+						</Button>
+					</div>
+				</div>
+				{colorTeam && (
+					<EventTeamColorModal
+						color={colorTeam.color}
+						usedColors={event.teams
+							.filter((team) => team.id !== colorTeam.id)
+							.flatMap((team) => (team.color === null ? [] : [team.color]))}
+						isPending={savingColor}
+						errorMessage={colorError}
+						onCancel={() => {
+							if (savingColor) {
+								return;
+							}
+
+							setColorTeam(null);
+						}}
+						onSelect={async (color) => {
+							if (color === colorTeam.color) {
+								setColorTeam(null);
+								return;
+							}
+
+							try {
+								await onChangeTeamColor(colorTeam.id, color);
+								setColorTeam(null);
+							} catch {
+								return;
+							}
+						}}
+					/>
+				)}
 			</div>
 		);
 	}
@@ -486,7 +710,7 @@ export function ChampionshipEventPlay({
 		: EVENT_ACTION.fillSlot;
 
 	return (
-		<div className="flex flex-col gap-3">
+		<div className="flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden">
 			<MatchTeamBlock
 				color={teamA.color}
 				sortOrder={teamA.sort_order}
@@ -494,10 +718,6 @@ export function ChampionshipEventPlay({
 					match.players,
 					match.team_a_id,
 					event.players_per_team,
-				)}
-				substituted={matchSubstitutedTeamPlayers(
-					match.players,
-					match.team_a_id,
 				)}
 				rosterById={rosterById}
 				disabled={busy}
@@ -515,62 +735,88 @@ export function ChampionshipEventPlay({
 
 					setSlotTarget({ teamId: match.team_a_id, slot });
 				}}
-				onSetGoalkeeper={(player) => {
-					if (busy) {
-						return;
-					}
-
-					void onSetGoalkeeper(match.team_a_id, player.player_id);
-				}}
 			/>
-			<div className={MATCH_GOAL_TIMELINE_GRID_CLASS}>
-				<p className="flex min-w-0 items-center justify-end gap-1 text-sm font-medium text-fg">
-					<OwnGoalButton
-						disabled={busy}
-						onClick={() => {
-							if (busy) {
-								return;
-							}
+			<div className="flex shrink-0 flex-col gap-2">
+				<div className={MATCH_GOAL_TIMELINE_GRID_CLASS}>
+					<p className="flex min-w-0 items-center justify-end gap-1 text-sm font-medium text-fg">
+						<OwnGoalButton
+							disabled={busy}
+							onClick={() => {
+								if (busy) {
+									return;
+								}
 
-							setOwnGoalTeamId(match.team_a_id);
-						}}
-					/>
-					<span className="truncate">{starA}</span>
-				</p>
-				<p className="text-2xl font-semibold tabular-nums text-fg">
-					{formatMatchScore(score.teamA, score.teamB)}
-				</p>
-				<p className="flex min-w-0 items-center justify-start gap-1 text-sm font-medium text-fg">
-					<span className="truncate">{starB}</span>
-					<OwnGoalButton
-						disabled={busy}
-						onClick={() => {
-							if (busy) {
-								return;
-							}
+								setOwnGoalTeamId(match.team_a_id);
+							}}
+						/>
+						<span className="truncate">{starA}</span>
+					</p>
+					<p className="text-2xl font-semibold tabular-nums text-fg">
+						{formatMatchScore(score.teamA, score.teamB)}
+					</p>
+					<p className="flex min-w-0 items-center justify-start gap-1 text-sm font-medium text-fg">
+						<span className="truncate">{starB}</span>
+						<OwnGoalButton
+							disabled={busy}
+							onClick={() => {
+								if (busy) {
+									return;
+								}
 
-							setOwnGoalTeamId(match.team_b_id);
-						}}
-					/>
-				</p>
-				<MatchGoalTimeline
-					goals={match.goals}
-					teamAPlayerIds={teamAIds}
-					undoDisabled={busy}
-					onUndoGoal={(goalId) => {
+								setOwnGoalTeamId(match.team_b_id);
+							}}
+						/>
+					</p>
+				</div>
+				<MatchClockBar
+					elapsedSeconds={elapsedSeconds}
+					started={matchClockIsStarted(match)}
+					paused={matchClockIsPaused(match)}
+					busy={busy}
+					onStartClock={() => {
 						if (busy) {
 							return;
 						}
 
-						void onUndoGoal(goalId);
+						void onStartClock();
 					}}
-					playerName={(playerId) => {
-						const row = matchPlayerById.get(playerId);
-						return playerVisibleName(
-							resolvePlayer(playerId, row?.display_name ?? "", rosterById),
-						);
+					onPause={() => {
+						if (busy) {
+							return;
+						}
+
+						void onPause();
+					}}
+					onResume={() => {
+						if (busy) {
+							return;
+						}
+
+						void onResume();
 					}}
 				/>
+				<div className="max-h-16 overflow-y-auto">
+					<div className={MATCH_GOAL_TIMELINE_GRID_CLASS}>
+						<MatchGoalTimeline
+							goals={match.goals}
+							teamAPlayerIds={teamAIds}
+							undoDisabled={busy}
+							onUndoGoal={(goalId) => {
+								if (busy) {
+									return;
+								}
+
+								void onUndoGoal(goalId);
+							}}
+							playerName={(playerId) => {
+								const row = matchPlayerById.get(playerId);
+								return playerVisibleName(
+									resolvePlayer(playerId, row?.display_name ?? "", rosterById),
+								);
+							}}
+						/>
+					</div>
+				</div>
 			</div>
 			<MatchTeamBlock
 				color={teamB.color}
@@ -579,10 +825,6 @@ export function ChampionshipEventPlay({
 					match.players,
 					match.team_b_id,
 					event.players_per_team,
-				)}
-				substituted={matchSubstitutedTeamPlayers(
-					match.players,
-					match.team_b_id,
 				)}
 				rosterById={rosterById}
 				disabled={busy}
@@ -600,22 +842,16 @@ export function ChampionshipEventPlay({
 
 					setSlotTarget({ teamId: match.team_b_id, slot });
 				}}
-				onSetGoalkeeper={(player) => {
-					if (busy) {
-						return;
-					}
-
-					void onSetGoalkeeper(match.team_b_id, player.player_id);
-				}}
 			/>
-			{(playerError || goalError || undoError || endError) && (
-				<p className={ERROR_CLASS}>
-					{playerError || goalError || undoError || endError}
+			{(playerError || goalError || undoError || endError || clockError) && (
+				<p className={`shrink-0 ${ERROR_CLASS}`}>
+					{playerError || goalError || undoError || endError || clockError}
 				</p>
 			)}
-			<div className="mt-auto grid grid-cols-2 gap-2">
+			<div className="grid shrink-0 grid-cols-2 gap-2">
 				<Button
 					variant={BUTTON_VARIANT.ghost}
+					className="h-14 text-base"
 					disabled={busy}
 					onClick={() => {
 						if (busy) {
@@ -628,6 +864,7 @@ export function ChampionshipEventPlay({
 					{EVENT_ACTION.endMatch}
 				</Button>
 				<Button
+					className="h-14 text-base"
 					disabled={busy}
 					onClick={() => {
 						if (busy) {

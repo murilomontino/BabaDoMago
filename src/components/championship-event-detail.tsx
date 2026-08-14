@@ -489,20 +489,7 @@ export function ChampionshipEventDetail({
 		<article className="space-y-6">
 			{(showStartMatch || canManage) && (
 				<div className="flex flex-wrap items-center gap-2">
-					{showStartMatch && (
-						<Link
-							to={ROUTES.championshipEventPlay}
-							params={{
-								championshipId: String(event.championship_id),
-								eventId: String(event.id),
-							}}
-							className="inline-flex items-center justify-center gap-2 rounded-lg bg-pitch px-4 py-2 text-sm font-medium text-white hover:bg-pitch-dark"
-						>
-							<Play className="size-4" />
-							{openMatch ? EVENT_ACTION.continueMatch : EVENT_ACTION.startMatch}
-						</Link>
-					)}
-					<div className="ml-auto flex items-center gap-1">
+					<div className="flex items-center gap-1">
 						{showStartMatch && (
 							<IconTooltipButton
 								showLabel
@@ -537,6 +524,19 @@ export function ChampionshipEventDetail({
 							/>
 						)}
 					</div>
+					{showStartMatch && (
+						<Link
+							to={ROUTES.championshipEventPlay}
+							params={{
+								championshipId: String(event.championship_id),
+								eventId: String(event.id),
+							}}
+							className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-pitch px-4 py-2 text-sm font-medium text-white hover:bg-pitch-dark md:ml-auto md:w-auto"
+						>
+							<Play className="size-4" />
+							{openMatch ? EVENT_ACTION.continueMatch : EVENT_ACTION.startMatch}
+						</Link>
+					)}
 				</div>
 			)}
 			{showEventTabs && (

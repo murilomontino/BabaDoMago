@@ -100,27 +100,39 @@ export type Database = {
 			championship_event_matches: {
 				Row: {
 					created_at: string;
+					duration_seconds: number;
 					ended_at: string | null;
 					event_id: number;
 					id: number;
+					pause_accumulated_seconds: number;
+					paused_at: string | null;
+					started_at: string | null;
 					team_a_id: number;
 					team_b_id: number;
 					winner_team_id: number | null;
 				};
 				Insert: {
 					created_at?: string;
+					duration_seconds: number;
 					ended_at?: string | null;
 					event_id: number;
 					id?: number;
+					pause_accumulated_seconds?: number;
+					paused_at?: string | null;
+					started_at?: string | null;
 					team_a_id: number;
 					team_b_id: number;
 					winner_team_id?: number | null;
 				};
 				Update: {
 					created_at?: string;
+					duration_seconds?: number;
 					ended_at?: string | null;
 					event_id?: number;
 					id?: number;
+					pause_accumulated_seconds?: number;
+					paused_at?: string | null;
+					started_at?: string | null;
 					team_a_id?: number;
 					team_b_id?: number;
 					winner_team_id?: number | null;
@@ -473,14 +485,24 @@ export type Database = {
 				};
 				Returns: Json;
 			};
-			add_championship_event_match: {
-				Args: {
-					event_id: number;
-					team_a_id: number;
-					team_b_id: number;
-				};
-				Returns: Json;
-			};
+			add_championship_event_match:
+				| {
+						Args: {
+							event_id: number;
+							team_a_id: number;
+							team_b_id: number;
+						};
+						Returns: Json;
+				  }
+				| {
+						Args: {
+							event_id: number;
+							team_a_id: number;
+							team_b_id: number;
+							duration_seconds: number;
+						};
+						Returns: Json;
+				  };
 			add_championship_event_goal: {
 				Args: {
 					match_id: number;
@@ -600,12 +622,34 @@ export type Database = {
 				};
 				Returns: Json;
 			};
-			start_championship_event_match: {
-				Args: {
-					event_id: number;
-					team_a_id: number;
-					team_b_id: number;
-				};
+			start_championship_event_match:
+				| {
+						Args: {
+							event_id: number;
+							team_a_id: number;
+							team_b_id: number;
+						};
+						Returns: Json;
+				  }
+				| {
+						Args: {
+							event_id: number;
+							team_a_id: number;
+							team_b_id: number;
+							duration_seconds: number;
+						};
+						Returns: Json;
+				  };
+			start_championship_event_clock: {
+				Args: { match_id: number };
+				Returns: Json;
+			};
+			pause_championship_event_match: {
+				Args: { match_id: number };
+				Returns: Json;
+			};
+			resume_championship_event_match: {
+				Args: { match_id: number };
 				Returns: Json;
 			};
 			save_championship_event_attendance: {

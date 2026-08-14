@@ -34,6 +34,30 @@ export const EVENT_MATCH_LABEL = {
 	select: "Selecionar",
 } as const;
 
+export const EVENT_MATCH_DURATION = {
+	minMinutes: 1,
+	maxMinutes: 90,
+	defaultMinutes: 7,
+	presetsMinutes: [5, 7, 10],
+} as const;
+
+export const EVENT_MATCH_CLOCK_LABEL = {
+	duration: "Duração",
+	minutes: "min",
+	start: "Iniciar",
+	pause: "Pausar",
+	resume: "Proseguir",
+	ended: "Encerrado",
+} as const;
+
+export type MatchClockFields = {
+	duration_seconds: number;
+	started_at: string | null;
+	paused_at: string | null;
+	pause_accumulated_seconds: number;
+	ended_at: string | null;
+};
+
 export const EVENT_MATCH_END_INTENT = {
 	end: "end",
 	next: "next",
@@ -81,9 +105,14 @@ export type EventGoalKind =
 export const EVENT_GOAL_LABEL = {
 	goal: "Gol",
 	assist: "Assistência",
+	whoAssisted: "Quem deu a assistência?",
 	none: "Sem assistência",
 	ownGoal: "Gol contra",
 } as const;
+
+export function eventGoalScorerHint(scorerName: string): string {
+	return `Gol de ${scorerName}`;
+}
 
 export const EVENT_GOAL_KINDS = [
 	EVENT_GOAL_KIND.none,
@@ -340,6 +369,80 @@ export function matchGoalPayload(draft: MatchGoalDraft): {
 
 export function formatMatchScore(scoreA: number, scoreB: number): string {
 	return `${scoreA} x ${scoreB}`;
+}
+
+export function matchDurationSeconds(minutes: number): number {
+	return minutes * 60;
+}
+
+export function clampMatchDurationMinutes(minutes: number): number {
+	if (!Number.isFinite(minutes)) {
+		return EVENT_MATCH_DURATION.defaultMinutes;
+	}
+
+	if (minutes < EVENT_MATCH_DURATION.minMinutes) {
+		return EVENT_MATCH_DURATION.minMinutes;
+	}
+
+	if (minutes > EVENT_MATCH_DURATION.maxMinutes) {
+		return EVENT_MATCH_DURATION.maxMinutes;
+	}
+
+	return Math.floor(minutes);
+}
+
+export function matchClockIsStarted(
+	match: Pick<MatchClockFields, "started_at" | "ended_at">,
+): boolean {
+	return match.ended_at === null && match.started_at !== null;
+}
+
+export function matchClockIsPaused(
+	match: Pick<MatchClockFields, "paused_at" | "ended_at">,
+): boolean {
+	return match.ended_at === null && match.paused_at !== null;
+}
+
+export function matchClockFreezeAtMs(
+	match: MatchClockFields,
+	nowMs: number,
+): number {
+	if (match.paused_at) {
+		return Date.parse(match.paused_at);
+	}
+
+	if (match.ended_at) {
+		return Date.parse(match.ended_at);
+	}
+
+	return nowMs;
+}
+
+export function matchClockElapsedSeconds(
+	match: MatchClockFields,
+	nowMs: number,
+): number {
+	if (match.started_at === null) {
+		return 0;
+	}
+
+	const freezeAt = matchClockFreezeAtMs(match, nowMs);
+	const startedAt = Date.parse(match.started_at);
+	if (!Number.isFinite(freezeAt) || !Number.isFinite(startedAt)) {
+		return 0;
+	}
+
+	return Math.max(
+		0,
+		Math.floor((freezeAt - startedAt) / 1000) - match.pause_accumulated_seconds,
+	);
+}
+
+export function formatMatchClock(totalSeconds: number): string {
+	const safe = Math.max(0, Math.floor(totalSeconds));
+	const minutes = Math.floor(safe / 60);
+	const seconds = safe % 60;
+	return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 export function matchTeamStarName(

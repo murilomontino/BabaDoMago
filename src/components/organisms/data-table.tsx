@@ -210,7 +210,7 @@ export function DataTable<TData extends RowData>({
 								</div>
 							)}
 							{actions.length > 0 && (
-								<div className="mt-2 flex flex-nowrap items-center justify-end">
+								<div className="mt-2 w-full">
 									{actions.map((cell) => (
 										<div key={cell.id}>
 											<table.FlexRender cell={cell} />

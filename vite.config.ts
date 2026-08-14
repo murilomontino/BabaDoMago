@@ -5,6 +5,9 @@ import path from "node:path";
 import { defineConfig } from "vite";
 
 export default defineConfig({
+	server: {
+		allowedHosts: [".ngrok-free.app"],
+	},
 	resolve: {
 		alias: {
 			"@": path.resolve(import.meta.dirname, "./src"),

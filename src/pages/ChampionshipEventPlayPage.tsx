@@ -1,29 +1,30 @@
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
 import { ChampionshipEventPlay } from "@/components/championship-event-play";
 import { MATCH_GOAL_TIMELINE_GRID_CLASS } from "@/components/molecules/match-goal-timeline";
 import { TeamCardSkeleton } from "@/components/molecules/team-card-skeleton";
-import { PageHeader } from "@/components/page-header";
 import { canStartEventMatch, EVENT_ACTION } from "@/const/championship-event";
-import {
-	EVENT_MATCH_LABEL,
-	openEventMatch,
-} from "@/const/championship-event-match";
+import { openEventMatch } from "@/const/championship-event-match";
 import { ROUTES } from "@/const/routes";
 import { SKELETON_LABEL } from "@/const/skeleton";
 import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
 import {
 	useAddChampionshipEventGoal,
 	useChampionshipEvent,
+	useChampionshipEventRealtime,
 	useEndChampionshipEventMatch,
-	useSetChampionshipEventMatchGoalkeeper,
+	usePauseChampionshipEventMatch,
+	useResumeChampionshipEventMatch,
 	useSetChampionshipEventMatchPlayer,
+	useStartChampionshipEventClock,
 	useStartChampionshipEventMatch,
 	useUndoChampionshipEventGoal,
+	useUpdateChampionshipEventTeam,
 } from "@/hooks/championships/use-championship-events";
 import { useChampionship } from "@/hooks/championships/use-championships";
+
+const PLAY_SHELL_CLASS = "flex h-dvh flex-col overflow-hidden p-2";
 
 export function ChampionshipEventPlayPage() {
 	const { championshipId: championshipIdParam, eventId: eventIdParam } =
@@ -36,34 +37,37 @@ export function ChampionshipEventPlayPage() {
 	const championshipQuery = useChampionship(championshipId);
 	const eventQuery = useChampionshipEvent(championshipId, eventId);
 	const startMatch = useStartChampionshipEventMatch(championshipId);
+	const updateTeam = useUpdateChampionshipEventTeam(championshipId);
 	const setPlayer = useSetChampionshipEventMatchPlayer(championshipId);
-	const setGoalkeeper = useSetChampionshipEventMatchGoalkeeper(championshipId);
 	const addGoal = useAddChampionshipEventGoal(championshipId);
 	const undoGoal = useUndoChampionshipEventGoal(championshipId);
+	const startClock = useStartChampionshipEventClock(championshipId);
+	const pauseMatch = usePauseChampionshipEventMatch(championshipId);
+	const resumeMatch = useResumeChampionshipEventMatch(championshipId);
 	const endMatch = useEndChampionshipEventMatch(championshipId);
+	useChampionshipEventRealtime(championshipId, eventId);
 
 	if (championshipQuery.isPending || eventQuery.isPending) {
-		return (
-			<ChampionshipEventPlayPageSkeleton
-				championshipId={championshipId}
-				eventId={eventId}
-			/>
-		);
+		return <ChampionshipEventPlayPageSkeleton />;
 	}
 
 	if (championshipQuery.isError) {
 		return (
-			<p className={ERROR_CLASS}>
-				Erro ao carregar campeonato: {championshipQuery.error.message}
-			</p>
+			<main className={PLAY_SHELL_CLASS}>
+				<p className={ERROR_CLASS}>
+					Erro ao carregar campeonato: {championshipQuery.error.message}
+				</p>
+			</main>
 		);
 	}
 
 	if (eventQuery.isError) {
 		return (
-			<p className={ERROR_CLASS}>
-				Erro ao carregar rodada: {eventQuery.error.message}
-			</p>
+			<main className={PLAY_SHELL_CLASS}>
+				<p className={ERROR_CLASS}>
+					Erro ao carregar rodada: {eventQuery.error.message}
+				</p>
+			</main>
 		);
 	}
 
@@ -88,146 +92,147 @@ export function ChampionshipEventPlayPage() {
 	}
 
 	return (
-		<main>
-			<PageHeader
-				title={
-					openMatch ? EVENT_MATCH_LABEL.open : EVENT_MATCH_LABEL.selectTeams
-				}
-				action={
-					<Link
-						to={ROUTES.championshipEvent}
-						params={{
-							championshipId: String(championshipId),
-							eventId: String(eventId),
-						}}
-						className="inline-flex items-center gap-1.5 text-sm font-medium text-fg-muted hover:text-pitch-fg"
-					>
-						<ArrowLeft className="size-4" />
-						Voltar
-					</Link>
-				}
-			/>
+		<main className={PLAY_SHELL_CLASS}>
 			{!canStart && !openMatch && (
 				<p className="text-sm text-fg-muted">
 					{EVENT_ACTION.startMatch} indisponível.
 				</p>
 			)}
 			{(canStart || openMatch) && (
-				<ChampionshipEventPlay
-					event={event}
-					match={openMatch}
-					players={activePlayers}
-					starting={startMatch.isPending}
-					startError={startMatch.isError ? startMatch.error.message : null}
-					savingPlayer={setPlayer.isPending || setGoalkeeper.isPending}
-					playerError={
-						(setPlayer.isError && setPlayer.error.message) ||
-						(setGoalkeeper.isError && setGoalkeeper.error.message) ||
-						null
-					}
-					savingGoal={addGoal.isPending}
-					goalError={addGoal.isError ? addGoal.error.message : null}
-					undoing={undoGoal.isPending}
-					undoError={undoGoal.isError ? undoGoal.error.message : null}
-					ending={endMatch.isPending}
-					endError={endMatch.isError ? endMatch.error.message : null}
-					onStart={async (teamAId, teamBId) => {
-						await startMatch.mutateAsync({
-							eventId: event.id,
-							teamAId,
-							teamBId,
-						});
-					}}
-					onSetPlayer={async (teamId, slot, playerId, includeStats) => {
-						if (!openMatch) {
-							return;
+				<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+					<ChampionshipEventPlay
+						event={event}
+						match={openMatch}
+						players={activePlayers}
+						starting={startMatch.isPending}
+						startError={startMatch.isError ? startMatch.error.message : null}
+						savingPlayer={setPlayer.isPending}
+						playerError={(setPlayer.isError && setPlayer.error.message) || null}
+						savingGoal={addGoal.isPending}
+						goalError={addGoal.isError ? addGoal.error.message : null}
+						undoing={undoGoal.isPending}
+						undoError={undoGoal.isError ? undoGoal.error.message : null}
+						ending={endMatch.isPending}
+						endError={endMatch.isError ? endMatch.error.message : null}
+						clockError={
+							(startClock.isError && startClock.error.message) ||
+							(pauseMatch.isError && pauseMatch.error.message) ||
+							(resumeMatch.isError && resumeMatch.error.message) ||
+							null
 						}
-
-						await setPlayer.mutateAsync({
-							matchId: openMatch.id,
-							teamId,
-							slot,
-							playerId,
-							includeStats,
-						});
-					}}
-					onSetGoalkeeper={async (teamId, playerId) => {
-						if (!openMatch) {
-							return;
+						pausing={
+							startClock.isPending ||
+							pauseMatch.isPending ||
+							resumeMatch.isPending
 						}
-
-						await setGoalkeeper.mutateAsync({
-							matchId: openMatch.id,
-							teamId,
-							playerId,
-						});
-					}}
-					onAddGoal={async (values) => {
-						if (!openMatch) {
-							return;
+						onStart={async (teamAId, teamBId) => {
+							await startMatch.mutateAsync({
+								eventId: event.id,
+								teamAId,
+								teamBId,
+							});
+						}}
+						savingColor={updateTeam.isPending}
+						colorError={
+							(updateTeam.isError && updateTeam.error.message) || null
 						}
+						onChangeTeamColor={async (teamId, color) => {
+							const team = event.teams.find((item) => item.id === teamId);
+							if (!team) {
+								return;
+							}
 
-						await addGoal.mutateAsync({
-							matchId: openMatch.id,
-							...values,
-						});
-					}}
-					onUndoGoal={async (goalId) => {
-						if (!openMatch) {
-							return;
-						}
+							await updateTeam.mutateAsync({
+								teamId,
+								color,
+								playerIds: team.players.map((player) => player.player_id),
+								goalkeeperId:
+									team.players.find((player) => player.is_goalkeeper)
+										?.player_id ?? 0,
+							});
+						}}
+						onSetPlayer={async (teamId, slot, playerId, includeStats) => {
+							if (!openMatch) {
+								return;
+							}
 
-						await undoGoal.mutateAsync({
-							matchId: openMatch.id,
-							goalId,
-						});
-					}}
-					onEnd={async () => {
-						if (!openMatch) {
-							return;
-						}
+							await setPlayer.mutateAsync({
+								matchId: openMatch.id,
+								teamId,
+								slot,
+								playerId,
+								includeStats,
+							});
+						}}
+						onAddGoal={async (values) => {
+							if (!openMatch) {
+								return;
+							}
 
-						await endMatch.mutateAsync(openMatch.id);
-						await goToEvent();
-					}}
-					onNext={async () => {
-						if (!openMatch) {
-							return;
-						}
+							await addGoal.mutateAsync({
+								matchId: openMatch.id,
+								...values,
+							});
+						}}
+						onUndoGoal={async (goalId) => {
+							if (!openMatch) {
+								return;
+							}
 
-						await endMatch.mutateAsync(openMatch.id);
-					}}
-				/>
+							await undoGoal.mutateAsync({
+								matchId: openMatch.id,
+								goalId,
+							});
+						}}
+						onEnd={async () => {
+							if (!openMatch) {
+								return;
+							}
+
+							await endMatch.mutateAsync(openMatch.id);
+							await goToEvent();
+						}}
+						onNext={async () => {
+							if (!openMatch) {
+								return;
+							}
+
+							await endMatch.mutateAsync(openMatch.id);
+						}}
+						onStartClock={async () => {
+							if (!openMatch) {
+								return;
+							}
+
+							await startClock.mutateAsync(openMatch.id);
+						}}
+						onPause={async () => {
+							if (!openMatch) {
+								return;
+							}
+
+							await pauseMatch.mutateAsync(openMatch.id);
+						}}
+						onResume={async () => {
+							if (!openMatch) {
+								return;
+							}
+
+							await resumeMatch.mutateAsync(openMatch.id);
+						}}
+					/>
+				</div>
 			)}
 		</main>
 	);
 }
 
-function ChampionshipEventPlayPageSkeleton({
-	championshipId,
-	eventId,
-}: {
-	championshipId: number;
-	eventId: number;
-}) {
+function ChampionshipEventPlayPageSkeleton() {
 	return (
 		<SkeletonRegion label={SKELETON_LABEL.match}>
-			<main>
-				<div className="mb-6 flex items-start justify-between gap-4">
-					<Skeleton className="h-8 w-40" />
-					<Link
-						to={ROUTES.championshipEvent}
-						params={{
-							championshipId: String(championshipId),
-							eventId: String(eventId),
-						}}
-						className="inline-flex items-center gap-1.5 text-sm font-medium text-fg-muted hover:text-pitch-fg"
-					>
-						<ArrowLeft className="size-4" />
-						Voltar
-					</Link>
-				</div>
-				<div className="flex flex-col gap-3">
+			<main className={PLAY_SHELL_CLASS}>
+				<div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+					<Skeleton className="h-12 w-full shrink-0" />
 					<TeamCardSkeleton />
 					<div className={MATCH_GOAL_TIMELINE_GRID_CLASS}>
 						<Skeleton className="h-4 w-24 justify-self-end" />
@@ -235,11 +240,17 @@ function ChampionshipEventPlayPageSkeleton({
 						<Skeleton className="h-4 w-24" />
 					</div>
 					<TeamCardSkeleton />
-					<div className="mt-auto grid grid-cols-2 gap-2">
-						<Button variant={BUTTON_VARIANT.ghost} disabled>
+					<div className="mt-auto grid shrink-0 grid-cols-2 gap-2">
+						<Button
+							variant={BUTTON_VARIANT.ghost}
+							className="h-14 text-base"
+							disabled
+						>
 							{EVENT_ACTION.endMatch}
 						</Button>
-						<Button disabled>{EVENT_ACTION.nextMatch}</Button>
+						<Button className="h-14 text-base" disabled>
+							{EVENT_ACTION.nextMatch}
+						</Button>
 					</div>
 				</div>
 			</main>

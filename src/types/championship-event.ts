@@ -66,6 +66,10 @@ export type ChampionshipEventMatch = {
 	created_at: string;
 	ended_at: string | null;
 	winner_team_id: number | null;
+	duration_seconds: number;
+	started_at: string | null;
+	paused_at: string | null;
+	pause_accumulated_seconds: number;
 	players: ChampionshipEventMatchPlayer[];
 	goals: ChampionshipEventGoal[];
 };

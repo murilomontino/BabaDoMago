@@ -5,25 +5,34 @@ import type {
 import { CHAMPIONSHIP_EVENT } from "./championship-event.ts";
 import {
 	canConfirmMatchTeams,
+	clampMatchDurationMinutes,
 	EVENT_GOAL_KIND,
 	EVENT_GOAL_LABEL,
+	EVENT_MATCH_CLOCK_LABEL,
+	EVENT_MATCH_DURATION,
 	EVENT_MATCH_END_INTENT,
 	EVENT_MATCH_END_LABEL,
 	EVENT_MATCH_LABEL,
 	EVENT_MATCH_REOPEN_LABEL,
 	EVENT_MATCH_STATUS,
 	EVENT_MATCH_SUBSTITUTION_LABEL,
+	eventGoalScorerHint,
 	eventMatchEndConfirmLabel,
 	eventMatchEndTitle,
 	eventMatchStatus,
 	eventMatchSubstitutionTitle,
 	formatGoalTimelineLine,
+	formatMatchClock,
 	formatMatchScore,
 	isMatchSlotGoalkeeper,
 	isOpenMatch,
 	lastMatchGoal,
 	matchAssistCandidates,
 	matchBenchPlayerIds,
+	matchClockElapsedSeconds,
+	matchClockIsPaused,
+	matchClockIsStarted,
+	matchDurationSeconds,
 	matchEndWinnerLabel,
 	matchGoalForTeamA,
 	matchGoalPayload,
@@ -187,6 +196,7 @@ check(
 	"Contar estatísticas de Ana?",
 	"sub title",
 );
+check(eventGoalScorerHint("Ana"), "Gol de Ana", "goal scorer hint");
 check(EVENT_MATCH_SUBSTITUTION_LABEL.chip, "Substituído", "sub chip");
 
 const teamA = new Set([1, 2]);
@@ -423,5 +433,107 @@ check(
 );
 check(EVENT_MATCH_REOPEN_LABEL.title, "Editar partida", "reopen title");
 check(EVENT_MATCH_REOPEN_LABEL.hint.includes("edição"), true, "reopen hint");
+
+const clockBase = {
+	duration_seconds: 420,
+	started_at: "2026-08-14T12:00:00.000Z",
+	paused_at: null as string | null,
+	pause_accumulated_seconds: 0,
+	ended_at: null as string | null,
+};
+const startMs = Date.parse(clockBase.started_at);
+
+check(matchDurationSeconds(7), 420, "duration seconds");
+check(
+	EVENT_MATCH_DURATION.presetsMinutes.join(","),
+	"5,7,10",
+	"duration presets",
+);
+check(
+	clampMatchDurationMinutes(0),
+	EVENT_MATCH_DURATION.minMinutes,
+	"clamp min",
+);
+check(
+	clampMatchDurationMinutes(100),
+	EVENT_MATCH_DURATION.maxMinutes,
+	"clamp max",
+);
+check(
+	clampMatchDurationMinutes(Number.NaN),
+	EVENT_MATCH_DURATION.defaultMinutes,
+	"clamp nan",
+);
+check(formatMatchClock(0), "00:00", "clock zero");
+check(formatMatchClock(65), "01:05", "clock 65");
+check(formatMatchClock(420), "07:00", "clock 7min");
+check(EVENT_MATCH_CLOCK_LABEL.start, "Iniciar", "start label");
+check(EVENT_MATCH_CLOCK_LABEL.pause, "Pausar", "pause label");
+check(matchClockElapsedSeconds(clockBase, startMs), 0, "elapsed at start");
+check(
+	matchClockElapsedSeconds(clockBase, startMs + 10_000),
+	10,
+	"elapsed after 10s",
+);
+check(
+	matchClockElapsedSeconds(
+		{ ...clockBase, paused_at: "2026-08-14T12:00:10.000Z" },
+		startMs + 60_000,
+	),
+	10,
+	"paused freeze",
+);
+check(
+	matchClockIsPaused({
+		paused_at: "2026-08-14T12:00:10.000Z",
+		ended_at: null,
+	}),
+	true,
+	"is paused",
+);
+check(
+	matchClockIsPaused({ paused_at: null, ended_at: null }),
+	false,
+	"is running",
+);
+check(
+	matchClockElapsedSeconds(
+		{ ...clockBase, ended_at: "2026-08-14T12:01:00.000Z" },
+		startMs + 120_000,
+	),
+	60,
+	"ended freeze",
+);
+check(
+	matchClockElapsedSeconds(
+		{ ...clockBase, pause_accumulated_seconds: 30 },
+		startMs + 40_000,
+	),
+	10,
+	"accumulated pause",
+);
+check(
+	matchClockElapsedSeconds(clockBase, startMs + 500_000),
+	500,
+	"counts past duration",
+);
+check(
+	matchClockElapsedSeconds({ ...clockBase, started_at: null }, startMs),
+	0,
+	"elapsed before start",
+);
+check(
+	matchClockIsStarted({ started_at: null, ended_at: null }),
+	false,
+	"not started",
+);
+check(
+	matchClockIsStarted({
+		started_at: clockBase.started_at,
+		ended_at: null,
+	}),
+	true,
+	"is started",
+);
 
 console.log("championship-event-match ok");

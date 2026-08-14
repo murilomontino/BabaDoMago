@@ -384,19 +384,19 @@ export function ChampionshipRoster({
 					{visiblePlayers.map((player) => (
 						<li
 							key={player.id}
-							className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+							className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 md:flex-row md:items-center md:justify-between"
 						>
-							<RosterPlayerCell
-								{...rosterPlayerCellProps(player, playerCellShared)}
-							/>
-							<div className="flex items-center gap-1">
+							<div className="flex min-w-0 flex-1 items-center justify-between gap-3">
+								<RosterPlayerCell
+									{...rosterPlayerCellProps(player, playerCellShared)}
+								/>
 								<RosterPlayerRating
 									{...rosterPlayerRatingProps(player, playerRatingShared)}
 								/>
-								<RosterPlayerActions
-									{...rosterPlayerActionsProps(player, playerActionsShared)}
-								/>
 							</div>
+							<RosterPlayerActions
+								{...rosterPlayerActionsProps(player, playerActionsShared)}
+							/>
 						</li>
 					))}
 				</ul>

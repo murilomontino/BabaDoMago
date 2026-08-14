@@ -5,6 +5,10 @@ import {
 	parsePlayersPerTeam,
 } from "@/const/championship-event";
 import {
+	EVENT_MATCH_DURATION,
+	matchDurationSeconds,
+} from "@/const/championship-event-match";
+import {
 	type EventTeamColor,
 	isEventTeamColor,
 	normalizeEventTeamColor,
@@ -65,6 +69,10 @@ const EVENT_COLUMNS = `
 		created_at,
 		ended_at,
 		winner_team_id,
+		duration_seconds,
+		started_at,
+		paused_at,
+		pause_accumulated_seconds,
 		championship_event_match_players (
 			id,
 			match_id,
@@ -73,7 +81,9 @@ const EVENT_COLUMNS = `
 			player_id,
 			display_name,
 			is_goalkeeper,
-			slot
+			slot,
+			is_substituted,
+			include_stats
 		),
 		championship_event_goals (
 			id,
@@ -256,6 +266,10 @@ function asMatch(value: unknown): ChampionshipEventMatch {
 		ended_at: typeof row.ended_at === "string" ? row.ended_at : null,
 		winner_team_id:
 			typeof row.winner_team_id === "number" ? row.winner_team_id : null,
+		duration_seconds: Number(row.duration_seconds ?? 420),
+		started_at: typeof row.started_at === "string" ? row.started_at : null,
+		paused_at: typeof row.paused_at === "string" ? row.paused_at : null,
+		pause_accumulated_seconds: Number(row.pause_accumulated_seconds ?? 0),
 		players: [...players].sort((left, right) => {
 			if (left.team_id !== right.team_id) {
 				return left.team_id - right.team_id;
@@ -517,6 +531,7 @@ export async function startChampionshipEventMatch(
 		event_id: eventId,
 		team_a_id: teamAId,
 		team_b_id: teamBId,
+		duration_seconds: matchDurationSeconds(EVENT_MATCH_DURATION.defaultMinutes),
 	});
 
 	if (error) {
@@ -530,6 +545,42 @@ export async function addChampionshipEventMatch(
 	teamBId: number,
 ): Promise<void> {
 	await startChampionshipEventMatch(eventId, teamAId, teamBId);
+}
+
+export async function startChampionshipEventClock(
+	matchId: number,
+): Promise<void> {
+	const { error } = await supabase.rpc("start_championship_event_clock", {
+		match_id: matchId,
+	});
+
+	if (error) {
+		throwEventError(error);
+	}
+}
+
+export async function pauseChampionshipEventMatch(
+	matchId: number,
+): Promise<void> {
+	const { error } = await supabase.rpc("pause_championship_event_match", {
+		match_id: matchId,
+	});
+
+	if (error) {
+		throwEventError(error);
+	}
+}
+
+export async function resumeChampionshipEventMatch(
+	matchId: number,
+): Promise<void> {
+	const { error } = await supabase.rpc("resume_championship_event_match", {
+		match_id: matchId,
+	});
+
+	if (error) {
+		throwEventError(error);
+	}
 }
 
 export async function setChampionshipEventMatchPlayer(
