@@ -70,6 +70,7 @@ import { EVENT_TAB, EVENT_TABS } from "@/const/championship-event-tab";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
 import {
 	EVENT_MVP_LABEL,
+	eventMvpPickCandidates,
 	eventMvpPlayerIds,
 	toggleEventMvpPlayerId,
 } from "@/const/event-mvp";
@@ -408,6 +409,12 @@ export function ChampionshipEventDetail({
 		(playerId) =>
 			presentPlayerIdsForEnd === null ||
 			presentPlayerIdsForEnd.includes(playerId),
+	);
+	const selectedMvpIds = event.attendance.flatMap((row) =>
+		row.is_mvp ? [row.player_id] : [],
+	);
+	const attendanceNameByPlayerId = new Map(
+		event.attendance.map((row) => [row.player_id, row.display_name]),
 	);
 	const mvpPlayerIds = endMvpPlayerIds ?? autoMvpPlayerIds;
 	const ratingPreview = eventRatingPreview({
@@ -976,15 +983,23 @@ export function ChampionshipEventDetail({
 			)}
 			{isMvpOpen && (
 				<SetEventMvpModal
-					players={event.attendance.map((row) => ({
-						id: row.player_id,
-						name: playerVisibleName(
-							resolveRosterPlayer(row.player_id, row.display_name, rosterById),
-						),
-					}))}
-					initialPlayerIds={event.attendance.flatMap((row) =>
-						row.is_mvp ? [row.player_id] : [],
+					players={eventMvpPickCandidates(event.attendance, selectedMvpIds).map(
+						(row) => ({
+							id: row.playerId,
+							name: playerVisibleName(
+								resolveRosterPlayer(
+									row.playerId,
+									attendanceNameByPlayerId.get(row.playerId) ?? "",
+									rosterById,
+								),
+							),
+							goals: row.goals,
+							assists: row.assists,
+							wins: row.wins,
+							matches: row.matches,
+						}),
 					)}
+					initialPlayerIds={selectedMvpIds}
 					isPending={settingMvp}
 					errorMessage={setMvpError}
 					onCancel={() => {

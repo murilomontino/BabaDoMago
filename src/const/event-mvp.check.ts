@@ -1,7 +1,9 @@
 import {
 	EVENT_MVP,
 	EVENT_MVP_LABEL,
+	eventMvpCandidates,
 	eventMvpNames,
+	eventMvpPickCandidates,
 	eventMvpPlayerIds,
 	eventMvpStarDelta,
 	toggleEventMvpPlayerId,
@@ -14,11 +16,11 @@ function check(condition: boolean, message: string) {
 }
 
 check(EVENT_MVP.starBonus === 0.1, "star bonus");
+check(EVENT_MVP.candidateLimit === 3, "candidate limit");
 check(EVENT_MVP_LABEL.badge === "MVP", "badge");
 check(EVENT_MVP_LABEL.toggleHint.includes("nota"), "toggle hint");
-check(eventMvpStarDelta(5) === 0.1, "teto 5");
-check(eventMvpStarDelta(20) === 0.4, "teto 20");
-check(eventMvpStarDelta(8) === 0.2, "teto 8");
+check(EVENT_MVP_LABEL.pickHint.includes("3"), "pick hint");
+check(eventMvpStarDelta() === 0.1, "bonus fixo no jogador");
 
 const teamA = {
 	id: 1,
@@ -122,6 +124,42 @@ check(
 		[{ player_id: 10, display_name: "x" }],
 	).join(",") === "Ana",
 	"mvp name uses nickname",
+);
+
+check(
+	eventMvpCandidates([
+		{ player_id: 1, goals: 1, assists: 0, wins: 1, matches: 2 },
+		{ player_id: 2, goals: 3, assists: 1, wins: 0, matches: 2 },
+		{ player_id: 3, goals: 0, assists: 2, wins: 2, matches: 3 },
+		{ player_id: 4, goals: 2, assists: 2, wins: 1, matches: 2 },
+		{ player_id: 5, goals: 0, assists: 0, wins: 0, matches: 4 },
+	])
+		.map((row) => row.playerId)
+		.join(",") === "2,4,3",
+	"top 3 by G+A then G",
+);
+
+check(
+	eventMvpCandidates([
+		{ player_id: 1, goals: 0, assists: 0, wins: 0, matches: 3 },
+		{ player_id: 2, goals: 0, assists: 0, wins: 0, matches: 2 },
+	]).length === 0,
+	"no stats no candidates",
+);
+
+check(
+	eventMvpPickCandidates(
+		[
+			{ player_id: 1, goals: 3, assists: 0, wins: 1, matches: 2 },
+			{ player_id: 2, goals: 2, assists: 0, wins: 1, matches: 2 },
+			{ player_id: 3, goals: 1, assists: 0, wins: 1, matches: 2 },
+			{ player_id: 9, goals: 0, assists: 0, wins: 0, matches: 1 },
+		],
+		[9],
+	)
+		.map((row) => row.playerId)
+		.join(",") === "1,2,3,9",
+	"keep current mvp outside top 3",
 );
 
 console.log("event-mvp ok");

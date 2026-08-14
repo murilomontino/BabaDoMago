@@ -30,10 +30,7 @@ language sql
 immutable
 set search_path = public
 as $$
-	select round(
-		(0.1 / 5) * least(100, greatest(0, championship_event_mvp_star_delta.ceiling)),
-		1
-	);
+	select 0.1;
 $$;
 
 create or replace function public.championship_player_json(

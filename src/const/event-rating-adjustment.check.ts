@@ -160,6 +160,28 @@ const mvpPreview = eventRatingPreview({
 check(mvpPreview[0]?.isMvp, true, "preview marks mvp");
 check(mvpPreview[0]?.to, 4.5, "preview adds mvp bonus");
 
+const highCeilingMvpPreview = eventRatingPreview({
+	attendance: [
+		{
+			player_id: 1,
+			display_name: "Joao",
+			wins: 0,
+			matches: 0,
+		},
+	],
+	players: [
+		{
+			id: 1,
+			rating: 20,
+			nickname: "Joao",
+			display_name: "Joao Silva",
+		},
+	],
+	presentPlayerIds: null,
+	mvpPlayerIds: [1],
+});
+check(highCeilingMvpPreview[0]?.to, 20.1, "mvp +0.1 no jogador");
+
 const draftPreview = eventRatingPreview({
 	attendance: [
 		{

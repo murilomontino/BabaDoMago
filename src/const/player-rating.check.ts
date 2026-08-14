@@ -1,7 +1,9 @@
 import {
 	championshipRatingCeiling,
 	PLAYER_RATING,
+	PLAYER_RATING_INPUT,
 	PLAYER_STARS,
+	parsePlayerRatingInput,
 	ratingToStarFill,
 	STAR_SIDE,
 	starFillToRating,
@@ -37,5 +39,14 @@ check(ratingToStarFill(5, 10) === 2.5, "5 of 10 = 2.5 stars");
 
 check(starHalfToFill(0, STAR_SIDE.left) === 0.5, "first left = 0.5");
 check(starHalfToFill(4, STAR_SIDE.right) === 5, "last right = 5");
+
+check(PLAYER_RATING_INPUT.ariaLabel === "Corrigir nota", "input label");
+check(parsePlayerRatingInput("46,3") === 46.3, "comma decimal");
+check(parsePlayerRatingInput(" 46.3 ") === 46.3, "trim decimal");
+check(parsePlayerRatingInput("101") === null, "over max");
+check(parsePlayerRatingInput("-1") === null, "below min");
+check(parsePlayerRatingInput("") === null, "empty");
+check(parsePlayerRatingInput("0") === 0, "zero ok");
+check(parsePlayerRatingInput("100") === 100, "max ok");
 
 console.log("player-rating ok");

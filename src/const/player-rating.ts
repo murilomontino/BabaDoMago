@@ -6,6 +6,10 @@ export const PLAYER_RATING = {
 	initialCeiling: 5,
 } as const;
 
+export const PLAYER_RATING_INPUT = {
+	ariaLabel: "Corrigir nota",
+} as const;
+
 export const PLAYER_STAR_CLASS = {
 	default: "h-5 w-5 shrink-0 fill-current",
 	compact: "h-3.5 w-3.5 shrink-0 fill-current",
@@ -70,4 +74,23 @@ export function starFillToRating(starFill: number, ceiling: number): number {
 	const rating =
 		Math.round((starFill / PLAYER_RATING.starCount) * ceiling * 10) / 10;
 	return Math.min(PLAYER_RATING.max, Math.max(PLAYER_RATING.min, rating));
+}
+
+export function parsePlayerRatingInput(value: string): number | null {
+	const normalized = value.trim().replace(",", ".");
+	if (normalized === "") {
+		return null;
+	}
+
+	const parsed = Number(normalized);
+	if (!Number.isFinite(parsed)) {
+		return null;
+	}
+
+	const rating = Math.round(parsed * 10) / 10;
+	if (rating < PLAYER_RATING.min || rating > PLAYER_RATING.max) {
+		return null;
+	}
+
+	return rating;
 }

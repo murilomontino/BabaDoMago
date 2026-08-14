@@ -1,12 +1,17 @@
 import { useState } from "react";
 import { AppDialog } from "@/components/atoms/app-dialog";
 import { Button } from "@/components/button";
+import { EVENT_ATTENDANCE_STAT_ABBR } from "@/const/championship-event";
 import { EVENT_MVP_LABEL, toggleEventMvpPlayerId } from "@/const/event-mvp";
 import { BUTTON_VARIANT, CHIP_CLASS, ERROR_CLASS } from "@/const/ui";
 
 type SetEventMvpPlayer = {
 	id: number;
 	name: string;
+	goals: number;
+	assists: number;
+	wins: number;
+	matches: number;
 };
 
 type SetEventMvpModalProps = {
@@ -17,6 +22,37 @@ type SetEventMvpModalProps = {
 	onCancel: () => void;
 	onSave: (playerIds: number[]) => Promise<void>;
 };
+
+function MvpCandidateStats({ player }: { player: SetEventMvpPlayer }) {
+	const items = [
+		{
+			abbr: EVENT_ATTENDANCE_STAT_ABBR.goals,
+			value: player.goals,
+		},
+		{
+			abbr: EVENT_ATTENDANCE_STAT_ABBR.assists,
+			value: player.assists,
+		},
+		{
+			abbr: EVENT_ATTENDANCE_STAT_ABBR.wins,
+			value: player.wins,
+		},
+		{
+			abbr: EVENT_ATTENDANCE_STAT_ABBR.matches,
+			value: player.matches,
+		},
+	] as const;
+
+	return (
+		<p className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-fg-muted">
+			{items.map((item) => (
+				<span key={item.abbr}>
+					{item.abbr} {item.value}
+				</span>
+			))}
+		</p>
+	);
+}
 
 export function SetEventMvpModal({
 	players,
@@ -34,9 +70,11 @@ export function SetEventMvpModal({
 				<p className="mb-1 text-sm font-medium tracking-tight text-fg">
 					{EVENT_MVP_LABEL.title}
 				</p>
-				<p className="mb-3 text-sm text-fg-muted">{EVENT_MVP_LABEL.hint}</p>
+				<p className="mb-3 text-sm text-fg-muted">{EVENT_MVP_LABEL.pickHint}</p>
 				{players.length === 0 && (
-					<p className="mb-3 text-sm text-fg-muted">{EVENT_MVP_LABEL.empty}</p>
+					<p className="mb-3 text-sm text-fg-muted">
+						{EVENT_MVP_LABEL.pickEmpty}
+					</p>
 				)}
 				{players.length > 0 && (
 					<ul className="mb-3 divide-y divide-line">
@@ -55,9 +93,12 @@ export function SetEventMvpModal({
 											);
 										}}
 									>
-										<span className="truncate font-medium text-fg">
-											{player.name}
-										</span>
+										<div className="min-w-0">
+											<p className="truncate font-medium text-fg">
+												{player.name}
+											</p>
+											<MvpCandidateStats player={player} />
+										</div>
 										{selected && (
 											<span className={CHIP_CLASS}>
 												{EVENT_MVP_LABEL.badge}

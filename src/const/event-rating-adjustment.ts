@@ -157,7 +157,7 @@ export function eventRatingPreview({
 	const ceiling = championshipRatingCeiling(
 		players.map((player) => player.rating),
 	);
-	const mvpBonus = eventMvpStarDelta(ceiling);
+	const mvpBonus = eventMvpStarDelta();
 	const ids = presentPlayerIds ?? attendance.map((row) => row.player_id);
 
 	return ids.map((playerId) => {
