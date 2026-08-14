@@ -1,15 +1,23 @@
 import type { ChampionshipPlayer } from "../types/championship.ts";
+import type { ChampionshipEvent } from "../types/championship-event.ts";
 import {
+	aggregatePodiumPlayersFromEvents,
+	eventMatchesPodiumPeriod,
 	formatPodiumMetric,
 	PODIUM_DEFAULT_METRIC,
 	PODIUM_DISPLAY_ORDER,
+	PODIUM_FILTER_LABEL,
 	PODIUM_LABEL,
 	PODIUM_METRICS,
 	PODIUM_PLACE,
 	PODIUM_PLACES,
+	PODIUM_SEASON_YEAR,
+	PODIUM_SEMESTER,
 	parsePodiumMetric,
 	podiumStandings,
 	rankPodiumRows,
+	togglePodiumSeason,
+	togglePodiumSemester,
 } from "./podium.ts";
 import { ROSTER_COLUMN, toRosterRow } from "./roster-stats.ts";
 
@@ -145,5 +153,201 @@ check(
 	).length === 0,
 	"zero rating empty podium",
 );
+
+check(PODIUM_SEASON_YEAR === 2026, "season year");
+check(PODIUM_FILTER_LABEL.season === "Temporada 2026", "season label");
+check(
+	PODIUM_FILTER_LABEL[PODIUM_SEMESTER.first] === "Primeiro Semestre",
+	"first semester label",
+);
+check(
+	PODIUM_FILTER_LABEL[PODIUM_SEMESTER.second] === "Segundo Semestre",
+	"second semester label",
+);
+
+const march = "2026-03-15T12:00:00.000Z";
+const july = "2026-07-15T12:00:00.000Z";
+const lastYear = "2025-03-15T12:00:00.000Z";
+check(
+	eventMatchesPodiumPeriod(march, PODIUM_SEASON_YEAR, null),
+	"march in season",
+);
+check(
+	eventMatchesPodiumPeriod(july, PODIUM_SEASON_YEAR, null),
+	"july in season",
+);
+check(
+	!eventMatchesPodiumPeriod(lastYear, PODIUM_SEASON_YEAR, null),
+	"last year out",
+);
+check(
+	eventMatchesPodiumPeriod(march, PODIUM_SEASON_YEAR, PODIUM_SEMESTER.first),
+	"march in h1",
+);
+check(
+	!eventMatchesPodiumPeriod(july, PODIUM_SEASON_YEAR, PODIUM_SEMESTER.first),
+	"july out of h1",
+);
+check(
+	eventMatchesPodiumPeriod(july, PODIUM_SEASON_YEAR, PODIUM_SEMESTER.second),
+	"july in h2",
+);
+check(
+	!eventMatchesPodiumPeriod(march, PODIUM_SEASON_YEAR, PODIUM_SEMESTER.second),
+	"march out of h2",
+);
+
+check(togglePodiumSeason(true).seasonOn === false, "season off");
+check(togglePodiumSeason(true).semester === null, "season off clears semester");
+check(togglePodiumSeason(false).seasonOn === true, "season on");
+check(
+	togglePodiumSemester(null, PODIUM_SEMESTER.first).semester ===
+		PODIUM_SEMESTER.first,
+	"select h1",
+);
+check(
+	togglePodiumSemester(null, PODIUM_SEMESTER.first).seasonOn === true,
+	"semester enables season",
+);
+check(
+	togglePodiumSemester(PODIUM_SEMESTER.first, PODIUM_SEMESTER.first)
+		.semester === null,
+	"same semester clears",
+);
+check(
+	togglePodiumSemester(PODIUM_SEMESTER.first, PODIUM_SEMESTER.second)
+		.semester === PODIUM_SEMESTER.second,
+	"switch semester",
+);
+
+function attendanceRow(
+	playerId: number,
+	stats: {
+		goals: number;
+		assists: number;
+		own_goals: number;
+		wins: number;
+		matches: number;
+		rating: number;
+	},
+) {
+	return {
+		id: playerId,
+		event_id: 1,
+		player_id: playerId,
+		display_name: "x",
+		is_goalkeeper: false,
+		event_date: "2026-03-15",
+		rating_delta: 0,
+		...stats,
+	};
+}
+
+function eventAt(
+	id: number,
+	startsAt: string,
+	attendance: ChampionshipEvent["attendance"],
+): ChampionshipEvent {
+	return {
+		id,
+		championship_id: 1,
+		starts_at: startsAt,
+		players_per_team: 5,
+		ended_at: null,
+		attendance,
+		teams: [],
+		matches: [],
+	};
+}
+
+const anaPlayer = player(1, "Ana", { goals: 99, rating: 9 });
+const brunoPlayer = player(2, "Bruno", { goals: 99, rating: 9 });
+const aggregated = aggregatePodiumPlayersFromEvents(
+	[anaPlayer, brunoPlayer],
+	[
+		eventAt(1, march, [
+			attendanceRow(1, {
+				goals: 2,
+				assists: 1,
+				own_goals: 0,
+				wins: 1,
+				matches: 2,
+				rating: 6,
+			}),
+		]),
+		eventAt(2, july, [
+			attendanceRow(1, {
+				goals: 3,
+				assists: 0,
+				own_goals: 1,
+				wins: 2,
+				matches: 3,
+				rating: 8,
+			}),
+			attendanceRow(2, {
+				goals: 1,
+				assists: 0,
+				own_goals: 0,
+				wins: 0,
+				matches: 1,
+				rating: 4,
+			}),
+		]),
+		eventAt(3, lastYear, [
+			attendanceRow(1, {
+				goals: 50,
+				assists: 50,
+				own_goals: 50,
+				wins: 50,
+				matches: 50,
+				rating: 50,
+			}),
+		]),
+	],
+	PODIUM_SEASON_YEAR,
+	null,
+);
+check(aggregated.length === 2, "season has two players");
+const anaAgg = aggregated.find((row) => row.id === 1);
+const brunoAgg = aggregated.find((row) => row.id === 2);
+check(anaAgg?.goals === 5, "ana goals summed");
+check(anaAgg?.assists === 1, "ana assists summed");
+check(anaAgg?.own_goals === 1, "ana own goals summed");
+check(anaAgg?.wins === 3, "ana wins summed");
+check(anaAgg?.matches === 5, "ana matches summed");
+check(anaAgg?.rating === 7, "ana rating averaged");
+check(brunoAgg?.goals === 1, "bruno july only");
+check(anaAgg?.goals !== 99, "ignores championship totals");
+
+const h1Only = aggregatePodiumPlayersFromEvents(
+	[anaPlayer, brunoPlayer],
+	[
+		eventAt(1, march, [
+			attendanceRow(1, {
+				goals: 2,
+				assists: 1,
+				own_goals: 0,
+				wins: 1,
+				matches: 2,
+				rating: 6,
+			}),
+		]),
+		eventAt(2, july, [
+			attendanceRow(2, {
+				goals: 1,
+				assists: 0,
+				own_goals: 0,
+				wins: 0,
+				matches: 1,
+				rating: 4,
+			}),
+		]),
+	],
+	PODIUM_SEASON_YEAR,
+	PODIUM_SEMESTER.first,
+);
+check(h1Only.length === 1, "h1 drops bruno");
+check(h1Only[0]?.id === 1, "h1 keeps ana");
+check(h1Only[0]?.goals === 2, "h1 ana march only");
 
 console.log("podium ok");

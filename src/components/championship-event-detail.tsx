@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { AddEventTeamModal } from "@/components/add-event-team-modal";
 import { Button } from "@/components/button";
 import { ChampionshipEventBuilder } from "@/components/championship-event-builder";
+import { ChampionshipPodiumTab } from "@/components/championship-podium-tab";
 import { DeleteEventAttendanceModal } from "@/components/delete-event-attendance-modal";
 import { DeleteEventMatchModal } from "@/components/delete-event-match-modal";
 import { DeleteEventModal } from "@/components/delete-event-modal";
@@ -17,6 +18,7 @@ import {
 	EventTeamRatingAverage,
 } from "@/components/event-team-player";
 import { PlayerRating } from "@/components/player-rating";
+import { Tabs } from "@/components/tabs";
 import {
 	attendanceGoalkeeperIds,
 	builderTeamsFromEvent,
@@ -49,6 +51,7 @@ import {
 	matchScore,
 	openEventMatch,
 } from "@/const/championship-event-match";
+import { EVENT_TAB, EVENT_TABS } from "@/const/championship-event-tab";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
 import { eventRatingPreview } from "@/const/event-rating-adjustment";
 import {
@@ -63,6 +66,7 @@ import { championshipRatingCeiling } from "@/const/player-rating";
 import { ROUTES } from "@/const/routes";
 import { BUTTON_VARIANT, CHIP_CLASS } from "@/const/ui";
 import { useEventBuilderStep } from "@/hooks/use-event-builder-step";
+import { useEventTab } from "@/hooks/use-event-tab";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type {
 	ChampionshipEvent,
@@ -263,6 +267,21 @@ function resolveEventPlayers(
 	);
 }
 
+function playersFromEventAttendance(
+	attendance: readonly ChampionshipEventAttendance[],
+	byId: Map<number, ChampionshipPlayer>,
+): ChampionshipPlayer[] {
+	return attendance.map((row) => ({
+		...resolveRosterPlayer(row.player_id, row.display_name, byId),
+		goals: row.goals,
+		assists: row.assists,
+		own_goals: row.own_goals,
+		wins: row.wins,
+		matches: row.matches,
+		rating: row.rating,
+	}));
+}
+
 export function ChampionshipEventDetail({
 	event,
 	players,
@@ -303,6 +322,10 @@ export function ChampionshipEventDetail({
 	const teamById = new Map(event.teams.map((team) => [team.id, team]));
 	const rosterById = new Map(players.map((player) => [player.id, player]));
 	const presentPlayers = resolveEventPlayers(event.attendance, rosterById);
+	const podiumPlayers = playersFromEventAttendance(
+		event.attendance,
+		rosterById,
+	);
 	const volunteerGoalkeeperIds = attendanceGoalkeeperIds(event.attendance);
 	const teamPlayerIds = eventTeamPlayerIds(event.teams);
 	const ceiling = championshipRatingCeiling([
@@ -311,6 +334,9 @@ export function ChampionshipEventDetail({
 	]);
 	const teamsEditable = canManage && canEditEventTeams(event);
 	const [step, setStep] = useEventBuilderStep();
+	const [tab, setTab] = useEventTab();
+	const selectedTab =
+		tab === EVENT_TAB.podium ? EVENT_TAB.podium : EVENT_TAB.event;
 	const mustBuild =
 		teamsEditable && event.teams.length < CHAMPIONSHIP_EVENT.minTeams;
 	const showTeamBuilder = teamsEditable && (step !== null || mustBuild);
@@ -465,12 +491,25 @@ export function ChampionshipEventDetail({
 					</div>
 				)}
 			</div>
-			{showTeamBuilder && (
+			<Tabs
+				value={selectedTab}
+				items={EVENT_TABS}
+				onChange={(id) => {
+					if (id === EVENT_TAB.event) {
+						void setTab(null);
+						return;
+					}
+
+					void setTab(id);
+				}}
+			/>
+			{selectedTab === EVENT_TAB.event && showTeamBuilder && (
 				<ChampionshipEventBuilder
 					playersPerTeam={event.players_per_team}
 					players={players}
 					attendanceCounts={attendanceCounts}
 					step={builderStep}
+					startsAt={event.starts_at}
 					initialPresentIds={event.attendance.map((row) => row.player_id)}
 					initialGoalkeeperIds={volunteerGoalkeeperIds}
 					initialTeams={builderTeamsFromEvent(
@@ -503,7 +542,7 @@ export function ChampionshipEventDetail({
 					}}
 				/>
 			)}
-			{!showTeamBuilder && (
+			{selectedTab === EVENT_TAB.event && !showTeamBuilder && (
 				<ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
 					{event.teams.map((team) => {
 						const cardStyle = eventTeamColorStyle(team.color);
@@ -578,7 +617,7 @@ export function ChampionshipEventDetail({
 					})}
 				</ul>
 			)}
-			{!showTeamBuilder && (
+			{selectedTab === EVENT_TAB.event && !showTeamBuilder && (
 				<div>
 					<p className="mb-1 text-xs font-medium uppercase tracking-wide text-fg-muted">
 						Partidas
@@ -696,7 +735,7 @@ export function ChampionshipEventDetail({
 					)}
 				</div>
 			)}
-			{!showTeamBuilder && (
+			{selectedTab === EVENT_TAB.event && !showTeamBuilder && (
 				<div>
 					<p className="mb-1 text-xs font-medium uppercase tracking-wide text-fg-muted">
 						Presentes
@@ -758,6 +797,9 @@ export function ChampionshipEventDetail({
 						</ul>
 					)}
 				</div>
+			)}
+			{selectedTab === EVENT_TAB.podium && (
+				<ChampionshipPodiumTab players={podiumPlayers} />
 			)}
 			{isAttendanceOpen && (
 				<EditEventAttendanceModal

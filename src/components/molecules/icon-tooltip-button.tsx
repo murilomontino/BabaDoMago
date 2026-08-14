@@ -1,13 +1,15 @@
 import type { ReactNode } from "react";
-import { Button } from "@/components/button";
 import { TOOLTIP_ID } from "@/const/tooltip";
 import { BUTTON_VARIANT, type ButtonVariant } from "@/const/ui";
 
+const ICON_TOOLTIP_BUTTON_BASE =
+	"inline-flex size-6 items-center justify-center rounded-md p-0 transition disabled:opacity-50";
+
 const ICON_TOOLTIP_BUTTON_CLASS = {
-	primary: "px-2 !text-pitch-fg hover:!bg-pitch-soft",
-	secondary: "px-2",
-	danger: "px-2 !text-danger-fg hover:!bg-danger-soft",
-	ghost: "px-2",
+	primary: `${ICON_TOOLTIP_BUTTON_BASE} text-pitch-fg hover:bg-pitch-soft`,
+	secondary: `${ICON_TOOLTIP_BUTTON_BASE} text-fg-muted hover:bg-surface-muted`,
+	danger: `${ICON_TOOLTIP_BUTTON_BASE} text-danger-fg hover:bg-danger-soft`,
+	ghost: `${ICON_TOOLTIP_BUTTON_BASE} text-fg-muted hover:bg-surface-muted`,
 } as const;
 
 type IconTooltipButtonProps = {
@@ -28,17 +30,16 @@ export function IconTooltipButton({
 	type = "button",
 }: IconTooltipButtonProps) {
 	return (
-		<span data-tooltip-id={TOOLTIP_ID} data-tooltip-content={label}>
-			<Button
-				type={type}
-				variant={BUTTON_VARIANT.ghost}
-				aria-label={label}
-				onClick={onClick}
-				disabled={disabled}
-				className={ICON_TOOLTIP_BUTTON_CLASS[variant]}
-			>
-				{icon}
-			</Button>
-		</span>
+		<button
+			type={type}
+			aria-label={label}
+			data-tooltip-id={TOOLTIP_ID}
+			data-tooltip-content={label}
+			onClick={onClick}
+			disabled={disabled}
+			className={ICON_TOOLTIP_BUTTON_CLASS[variant]}
+		>
+			{icon}
+		</button>
 	);
 }

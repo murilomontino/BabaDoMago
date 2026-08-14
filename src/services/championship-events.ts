@@ -353,10 +353,12 @@ function eventIdFromRpc(data: unknown): number {
 export async function createChampionshipEvent(
 	championshipId: number,
 	eventDate: string,
+	eventTime: string,
 ): Promise<number> {
 	const { data, error } = await supabase.rpc("create_championship_event", {
 		championship_id: championshipId,
 		event_date: eventDate,
+		event_time: eventTime,
 	});
 
 	if (error) {

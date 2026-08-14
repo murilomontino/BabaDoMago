@@ -33,6 +33,7 @@ type ChampionshipPermissions = {
 	invite: boolean;
 	transferOwnership: boolean;
 	unlinkPlayer: boolean;
+	mergePlayers: boolean;
 	deactivatePlayer: boolean;
 	reactivatePlayer: boolean;
 	updateEventConfig: boolean;
@@ -77,6 +78,7 @@ export function championshipPermissions(
 				invite: true,
 				transferOwnership: true,
 				unlinkPlayer: true,
+				mergePlayers: true,
 				deactivatePlayer: true,
 				reactivatePlayer: true,
 				updateEventConfig: true,
@@ -93,6 +95,7 @@ export function championshipPermissions(
 				invite: true,
 				transferOwnership: false,
 				unlinkPlayer: true,
+				mergePlayers: true,
 				deactivatePlayer: true,
 				reactivatePlayer: false,
 				updateEventConfig: true,
@@ -109,6 +112,7 @@ export function championshipPermissions(
 				invite: true,
 				transferOwnership: false,
 				unlinkPlayer: true,
+				mergePlayers: true,
 				deactivatePlayer: true,
 				reactivatePlayer: false,
 				updateEventConfig: false,
@@ -125,6 +129,7 @@ export function championshipPermissions(
 				invite: false,
 				transferOwnership: false,
 				unlinkPlayer: false,
+				mergePlayers: false,
 				deactivatePlayer: false,
 				reactivatePlayer: false,
 				updateEventConfig: false,
@@ -180,6 +185,10 @@ export function canTransferOwnership(role: ChampionshipRole): boolean {
 
 export function canUnlinkPlayer(role: ChampionshipRole): boolean {
 	return championshipPermissions(role).unlinkPlayer;
+}
+
+export function canMergePlayers(role: ChampionshipRole): boolean {
+	return championshipPermissions(role).mergePlayers;
 }
 
 export function canDeactivatePlayer(role: ChampionshipRole): boolean {

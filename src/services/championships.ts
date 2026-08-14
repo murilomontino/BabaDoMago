@@ -399,6 +399,22 @@ export async function unlinkPlayer(
 	return asPlayer(data);
 }
 
+export async function mergeChampionshipPlayers(
+	keepPlayerId: number,
+	absorbPlayerId: number,
+): Promise<ChampionshipPlayer> {
+	const { data, error } = await supabase.rpc("merge_championship_players", {
+		keep_player_id: keepPlayerId,
+		absorb_player_id: absorbPlayerId,
+	});
+
+	if (error) {
+		throw error;
+	}
+
+	return asPlayer(data);
+}
+
 export async function deactivatePlayer(playerId: number): Promise<void> {
 	const { error } = await supabase.rpc("deactivate_player", {
 		player_id: playerId,

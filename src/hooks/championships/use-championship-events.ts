@@ -50,8 +50,13 @@ export function useCreateChampionshipEvent(championshipId: number) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: (eventDate: string) =>
-			createChampionshipEvent(championshipId, eventDate),
+		mutationFn: ({
+			eventDate,
+			eventTime,
+		}: {
+			eventDate: string;
+			eventTime: string;
+		}) => createChampionshipEvent(championshipId, eventDate, eventTime),
 		onSuccess: async () => {
 			await invalidateChampionshipEventQueries(queryClient);
 		},

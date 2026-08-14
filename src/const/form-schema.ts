@@ -22,6 +22,11 @@ const ratingField = number()
 	.max(PLAYER_RATING.max, FORM_MESSAGE.ratingInvalid)
 	.required(FORM_MESSAGE.ratingInvalid);
 
+const eventTimeField = string()
+	.trim()
+	.matches(/^\d{2}:\d{2}(:\d{2})?$/, FORM_MESSAGE.eventTimeInvalid)
+	.required(FORM_MESSAGE.eventTimeInvalid);
+
 export const nameFormSchema = object({
 	name: string().trim().required(FORM_MESSAGE.nameRequired),
 });
@@ -48,15 +53,17 @@ export const playerNicknameSchema = object({
 		.max(PLAYER_NICKNAME.maxLength, FORM_MESSAGE.nicknameInvalid),
 });
 
+export const mergePlayersSchema = object({
+	keepPlayerId: string().trim().required(FORM_MESSAGE.playerRequired),
+	absorbPlayerId: string().trim().required(FORM_MESSAGE.playerRequired),
+});
+
 export const transferOwnerSchema = object({
 	playerId: string().trim().required(FORM_MESSAGE.playerRequired),
 });
 
 export const eventConfigFormSchema = object({
-	eventTime: string()
-		.trim()
-		.matches(/^\d{2}:\d{2}(:\d{2})?$/, FORM_MESSAGE.eventTimeInvalid)
-		.required(FORM_MESSAGE.eventTimeInvalid),
+	eventTime: eventTimeField,
 	playersPerTeam: number()
 		.integer(FORM_MESSAGE.playersPerTeamInvalid)
 		.min(
@@ -72,6 +79,7 @@ export const eventConfigFormSchema = object({
 
 export const startEventFormSchema = object({
 	eventDate: string().trim().required(FORM_MESSAGE.eventDateRequired),
+	eventTime: eventTimeField,
 });
 
 export const addMatchFormSchema = object({

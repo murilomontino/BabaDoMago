@@ -13,6 +13,7 @@ import {
 	EVENT_STATUS_LABEL,
 	eventStatus,
 	formatEventStartsAt,
+	parseEventTime,
 } from "@/const/championship-event";
 import { startEventFormSchema } from "@/const/form-schema";
 import { ROUTES } from "@/const/routes";
@@ -44,8 +45,11 @@ export function ChampionshipEvents({
 	const [isCreating, setIsCreating] = useState(false);
 	const events = eventsQuery.data ?? [];
 
-	async function handleCreate(eventDate: string) {
-		const eventId = await createEvent.mutateAsync(eventDate);
+	async function handleCreate(eventDate: string, eventTime: string) {
+		const eventId = await createEvent.mutateAsync({
+			eventDate,
+			eventTime: parseEventTime(eventTime),
+		});
 		await navigate({
 			to: ROUTES.championshipEvent,
 			params: {
@@ -84,10 +88,13 @@ export function ChampionshipEvents({
 		>
 			{isCreating && (
 				<Formik
-					initialValues={{ eventDate: championshipEventToday() }}
+					initialValues={{
+						eventDate: championshipEventToday(),
+						eventTime,
+					}}
 					validationSchema={startEventFormSchema}
 					onSubmit={async (values) => {
-						await handleCreate(values.eventDate);
+						await handleCreate(values.eventDate, values.eventTime);
 					}}
 				>
 					<Form className="space-y-4">
@@ -109,16 +116,16 @@ export function ChampionshipEvents({
 								className="block text-sm font-medium text-fg-muted"
 							>
 								Hora
-								<input
+								<Field
 									id="event-time"
+									name="eventTime"
 									type="time"
-									value={eventTime}
-									readOnly
-									className={`mt-1 ${FIELD_CLASS} cursor-not-allowed opacity-80`}
+									className={`mt-1 ${FIELD_CLASS}`}
 								/>
 							</label>
 						</div>
 						<FormError name="eventDate" />
+						<FormError name="eventTime" />
 						{createEvent.isError && (
 							<p className={ERROR_CLASS}>{createEvent.error.message}</p>
 						)}

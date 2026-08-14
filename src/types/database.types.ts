@@ -513,6 +513,10 @@ export type Database = {
 				Args: { invite_code: string };
 				Returns: Json;
 			};
+			merge_championship_players: {
+				Args: { keep_player_id: number; absorb_player_id: number };
+				Returns: Json;
+			};
 			owns_championship_logo_object: {
 				Args: { object_name: string };
 				Returns: boolean;
@@ -537,6 +541,7 @@ export type Database = {
 				Args: {
 					championship_id: number;
 					event_date: string;
+					event_time?: string;
 				};
 				Returns: Json;
 			};

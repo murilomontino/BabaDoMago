@@ -163,6 +163,9 @@ export const EVENT_TEAM_MESSAGE = {
 	needAttendance: "Marque a presença primeiro",
 	drawing: "Buscando melhor cenário...",
 	drawFailed: "Não foi possível sortear os times",
+	drawReplaceTitle: "Sortear times de novo?",
+	drawReplaceHint: "Os times atuais serão substituídos.",
+	drawReplaceCancel: "Cancelar",
 } as const;
 
 export const EVENT_ATTENDANCE_MESSAGE = {
@@ -982,6 +985,12 @@ export function draftAttendanceForEnd(
 
 export function teamSlotsToPlayerIds(slots: readonly string[]): number[] {
 	return slots.filter(Boolean).map(Number);
+}
+
+export function builderTeamsHavePlayers(
+	teams: readonly EventTeamBuilderTeam[],
+): boolean {
+	return teams.some((team) => teamSlotsToPlayerIds(team.slots).length > 0);
 }
 
 export function eventTeamSlotPosition(slot: number): EventTeamPosition {

@@ -1,3 +1,5 @@
+import { parsePlayerNameList } from "./player-name-list.ts";
+
 export const PLAYER_SEARCH = {
 	label: "Buscar",
 	placeholder: "vitinho, murilo",
@@ -11,8 +13,8 @@ function normalizePlayerSearch(value: string): string {
 export function filterPlayersBySearch<
 	T extends { display_name: string; nickname?: string | null },
 >(players: readonly T[], query: string): T[] {
-	const tokens = query
-		.split(",")
+	const tokens = parsePlayerNameList(query)
+		.flatMap((name) => name.split(","))
 		.map((token) => normalizePlayerSearch(token.trim()))
 		.filter((token) => token.length > 0);
 

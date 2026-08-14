@@ -11,6 +11,7 @@ import { ConfirmRatingModal } from "@/components/confirm-rating-modal";
 import { DeleteChampionshipModal } from "@/components/delete-championship-modal";
 import { EditPlayerEventStatsModal } from "@/components/edit-player-event-stats-modal";
 import { EditPlayerNicknameModal } from "@/components/edit-player-nickname-modal";
+import { MergeChampionshipPlayersModal } from "@/components/merge-championship-players-modal";
 import { Tabs } from "@/components/tabs";
 import type { PlayerEventStatsDraft } from "@/const/championship-event";
 import { assertChampionshipLogoSource } from "@/const/championship-logo";
@@ -22,6 +23,7 @@ import {
 	canDeleteChampionship,
 	canInvite,
 	canManageEvent,
+	canMergePlayers,
 	canOverrideEndedEvent,
 	canReactivatePlayer,
 	canRenameChampionship,
@@ -38,7 +40,10 @@ import {
 	CHAMPIONSHIP_TABS,
 	type ChampionshipTab,
 } from "@/const/championship-tab";
-import { playerVisibleName } from "@/const/player-name";
+import {
+	confirmClaimPlayerMessage,
+	playerVisibleName,
+} from "@/const/player-name";
 import {
 	championshipRatingCeiling,
 	PLAYER_RATING,
@@ -56,6 +61,7 @@ import {
 	useClaimPlayer,
 	useDeactivatePlayer,
 	useDeleteChampionship,
+	useMergeChampionshipPlayers,
 	useReactivatePlayer,
 	useRenameChampionship,
 	useSetPlayerRole,
@@ -80,6 +86,7 @@ export function ChampionshipDetailPage() {
 	const addPlayer = useAddManualPlayer(championshipId);
 	const claimPlayer = useClaimPlayer();
 	const unlinkPlayer = useUnlinkPlayer();
+	const mergePlayers = useMergeChampionshipPlayers();
 	const deactivatePlayer = useDeactivatePlayer();
 	const reactivatePlayer = useReactivatePlayer();
 	const updateRating = useUpdatePlayerRating();
@@ -109,6 +116,8 @@ export function ChampionshipDetailPage() {
 		useState<ChampionshipPlayer | null>(null);
 	const [pendingEventStatsPlayer, setPendingEventStatsPlayer] =
 		useState<ChampionshipPlayer | null>(null);
+	const [pendingMergePlayer, setPendingMergePlayer] =
+		useState<ChampionshipPlayer | null>(null);
 	const [tab, setTab] = useState<ChampionshipTab>(CHAMPIONSHIP_TAB.roster);
 
 	const currentPlayer = data?.players.find(
@@ -127,6 +136,7 @@ export function ChampionshipDetailPage() {
 		deleteChampionship: canDeleteChampionship(actorRole),
 		transferOwnership: canTransferOwnership(actorRole),
 		unlink: canUnlinkPlayer(actorRole),
+		merge: canMergePlayers(actorRole),
 		deactivate: canDeactivatePlayer(actorRole),
 		reactivate: canReactivatePlayer(actorRole),
 		updateEventConfig: canUpdateEventConfig(actorRole),
@@ -288,6 +298,19 @@ export function ChampionshipDetailPage() {
 		setPendingEventStatsPlayer(null);
 	}
 
+	function handleClaim(playerId: number) {
+		const player = activePlayers.find((item) => item.id === playerId);
+		if (!player) {
+			return;
+		}
+
+		if (!window.confirm(confirmClaimPlayerMessage(playerVisibleName(player)))) {
+			return;
+		}
+
+		claimPlayer.mutate(playerId);
+	}
+
 	function handleUnlink(playerId: number) {
 		if (!permissions.unlink) {
 			return;
@@ -298,6 +321,40 @@ export function ChampionshipDetailPage() {
 		}
 
 		unlinkPlayer.mutate(playerId);
+	}
+
+	function handleMerge(playerId: number) {
+		if (!permissions.merge) {
+			return;
+		}
+
+		const player = activePlayers.find((item) => item.id === playerId);
+		if (!player) {
+			return;
+		}
+
+		mergePlayers.reset();
+		setPendingMergePlayer(player);
+	}
+
+	function handleMergeCancel() {
+		if (mergePlayers.isPending) {
+			return;
+		}
+
+		mergePlayers.reset();
+		setPendingMergePlayer(null);
+	}
+
+	function handleMergeConfirm(keepPlayerId: number, absorbPlayerId: number) {
+		mergePlayers.mutate(
+			{ keepPlayerId, absorbPlayerId },
+			{
+				onSuccess: () => {
+					setPendingMergePlayer(null);
+				},
+			},
+		);
 	}
 
 	function handleDeactivate(playerId: number) {
@@ -429,6 +486,19 @@ export function ChampionshipDetailPage() {
 					onConfirm={handleNicknameConfirm}
 				/>
 			)}
+			{pendingMergePlayer && (
+				<MergeChampionshipPlayersModal
+					players={activePlayers}
+					createdBy={data.created_by}
+					starter={pendingMergePlayer}
+					isPending={mergePlayers.isPending}
+					errorMessage={
+						mergePlayers.isError ? mergePlayers.error.message : null
+					}
+					onCancel={handleMergeCancel}
+					onConfirm={handleMergeConfirm}
+				/>
+			)}
 			{pendingEventStatsPlayer && (
 				<EditPlayerEventStatsModal
 					player={pendingEventStatsPlayer}
@@ -510,6 +580,12 @@ export function ChampionshipDetailPage() {
 						unlinkPlayer.isPending ? (unlinkPlayer.variables ?? null) : null
 					}
 					unlinkError={unlinkPlayer.isError ? unlinkPlayer.error.message : null}
+					canMerge={permissions.merge}
+					mergeError={
+						mergePlayers.isError && !pendingMergePlayer
+							? mergePlayers.error.message
+							: null
+					}
 					deactivatingPlayerId={
 						deactivatePlayer.isPending
 							? (deactivatePlayer.variables ?? null)
@@ -524,7 +600,7 @@ export function ChampionshipDetailPage() {
 					onAddPlayer={async (values) => {
 						await addPlayer.mutateAsync(values);
 					}}
-					onClaim={(playerId) => claimPlayer.mutate(playerId)}
+					onClaim={handleClaim}
 					onChangeRating={handleChangeRating}
 					onEditNickname={handleEditNickname}
 					onEditEventStats={
@@ -540,6 +616,7 @@ export function ChampionshipDetailPage() {
 						setPlayerRole.mutate({ playerId, role })
 					}
 					onUnlink={handleUnlink}
+					onMerge={handleMerge}
 					onDeactivate={handleDeactivate}
 				/>
 			)}
@@ -551,7 +628,10 @@ export function ChampionshipDetailPage() {
 				/>
 			)}
 			{selectedTab === CHAMPIONSHIP_TAB.podium && (
-				<ChampionshipPodiumTab players={activePlayers} />
+				<ChampionshipPodiumTab
+					players={activePlayers}
+					events={eventsQuery.data ?? []}
+				/>
 			)}
 			{selectedTab === CHAMPIONSHIP_TAB.deactivated && (
 				<ChampionshipDeactivatedTab

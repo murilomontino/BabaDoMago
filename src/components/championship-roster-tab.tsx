@@ -36,6 +36,8 @@ type ChampionshipRosterTabProps = {
 	roleError: string | null;
 	unlinkingPlayerId: number | null;
 	unlinkError: string | null;
+	canMerge: boolean;
+	mergeError: string | null;
 	deactivatingPlayerId: number | null;
 	deactivateError: string | null;
 	onCopyLink: () => void;
@@ -50,6 +52,7 @@ type ChampionshipRosterTabProps = {
 	eventStatsPlayerId?: number | null;
 	onChangeRole: (playerId: number, role: AssignableChampionshipRole) => void;
 	onUnlink: (playerId: number) => void;
+	onMerge: (playerId: number) => void;
 	onDeactivate: (playerId: number) => void;
 };
 
@@ -74,6 +77,8 @@ export function ChampionshipRosterTab({
 	roleError,
 	unlinkingPlayerId,
 	unlinkError,
+	canMerge,
+	mergeError,
 	deactivatingPlayerId,
 	deactivateError,
 	onCopyLink,
@@ -85,6 +90,7 @@ export function ChampionshipRosterTab({
 	eventStatsPlayerId,
 	onChangeRole,
 	onUnlink,
+	onMerge,
 	onDeactivate,
 }: ChampionshipRosterTabProps) {
 	return (
@@ -166,11 +172,13 @@ export function ChampionshipRosterTab({
 				onChangeRole={canSetRoles ? onChangeRole : undefined}
 				onUnlink={canUnlink ? onUnlink : undefined}
 				unlinkingPlayerId={unlinkingPlayerId}
+				onMerge={canMerge ? onMerge : undefined}
 				onDeactivate={canDeactivate ? onDeactivate : undefined}
 				deactivatingPlayerId={deactivatingPlayerId}
 			/>
 			{claimError && <p className={`mt-4 ${ERROR_CLASS}`}>{claimError}</p>}
 			{unlinkError && <p className={`mt-4 ${ERROR_CLASS}`}>{unlinkError}</p>}
+			{mergeError && <p className={`mt-4 ${ERROR_CLASS}`}>{mergeError}</p>}
 			{deactivateError && (
 				<p className={`mt-4 ${ERROR_CLASS}`}>{deactivateError}</p>
 			)}

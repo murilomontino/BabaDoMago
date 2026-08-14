@@ -2,9 +2,11 @@ import {
 	addPlayerFormSchema,
 	deleteChampionshipSchema,
 	FORM_MESSAGE,
+	mergePlayersSchema,
 	nameFormSchema,
 	playerNicknameSchema,
 	playerRatingSchema,
+	startEventFormSchema,
 	transferOwnerSchema,
 } from "./form-schema.ts";
 import { PLAYER_NICKNAME } from "./player-name.ts";
@@ -85,6 +87,36 @@ check(
 check(
 	!transferOwnerSchema.isValidSync({ playerId: "" }),
 	"transfer empty fails",
+);
+
+check(
+	mergePlayersSchema.isValidSync({
+		keepPlayerId: "1",
+		absorbPlayerId: "2",
+	}),
+	"merge players ok",
+);
+check(
+	!mergePlayersSchema.isValidSync({
+		keepPlayerId: "",
+		absorbPlayerId: "2",
+	}),
+	"merge keep required",
+);
+
+check(
+	startEventFormSchema.isValidSync({
+		eventDate: "2026-08-14",
+		eventTime: "19:00",
+	}),
+	"start event ok",
+);
+check(
+	!startEventFormSchema.isValidSync({
+		eventDate: "2026-08-14",
+		eventTime: "invalid",
+	}),
+	"start event time invalid",
 );
 
 const deleteSchema = deleteChampionshipSchema("Baba do Mago");

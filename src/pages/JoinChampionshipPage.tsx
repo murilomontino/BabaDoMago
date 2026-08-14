@@ -6,6 +6,10 @@ import { ChampionshipLogo } from "@/components/championship-logo";
 import { ChampionshipRoster } from "@/components/championship-roster";
 import { SectionCard } from "@/components/section-card";
 import { ThemeToggle } from "@/components/theme-toggle";
+import {
+	confirmClaimPlayerMessage,
+	playerVisibleName,
+} from "@/const/player-name";
 import { ROUTES } from "@/const/routes";
 import {
 	BUTTON_VARIANT,
@@ -21,6 +25,12 @@ import {
 } from "@/hooks/championships/use-championships";
 import { withClaimQuery } from "@/lib/safe-path";
 import type { ChampionshipPlayer } from "@/types/championship";
+
+const JOIN_PAGE = {
+	hint: "Se seu nome já está no elenco, clique em Conectar.",
+	notInList: "Não estou na lista",
+	loginToConnect: "Entrar para conectar",
+} as const;
 
 export function JoinChampionshipPage() {
 	const { inviteCode } = useParams({ from: "/join/$inviteCode" });
@@ -71,6 +81,15 @@ export function JoinChampionshipPage() {
 	}, [user, claim, claimPlayer, inviteCode, navigate]);
 
 	function handleClaim(playerId: number) {
+		const player = data?.players.find((item) => item.id === playerId);
+		if (!player) {
+			return;
+		}
+
+		if (!window.confirm(confirmClaimPlayerMessage(playerVisibleName(player)))) {
+			return;
+		}
+
 		if (user) {
 			claimPlayer.mutate(playerId, {
 				onSuccess: (claimed) => {
@@ -88,6 +107,18 @@ export function JoinChampionshipPage() {
 			to: ROUTES.login,
 			search: {
 				redirect: withClaimQuery(`/join/${inviteCode}`, String(playerId)),
+			},
+		});
+	}
+
+	function handleJoin() {
+		joinChampionship.mutate(undefined, {
+			onSuccess: (joined) => {
+				void navigate({
+					to: ROUTES.championship,
+					params: { championshipId: String(joined.championship_id) },
+					replace: true,
+				});
 			},
 		});
 	}
@@ -135,6 +166,9 @@ export function JoinChampionshipPage() {
 				title="Elenco"
 				icon={<Users className="size-4 text-pitch-fg" />}
 			>
+				{!alreadyMember && (
+					<p className="mb-3 text-sm text-fg-muted">{JOIN_PAGE.hint}</p>
+				)}
 				<ChampionshipRoster
 					players={data.players}
 					createdBy={data.created_by}
@@ -145,11 +179,12 @@ export function JoinChampionshipPage() {
 			</SectionCard>
 			{!alreadyMember && user && (
 				<Button
-					onClick={() => joinChampionship.mutate()}
+					variant={BUTTON_VARIANT.secondary}
+					onClick={handleJoin}
 					disabled={joinChampionship.isPending}
 				>
 					<UserPlus className="size-4" />
-					Inscrever-me
+					{JOIN_PAGE.notInList}
 				</Button>
 			)}
 			{!user && (
@@ -162,7 +197,7 @@ export function JoinChampionshipPage() {
 						})
 					}
 				>
-					Entrar para se inscrever
+					{JOIN_PAGE.loginToConnect}
 				</Button>
 			)}
 			{joinChampionship.isError && (

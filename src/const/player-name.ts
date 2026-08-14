@@ -15,3 +15,7 @@ export function playerVisibleName(player: {
 	const nickname = player.nickname?.trim();
 	return nickname ? nickname : player.display_name;
 }
+
+export function confirmClaimPlayerMessage(name: string): string {
+	return `Você é ${name}?`;
+}

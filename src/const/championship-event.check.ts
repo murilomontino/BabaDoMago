@@ -4,6 +4,7 @@ import {
 	attendanceGoalkeeperIds,
 	builderTeamsFromDrafts,
 	builderTeamsFromEvent,
+	builderTeamsHavePlayers,
 	canAddEventMatch,
 	canEditEventTeams,
 	canRemoveEventAttendance,
@@ -241,6 +242,14 @@ check(
 );
 
 check(emptyTeamSlots(3).join(","), ",,");
+check(builderTeamsHavePlayers(initialBuilderTeams(5, 2)), false);
+check(
+	builderTeamsHavePlayers([
+		{ key: "a", color: null, slots: ["", "1"] },
+		{ key: "b", color: null, slots: ["", ""] },
+	]),
+	true,
+);
 check(eventTeamCount(16, 5), 4);
 check(eventTeamCount(15, 5), 3);
 check(eventTeamCount(31, 10), 4);

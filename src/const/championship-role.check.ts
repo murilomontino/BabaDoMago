@@ -4,6 +4,7 @@ import {
 	canDeleteChampionship,
 	canEditPlayerNickname,
 	canInvite,
+	canMergePlayers,
 	canOverrideEndedEvent,
 	canReactivatePlayer,
 	canRenameChampionship,
@@ -36,6 +37,7 @@ check(canUpdateNickname(owner), "owner nicknames");
 check(canInvite(owner), "owner invites");
 check(canTransferOwnership(owner), "owner transfers");
 check(canUnlinkPlayer(owner), "owner unlinks");
+check(canMergePlayers(owner), "owner merges");
 check(canDeactivatePlayer(owner), "owner deactivates");
 check(canReactivatePlayer(owner), "owner reactivates");
 check(canUpdateEventConfig(owner), "owner updates event config");
@@ -50,6 +52,7 @@ check(canUpdateNickname(captain), "captain nicknames");
 check(canInvite(captain), "captain invites");
 check(!canTransferOwnership(captain), "captain cannot transfer");
 check(canUnlinkPlayer(captain), "captain unlinks");
+check(canMergePlayers(captain), "captain merges");
 check(canDeactivatePlayer(captain), "captain deactivates");
 check(!canReactivatePlayer(captain), "captain cannot reactivate");
 check(canUpdateEventConfig(captain), "captain updates event config");
@@ -64,6 +67,7 @@ check(canUpdateNickname(admin), "admin nicknames");
 check(canInvite(admin), "admin invites");
 check(!canTransferOwnership(admin), "admin cannot transfer");
 check(canUnlinkPlayer(admin), "admin unlinks");
+check(canMergePlayers(admin), "admin merges");
 check(canDeactivatePlayer(admin), "admin deactivates");
 check(!canReactivatePlayer(admin), "admin cannot reactivate");
 check(!canUpdateEventConfig(admin), "admin cannot update event config");
@@ -78,6 +82,7 @@ check(!canUpdateNickname(member), "member cannot nickname others");
 check(!canInvite(member), "member cannot invite");
 check(!canTransferOwnership(member), "member cannot transfer");
 check(!canUnlinkPlayer(member), "member cannot unlink");
+check(!canMergePlayers(member), "member cannot merge");
 check(!canDeactivatePlayer(member), "member cannot deactivate");
 check(!canReactivatePlayer(member), "member cannot reactivate");
 check(!canUpdateEventConfig(member), "member cannot update event config");

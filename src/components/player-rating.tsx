@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
 	PLAYER_RATING,
 	PLAYER_STAR_CLASS,
+	PLAYER_STAR_PATH,
 	PLAYER_STARS,
 	ratingToStarFill,
 	STAR_SIDE,
@@ -9,9 +10,6 @@ import {
 	snapStarFill,
 	starHalfToFill,
 } from "@/const/player-rating";
-
-const STAR_PATH =
-	"M12 2.5l2.6 5.27 5.82.85-4.21 4.1 1 5.78L12 15.77 6.79 18.5l1-5.78-4.21-4.1 5.82-.85L12 2.5z";
 
 type PlayerRatingProps = {
 	rating: number;
@@ -29,7 +27,7 @@ function StarIcon({ className }: { className?: string }) {
 			aria-hidden="true"
 			focusable="false"
 		>
-			<path d={STAR_PATH} />
+			<path d={PLAYER_STAR_PATH} />
 		</svg>
 	);
 }

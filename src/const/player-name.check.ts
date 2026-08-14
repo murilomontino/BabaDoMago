@@ -1,4 +1,5 @@
 import {
+	confirmClaimPlayerMessage,
 	PLAYER_LABEL,
 	PLAYER_NICKNAME,
 	playerVisibleName,
@@ -39,6 +40,11 @@ check(
 check(
 	playerVisibleName({ nickname: "", display_name: "Murilo" }) === "Murilo",
 	"empty falls back",
+);
+
+check(
+	confirmClaimPlayerMessage("Vitinho") === "Você é Vitinho?",
+	"claim confirm message",
 );
 
 console.log("player-name ok");
