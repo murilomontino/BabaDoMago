@@ -37,7 +37,7 @@ import {
 	type RosterRow,
 	toRosterRow,
 } from "@/const/roster-stats";
-import { FIELD_CLASS } from "@/const/ui";
+import { CHIP_CLASS, FIELD_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 const rosterColumnHelper = createColumnHelper<DataTableFeatures, RosterRow>();
@@ -57,6 +57,7 @@ type ChampionshipRosterProps = {
 	onChangeRole?: (playerId: number, role: AssignableChampionshipRole) => void;
 	onUnlink?: (playerId: number) => void;
 	unlinkingPlayerId?: number | null;
+	onMerge?: (playerId: number) => void;
 	onDeactivate?: (playerId: number) => void;
 	deactivatingPlayerId?: number | null;
 	onReactivate?: (playerId: number) => void;
@@ -101,6 +102,7 @@ export function ChampionshipRoster({
 	onChangeRole,
 	onUnlink,
 	unlinkingPlayerId,
+	onMerge,
 	onDeactivate,
 	deactivatingPlayerId,
 	onReactivate,
@@ -112,6 +114,14 @@ export function ChampionshipRoster({
 	const alreadyMember = Boolean(
 		currentUserId && players.some((player) => player.user_id === currentUserId),
 	);
+	const hasUnclaimedPlayer = players.some(
+		(player) => !player.user_id && !player.deleted_at,
+	);
+	const hasLinkedPlayer = players.some(
+		(player) =>
+			player.user_id && player.user_id !== createdBy && !player.deleted_at,
+	);
+	const canMerge = Boolean(onMerge && hasUnclaimedPlayer && hasLinkedPlayer);
 	const isOwnerViewer = Boolean(currentUserId && currentUserId === createdBy);
 	const viewer = players.find((player) => player.user_id === currentUserId);
 	const actorRole = resolveChampionshipRole(
@@ -152,6 +162,7 @@ export function ChampionshipRoster({
 			eventStatsPlayerId,
 			onUnlink,
 			unlinkingPlayerId,
+			onMerge: canMerge ? onMerge : undefined,
 			onDeactivate,
 			deactivatingPlayerId,
 			onReactivate,
@@ -170,6 +181,8 @@ export function ChampionshipRoster({
 			eventStatsPlayerId,
 			onUnlink,
 			unlinkingPlayerId,
+			canMerge,
+			onMerge,
 			onDeactivate,
 			deactivatingPlayerId,
 			onReactivate,
@@ -264,6 +277,16 @@ export function ChampionshipRoster({
 						</span>
 					),
 				}),
+				rosterColumnHelper.accessor("mvps", {
+					id: ROSTER_COLUMN.mvps,
+					header: ROSTER_COLUMN_ABBR.mvps,
+					meta: { align: "right", title: ROSTER_COLUMN_LABEL.mvps },
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatRosterCount(getValue())}
+						</span>
+					),
+				}),
 				rosterColumnHelper.accessor("matches", {
 					id: ROSTER_COLUMN.matches,
 					header: ROSTER_COLUMN_ABBR.matches,
@@ -335,7 +358,12 @@ export function ChampionshipRoster({
 				htmlFor="roster-player-search"
 				className="block text-sm text-fg-muted"
 			>
-				{PLAYER_SEARCH.label}
+				<span className="flex items-center justify-between gap-2">
+					{PLAYER_SEARCH.label}
+					<span className={CHIP_CLASS}>
+						{`${players.length} ${PLAYER_SEARCH.countLabel}`}
+					</span>
+				</span>
 				<input
 					id="roster-player-search"
 					type="search"
@@ -361,7 +389,7 @@ export function ChampionshipRoster({
 							<RosterPlayerCell
 								{...rosterPlayerCellProps(player, playerCellShared)}
 							/>
-							<div className="flex items-center gap-3">
+							<div className="flex items-center gap-1">
 								<RosterPlayerRating
 									{...rosterPlayerRatingProps(player, playerRatingShared)}
 								/>

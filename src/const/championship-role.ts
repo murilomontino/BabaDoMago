@@ -33,11 +33,13 @@ type ChampionshipPermissions = {
 	invite: boolean;
 	transferOwnership: boolean;
 	unlinkPlayer: boolean;
+	mergePlayers: boolean;
 	deactivatePlayer: boolean;
 	reactivatePlayer: boolean;
 	updateEventConfig: boolean;
 	updateVisibility: boolean;
 	manageEvent: boolean;
+	setEventMvp: boolean;
 };
 
 export function resolveChampionshipRole(
@@ -77,11 +79,13 @@ export function championshipPermissions(
 				invite: true,
 				transferOwnership: true,
 				unlinkPlayer: true,
+				mergePlayers: true,
 				deactivatePlayer: true,
 				reactivatePlayer: true,
 				updateEventConfig: true,
 				updateVisibility: true,
 				manageEvent: true,
+				setEventMvp: true,
 			};
 		case CHAMPIONSHIP_ROLE.captain:
 			return {
@@ -93,11 +97,13 @@ export function championshipPermissions(
 				invite: true,
 				transferOwnership: false,
 				unlinkPlayer: true,
+				mergePlayers: true,
 				deactivatePlayer: true,
 				reactivatePlayer: false,
 				updateEventConfig: true,
 				updateVisibility: true,
 				manageEvent: true,
+				setEventMvp: true,
 			};
 		case CHAMPIONSHIP_ROLE.admin:
 			return {
@@ -109,11 +115,13 @@ export function championshipPermissions(
 				invite: true,
 				transferOwnership: false,
 				unlinkPlayer: true,
+				mergePlayers: true,
 				deactivatePlayer: true,
 				reactivatePlayer: false,
 				updateEventConfig: false,
 				updateVisibility: false,
 				manageEvent: true,
+				setEventMvp: false,
 			};
 		case CHAMPIONSHIP_ROLE.member:
 			return {
@@ -125,11 +133,13 @@ export function championshipPermissions(
 				invite: false,
 				transferOwnership: false,
 				unlinkPlayer: false,
+				mergePlayers: false,
 				deactivatePlayer: false,
 				reactivatePlayer: false,
 				updateEventConfig: false,
 				updateVisibility: false,
 				manageEvent: false,
+				setEventMvp: false,
 			};
 		default: {
 			const _exhaustive: never = role;
@@ -182,6 +192,10 @@ export function canUnlinkPlayer(role: ChampionshipRole): boolean {
 	return championshipPermissions(role).unlinkPlayer;
 }
 
+export function canMergePlayers(role: ChampionshipRole): boolean {
+	return championshipPermissions(role).mergePlayers;
+}
+
 export function canDeactivatePlayer(role: ChampionshipRole): boolean {
 	return championshipPermissions(role).deactivatePlayer;
 }
@@ -204,4 +218,8 @@ export function canManageEvent(role: ChampionshipRole): boolean {
 
 export function canOverrideEndedEvent(role: ChampionshipRole): boolean {
 	return role === CHAMPIONSHIP_ROLE.owner;
+}
+
+export function canSetEventMvp(role: ChampionshipRole): boolean {
+	return championshipPermissions(role).setEventMvp;
 }

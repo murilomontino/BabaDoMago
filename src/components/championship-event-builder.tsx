@@ -1,10 +1,12 @@
 import { Field, FieldArray, Form, Formik } from "formik";
-import { LoaderCircle, Plus, Shuffle } from "lucide-react";
+import { LoaderCircle, Plus, Share2, Shuffle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AppDialog } from "@/components/atoms/app-dialog";
 import { Button } from "@/components/button";
 import { EventAttendanceTable } from "@/components/event-attendance-table";
 import {
+	EVENT_TEAM_PLAYER_SLOT_CLASS,
+	EVENT_TEAM_POSITION_CHIP_CLASS,
 	EventTeamColorDot,
 	EventTeamColorNoneButton,
 	EventTeamPlayerRow,
@@ -15,6 +17,7 @@ import { Tabs } from "@/components/tabs";
 import {
 	applyVisibleAttendance,
 	builderTeamsFromDrafts,
+	builderTeamsHavePlayers,
 	CHAMPIONSHIP_EVENT,
 	EVENT_ACTION,
 	EVENT_BUILDER_STEP,
@@ -46,15 +49,19 @@ import {
 	isEventTeamColor,
 	normalizeEventTeamColor,
 } from "@/const/event-team-color";
+import {
+	EVENT_TEAM_SHARE_LABEL,
+	eventTeamsShareCards,
+} from "@/const/event-team-share";
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import {
 	BUTTON_VARIANT,
-	CHIP_CLASS,
 	ERROR_CLASS,
 	FIELD_CLASS,
 	MODAL_CLASS,
 } from "@/const/ui";
+import { shareEventTeamsImage } from "@/lib/share-event-teams-image";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 type EventBuilderValues = {
@@ -71,6 +78,8 @@ type ChampionshipEventBuilderProps = {
 	players: ChampionshipPlayer[];
 	attendanceCounts: ReadonlyMap<number, number>;
 	step: EventBuilderStep;
+	startsAt: string;
+	championshipName: string;
 	initialPresentIds?: readonly number[];
 	initialGoalkeeperIds?: readonly number[];
 	initialTeams?: EventTeamBuilderTeam[];
@@ -94,6 +103,8 @@ export function ChampionshipEventBuilder({
 	players,
 	attendanceCounts,
 	step,
+	startsAt,
+	championshipName,
 	initialPresentIds = [],
 	initialGoalkeeperIds = [],
 	initialTeams,
@@ -113,6 +124,11 @@ export function ChampionshipEventBuilder({
 	const [attendanceError, setAttendanceError] = useState<string | null>(null);
 	const [teamsError, setTeamsError] = useState<string | null>(null);
 	const [isDrawing, setIsDrawing] = useState(false);
+	const [isSharing, setIsSharing] = useState(false);
+	const [drawConfirmOpen, setDrawConfirmOpen] = useState(false);
+	const drawSetTeamsRef = useRef<
+		((teams: EventTeamBuilderTeam[]) => void) | null
+	>(null);
 	const drawWorkerRef = useRef<Worker | null>(null);
 	const rosterIds = players.map((player) => player.id);
 	const ceiling = championshipRatingCeiling(
@@ -255,6 +271,51 @@ export function ChampionshipEventBuilder({
 		}
 	}
 
+	async function handleShareTeams(teams: EventTeamBuilderTeam[]) {
+		setIsSharing(true);
+		setTeamsError(null);
+		try {
+			await shareEventTeamsImage(
+				eventTeamsShareCards(teams, presentPlayers),
+				ceiling,
+				{ championshipName, startsAt },
+			);
+		} catch {
+			setTeamsError(EVENT_TEAM_SHARE_LABEL.shareFailed);
+		} finally {
+			setIsSharing(false);
+		}
+	}
+
+	function requestDrawTeams(
+		teams: EventTeamBuilderTeam[],
+		setTeams: (teams: EventTeamBuilderTeam[]) => void,
+	) {
+		if (!builderTeamsHavePlayers(teams)) {
+			void handleDrawTeams(setTeams);
+			return;
+		}
+
+		drawSetTeamsRef.current = setTeams;
+		setDrawConfirmOpen(true);
+	}
+
+	function confirmDrawTeams() {
+		const setTeams = drawSetTeamsRef.current;
+		drawSetTeamsRef.current = null;
+		setDrawConfirmOpen(false);
+		if (!setTeams) {
+			return;
+		}
+
+		void handleDrawTeams(setTeams);
+	}
+
+	function cancelDrawTeams() {
+		drawSetTeamsRef.current = null;
+		setDrawConfirmOpen(false);
+	}
+
 	return (
 		<>
 			{isDrawing && (
@@ -271,6 +332,29 @@ export function ChampionshipEventBuilder({
 						<p className="mt-3 text-sm font-medium text-fg">
 							{EVENT_TEAM_MESSAGE.drawing}
 						</p>
+					</div>
+				</AppDialog>
+			)}
+			{drawConfirmOpen && (
+				<AppDialog onClose={cancelDrawTeams}>
+					<div className={MODAL_CLASS}>
+						<p className="mb-1 text-sm font-medium tracking-tight text-fg">
+							{EVENT_TEAM_MESSAGE.drawReplaceTitle}
+						</p>
+						<p className="mb-3 text-sm text-fg-muted">
+							{EVENT_TEAM_MESSAGE.drawReplaceHint}
+						</p>
+						<div className="mt-4 flex justify-end gap-2">
+							<Button
+								variant={BUTTON_VARIANT.secondary}
+								onClick={cancelDrawTeams}
+							>
+								{EVENT_TEAM_MESSAGE.drawReplaceCancel}
+							</Button>
+							<Button onClick={confirmDrawTeams}>
+								{EVENT_ACTION.drawTeams}
+							</Button>
+						</div>
 					</div>
 				</AppDialog>
 			)}
@@ -513,10 +597,10 @@ export function ChampionshipEventBuilder({
 																	return (
 																		<li
 																			key={`${team.key}-slot-${slot}`}
-																			className="flex min-h-7 items-center gap-1.5 rounded-md bg-white px-1.5 py-1"
+																			className={EVENT_TEAM_PLAYER_SLOT_CLASS}
 																		>
 																			<span
-																				className={`${CHIP_CLASS} shrink-0`}
+																				className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}
 																			>
 																				{
 																					EVENT_TEAM_POSITION_LABEL[
@@ -528,9 +612,6 @@ export function ChampionshipEventBuilder({
 																				<EventTeamPlayerRow
 																					player={player}
 																					ceiling={ceiling}
-																					backgroundColor={
-																						EVENT_TEAM_COLOR.white
-																					}
 																					isGoalkeeperVolunteer={
 																						slot !== 0 &&
 																						goalkeeperIds.includes(player.id)
@@ -608,9 +689,9 @@ export function ChampionshipEventBuilder({
 												)}
 												<Button
 													variant={BUTTON_VARIANT.secondary}
-													disabled={isPending || isDrawing}
+													disabled={isPending || isDrawing || isSharing}
 													onClick={() => {
-														void handleDrawTeams((teams) => {
+														requestDrawTeams(values.teams, (teams) => {
 															setFieldValue("teams", teams);
 														});
 													}}
@@ -618,6 +699,25 @@ export function ChampionshipEventBuilder({
 													<Shuffle className="size-4" />
 													{EVENT_ACTION.drawTeams}
 												</Button>
+												{builderTeamsHavePlayers(values.teams) && (
+													<Button
+														variant={BUTTON_VARIANT.secondary}
+														disabled={isPending || isDrawing || isSharing}
+														onClick={() => {
+															void handleShareTeams(values.teams);
+														}}
+													>
+														{isSharing && (
+															<LoaderCircle
+																className="size-4 animate-spin"
+																aria-hidden
+															/>
+														)}
+														{!isSharing && <Share2 className="size-4" />}
+														{isSharing && EVENT_TEAM_SHARE_LABEL.sharing}
+														{!isSharing && EVENT_TEAM_SHARE_LABEL.shareTeams}
+													</Button>
+												)}
 											</div>
 											{teamsError && (
 												<p className={ERROR_CLASS}>{teamsError}</p>

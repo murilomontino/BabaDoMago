@@ -10,6 +10,7 @@ import {
 	getChampionshipByInvite,
 	joinChampionship,
 	listChampionships,
+	mergeChampionshipPlayers,
 	reactivatePlayer,
 	renameChampionship,
 	setPlayerRole,
@@ -25,6 +26,7 @@ import {
 	CHAMPIONSHIP_BY_ID_QUERY_KEY,
 	CHAMPIONSHIP_BY_INVITE_QUERY_KEY,
 	CHAMPIONSHIPS_QUERY_KEY,
+	invalidateChampionshipEventQueries,
 	invalidateChampionshipQueries,
 } from "./championships-query-keys";
 
@@ -160,11 +162,18 @@ export function useUpdateChampionshipEventConfig(championshipId: number) {
 		mutationFn: ({
 			eventTime,
 			playersPerTeam,
+			skipGuestGoalkeeperMatches,
 		}: {
 			eventTime: string;
 			playersPerTeam: number;
+			skipGuestGoalkeeperMatches: boolean;
 		}) =>
-			updateChampionshipEventConfig(championshipId, eventTime, playersPerTeam),
+			updateChampionshipEventConfig(
+				championshipId,
+				eventTime,
+				playersPerTeam,
+				skipGuestGoalkeeperMatches,
+			),
 		onSuccess: async () => {
 			await invalidateChampionshipQueries(queryClient);
 		},
@@ -230,6 +239,26 @@ export function useUnlinkPlayer() {
 		mutationFn: (playerId: number) => unlinkPlayer(playerId),
 		onSuccess: async () => {
 			await invalidateChampionshipQueries(queryClient);
+		},
+	});
+}
+
+export function useMergeChampionshipPlayers() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({
+			keepPlayerId,
+			absorbPlayerId,
+		}: {
+			keepPlayerId: number;
+			absorbPlayerId: number;
+		}) => mergeChampionshipPlayers(keepPlayerId, absorbPlayerId),
+		onSuccess: async () => {
+			await Promise.all([
+				invalidateChampionshipQueries(queryClient),
+				invalidateChampionshipEventQueries(queryClient),
+			]);
 		},
 	});
 }

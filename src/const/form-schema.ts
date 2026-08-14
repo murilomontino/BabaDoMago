@@ -1,4 +1,4 @@
-import { number, object, string } from "yup";
+import { boolean, number, object, string } from "yup";
 import { CHAMPIONSHIP_EVENT } from "./championship-event.ts";
 import { PLAYER_NICKNAME } from "./player-name.ts";
 import { parsePlayerNameList } from "./player-name-list.ts";
@@ -21,6 +21,11 @@ const ratingField = number()
 	.min(PLAYER_RATING.min, FORM_MESSAGE.ratingInvalid)
 	.max(PLAYER_RATING.max, FORM_MESSAGE.ratingInvalid)
 	.required(FORM_MESSAGE.ratingInvalid);
+
+const eventTimeField = string()
+	.trim()
+	.matches(/^\d{2}:\d{2}(:\d{2})?$/, FORM_MESSAGE.eventTimeInvalid)
+	.required(FORM_MESSAGE.eventTimeInvalid);
 
 export const nameFormSchema = object({
 	name: string().trim().required(FORM_MESSAGE.nameRequired),
@@ -48,15 +53,17 @@ export const playerNicknameSchema = object({
 		.max(PLAYER_NICKNAME.maxLength, FORM_MESSAGE.nicknameInvalid),
 });
 
+export const mergePlayersSchema = object({
+	keepPlayerId: string().trim().required(FORM_MESSAGE.playerRequired),
+	absorbPlayerId: string().trim().required(FORM_MESSAGE.playerRequired),
+});
+
 export const transferOwnerSchema = object({
 	playerId: string().trim().required(FORM_MESSAGE.playerRequired),
 });
 
 export const eventConfigFormSchema = object({
-	eventTime: string()
-		.trim()
-		.matches(/^\d{2}:\d{2}(:\d{2})?$/, FORM_MESSAGE.eventTimeInvalid)
-		.required(FORM_MESSAGE.eventTimeInvalid),
+	eventTime: eventTimeField,
 	playersPerTeam: number()
 		.integer(FORM_MESSAGE.playersPerTeamInvalid)
 		.min(
@@ -68,10 +75,12 @@ export const eventConfigFormSchema = object({
 			FORM_MESSAGE.playersPerTeamInvalid,
 		)
 		.required(FORM_MESSAGE.playersPerTeamInvalid),
+	skipGuestGoalkeeperMatches: boolean().required(),
 });
 
 export const startEventFormSchema = object({
 	eventDate: string().trim().required(FORM_MESSAGE.eventDateRequired),
+	eventTime: eventTimeField,
 });
 
 export const addMatchFormSchema = object({

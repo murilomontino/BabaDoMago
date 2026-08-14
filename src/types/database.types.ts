@@ -22,6 +22,7 @@ type ChampionshipPlayersRow = {
 	role: string;
 	user_id: string | null;
 	wins: number;
+	mvps: number;
 };
 
 export type Database = {
@@ -42,6 +43,8 @@ export type Database = {
 					rating: number;
 					rating_delta: number;
 					wins: number;
+					is_mvp: boolean;
+					mvp_overridden: boolean;
 				};
 				Insert: {
 					assists?: number;
@@ -57,6 +60,8 @@ export type Database = {
 					rating?: number;
 					rating_delta?: number;
 					wins?: number;
+					is_mvp?: boolean;
+					mvp_overridden?: boolean;
 				};
 				Update: {
 					assists?: number;
@@ -72,6 +77,8 @@ export type Database = {
 					rating?: number;
 					rating_delta?: number;
 					wins?: number;
+					is_mvp?: boolean;
+					mvp_overridden?: boolean;
 				};
 				Relationships: [
 					{
@@ -133,30 +140,36 @@ export type Database = {
 					display_name: string;
 					event_id: number;
 					id: number;
+					include_stats: boolean;
 					is_goalkeeper: boolean;
+					is_substituted: boolean;
 					match_id: number;
 					player_id: number;
-					slot: number;
+					slot: number | null;
 					team_id: number;
 				};
 				Insert: {
 					display_name: string;
 					event_id: number;
 					id?: number;
+					include_stats?: boolean;
 					is_goalkeeper?: boolean;
+					is_substituted?: boolean;
 					match_id: number;
 					player_id: number;
-					slot: number;
+					slot?: number | null;
 					team_id: number;
 				};
 				Update: {
 					display_name?: string;
 					event_id?: number;
 					id?: number;
+					include_stats?: boolean;
 					is_goalkeeper?: boolean;
+					is_substituted?: boolean;
 					match_id?: number;
 					player_id?: number;
-					slot?: number;
+					slot?: number | null;
 					team_id?: number;
 				};
 				Relationships: [
@@ -294,6 +307,7 @@ export type Database = {
 					ended_at: string | null;
 					id: number;
 					players_per_team: number;
+					skip_guest_goalkeeper_matches: boolean;
 					starts_at: string;
 				};
 				Insert: {
@@ -304,6 +318,7 @@ export type Database = {
 					ended_at?: string | null;
 					id?: number;
 					players_per_team: number;
+					skip_guest_goalkeeper_matches?: boolean;
 					starts_at: string;
 				};
 				Update: {
@@ -314,6 +329,7 @@ export type Database = {
 					ended_at?: string | null;
 					id?: number;
 					players_per_team?: number;
+					skip_guest_goalkeeper_matches?: boolean;
 					starts_at?: string;
 				};
 				Relationships: [
@@ -344,6 +360,7 @@ export type Database = {
 					role?: string;
 					user_id?: string | null;
 					wins?: number;
+					mvps?: number;
 				};
 				Update: {
 					assists?: number;
@@ -361,6 +378,7 @@ export type Database = {
 					role?: string;
 					user_id?: string | null;
 					wins?: number;
+					mvps?: number;
 				};
 				Relationships: [
 					{
@@ -384,6 +402,7 @@ export type Database = {
 					logo_path: string | null;
 					name: string;
 					players_per_team: number;
+					skip_guest_goalkeeper_matches: boolean;
 				};
 				Insert: {
 					created_at?: string;
@@ -396,6 +415,7 @@ export type Database = {
 					logo_path?: string | null;
 					name: string;
 					players_per_team?: number;
+					skip_guest_goalkeeper_matches?: boolean;
 				};
 				Update: {
 					created_at?: string;
@@ -408,6 +428,7 @@ export type Database = {
 					logo_path?: string | null;
 					name?: string;
 					players_per_team?: number;
+					skip_guest_goalkeeper_matches?: boolean;
 				};
 				Relationships: [];
 			};
@@ -494,7 +515,11 @@ export type Database = {
 				Returns: undefined;
 			};
 			end_championship_event: {
-				Args: { event_id: number; present_player_ids?: Json | null };
+				Args: {
+					event_id: number;
+					present_player_ids?: Json | null;
+					mvp_player_ids?: Json | null;
+				};
 				Returns: Json;
 			};
 			end_championship_event_match: {
@@ -513,12 +538,20 @@ export type Database = {
 				Args: { invite_code: string };
 				Returns: Json;
 			};
+			merge_championship_players: {
+				Args: { keep_player_id: number; absorb_player_id: number };
+				Returns: Json;
+			};
 			owns_championship_logo_object: {
 				Args: { object_name: string };
 				Returns: boolean;
 			};
 			reactivate_player: {
 				Args: { player_id: number };
+				Returns: Json;
+			};
+			set_championship_event_mvps: {
+				Args: { event_id: number; player_ids: Json };
 				Returns: Json;
 			};
 			set_player_role: {
@@ -537,6 +570,7 @@ export type Database = {
 				Args: {
 					championship_id: number;
 					event_date: string;
+					event_time?: string;
 				};
 				Returns: Json;
 			};
@@ -554,6 +588,7 @@ export type Database = {
 					team_id: number;
 					slot: number;
 					player_id: number | null;
+					include_stats?: boolean;
 				};
 				Returns: Json;
 			};
@@ -612,6 +647,14 @@ export type Database = {
 				Args: { player_id: number };
 				Returns: Json;
 			};
+			reopen_championship_event_match: {
+				Args: { match_id: number };
+				Returns: Json;
+			};
+			undo_championship_event_goal: {
+				Args: { match_id: number; goal_id: number };
+				Returns: Json;
+			};
 			unlink_player: {
 				Args: { player_id: number };
 				Returns: Json;
@@ -630,6 +673,7 @@ export type Database = {
 					championship_id: number;
 					event_time: string;
 					players_per_team: number;
+					skip_guest_goalkeeper_matches: boolean;
 				};
 				Returns: Json;
 			};

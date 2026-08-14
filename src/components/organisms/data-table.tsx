@@ -13,6 +13,7 @@ import { SortableHeader } from "@/components/atoms/sortable-header";
 import { ColumnVisibilityPanel } from "@/components/molecules/column-visibility-panel";
 import { TableLegend } from "@/components/molecules/table-legend";
 import {
+	DATA_TABLE_MOBILE_ACTIONS,
 	DATA_TABLE_MOBILE_PRIMARY,
 	mobileTableCellAbbr,
 	splitMobileTableCells,
@@ -97,7 +98,9 @@ export function DataTable<TData extends RowData>({
 				id: item.id,
 				label: item.label,
 				visible: column.getIsVisible(),
-				onToggle: column.getToggleVisibilityHandler(),
+				onToggle: (visible: boolean) => {
+					column.toggleVisibility(visible);
+				},
 			},
 		];
 	});
@@ -207,7 +210,7 @@ export function DataTable<TData extends RowData>({
 								</div>
 							)}
 							{actions.length > 0 && (
-								<div className="mt-2 flex flex-wrap items-center justify-end gap-2">
+								<div className="mt-2 flex flex-nowrap items-center justify-end">
 									{actions.map((cell) => (
 										<div key={cell.id}>
 											<table.FlexRender cell={cell} />
@@ -262,11 +265,13 @@ export function DataTable<TData extends RowData>({
 								{row.getVisibleCells().map((cell) => {
 									const align = cell.column.columnDef.meta?.align ?? "left";
 									const alignClass = TABLE_CELL_ALIGN[align];
+									const isActions =
+										cell.column.id === DATA_TABLE_MOBILE_ACTIONS.actions;
 
 									return (
 										<td
 											key={cell.id}
-											className={`whitespace-nowrap px-3 py-3 ${alignClass}`}
+											className={`${isActions ? "w-px px-0.5 py-1" : "whitespace-nowrap px-3 py-3"} ${alignClass}`}
 										>
 											<table.FlexRender cell={cell} />
 										</td>

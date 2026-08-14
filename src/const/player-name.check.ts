@@ -1,4 +1,5 @@
 import {
+	confirmClaimPlayerMessage,
 	PLAYER_LABEL,
 	PLAYER_NICKNAME,
 	playerVisibleName,
@@ -16,7 +17,7 @@ check(
 	PLAYER_LABEL.nicknamePlaceholder === "Apelido no baba",
 	"nickname placeholder",
 );
-check(PLAYER_LABEL.eventStats === "Stats do evento", "event stats label");
+check(PLAYER_LABEL.eventStats === "Stats da rodada", "event stats label");
 
 check(
 	playerVisibleName({ nickname: "Vitinho", display_name: "Murilo" }) ===
@@ -39,6 +40,11 @@ check(
 check(
 	playerVisibleName({ nickname: "", display_name: "Murilo" }) === "Murilo",
 	"empty falls back",
+);
+
+check(
+	confirmClaimPlayerMessage("Vitinho") === "Você é Vitinho?",
+	"claim confirm message",
 );
 
 console.log("player-name ok");

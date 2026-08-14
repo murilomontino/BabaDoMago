@@ -4,6 +4,8 @@ import {
 	attendanceGoalkeeperIds,
 	builderTeamsFromDrafts,
 	builderTeamsFromEvent,
+	builderTeamsHavePlayers,
+	CHAMPIONSHIP_EVENT,
 	canAddEventMatch,
 	canEditEventTeams,
 	canRemoveEventAttendance,
@@ -16,6 +18,7 @@ import {
 	EVENT_ATTENDANCE_MESSAGE,
 	EVENT_ATTENDANCE_STAT_ABBR,
 	EVENT_BUILDER_STEP,
+	EVENT_CONFIG_LABEL,
 	EVENT_ERROR_MESSAGE,
 	EVENT_TEAM_MESSAGE,
 	EVENT_TEAM_POSITION,
@@ -59,6 +62,9 @@ function check(actual: unknown, expected: unknown): void {
 		throw new Error(`expected ${String(expected)}, got ${String(actual)}`);
 	}
 }
+
+check(EVENT_CONFIG_LABEL.skipGuestGoalkeeperMatches, "Goleiro de outro time");
+check(CHAMPIONSHIP_EVENT.skipGuestGoalkeeperMatchesDefault, true);
 
 function draft(
 	color: EventTeamDraft["color"],
@@ -241,6 +247,14 @@ check(
 );
 
 check(emptyTeamSlots(3).join(","), ",,");
+check(builderTeamsHavePlayers(initialBuilderTeams(5, 2)), false);
+check(
+	builderTeamsHavePlayers([
+		{ key: "a", color: null, slots: ["", "1"] },
+		{ key: "b", color: null, slots: ["", ""] },
+	]),
+	true,
+);
 check(eventTeamCount(16, 5), 4);
 check(eventTeamCount(15, 5), 3);
 check(eventTeamCount(31, 10), 4);
@@ -585,6 +599,22 @@ check(
 check(
 	championshipEventErrorMessage("event still open"),
 	EVENT_ERROR_MESSAGE["event still open"],
+);
+check(
+	championshipEventErrorMessage("no goal to undo"),
+	EVENT_ERROR_MESSAGE["no goal to undo"],
+);
+check(
+	championshipEventErrorMessage("goal not found"),
+	EVENT_ERROR_MESSAGE["goal not found"],
+);
+check(
+	championshipEventErrorMessage("player substituted"),
+	EVENT_ERROR_MESSAGE["player substituted"],
+);
+check(
+	championshipEventErrorMessage("match already open"),
+	EVENT_ERROR_MESSAGE["match already open"],
 );
 
 const playerEventDraft = playerEventStatsFromAttendance({

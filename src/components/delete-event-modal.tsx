@@ -1,5 +1,6 @@
 import { AppDialog } from "@/components/atoms/app-dialog";
 import { Button } from "@/components/button";
+import { EVENT_ACTION } from "@/const/championship-event";
 import { BUTTON_VARIANT, ERROR_CLASS, MODAL_CLASS } from "@/const/ui";
 
 type DeleteEventModalProps = {
@@ -19,10 +20,10 @@ export function DeleteEventModal({
 		<AppDialog onClose={onCancel}>
 			<div className={MODAL_CLASS}>
 				<p className="mb-1 text-sm font-medium tracking-tight text-fg">
-					Excluir evento
+					{EVENT_ACTION.deleteEvent}
 				</p>
 				<p className="mb-3 text-sm text-fg-muted">
-					O evento some da lista. Dá para criar outro no mesmo dia.
+					A rodada some da lista. Dá para criar outra no mesmo dia.
 				</p>
 				{errorMessage && (
 					<p className={`mb-2 ${ERROR_CLASS}`}>{errorMessage}</p>

@@ -1,3 +1,6 @@
+import type { ChampionshipPlayer } from "../types/championship.ts";
+import type { ChampionshipEvent } from "../types/championship-event.ts";
+import { CHAMPIONSHIP_EVENT } from "./championship-event.ts";
 import { playerVisibleName } from "./player-name.ts";
 import {
 	formatRosterCount,
@@ -33,6 +36,48 @@ export const PODIUM_LABEL = {
 	metric: "Métrica",
 	emptyPlayers: "Nenhum jogador ainda",
 	emptyStats: "Nenhuma estatística ainda",
+} as const;
+
+export const PODIUM_SEASON_YEAR = 2026;
+
+export const PODIUM_SEMESTER = {
+	first: "first",
+	second: "second",
+} as const;
+
+export type PodiumSemester =
+	(typeof PODIUM_SEMESTER)[keyof typeof PODIUM_SEMESTER];
+
+export const PODIUM_SEMESTER_MONTHS = {
+	[PODIUM_SEMESTER.first]: { start: 1, end: 6 },
+	[PODIUM_SEMESTER.second]: { start: 7, end: 12 },
+} as const;
+
+export const PODIUM_FILTER_LABEL = {
+	season: `Temporada ${PODIUM_SEASON_YEAR}`,
+	[PODIUM_SEMESTER.first]: "Primeiro Semestre",
+	[PODIUM_SEMESTER.second]: "Segundo Semestre",
+	currentMonth: "Mês atual",
+	allMonths: "Todos",
+} as const;
+
+export const PODIUM_MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
+
+export type PodiumMonth = (typeof PODIUM_MONTHS)[number];
+
+export const PODIUM_MONTH_LABEL = {
+	1: "Janeiro",
+	2: "Fevereiro",
+	3: "Março",
+	4: "Abril",
+	5: "Maio",
+	6: "Junho",
+	7: "Julho",
+	8: "Agosto",
+	9: "Setembro",
+	10: "Outubro",
+	11: "Novembro",
+	12: "Dezembro",
 } as const;
 
 export const PODIUM_DEFAULT_METRIC = ROSTER_COLUMN.goals;
@@ -71,7 +116,7 @@ export const PODIUM_CONFETTI = {
 
 export type PodiumStanding = {
 	place: PodiumPlace;
-	row: RosterRow;
+	rows: RosterRow[];
 };
 
 export function parsePodiumMetric(value: string): PodiumMetricId {
@@ -120,16 +165,225 @@ export function podiumStandings(
 	ranked: readonly RosterRow[],
 	metric: PodiumMetricId,
 ): PodiumStanding[] {
-	const scored = ranked
-		.filter((row) => row[metric] > 0)
-		.slice(0, PODIUM_PLACES.length);
+	const scored = ranked.filter((row) => row[metric] > 0);
+	const distinct = [...new Set(scored.map((row) => row[metric]))].slice(
+		0,
+		PODIUM_PLACES.length,
+	);
 
-	return scored.flatMap((row, index) => {
+	return distinct.flatMap((score, index) => {
 		const place = PODIUM_PLACES[index];
 		if (!place) {
 			return [];
 		}
 
-		return [{ place, row }];
+		return [
+			{
+				place,
+				rows: scored.filter((row) => row[metric] === score),
+			},
+		];
+	});
+}
+
+type EventLocalYearMonth = {
+	year: number;
+	month: number;
+};
+
+function eventLocalYearMonth(startsAt: string): EventLocalYearMonth | null {
+	const date = new Date(startsAt);
+	if (Number.isNaN(date.getTime())) {
+		return null;
+	}
+
+	const ymd = new Intl.DateTimeFormat("en-CA", {
+		timeZone: CHAMPIONSHIP_EVENT.timeZone,
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+	}).format(date);
+	const year = Number(ymd.slice(0, 4));
+	const month = Number(ymd.slice(5, 7));
+	if (!Number.isFinite(year) || !Number.isFinite(month)) {
+		return null;
+	}
+
+	return { year, month };
+}
+
+export function eventMatchesPodiumPeriod(
+	startsAt: string,
+	year: number,
+	semester: PodiumSemester | null,
+	months: readonly PodiumMonth[] = [],
+): boolean {
+	const local = eventLocalYearMonth(startsAt);
+	if (!local || local.year !== year) {
+		return false;
+	}
+
+	if (months.length > 0) {
+		return months.some((month) => month === local.month);
+	}
+
+	if (semester === null) {
+		return true;
+	}
+
+	switch (semester) {
+		case PODIUM_SEMESTER.first:
+		case PODIUM_SEMESTER.second: {
+			const range = PODIUM_SEMESTER_MONTHS[semester];
+			return local.month >= range.start && local.month <= range.end;
+		}
+		default: {
+			const _never: never = semester;
+			return _never;
+		}
+	}
+}
+
+export function parsePodiumMonth(value: number): PodiumMonth | null {
+	const month = PODIUM_MONTHS.find((item) => item === value);
+	if (!month) {
+		return null;
+	}
+
+	return month;
+}
+
+export function podiumCurrentMonth(now = new Date()): PodiumMonth {
+	const local = eventLocalYearMonth(now.toISOString());
+	if (!local) {
+		return PODIUM_MONTHS[0];
+	}
+
+	return parsePodiumMonth(local.month) ?? PODIUM_MONTHS[0];
+}
+
+export function togglePodiumMonth(
+	selected: readonly PodiumMonth[],
+	clicked: PodiumMonth,
+): PodiumMonth[] {
+	if (selected.includes(clicked)) {
+		return selected.filter((month) => month !== clicked);
+	}
+
+	return [...selected, clicked].sort((left, right) => left - right);
+}
+
+export function selectPodiumCurrentMonth(current: PodiumMonth): PodiumMonth[] {
+	return [current];
+}
+
+export function selectPodiumAllMonths(): PodiumMonth[] {
+	return [...PODIUM_MONTHS];
+}
+
+export function isPodiumCurrentMonthSelected(
+	selected: readonly PodiumMonth[],
+	current: PodiumMonth,
+): boolean {
+	return selected.length === 1 && selected[0] === current;
+}
+
+export function isPodiumAllMonthsSelected(
+	selected: readonly PodiumMonth[],
+): boolean {
+	return (
+		selected.length === PODIUM_MONTHS.length &&
+		PODIUM_MONTHS.every((month) => selected.includes(month))
+	);
+}
+
+export function togglePodiumSeason(seasonOn: boolean): {
+	seasonOn: boolean;
+	semester: PodiumSemester | null;
+} {
+	if (seasonOn) {
+		return { seasonOn: false, semester: null };
+	}
+
+	return { seasonOn: true, semester: null };
+}
+
+export function togglePodiumSemester(
+	current: PodiumSemester | null,
+	clicked: PodiumSemester,
+): {
+	seasonOn: true;
+	semester: PodiumSemester | null;
+} {
+	if (current === clicked) {
+		return { seasonOn: true, semester: null };
+	}
+
+	return { seasonOn: true, semester: clicked };
+}
+
+type PodiumStatAcc = {
+	goals: number;
+	assists: number;
+	own_goals: number;
+	wins: number;
+	matches: number;
+	mvps: number;
+};
+
+function emptyPodiumStatAcc(): PodiumStatAcc {
+	return {
+		goals: 0,
+		assists: 0,
+		own_goals: 0,
+		wins: 0,
+		matches: 0,
+		mvps: 0,
+	};
+}
+
+export function aggregatePodiumPlayersFromEvents(
+	players: readonly ChampionshipPlayer[],
+	events: readonly ChampionshipEvent[],
+	year: number,
+	semester: PodiumSemester | null,
+	months: readonly PodiumMonth[] = [],
+): ChampionshipPlayer[] {
+	const byPlayerId = new Map<number, PodiumStatAcc>();
+
+	for (const event of events) {
+		if (!eventMatchesPodiumPeriod(event.starts_at, year, semester, months)) {
+			continue;
+		}
+
+		for (const row of event.attendance) {
+			const acc = byPlayerId.get(row.player_id) ?? emptyPodiumStatAcc();
+			acc.goals += row.goals;
+			acc.assists += row.assists;
+			acc.own_goals += row.own_goals;
+			acc.wins += row.wins;
+			acc.matches += row.matches;
+			acc.mvps += row.is_mvp ? 1 : 0;
+			byPlayerId.set(row.player_id, acc);
+		}
+	}
+
+	return players.flatMap((player) => {
+		const acc = byPlayerId.get(player.id);
+		if (!acc) {
+			return [];
+		}
+
+		return [
+			{
+				...player,
+				goals: acc.goals,
+				assists: acc.assists,
+				own_goals: acc.own_goals,
+				wins: acc.wins,
+				matches: acc.matches,
+				mvps: acc.mvps,
+			},
+		];
 	});
 }

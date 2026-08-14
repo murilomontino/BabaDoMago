@@ -1,5 +1,6 @@
 import { createColumnHelper } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
+import { Switch } from "@/components/atoms/switch";
 import { Button } from "@/components/button";
 import {
 	DataTable,
@@ -14,9 +15,15 @@ import {
 	EVENT_ATTENDANCE_COLUMN_LABEL,
 } from "@/const/championship-event";
 import { playerVisibleName } from "@/const/player-name";
+import { PLAYER_NAME_LIST } from "@/const/player-name-list";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import { filterPlayersBySearch, PLAYER_SEARCH } from "@/const/player-search";
-import { BUTTON_VARIANT, FIELD_CLASS, PLAYER_AVATAR_CLASS } from "@/const/ui";
+import {
+	BUTTON_VARIANT,
+	CHIP_CLASS,
+	FIELD_CLASS,
+	PLAYER_AVATAR_CLASS,
+} from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 type AttendanceRow = {
@@ -158,14 +165,19 @@ export function EventAttendanceTable({
 					return (
 						<label
 							htmlFor={inputId}
-							className="pointer-events-none inline-flex"
+							className="inline-flex"
+							onClick={(event) => {
+								event.stopPropagation();
+							}}
+							onKeyDown={(event) => {
+								event.stopPropagation();
+							}}
 						>
-							<input
+							<Switch
 								id={inputId}
-								type="checkbox"
 								checked={row.original.present}
-								onChange={() => {
-									onSetPresent([row.original.id], !row.original.present);
+								onCheckedChange={(checked) => {
+									onSetPresent([row.original.id], checked);
 								}}
 							/>
 						</label>
@@ -195,16 +207,12 @@ export function EventAttendanceTable({
 								event.stopPropagation();
 							}}
 						>
-							<input
+							<Switch
 								id={inputId}
-								type="checkbox"
 								checked={row.original.goalkeeper}
 								disabled={!onSetGoalkeeper}
-								onChange={() => {
-									onSetGoalkeeper?.(
-										[row.original.id],
-										!row.original.goalkeeper,
-									);
+								onCheckedChange={(checked) => {
+									onSetGoalkeeper?.([row.original.id], checked);
 								}}
 							/>
 						</label>
@@ -223,14 +231,24 @@ export function EventAttendanceTable({
 				htmlFor="event-attendance-search"
 				className="block text-sm text-fg-muted"
 			>
-				{PLAYER_SEARCH.label}
-				<input
+				<span className="flex items-center justify-between gap-2">
+					{PLAYER_SEARCH.label}
+					<span className="flex items-center gap-1">
+						<span className={CHIP_CLASS}>
+							{`${presentIds.length}/${players.length}`}
+						</span>
+						<span className={CHIP_CLASS}>
+							{`${visiblePlayers.length} ${PLAYER_SEARCH.filteredLabel}`}
+						</span>
+					</span>
+				</span>
+				<textarea
 					id="event-attendance-search"
-					type="search"
+					rows={4}
 					value={query}
-					placeholder={PLAYER_SEARCH.placeholder}
+					placeholder={PLAYER_NAME_LIST.placeholder}
 					autoComplete="off"
-					className={`mt-1 ${FIELD_CLASS}`}
+					className={`mt-1 min-h-20 resize-y !h-auto ${FIELD_CLASS}`}
 					onChange={(event) => {
 						setQuery(event.target.value);
 					}}

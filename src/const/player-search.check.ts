@@ -17,6 +17,11 @@ check(comma.length, 2);
 check(comma[0]?.display_name, "Vitinho");
 check(comma[1]?.display_name, "Murilo");
 
+const pasted = filterPlayersBySearch(players, "1. Vitinho ✅\n2. Murilo");
+check(pasted.length, 2);
+check(pasted[0]?.display_name, "Vitinho");
+check(pasted[1]?.display_name, "Murilo");
+
 const empty = filterPlayersBySearch(players, "  ,  ");
 check(empty.length, 3);
 

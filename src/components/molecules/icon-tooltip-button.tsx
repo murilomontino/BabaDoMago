@@ -1,13 +1,20 @@
 import type { ReactNode } from "react";
-import { Button } from "@/components/button";
 import { TOOLTIP_ID } from "@/const/tooltip";
 import { BUTTON_VARIANT, type ButtonVariant } from "@/const/ui";
 
-const ICON_TOOLTIP_BUTTON_CLASS = {
-	primary: "px-2 !text-pitch-fg hover:!bg-pitch-soft",
-	secondary: "px-2",
-	danger: "px-2 !text-danger-fg hover:!bg-danger-soft",
-	ghost: "px-2",
+const ICON_TOOLTIP_BUTTON_BASE =
+	"inline-flex items-center justify-center rounded-md transition disabled:opacity-50";
+
+const ICON_TOOLTIP_BUTTON_ICON_ONLY = "size-6 p-0";
+
+const ICON_TOOLTIP_BUTTON_WITH_LABEL =
+	"size-6 p-0 sm:h-8 sm:w-auto sm:gap-1.5 sm:px-2.5 sm:text-xs sm:font-medium";
+
+const ICON_TOOLTIP_BUTTON_TONE = {
+	primary: "text-pitch-fg hover:bg-pitch-soft",
+	secondary: "text-fg-muted hover:bg-surface-muted",
+	danger: "text-danger-fg hover:bg-danger-soft",
+	ghost: "text-fg-muted hover:bg-surface-muted",
 } as const;
 
 type IconTooltipButtonProps = {
@@ -15,8 +22,10 @@ type IconTooltipButtonProps = {
 	icon: ReactNode;
 	onClick?: () => void;
 	disabled?: boolean;
+	pressed?: boolean;
 	variant?: ButtonVariant;
 	type?: "button" | "submit";
+	showLabel?: boolean;
 };
 
 export function IconTooltipButton({
@@ -24,21 +33,28 @@ export function IconTooltipButton({
 	icon,
 	onClick,
 	disabled,
+	pressed,
 	variant = BUTTON_VARIANT.secondary,
 	type = "button",
+	showLabel = false,
 }: IconTooltipButtonProps) {
+	const sizeClass = showLabel
+		? ICON_TOOLTIP_BUTTON_WITH_LABEL
+		: ICON_TOOLTIP_BUTTON_ICON_ONLY;
+
 	return (
-		<span data-tooltip-id={TOOLTIP_ID} data-tooltip-content={label}>
-			<Button
-				type={type}
-				variant={BUTTON_VARIANT.ghost}
-				aria-label={label}
-				onClick={onClick}
-				disabled={disabled}
-				className={ICON_TOOLTIP_BUTTON_CLASS[variant]}
-			>
-				{icon}
-			</Button>
-		</span>
+		<button
+			type={type}
+			aria-label={label}
+			data-tooltip-id={TOOLTIP_ID}
+			data-tooltip-content={label}
+			aria-pressed={pressed}
+			onClick={onClick}
+			disabled={disabled}
+			className={`${ICON_TOOLTIP_BUTTON_BASE} ${sizeClass} ${ICON_TOOLTIP_BUTTON_TONE[variant]}`}
+		>
+			{icon}
+			{showLabel && <span className="hidden sm:inline">{label}</span>}
+		</button>
 	);
 }

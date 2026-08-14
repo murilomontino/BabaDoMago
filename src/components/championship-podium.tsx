@@ -3,13 +3,13 @@ import confetti from "canvas-confetti";
 import { Trophy } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { EmptyState } from "@/components/empty-state";
+import { PlayerNameLink } from "@/components/molecules/player-name-link";
 import PodiumPlaceCard from "@/components/molecules/podium-place";
 import {
 	DataTable,
 	type DataTableFeatures,
 } from "@/components/organisms/data-table";
 import { PlayerRating } from "@/components/player-rating";
-import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import {
 	formatPodiumMetric,
@@ -29,7 +29,7 @@ import {
 	type RosterRow,
 	toRosterRow,
 } from "@/const/roster-stats";
-import { CHIP_CLASS, PLAYER_AVATAR_CLASS } from "@/const/ui";
+import { CHIP_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 const podiumConfettiSession = { fired: false };
@@ -41,34 +41,7 @@ type ChampionshipPodiumProps = {
 };
 
 function PodiumTablePlayer({ row }: { row: RosterRow }) {
-	const visibleName = playerVisibleName(row);
-	const showLegalName = visibleName !== row.display_name;
-
-	return (
-		<div className="flex min-w-0 items-center gap-3">
-			{row.avatar_url && (
-				<img
-					src={row.avatar_url}
-					alt=""
-					referrerPolicy="no-referrer"
-					className={`${PLAYER_AVATAR_CLASS} rounded-full object-cover`}
-				/>
-			)}
-			{!row.avatar_url && (
-				<span
-					className={`flex items-center justify-center rounded-full bg-pitch-soft text-sm font-medium text-pitch-fg ${PLAYER_AVATAR_CLASS}`}
-				>
-					{visibleName.charAt(0).toUpperCase()}
-				</span>
-			)}
-			<div className="min-w-0">
-				<p className="truncate font-medium text-fg">{visibleName}</p>
-				{showLegalName && (
-					<p className="truncate text-xs text-fg-muted">{row.display_name}</p>
-				)}
-			</div>
-		</div>
-	);
+	return <PlayerNameLink player={row} />;
 }
 
 type PodiumTableProps = {
@@ -191,22 +164,22 @@ export function ChampionshipPodium({
 				/>
 			)}
 			{standings.length > 0 && (
-				<div className="flex items-end justify-center gap-3 sm:gap-6">
+				<div className="flex flex-wrap items-end justify-center gap-3 sm:gap-6">
 					{PODIUM_DISPLAY_ORDER.flatMap((place) => {
 						const standing = standings.find((item) => item.place === place);
 						if (!standing) {
 							return [];
 						}
 
-						return [
+						return standing.rows.map((row) => (
 							<PodiumPlaceCard
-								key={`${metric}-${place}-${standing.row.id}`}
+								key={`${metric}-${place}-${row.id}`}
 								place={place}
-								row={standing.row}
+								row={row}
 								metric={metric}
 								ceiling={ceiling}
-							/>,
-						];
+							/>
+						));
 					})}
 				</div>
 			)}

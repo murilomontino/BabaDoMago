@@ -6,6 +6,7 @@ export type Championship = {
 	logo_path: string | null;
 	event_time: string;
 	players_per_team: number;
+	skip_guest_goalkeeper_matches: boolean;
 	is_visible: boolean;
 };
 
@@ -24,6 +25,7 @@ export type ChampionshipPlayer = {
 	own_goals: number;
 	wins: number;
 	matches: number;
+	mvps: number;
 };
 
 export type ChampionshipWithPlayers = Championship & {

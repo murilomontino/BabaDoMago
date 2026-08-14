@@ -1,10 +1,13 @@
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { useMemo } from "react";
+import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { ChampionshipEventDetail } from "@/components/championship-event-detail";
+import { TeamCardSkeleton } from "@/components/molecules/team-card-skeleton";
 import { PageHeader } from "@/components/page-header";
 import {
 	countPlayerAttendance,
+	EVENT_BUILDER_STEP_LABEL,
 	EVENT_STATUS_LABEL,
 	eventStatus,
 	formatEventStartsAt,
@@ -13,9 +16,11 @@ import {
 	CHAMPIONSHIP_ROLE,
 	canManageEvent,
 	canOverrideEndedEvent,
+	canSetEventMvp,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
 import { ROUTES } from "@/const/routes";
+import { SKELETON_LABEL, SKELETON_TEAM_CARDS } from "@/const/skeleton";
 import { ERROR_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
 import {
@@ -26,9 +31,11 @@ import {
 	useDeleteChampionshipEventMatch,
 	useDeleteChampionshipEventTeam,
 	useEndChampionshipEvent,
+	useReopenChampionshipEventMatch,
 	useSaveChampionshipEventAttendance,
 	useSaveChampionshipEventAttendanceStats,
 	useSaveChampionshipEventTeams,
+	useSetChampionshipEventMvps,
 	useUpdateChampionshipEventTeam,
 } from "@/hooks/championships/use-championship-events";
 import { useChampionship } from "@/hooks/championships/use-championships";
@@ -53,7 +60,9 @@ export function ChampionshipEventDetailPage() {
 	const updateTeam = useUpdateChampionshipEventTeam(championshipId);
 	const deleteTeam = useDeleteChampionshipEventTeam(championshipId);
 	const deleteMatch = useDeleteChampionshipEventMatch(championshipId);
+	const reopenMatch = useReopenChampionshipEventMatch(championshipId);
 	const endEvent = useEndChampionshipEvent(championshipId);
+	const setMvps = useSetChampionshipEventMvps(championshipId);
 	const deleteEvent = useDeleteChampionshipEvent(championshipId);
 	const attendanceCounts = useMemo(
 		() => countPlayerAttendance(eventsQuery.data ?? []),
@@ -71,12 +80,15 @@ export function ChampionshipEventDetailPage() {
 	);
 	const canManage = canManageEvent(actorRole);
 	const canOverrideEnded = canOverrideEndedEvent(actorRole);
+	const canSetMvp = canSetEventMvp(actorRole);
 	const activePlayers = (championship?.players ?? []).filter(
 		(player) => !player.deleted_at,
 	);
 
 	if (championshipQuery.isPending || eventQuery.isPending) {
-		return <p className="text-fg-muted">Carregando evento...</p>;
+		return (
+			<ChampionshipEventDetailPageSkeleton championshipId={championshipId} />
+		);
 	}
 
 	if (championshipQuery.isError) {
@@ -90,7 +102,7 @@ export function ChampionshipEventDetailPage() {
 	if (eventQuery.isError) {
 		return (
 			<p className={ERROR_CLASS}>
-				Erro ao carregar evento: {eventQuery.error.message}
+				Erro ao carregar rodada: {eventQuery.error.message}
 			</p>
 		);
 	}
@@ -117,10 +129,12 @@ export function ChampionshipEventDetailPage() {
 			/>
 			<ChampionshipEventDetail
 				event={event}
+				championshipName={championship?.name ?? ""}
 				players={activePlayers}
 				attendanceCounts={attendanceCounts}
 				canManage={canManage}
 				canOverrideEnded={canOverrideEnded}
+				canSetMvp={canSetMvp}
 				savingTeams={saveTeams.isPending}
 				saveTeamsError={saveTeams.isError ? saveTeams.error.message : null}
 				savingAttendance={saveAttendance.isPending}
@@ -141,8 +155,12 @@ export function ChampionshipEventDetailPage() {
 				deleteMatchError={
 					deleteMatch.isError ? deleteMatch.error.message : null
 				}
+				openingMatch={reopenMatch.isPending}
+				openMatchError={reopenMatch.isError ? reopenMatch.error.message : null}
 				ending={endEvent.isPending}
 				endError={endEvent.isError ? endEvent.error.message : null}
+				settingMvp={setMvps.isPending}
+				setMvpError={setMvps.isError ? setMvps.error.message : null}
 				deleting={deleteEvent.isPending}
 				deleteError={deleteEvent.isError ? deleteEvent.error.message : null}
 				onSaveTeams={async ({
@@ -192,10 +210,30 @@ export function ChampionshipEventDetailPage() {
 				onDeleteMatch={async (matchId) => {
 					await deleteMatch.mutateAsync(matchId);
 				}}
-				onEnd={async (presentPlayerIds) => {
+				onOpenMatch={async (match) => {
+					if (match.ended_at !== null) {
+						await reopenMatch.mutateAsync(match.id);
+					}
+
+					await navigate({
+						to: ROUTES.championshipEventPlay,
+						params: {
+							championshipId: String(championshipId),
+							eventId: String(eventId),
+						},
+					});
+				}}
+				onEnd={async (presentPlayerIds, mvpPlayerIds) => {
 					await endEvent.mutateAsync({
 						eventId: event.id,
 						presentPlayerIds,
+						mvpPlayerIds,
+					});
+				}}
+				onSetMvps={async (playerIds) => {
+					await setMvps.mutateAsync({
+						eventId: event.id,
+						playerIds,
 					});
 				}}
 				onDelete={async () => {
@@ -207,5 +245,46 @@ export function ChampionshipEventDetailPage() {
 				}}
 			/>
 		</main>
+	);
+}
+
+function ChampionshipEventDetailPageSkeleton({
+	championshipId,
+}: {
+	championshipId: number;
+}) {
+	return (
+		<SkeletonRegion label={SKELETON_LABEL.event}>
+			<main>
+				<div className="mb-6 flex items-start justify-between gap-4">
+					<div>
+						<Skeleton className="h-8 w-48" />
+						<Skeleton className="mt-1 h-4 w-24" />
+					</div>
+					<Link
+						to={ROUTES.championship}
+						params={{ championshipId: String(championshipId) }}
+						className="inline-flex items-center gap-1.5 text-sm font-medium text-fg-muted hover:text-pitch-fg"
+					>
+						<ArrowLeft className="size-4" />
+						Voltar
+					</Link>
+				</div>
+				<article className="space-y-6">
+					<div>
+						<p className="mb-1 text-xs font-medium uppercase tracking-wide text-fg-muted">
+							{EVENT_BUILDER_STEP_LABEL.teams}
+						</p>
+						<ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+							{SKELETON_TEAM_CARDS.map((card) => (
+								<li key={card}>
+									<TeamCardSkeleton />
+								</li>
+							))}
+						</ul>
+					</div>
+				</article>
+			</main>
+		</SkeletonRegion>
 	);
 }

@@ -1,6 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { Field, Form, Formik } from "formik";
 import { Trophy } from "lucide-react";
+import { SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
 import { FormError } from "@/components/form-error";
 import { PageHeader } from "@/components/page-header";
@@ -12,6 +13,7 @@ import {
 } from "@/const/championship-quota";
 import { nameFormSchema } from "@/const/form-schema";
 import { ROUTES } from "@/const/routes";
+import { SKELETON_LABEL } from "@/const/skeleton";
 import { ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
 import {
@@ -30,7 +32,7 @@ export function NewChampionshipPage() {
 	);
 
 	if (isPending) {
-		return <p className="text-fg-muted">Carregando campeonatos...</p>;
+		return <NewChampionshipPageSkeleton />;
 	}
 
 	return (
@@ -91,5 +93,32 @@ export function NewChampionshipPage() {
 				</SectionCard>
 			)}
 		</main>
+	);
+}
+
+function NewChampionshipPageSkeleton() {
+	return (
+		<SkeletonRegion label={SKELETON_LABEL.championships}>
+			<main>
+				<PageHeader
+					title="Novo campeonato"
+					description="Dê um nome pro baba."
+				/>
+				<SectionCard
+					title="Dados"
+					icon={<Trophy className="size-4 text-pitch-fg" />}
+				>
+					<div className="space-y-4">
+						<div className="block text-sm font-medium text-fg-muted">
+							Nome
+							<div className={`mt-1 ${FIELD_CLASS}`} />
+						</div>
+						<Button type="button" disabled>
+							Criar
+						</Button>
+					</div>
+				</SectionCard>
+			</main>
+		</SkeletonRegion>
 	);
 }

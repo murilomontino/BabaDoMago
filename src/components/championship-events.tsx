@@ -2,9 +2,11 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Field, Form, Formik } from "formik";
 import { CalendarDays, ChevronRight, Plus } from "lucide-react";
 import { useState } from "react";
+import { SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
 import { FormError } from "@/components/form-error";
+import { ListRowSkeleton } from "@/components/molecules/list-row-skeleton";
 import { SectionCard } from "@/components/section-card";
 import {
 	championshipEventToday,
@@ -13,9 +15,16 @@ import {
 	EVENT_STATUS_LABEL,
 	eventStatus,
 	formatEventStartsAt,
+	parseEventTime,
 } from "@/const/championship-event";
+import { CHAMPIONSHIP_TAB_LABEL } from "@/const/championship-tab";
 import { startEventFormSchema } from "@/const/form-schema";
 import { ROUTES } from "@/const/routes";
+import {
+	LIST_ROW_SKELETON_VARIANT,
+	SKELETON_LABEL,
+	SKELETON_LIST_ROWS,
+} from "@/const/skeleton";
 import {
 	BUTTON_VARIANT,
 	CHIP_CLASS,
@@ -44,8 +53,11 @@ export function ChampionshipEvents({
 	const [isCreating, setIsCreating] = useState(false);
 	const events = eventsQuery.data ?? [];
 
-	async function handleCreate(eventDate: string) {
-		const eventId = await createEvent.mutateAsync(eventDate);
+	async function handleCreate(eventDate: string, eventTime: string) {
+		const eventId = await createEvent.mutateAsync({
+			eventDate,
+			eventTime: parseEventTime(eventTime),
+		});
 		await navigate({
 			to: ROUTES.championshipEvent,
 			params: {
@@ -57,20 +69,20 @@ export function ChampionshipEvents({
 	}
 
 	if (eventsQuery.isPending) {
-		return <p className="text-fg-muted">Carregando eventos...</p>;
+		return <ChampionshipEventsSkeleton />;
 	}
 
 	if (eventsQuery.isError) {
 		return (
 			<p className={ERROR_CLASS}>
-				Erro ao carregar eventos: {eventsQuery.error.message}
+				Erro ao carregar rodadas: {eventsQuery.error.message}
 			</p>
 		);
 	}
 
 	return (
 		<SectionCard
-			title="Eventos"
+			title={CHAMPIONSHIP_TAB_LABEL.events}
 			icon={<CalendarDays className="size-4 text-pitch-fg" />}
 			action={
 				canManage &&
@@ -84,10 +96,13 @@ export function ChampionshipEvents({
 		>
 			{isCreating && (
 				<Formik
-					initialValues={{ eventDate: championshipEventToday() }}
+					initialValues={{
+						eventDate: championshipEventToday(),
+						eventTime,
+					}}
 					validationSchema={startEventFormSchema}
 					onSubmit={async (values) => {
-						await handleCreate(values.eventDate);
+						await handleCreate(values.eventDate, values.eventTime);
 					}}
 				>
 					<Form className="space-y-4">
@@ -109,16 +124,16 @@ export function ChampionshipEvents({
 								className="block text-sm font-medium text-fg-muted"
 							>
 								Hora
-								<input
+								<Field
 									id="event-time"
+									name="eventTime"
 									type="time"
-									value={eventTime}
-									readOnly
-									className={`mt-1 ${FIELD_CLASS} cursor-not-allowed opacity-80`}
+									className={`mt-1 ${FIELD_CLASS}`}
 								/>
 							</label>
 						</div>
 						<FormError name="eventDate" />
+						<FormError name="eventTime" />
 						{createEvent.isError && (
 							<p className={ERROR_CLASS}>{createEvent.error.message}</p>
 						)}
@@ -143,8 +158,8 @@ export function ChampionshipEvents({
 			{!isCreating && events.length === 0 && (
 				<EmptyState
 					icon={<CalendarDays className="size-10" />}
-					title="Nenhum evento ainda"
-					description="Crie um evento para montar os times depois."
+					title="Nenhuma rodada ainda"
+					description="Crie uma rodada para montar os times depois."
 					action={
 						canManage && (
 							<Button onClick={() => setIsCreating(true)}>
@@ -190,5 +205,25 @@ export function ChampionshipEvents({
 				</ul>
 			)}
 		</SectionCard>
+	);
+}
+
+function ChampionshipEventsSkeleton() {
+	return (
+		<SkeletonRegion label={SKELETON_LABEL.events}>
+			<SectionCard
+				title={CHAMPIONSHIP_TAB_LABEL.events}
+				icon={<CalendarDays className="size-4 text-pitch-fg" />}
+			>
+				<ul className="space-y-2">
+					{SKELETON_LIST_ROWS.map((row) => (
+						<ListRowSkeleton
+							key={row}
+							variant={LIST_ROW_SKELETON_VARIANT.event}
+						/>
+					))}
+				</ul>
+			</SectionCard>
+		</SkeletonRegion>
 	);
 }

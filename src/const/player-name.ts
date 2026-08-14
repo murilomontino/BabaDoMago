@@ -5,7 +5,7 @@ export const PLAYER_NICKNAME = {
 export const PLAYER_LABEL = {
 	nickname: "Apelido",
 	nicknamePlaceholder: "Apelido no baba",
-	eventStats: "Stats do evento",
+	eventStats: "Stats da rodada",
 } as const;
 
 export function playerVisibleName(player: {
@@ -14,4 +14,8 @@ export function playerVisibleName(player: {
 }): string {
 	const nickname = player.nickname?.trim();
 	return nickname ? nickname : player.display_name;
+}
+
+export function confirmClaimPlayerMessage(name: string): string {
+	return `Você é ${name}?`;
 }

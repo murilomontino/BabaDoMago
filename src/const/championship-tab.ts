@@ -2,8 +2,6 @@ export const CHAMPIONSHIP_TAB = {
 	roster: "roster",
 	events: "events",
 	podium: "podium",
-	deactivated: "deactivated",
-	settings: "settings",
 } as const;
 
 export type ChampionshipTab =
@@ -11,7 +9,7 @@ export type ChampionshipTab =
 
 export const CHAMPIONSHIP_TAB_LABEL = {
 	roster: "Elenco",
-	events: "Eventos",
+	events: "Rodadas",
 	podium: "Pódio",
 	deactivated: "Desativados",
 	settings: "Configuração",
@@ -29,13 +27,5 @@ export const CHAMPIONSHIP_TABS = [
 	{
 		id: CHAMPIONSHIP_TAB.podium,
 		label: CHAMPIONSHIP_TAB_LABEL.podium,
-	},
-	{
-		id: CHAMPIONSHIP_TAB.deactivated,
-		label: CHAMPIONSHIP_TAB_LABEL.deactivated,
-	},
-	{
-		id: CHAMPIONSHIP_TAB.settings,
-		label: CHAMPIONSHIP_TAB_LABEL.settings,
 	},
 ] as const;

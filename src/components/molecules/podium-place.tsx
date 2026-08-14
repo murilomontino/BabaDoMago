@@ -1,7 +1,10 @@
 import { Award, Medal, Trophy } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
+import {
+	PLAYER_NAME_LINK_LAYOUT,
+	PlayerNameLink,
+} from "@/components/molecules/player-name-link";
 import { PlayerRating } from "@/components/player-rating";
-import { playerVisibleName } from "@/const/player-name";
 import {
 	formatPodiumMetric,
 	PODIUM_ANIMATION_DELAY,
@@ -41,34 +44,12 @@ export default function PodiumPlaceCard({
 	ceiling,
 }: PodiumPlaceCardProps) {
 	const reduceMotion = useReducedMotion();
-	const visibleName = playerVisibleName(row);
-	const showLegalName = visibleName !== row.display_name;
 	const height = PODIUM_STAND_HEIGHT[place];
 
 	return (
 		<div className="flex w-28 flex-col items-center sm:w-32">
 			<div className="mb-2 flex w-full flex-col items-center gap-1 text-center">
-				{row.avatar_url && (
-					<img
-						src={row.avatar_url}
-						alt=""
-						referrerPolicy="no-referrer"
-						className="h-14 w-14 rounded-full object-cover"
-					/>
-				)}
-				{!row.avatar_url && (
-					<span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-pitch-soft text-lg font-medium text-pitch-fg">
-						{visibleName.charAt(0).toUpperCase()}
-					</span>
-				)}
-				<p className="max-w-full truncate text-sm font-semibold text-fg">
-					{visibleName}
-				</p>
-				{showLegalName && (
-					<p className="max-w-full truncate text-xs text-fg-muted">
-						{row.display_name}
-					</p>
-				)}
+				<PlayerNameLink player={row} layout={PLAYER_NAME_LINK_LAYOUT.stack} />
 				<PlayerRating rating={row.rating} ceiling={ceiling} />
 				<p className="text-sm font-semibold tabular-nums text-pitch-fg">
 					{formatPodiumMetric(metric, row[metric])}

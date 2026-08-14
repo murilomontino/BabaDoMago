@@ -38,6 +38,7 @@ check(
 	"stat involvement",
 );
 check(formatRosterStat(ROSTER_COLUMN.wins, 3) === "3", "stat wins");
+check(formatRosterStat(ROSTER_COLUMN.mvps, 2) === "2", "stat mvps");
 check(formatRosterStat(ROSTER_COLUMN.matches, 6) === "6", "stat matches");
 check(
 	formatRosterStat(ROSTER_COLUMN.goalsAverage, 0.5) === "0.5",
@@ -80,6 +81,7 @@ const player: ChampionshipPlayer = {
 	own_goals: 1,
 	wins: 3,
 	matches: 6,
+	mvps: 0,
 };
 const row = toRosterRow(player);
 check(row.goals === 4, "row keeps goals");

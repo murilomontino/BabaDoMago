@@ -1,9 +1,23 @@
 import { Link } from "@tanstack/react-router";
-import { Copy, Pencil, X } from "lucide-react";
+import {
+	Award,
+	ChartColumn,
+	CircleStop,
+	Copy,
+	LoaderCircle,
+	Pencil,
+	Play,
+	Plus,
+	Share2,
+	Trash2,
+	UserPlus,
+	X,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AddEventTeamModal } from "@/components/add-event-team-modal";
-import { Button } from "@/components/button";
 import { ChampionshipEventBuilder } from "@/components/championship-event-builder";
+import { ChampionshipEventMatchHistory } from "@/components/championship-event-match-history";
+import { ChampionshipPodiumTab } from "@/components/championship-podium-tab";
 import { DeleteEventAttendanceModal } from "@/components/delete-event-attendance-modal";
 import { DeleteEventMatchModal } from "@/components/delete-event-match-modal";
 import { DeleteEventModal } from "@/components/delete-event-modal";
@@ -12,14 +26,21 @@ import { EditEventAttendanceModal } from "@/components/edit-event-attendance-mod
 import { EditEventAttendanceStatsModal } from "@/components/edit-event-attendance-stats-modal";
 import { EndEventModal } from "@/components/end-event-modal";
 import {
+	EVENT_TEAM_PLAYER_SLOT_CLASS,
+	EVENT_TEAM_POSITION_CHIP_CLASS,
 	EventTeamColorDot,
 	EventTeamPlayerRow,
 	EventTeamRatingAverage,
 } from "@/components/event-team-player";
+import { IconTooltipButton } from "@/components/molecules/icon-tooltip-button";
 import { PlayerRating } from "@/components/player-rating";
+import { ReopenEventMatchModal } from "@/components/reopen-event-match-modal";
+import { SetEventMvpModal } from "@/components/set-event-mvp-modal";
+import { Tabs } from "@/components/tabs";
 import {
 	attendanceGoalkeeperIds,
 	builderTeamsFromEvent,
+	builderTeamsHavePlayers,
 	CHAMPIONSHIP_EVENT,
 	canEditEventTeams,
 	canRemoveEventAttendance,
@@ -29,40 +50,53 @@ import {
 	EVENT_ATTENDANCE_COLUMN_LABEL,
 	EVENT_ATTENDANCE_STAT_ABBR,
 	EVENT_BUILDER_STEP,
+	EVENT_BUILDER_STEP_LABEL,
+	EVENT_SECTION_LABEL,
 	EVENT_STATUS,
-	EVENT_STATUS_LABEL,
 	EVENT_TEAM_POSITION_LABEL,
 	type EventAttendanceStatsDraft,
 	type EventTeamDraft,
 	eventStatus,
 	eventTeamPlayerIds,
 	eventTeamPlayerPosition,
-	formatEventStartsAt,
 	keepGoalkeepersPresent,
 	teamHasMatches,
 } from "@/const/championship-event";
 import {
 	EVENT_MATCH_LABEL,
-	formatMatchScore,
 	isOpenMatch,
 	matchPlayUrl,
-	matchScore,
 	openEventMatch,
 } from "@/const/championship-event-match";
+import {
+	EVENT_TAB,
+	EVENT_TABS,
+	showEventDetailTabs,
+} from "@/const/championship-event-tab";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
+import {
+	EVENT_MVP_LABEL,
+	eventMvpCandidates,
+	eventMvpPickCandidates,
+	toggleEventMvpPlayerId,
+} from "@/const/event-mvp";
 import { eventRatingPreview } from "@/const/event-rating-adjustment";
 import {
-	EVENT_TEAM_COLOR,
 	type EventTeamColor,
-	eventTeamColorFg,
 	eventTeamColorStyle,
 	eventTeamName,
 } from "@/const/event-team-color";
+import {
+	EVENT_TEAM_SHARE_LABEL,
+	eventTeamsShareCards,
+} from "@/const/event-team-share";
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import { ROUTES } from "@/const/routes";
-import { BUTTON_VARIANT, CHIP_CLASS } from "@/const/ui";
+import { BUTTON_VARIANT, CHIP_CLASS, ERROR_CLASS } from "@/const/ui";
 import { useEventBuilderStep } from "@/hooks/use-event-builder-step";
+import { useEventTab } from "@/hooks/use-event-tab";
+import { shareEventTeamsImage } from "@/lib/share-event-teams-image";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type {
 	ChampionshipEvent,
@@ -129,6 +163,14 @@ function AttendanceStatLine({
 				>
 					{row.rating}
 				</span>
+				{row.is_mvp && (
+					<span
+						className={CHIP_CLASS}
+						title={EVENT_ATTENDANCE_COLUMN_LABEL.mvp}
+					>
+						{EVENT_MVP_LABEL.badge}
+					</span>
+				)}
 			</div>
 			<p className="flex flex-wrap gap-x-2 text-xs text-fg-muted">
 				<span title={EVENT_ATTENDANCE_COLUMN_LABEL.eventDate}>
@@ -146,10 +188,12 @@ function AttendanceStatLine({
 
 type ChampionshipEventDetailProps = {
 	event: ChampionshipEvent;
+	championshipName: string;
 	players: ChampionshipPlayer[];
 	attendanceCounts: ReadonlyMap<number, number>;
 	canManage: boolean;
 	canOverrideEnded: boolean;
+	canSetMvp: boolean;
 	onSaveTeams: (values: {
 		presentPlayerIds: number[];
 		goalkeeperPlayerIds: number[];
@@ -173,7 +217,12 @@ type ChampionshipEventDetailProps = {
 	}) => Promise<void>;
 	onDeleteTeam: (teamId: number) => Promise<void>;
 	onDeleteMatch: (matchId: number) => Promise<void>;
-	onEnd: (presentPlayerIds: number[] | null) => Promise<void>;
+	onOpenMatch: (match: ChampionshipEventMatch) => Promise<void>;
+	onEnd: (
+		presentPlayerIds: number[] | null,
+		mvpPlayerIds: number[] | null,
+	) => Promise<void>;
+	onSetMvps: (playerIds: number[]) => Promise<void>;
 	onDelete: () => Promise<void>;
 	savingTeams: boolean;
 	saveTeamsError: string | null;
@@ -189,40 +238,15 @@ type ChampionshipEventDetailProps = {
 	deleteTeamError: string | null;
 	deletingMatch: boolean;
 	deleteMatchError: string | null;
+	openingMatch: boolean;
+	openMatchError: string | null;
 	ending: boolean;
 	endError: string | null;
+	settingMvp: boolean;
+	setMvpError: string | null;
 	deleting: boolean;
 	deleteError: string | null;
 };
-
-function TeamChip({
-	color,
-	sortOrder,
-}: {
-	color: EventTeamColor | null;
-	sortOrder: number;
-}) {
-	const label = eventTeamName(color, sortOrder);
-	if (color === null) {
-		return (
-			<span className="inline-flex items-center rounded-full border border-line bg-surface px-2 py-0.5 text-xs font-medium text-fg">
-				{label}
-			</span>
-		);
-	}
-
-	return (
-		<span
-			className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
-			style={{
-				backgroundColor: color,
-				color: eventTeamColorFg(color),
-			}}
-		>
-			{label}
-		</span>
-	);
-}
 
 function fallbackRosterPlayer(
 	playerId: number,
@@ -243,6 +267,7 @@ function fallbackRosterPlayer(
 		own_goals: 0,
 		wins: 0,
 		matches: 0,
+		mvps: 0,
 	};
 }
 
@@ -263,12 +288,30 @@ function resolveEventPlayers(
 	);
 }
 
+function playersFromEventAttendance(
+	attendance: readonly ChampionshipEventAttendance[],
+	byId: Map<number, ChampionshipPlayer>,
+): ChampionshipPlayer[] {
+	return attendance.map((row) => ({
+		...resolveRosterPlayer(row.player_id, row.display_name, byId),
+		goals: row.goals,
+		assists: row.assists,
+		own_goals: row.own_goals,
+		wins: row.wins,
+		matches: row.matches,
+		mvps: row.is_mvp ? 1 : 0,
+		rating: row.rating,
+	}));
+}
+
 export function ChampionshipEventDetail({
 	event,
+	championshipName,
 	players,
 	attendanceCounts,
 	canManage,
 	canOverrideEnded,
+	canSetMvp,
 	onSaveTeams,
 	onSaveAttendance,
 	onSaveAttendanceStats,
@@ -276,7 +319,9 @@ export function ChampionshipEventDetail({
 	onUpdateTeam,
 	onDeleteTeam,
 	onDeleteMatch,
+	onOpenMatch,
 	onEnd,
+	onSetMvps,
 	onDelete,
 	savingTeams,
 	saveTeamsError,
@@ -292,17 +337,23 @@ export function ChampionshipEventDetail({
 	deleteTeamError,
 	deletingMatch,
 	deleteMatchError,
+	openingMatch,
+	openMatchError,
 	ending,
 	endError,
+	settingMvp,
+	setMvpError,
 	deleting,
 	deleteError,
 }: ChampionshipEventDetailProps) {
-	const when = formatEventStartsAt(event.starts_at);
 	const status = eventStatus(event.ended_at);
 	const ended = status === EVENT_STATUS.ended;
-	const teamById = new Map(event.teams.map((team) => [team.id, team]));
 	const rosterById = new Map(players.map((player) => [player.id, player]));
 	const presentPlayers = resolveEventPlayers(event.attendance, rosterById);
+	const podiumPlayers = playersFromEventAttendance(
+		event.attendance,
+		rosterById,
+	);
 	const volunteerGoalkeeperIds = attendanceGoalkeeperIds(event.attendance);
 	const teamPlayerIds = eventTeamPlayerIds(event.teams);
 	const ceiling = championshipRatingCeiling([
@@ -311,10 +362,26 @@ export function ChampionshipEventDetail({
 	]);
 	const teamsEditable = canManage && canEditEventTeams(event);
 	const [step, setStep] = useEventBuilderStep();
+	const [tab, setTab] = useEventTab();
 	const mustBuild =
 		teamsEditable && event.teams.length < CHAMPIONSHIP_EVENT.minTeams;
 	const showTeamBuilder = teamsEditable && (step !== null || mustBuild);
+	const showEventTabs = showEventDetailTabs({
+		showTeamBuilder,
+		attendanceCount: event.attendance.length,
+	});
+	const selectedTab =
+		showEventTabs && tab === EVENT_TAB.podium
+			? EVENT_TAB.podium
+			: EVENT_TAB.event;
 	const builderStep = step ?? EVENT_BUILDER_STEP.attendance;
+	const detailTeams = builderTeamsFromEvent(
+		event.teams,
+		event.players_per_team,
+		event.attendance.length,
+	);
+	const showShareTeams =
+		!showTeamBuilder && builderTeamsHavePlayers(detailTeams);
 	const showAttendanceActions = canOverrideEnded && !showTeamBuilder;
 	const showAddTeam = canOverrideEnded && !showTeamBuilder;
 	const showStartMatch =
@@ -325,8 +392,12 @@ export function ChampionshipEventDetail({
 		});
 	const openMatch = openEventMatch(event.matches);
 	const [copied, setCopied] = useState(false);
+	const [isSharing, setIsSharing] = useState(false);
+	const [shareError, setShareError] = useState<string | null>(null);
 	const showMatchDelete = canOverrideEnded && !showTeamBuilder;
 	const [isEndOpen, setIsEndOpen] = useState(false);
+	const [endMvpPlayerIds, setEndMvpPlayerIds] = useState<number[] | null>(null);
+	const [isMvpOpen, setIsMvpOpen] = useState(false);
 	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 	const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
 	const [isAttendanceStatsOpen, setIsAttendanceStatsOpen] = useState(false);
@@ -340,17 +411,35 @@ export function ChampionshipEventDetail({
 		useState<ChampionshipPlayer | null>(null);
 	const [matchToRemove, setMatchToRemove] =
 		useState<ChampionshipEventMatch | null>(null);
+	const [matchToReopen, setMatchToReopen] =
+		useState<ChampionshipEventMatch | null>(null);
 	const draftPresentIdsRef = useRef(
 		event.attendance.map((row) => row.player_id),
 	);
 
+	const presentPlayerIdsForEnd = draftAttendanceForEnd(
+		showTeamBuilder,
+		draftPresentIdsRef.current,
+	);
+	const mvpCandidateIds = eventMvpCandidates(event.attendance)
+		.map((row) => row.playerId)
+		.filter(
+			(playerId) =>
+				presentPlayerIdsForEnd === null ||
+				presentPlayerIdsForEnd.includes(playerId),
+		);
+	const selectedMvpIds = event.attendance.flatMap((row) =>
+		row.is_mvp ? [row.player_id] : [],
+	);
+	const attendanceNameByPlayerId = new Map(
+		event.attendance.map((row) => [row.player_id, row.display_name]),
+	);
+	const mvpPlayerIds = endMvpPlayerIds ?? mvpCandidateIds;
 	const ratingPreview = eventRatingPreview({
 		attendance: event.attendance,
 		players,
-		presentPlayerIds: draftAttendanceForEnd(
-			showTeamBuilder,
-			draftPresentIdsRef.current,
-		),
+		presentPlayerIds: presentPlayerIdsForEnd,
+		mvpPlayerIds,
 	});
 	const previewCeiling = championshipRatingCeiling([
 		...players.map((player) => player.rating),
@@ -369,115 +458,112 @@ export function ChampionshipEventDetail({
 		void setStep(EVENT_BUILDER_STEP.attendance);
 	}, [mustBuild, setStep, step]);
 
+	async function handleShareTeams() {
+		setIsSharing(true);
+		setShareError(null);
+		try {
+			await shareEventTeamsImage(
+				eventTeamsShareCards(detailTeams, players),
+				ceiling,
+				{ championshipName, startsAt: event.starts_at },
+			);
+		} catch {
+			setShareError(EVENT_TEAM_SHARE_LABEL.shareFailed);
+		} finally {
+			setIsSharing(false);
+		}
+	}
+
+	async function handleCopyMatchLink() {
+		const url = matchPlayUrl(
+			window.location.origin,
+			event.championship_id,
+			event.id,
+			ROUTES.championshipEventPlay,
+		);
+		await navigator.clipboard.writeText(url);
+		setCopied(true);
+	}
+
 	return (
 		<article className="space-y-6">
-			<div className="flex flex-wrap items-center gap-2">
-				<p className="text-sm font-semibold tracking-tight text-fg">
-					{when.date} · {when.time}
-				</p>
-				<span className={CHIP_CLASS}>{EVENT_STATUS_LABEL[status]}</span>
-				{(canManage || showStartMatch) && (
-					<div className="ml-auto flex flex-wrap items-center gap-2">
+			{(showStartMatch || canManage) && (
+				<div className="flex flex-wrap items-center gap-2">
+					{showStartMatch && (
+						<Link
+							to={ROUTES.championshipEventPlay}
+							params={{
+								championshipId: String(event.championship_id),
+								eventId: String(event.id),
+							}}
+							className="inline-flex items-center justify-center gap-2 rounded-lg bg-pitch px-4 py-2 text-sm font-medium text-white hover:bg-pitch-dark"
+						>
+							<Play className="size-4" />
+							{openMatch ? EVENT_ACTION.continueMatch : EVENT_ACTION.startMatch}
+						</Link>
+					)}
+					<div className="ml-auto flex items-center gap-1">
 						{showStartMatch && (
-							<Link
-								to={ROUTES.championshipEventPlay}
-								params={{
-									championshipId: String(event.championship_id),
-									eventId: String(event.id),
-								}}
-								className="inline-flex items-center justify-center gap-2 rounded-lg bg-pitch px-4 py-2 text-sm font-medium text-white hover:bg-pitch-dark"
-							>
-								{openMatch
-									? EVENT_ACTION.continueMatch
-									: EVENT_ACTION.startMatch}
-							</Link>
-						)}
-						{showStartMatch && (
-							<Button
-								variant={BUTTON_VARIANT.secondary}
-								onClick={async () => {
-									const url = matchPlayUrl(
-										window.location.origin,
-										event.championship_id,
-										event.id,
-										ROUTES.championshipEventPlay,
-									);
-									await navigator.clipboard.writeText(url);
-									setCopied(true);
-								}}
-							>
-								<Copy className="size-4" />
-								{copied ? EVENT_MATCH_LABEL.copied : EVENT_ACTION.copyMatchLink}
-							</Button>
-						)}
-						{canManage && teamsEditable && !showTeamBuilder && (
-							<Button
-								variant={BUTTON_VARIANT.secondary}
+							<IconTooltipButton
+								showLabel
+								label={
+									copied ? EVENT_MATCH_LABEL.copied : EVENT_ACTION.copyMatchLink
+								}
+								icon={<Copy className="size-4" />}
 								onClick={() => {
-									void setStep(EVENT_BUILDER_STEP.teams);
+									void handleCopyMatchLink();
 								}}
-							>
-								{EVENT_ACTION.editTeams}
-							</Button>
-						)}
-						{canManage && showAttendanceActions && (
-							<Button
-								variant={BUTTON_VARIANT.secondary}
-								onClick={() => setIsAttendanceOpen(true)}
-							>
-								{EVENT_ACTION.addAttendance}
-							</Button>
-						)}
-						{canManage &&
-							showAttendanceActions &&
-							event.attendance.length > 0 && (
-								<Button
-									variant={BUTTON_VARIANT.secondary}
-									onClick={() => setIsAttendanceStatsOpen(true)}
-								>
-									{EVENT_ACTION.markAttendanceStats}
-								</Button>
-							)}
-						{canManage && showAddTeam && (
-							<Button
-								variant={BUTTON_VARIANT.secondary}
-								onClick={() => setIsAddTeamOpen(true)}
-							>
-								{EVENT_ACTION.addTeam}
-							</Button>
+							/>
 						)}
 						{canManage && status === EVENT_STATUS.open && (
-							<Button
+							<IconTooltipButton
+								showLabel
+								label={EVENT_ACTION.endEvent}
+								icon={<CircleStop className="size-4" />}
 								variant={BUTTON_VARIANT.ghost}
-								onClick={() => setIsEndOpen(true)}
-							>
-								{EVENT_ACTION.endEvent}
-							</Button>
+								onClick={() => {
+									setEndMvpPlayerIds(null);
+									setIsEndOpen(true);
+								}}
+							/>
 						)}
 						{canManage && (
-							<Button
+							<IconTooltipButton
+								showLabel
+								label={EVENT_ACTION.deleteEvent}
+								icon={<Trash2 className="size-4" />}
 								variant={BUTTON_VARIANT.danger}
 								onClick={() => setIsDeleteOpen(true)}
-							>
-								Excluir
-							</Button>
+							/>
 						)}
 					</div>
-				)}
-			</div>
-			{showTeamBuilder && (
+				</div>
+			)}
+			{showEventTabs && (
+				<Tabs
+					value={selectedTab}
+					items={EVENT_TABS}
+					onChange={(id) => {
+						if (id === EVENT_TAB.event) {
+							void setTab(null);
+							return;
+						}
+
+						void setTab(id);
+					}}
+				/>
+			)}
+			{selectedTab === EVENT_TAB.event && showTeamBuilder && (
 				<ChampionshipEventBuilder
 					playersPerTeam={event.players_per_team}
 					players={players}
 					attendanceCounts={attendanceCounts}
 					step={builderStep}
+					startsAt={event.starts_at}
+					championshipName={championshipName}
 					initialPresentIds={event.attendance.map((row) => row.player_id)}
 					initialGoalkeeperIds={volunteerGoalkeeperIds}
-					initialTeams={builderTeamsFromEvent(
-						event.teams,
-						event.players_per_team,
-						event.attendance.length,
-					)}
+					initialTeams={detailTeams}
 					isPending={savingTeams}
 					errorMessage={saveTeamsError}
 					onStepChange={(next) => {
@@ -503,204 +589,187 @@ export function ChampionshipEventDetail({
 					}}
 				/>
 			)}
-			{!showTeamBuilder && (
-				<ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-					{event.teams.map((team) => {
-						const cardStyle = eventTeamColorStyle(team.color);
-						const teamRoster = team.players.map((row) => ({
-							row,
-							player: resolveRosterPlayer(
-								row.player_id,
-								row.display_name,
-								rosterById,
-							),
-						}));
+			{selectedTab === EVENT_TAB.event && !showTeamBuilder && (
+				<div>
+					<div className="mb-1 flex items-center gap-2">
+						<p className="text-xs font-medium uppercase tracking-wide text-fg-muted">
+							{EVENT_BUILDER_STEP_LABEL.teams}
+						</p>
+						<div className="ml-auto flex items-center gap-1">
+							{showShareTeams && (
+								<IconTooltipButton
+									showLabel
+									label={
+										isSharing
+											? EVENT_TEAM_SHARE_LABEL.sharing
+											: EVENT_TEAM_SHARE_LABEL.shareTeams
+									}
+									icon={
+										<>
+											{isSharing && (
+												<LoaderCircle className="size-4 animate-spin" />
+											)}
+											{!isSharing && <Share2 className="size-4" />}
+										</>
+									}
+									disabled={isSharing}
+									onClick={() => {
+										void handleShareTeams();
+									}}
+								/>
+							)}
+							{canManage && teamsEditable && (
+								<IconTooltipButton
+									showLabel
+									label={EVENT_ACTION.editTeams}
+									icon={<Pencil className="size-4" />}
+									onClick={() => {
+										void setStep(EVENT_BUILDER_STEP.teams);
+									}}
+								/>
+							)}
+							{canManage && showAddTeam && (
+								<IconTooltipButton
+									showLabel
+									label={EVENT_ACTION.addTeam}
+									icon={<Plus className="size-4" />}
+									onClick={() => setIsAddTeamOpen(true)}
+								/>
+							)}
+						</div>
+					</div>
+					{shareError && <p className={ERROR_CLASS}>{shareError}</p>}
+					<ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+						{event.teams.map((team) => {
+							const cardStyle = eventTeamColorStyle(team.color);
+							const teamRoster = team.players.map((row) => ({
+								row,
+								player: resolveRosterPlayer(
+									row.player_id,
+									row.display_name,
+									rosterById,
+								),
+							}));
 
-						return (
-							<li
-								key={team.id}
-								className="relative rounded-lg border border-line bg-surface p-2 text-sm"
-								style={cardStyle}
-							>
-								<EventTeamColorDot color={team.color} />
-								<div className="mb-1 flex items-center gap-1 pr-5">
-									<p className="min-w-0 flex-1 text-xs font-medium">
-										{eventTeamName(team.color, team.sort_order)}
-									</p>
-									{canOverrideEnded && (
-										<button
-											type="button"
-											aria-label={EVENT_ACTION.editTeam}
-											className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-fg-muted hover:bg-black/10"
-											onClick={() => setTeamToEdit(team)}
-										>
-											<Pencil className="size-3.5" />
-										</button>
-									)}
-									{canOverrideEnded &&
-										!teamHasMatches(team.id, event.matches) && (
+							return (
+								<li
+									key={team.id}
+									className="relative rounded-lg border border-line bg-surface p-2 text-sm"
+									style={cardStyle}
+								>
+									<EventTeamColorDot color={team.color} />
+									<div className="mb-1 flex items-center gap-1 pr-5">
+										<p className="min-w-0 flex-1 text-xs font-medium">
+											{eventTeamName(team.color, team.sort_order)}
+										</p>
+										{canOverrideEnded && (
 											<button
 												type="button"
-												aria-label={EVENT_ACTION.removeTeam}
-												className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-fg-muted hover:bg-black/10 hover:text-danger-fg"
-												onClick={() => setTeamToRemove(team)}
+												aria-label={EVENT_ACTION.editTeam}
+												className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-fg-muted hover:bg-black/10"
+												onClick={() => setTeamToEdit(team)}
 											>
-												<X className="size-3.5" />
+												<Pencil className="size-3.5" />
 											</button>
 										)}
-								</div>
-								<ul className="space-y-1">
-									{teamRoster.map(({ row, player }) => {
-										const position = eventTeamPlayerPosition(row.is_goalkeeper);
-
-										return (
-											<li
-												key={row.id}
-												className="flex min-h-7 items-center gap-1.5 rounded-md bg-white px-1.5 py-1"
-											>
-												<span className={`${CHIP_CLASS} shrink-0`}>
-													{EVENT_TEAM_POSITION_LABEL[position]}
-												</span>
-												<EventTeamPlayerRow
-													player={player}
-													ceiling={ceiling}
-													backgroundColor={EVENT_TEAM_COLOR.white}
-												/>
-											</li>
-										);
-									})}
-								</ul>
-								<EventTeamRatingAverage
-									ratings={teamRoster.map(({ player }) => player.rating)}
-								/>
-							</li>
-						);
-					})}
-				</ul>
-			)}
-			{!showTeamBuilder && (
-				<div>
-					<p className="mb-1 text-xs font-medium uppercase tracking-wide text-fg-muted">
-						Partidas
-					</p>
-					{event.matches.length === 0 && (
-						<p className="text-sm text-fg-muted">{EVENT_MATCH_LABEL.none}</p>
-					)}
-					{event.matches.length > 0 && (
-						<ul className="space-y-2">
-							{event.matches.map((match) => {
-								const teamA = teamById.get(match.team_a_id);
-								const teamB = teamById.get(match.team_b_id);
-								if (!teamA || !teamB) {
-									return null;
-								}
-
-								const teamAIds = new Set(
-									match.players
-										.filter((player) => player.team_id === match.team_a_id)
-										.map((player) => player.player_id),
-								);
-								const score = matchScore(match.goals, teamAIds);
-								const winner =
-									match.winner_team_id === null
-										? null
-										: teamById.get(match.winner_team_id);
-								const open = isOpenMatch(match);
-								const playedA = match.players.filter(
-									(player) => player.team_id === match.team_a_id,
-								);
-								const playedB = match.players.filter(
-									(player) => player.team_id === match.team_b_id,
-								);
-
-								return (
-									<li
-										key={match.id}
-										className={`rounded-lg border border-line p-2 text-sm ${
-											open ? "ring-1 ring-pitch/40" : ""
-										}`}
-									>
-										<div className="flex flex-wrap items-center gap-2">
-											<TeamChip
-												color={teamA.color}
-												sortOrder={teamA.sort_order}
-											/>
-											<span className="tabular-nums text-fg">
-												{formatMatchScore(score.teamA, score.teamB)}
-											</span>
-											<TeamChip
-												color={teamB.color}
-												sortOrder={teamB.sort_order}
-											/>
-											<span className="text-xs text-fg-muted">
-												{EVENT_MATCH_LABEL.winner}
-											</span>
-											{open && (
-												<span className={CHIP_CLASS}>
-													{EVENT_MATCH_LABEL.open}
-												</span>
-											)}
-											{!open && winner && (
-												<TeamChip
-													color={winner.color}
-													sortOrder={winner.sort_order}
-												/>
-											)}
-											{!open && !winner && (
-												<span className={CHIP_CLASS}>
-													{EVENT_MATCH_LABEL.draw}
-												</span>
-											)}
-											{showMatchDelete && (
+										{canOverrideEnded &&
+											!teamHasMatches(team.id, event.matches) && (
 												<button
 													type="button"
-													aria-label={EVENT_ACTION.removeMatch}
-													className="ml-auto inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-muted hover:text-danger-fg"
-													onClick={() => setMatchToRemove(match)}
+													aria-label={EVENT_ACTION.removeTeam}
+													className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-fg-muted hover:bg-black/10 hover:text-danger-fg"
+													onClick={() => setTeamToRemove(team)}
 												>
-													<X className="size-4" />
+													<X className="size-3.5" />
 												</button>
 											)}
-										</div>
-										{match.players.length > 0 && (
-											<p className="mt-1 text-xs text-fg-muted">
-												{playedA
-													.map((row) =>
-														playerVisibleName(
-															resolveRosterPlayer(
-																row.player_id,
-																row.display_name,
-																rosterById,
-															),
-														),
-													)
-													.join(", ")}
-												{" · "}
-												{playedB
-													.map((row) =>
-														playerVisibleName(
-															resolveRosterPlayer(
-																row.player_id,
-																row.display_name,
-																rosterById,
-															),
-														),
-													)
-													.join(", ")}
-											</p>
-										)}
-									</li>
-								);
-							})}
-						</ul>
-					)}
+									</div>
+									<ul className="space-y-1">
+										{teamRoster.map(({ row, player }) => {
+											const position = eventTeamPlayerPosition(
+												row.is_goalkeeper,
+											);
+
+											return (
+												<li
+													key={row.id}
+													className={EVENT_TEAM_PLAYER_SLOT_CLASS}
+												>
+													<span
+														className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}
+													>
+														{EVENT_TEAM_POSITION_LABEL[position]}
+													</span>
+													<EventTeamPlayerRow
+														player={player}
+														ceiling={ceiling}
+													/>
+												</li>
+											);
+										})}
+									</ul>
+									<EventTeamRatingAverage
+										ratings={teamRoster.map(({ player }) => player.rating)}
+									/>
+								</li>
+							);
+						})}
+					</ul>
 				</div>
 			)}
-			{!showTeamBuilder && (
+			{selectedTab === EVENT_TAB.event && !showTeamBuilder && (
+				<ChampionshipEventMatchHistory
+					matches={event.matches}
+					teams={event.teams}
+					rosterById={rosterById}
+					showMatchDelete={showMatchDelete}
+					canOpenMatch={!ended}
+					onOpenMatch={(match) => {
+						if (isOpenMatch(match)) {
+							void onOpenMatch(match);
+							return;
+						}
+
+						setMatchToReopen(match);
+					}}
+					onRemoveMatch={setMatchToRemove}
+				/>
+			)}
+			{selectedTab === EVENT_TAB.event && !showTeamBuilder && (
 				<div>
-					<p className="mb-1 text-xs font-medium uppercase tracking-wide text-fg-muted">
-						Presentes
-					</p>
+					<div className="mb-1 flex items-center gap-2">
+						<p className="text-xs font-medium uppercase tracking-wide text-fg-muted">
+							{EVENT_SECTION_LABEL.attendance}
+						</p>
+						<div className="ml-auto flex items-center gap-1">
+							{canSetMvp && ended && event.attendance.length > 0 && (
+								<IconTooltipButton
+									showLabel
+									label={EVENT_ACTION.setMvp}
+									icon={<Award className="size-4" />}
+									onClick={() => setIsMvpOpen(true)}
+								/>
+							)}
+							{canManage && showAttendanceActions && (
+								<IconTooltipButton
+									showLabel
+									label={EVENT_ACTION.addAttendance}
+									icon={<UserPlus className="size-4" />}
+									onClick={() => setIsAttendanceOpen(true)}
+								/>
+							)}
+							{canManage &&
+								showAttendanceActions &&
+								event.attendance.length > 0 && (
+									<IconTooltipButton
+										showLabel
+										label={EVENT_ACTION.markAttendanceStats}
+										icon={<ChartColumn className="size-4" />}
+										onClick={() => setIsAttendanceStatsOpen(true)}
+									/>
+								)}
+						</div>
+					</div>
 					{event.attendance.length === 0 && (
 						<p className="text-sm text-fg-muted">Ninguém marcado.</p>
 					)}
@@ -758,6 +827,13 @@ export function ChampionshipEventDetail({
 						</ul>
 					)}
 				</div>
+			)}
+			{showEventTabs && selectedTab === EVENT_TAB.podium && (
+				<ChampionshipPodiumTab
+					players={podiumPlayers}
+					championshipName={championshipName}
+					eventStartsAt={event.starts_at}
+				/>
 			)}
 			{isAttendanceOpen && (
 				<EditEventAttendanceModal
@@ -934,27 +1010,92 @@ export function ChampionshipEventDetail({
 					}}
 				/>
 			)}
+			{matchToReopen && (
+				<ReopenEventMatchModal
+					isPending={openingMatch}
+					errorMessage={openMatchError}
+					onCancel={() => {
+						if (openingMatch) {
+							return;
+						}
+
+						setMatchToReopen(null);
+					}}
+					onConfirm={() => {
+						void (async () => {
+							try {
+								await onOpenMatch(matchToReopen);
+								setMatchToReopen(null);
+							} catch {
+								return;
+							}
+						})();
+					}}
+				/>
+			)}
+			{isMvpOpen && (
+				<SetEventMvpModal
+					players={eventMvpPickCandidates(event.attendance, selectedMvpIds).map(
+						(row) => ({
+							id: row.playerId,
+							name: playerVisibleName(
+								resolveRosterPlayer(
+									row.playerId,
+									attendanceNameByPlayerId.get(row.playerId) ?? "",
+									rosterById,
+								),
+							),
+							goals: row.goals,
+							assists: row.assists,
+							wins: row.wins,
+							matches: row.matches,
+						}),
+					)}
+					initialPlayerIds={selectedMvpIds}
+					isPending={settingMvp}
+					errorMessage={setMvpError}
+					onCancel={() => {
+						if (settingMvp) {
+							return;
+						}
+
+						setIsMvpOpen(false);
+					}}
+					onSave={async (playerIds) => {
+						await onSetMvps(playerIds);
+						setIsMvpOpen(false);
+					}}
+				/>
+			)}
 			{isEndOpen && (
 				<EndEventModal
 					rows={ratingPreview}
 					ceiling={previewCeiling}
+					canSetMvp={canSetMvp}
+					mvpCandidateIds={mvpCandidateIds}
 					isPending={ending}
 					errorMessage={endError}
+					onToggleMvp={(playerId) => {
+						setEndMvpPlayerIds((current) =>
+							toggleEventMvpPlayerId(current ?? mvpCandidateIds, playerId),
+						);
+					}}
 					onCancel={() => {
 						if (ending) {
 							return;
 						}
 
+						setEndMvpPlayerIds(null);
 						setIsEndOpen(false);
 					}}
 					onConfirm={() => {
 						void (async () => {
 							try {
-								const presentPlayerIds = draftAttendanceForEnd(
-									showTeamBuilder,
-									draftPresentIdsRef.current,
+								await onEnd(
+									presentPlayerIdsForEnd,
+									canSetMvp ? mvpPlayerIds : null,
 								);
-								await onEnd(presentPlayerIds);
+								setEndMvpPlayerIds(null);
 								setIsEndOpen(false);
 							} catch {
 								return;

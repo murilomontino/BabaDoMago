@@ -1,11 +1,17 @@
-import { Field, Form, Formik } from "formik";
+import { Field, type FieldProps, Form, Formik } from "formik";
 import { ChevronDown, Shield, Trash2 } from "lucide-react";
 import type { MouseEvent } from "react";
+import { Switch } from "@/components/atoms/switch";
 import { Button } from "@/components/button";
+import { ChampionshipDeactivatedTab } from "@/components/championship-deactivated-tab";
 import { EmptyState } from "@/components/empty-state";
 import { FormError } from "@/components/form-error";
 import { SectionCard } from "@/components/section-card";
-import { CHAMPIONSHIP_EVENT, parseEventTime } from "@/const/championship-event";
+import {
+	CHAMPIONSHIP_EVENT,
+	EVENT_CONFIG_LABEL,
+	parseEventTime,
+} from "@/const/championship-event";
 import {
 	CHAMPIONSHIP_VISIBILITY,
 	CHAMPIONSHIP_VISIBILITY_OPTIONS,
@@ -33,6 +39,7 @@ type ChampionshipSettingsTabProps = {
 	createdBy: string;
 	eventTime: string;
 	playersPerTeam: number;
+	skipGuestGoalkeeperMatches: boolean;
 	isVisible: boolean;
 	activePlayers: ChampionshipPlayer[];
 	canRename: boolean;
@@ -40,6 +47,11 @@ type ChampionshipSettingsTabProps = {
 	canUpdateVisibility: boolean;
 	canTransferOwnership: boolean;
 	canDelete: boolean;
+	canReactivate: boolean;
+	deactivatedPlayers: ChampionshipPlayer[];
+	currentUserId: string | null;
+	reactivatingPlayerId: number | null;
+	reactivateError: string | null;
 	isRenaming: boolean;
 	renameError: string | null;
 	isUpdatingEventConfig: boolean;
@@ -52,10 +64,12 @@ type ChampionshipSettingsTabProps = {
 	onUpdateEventConfig: (values: {
 		eventTime: string;
 		playersPerTeam: number;
+		skipGuestGoalkeeperMatches: boolean;
 	}) => Promise<void>;
 	onUpdateVisibility: (isVisible: boolean) => void;
 	onTransferOwner: (playerId: number) => Promise<void>;
 	onDelete: () => void;
+	onReactivate: (playerId: number) => void;
 };
 
 export function ChampionshipSettingsTab({
@@ -63,6 +77,7 @@ export function ChampionshipSettingsTab({
 	createdBy,
 	eventTime,
 	playersPerTeam,
+	skipGuestGoalkeeperMatches,
 	isVisible,
 	activePlayers,
 	canRename,
@@ -70,6 +85,11 @@ export function ChampionshipSettingsTab({
 	canUpdateVisibility,
 	canTransferOwnership,
 	canDelete,
+	canReactivate,
+	deactivatedPlayers,
+	currentUserId,
+	reactivatingPlayerId,
+	reactivateError,
 	isRenaming,
 	renameError,
 	isUpdatingEventConfig,
@@ -83,6 +103,7 @@ export function ChampionshipSettingsTab({
 	onUpdateVisibility,
 	onTransferOwner,
 	onDelete,
+	onReactivate,
 }: ChampionshipSettingsTabProps) {
 	const canConfigure =
 		canRename ||
@@ -90,7 +111,8 @@ export function ChampionshipSettingsTab({
 		canUpdateVisibility ||
 		canTransferOwnership ||
 		canDelete;
-	const showDangerZone = canUpdateVisibility || canDelete;
+	const showDangerZone =
+		canUpdateVisibility || canTransferOwnership || canDelete;
 
 	function handleVisibilityPick(
 		nextVisible: boolean,
@@ -106,14 +128,14 @@ export function ChampionshipSettingsTab({
 
 	return (
 		<div className="space-y-6">
-			{!canConfigure && (
+			{!canConfigure && !canReactivate && (
 				<EmptyState
 					icon={<Shield className="size-10" />}
 					title="Nada para configurar"
 					description="Você não pode alterar este campeonato."
 				/>
 			)}
-			{(canRename || canUpdateEventConfig || canTransferOwnership) && (
+			{(canRename || canUpdateEventConfig) && (
 				<SectionCard
 					title="Configuração"
 					icon={<Shield className="size-4 text-pitch-fg" />}
@@ -160,6 +182,7 @@ export function ChampionshipSettingsTab({
 								initialValues={{
 									eventTime,
 									playersPerTeam,
+									skipGuestGoalkeeperMatches,
 								}}
 								enableReinitialize
 								validationSchema={eventConfigFormSchema}
@@ -167,6 +190,8 @@ export function ChampionshipSettingsTab({
 									await onUpdateEventConfig({
 										eventTime: parseEventTime(values.eventTime),
 										playersPerTeam: Number(values.playersPerTeam),
+										skipGuestGoalkeeperMatches:
+											values.skipGuestGoalkeeperMatches,
 									});
 								}}
 							>
@@ -175,7 +200,7 @@ export function ChampionshipSettingsTab({
 										htmlFor="championship-event-time"
 										className="block text-sm font-medium text-fg-muted"
 									>
-										Hora do evento
+										Hora da rodada
 										<Field
 											id="championship-event-time"
 											name="eventTime"
@@ -199,6 +224,37 @@ export function ChampionshipSettingsTab({
 										/>
 									</label>
 									<FormError name="playersPerTeam" />
+									<div className="flex items-start justify-between gap-4">
+										<span className="min-w-0 text-sm">
+											<label
+												htmlFor="championship-skip-guest-goalkeeper-matches"
+												className="font-medium text-fg"
+											>
+												{EVENT_CONFIG_LABEL.skipGuestGoalkeeperMatches}
+											</label>
+											<span className="mt-1 block text-fg-muted">
+												{EVENT_CONFIG_LABEL.skipGuestGoalkeeperMatchesHint}
+											</span>
+										</span>
+										<Field name="skipGuestGoalkeeperMatches">
+											{(props: FieldProps<boolean>) => (
+												<Switch
+													id="championship-skip-guest-goalkeeper-matches"
+													checked={
+														props.field.value ??
+														CHAMPIONSHIP_EVENT.skipGuestGoalkeeperMatchesDefault
+													}
+													onCheckedChange={(checked) => {
+														void props.form.setFieldValue(
+															props.field.name,
+															checked,
+														);
+													}}
+												/>
+											)}
+										</Field>
+									</div>
+									<FormError name="skipGuestGoalkeeperMatches" />
 									<Button
 										type="submit"
 										variant={BUTTON_VARIANT.secondary}
@@ -213,73 +269,18 @@ export function ChampionshipSettingsTab({
 						{eventConfigError && (
 							<p className={ERROR_CLASS}>{eventConfigError}</p>
 						)}
-						{canTransferOwnership && (
-							<Formik
-								initialValues={{ playerId: "" }}
-								validationSchema={transferOwnerSchema}
-								validateOnMount
-								onSubmit={async (values, helpers) => {
-									const playerId = Number(values.playerId);
-									if (!Number.isFinite(playerId)) {
-										return;
-									}
-
-									if (
-										!window.confirm(
-											"Transferir o campeonato? Você vira Normal.",
-										)
-									) {
-										return;
-									}
-
-									await onTransferOwner(playerId);
-									helpers.resetForm();
-								}}
-							>
-								{({ isValid }) => (
-									<Form className="space-y-1.5">
-										<label
-											htmlFor="championship-owner"
-											className="text-sm font-medium text-fg-muted"
-										>
-											Novo dono
-										</label>
-										<div className="flex items-center gap-2">
-											<Field
-												as="select"
-												id="championship-owner"
-												name="playerId"
-												className={`min-w-0 flex-1 ${FIELD_CLASS}`}
-											>
-												<option value="">Selecionar jogador</option>
-												{activePlayers
-													.filter(
-														(player) =>
-															player.user_id && player.user_id !== createdBy,
-													)
-													.map((player) => (
-														<option key={player.id} value={player.id}>
-															{playerVisibleName(player)}
-														</option>
-													))}
-											</Field>
-											<Button
-												type="submit"
-												variant={BUTTON_VARIANT.secondary}
-												disabled={isTransferring || !isValid}
-												className="h-9 shrink-0"
-											>
-												Transferir
-											</Button>
-										</div>
-										<FormError name="playerId" />
-									</Form>
-								)}
-							</Formik>
-						)}
-						{transferError && <p className={ERROR_CLASS}>{transferError}</p>}
 					</div>
 				</SectionCard>
+			)}
+			{canReactivate && (
+				<ChampionshipDeactivatedTab
+					players={deactivatedPlayers}
+					createdBy={createdBy}
+					currentUserId={currentUserId}
+					reactivatingPlayerId={reactivatingPlayerId}
+					reactivateError={reactivateError}
+					onReactivate={onReactivate}
+				/>
 			)}
 			{showDangerZone && (
 				<SectionCard
@@ -329,6 +330,78 @@ export function ChampionshipSettingsTab({
 										))}
 									</ul>
 								</details>
+							</div>
+						)}
+						{canTransferOwnership && (
+							<div className={DANGER_ROW_CLASS}>
+								<Formik
+									initialValues={{ playerId: "" }}
+									validationSchema={transferOwnerSchema}
+									validateOnMount
+									onSubmit={async (values, helpers) => {
+										const playerId = Number(values.playerId);
+										if (!Number.isFinite(playerId)) {
+											return;
+										}
+
+										if (
+											!window.confirm(
+												"Transferir o campeonato? Você vira Normal.",
+											)
+										) {
+											return;
+										}
+
+										await onTransferOwner(playerId);
+										helpers.resetForm();
+									}}
+								>
+									{({ isValid }) => (
+										<Form className="flex min-w-0 flex-1 flex-wrap items-end justify-between gap-4">
+											<div className="min-w-0 flex-1 space-y-1.5">
+												<label
+													htmlFor="championship-owner"
+													className="text-sm font-medium text-fg"
+												>
+													Novo dono
+												</label>
+												<p className="text-sm text-fg-muted">
+													Você vira Normal.
+												</p>
+												<Field
+													as="select"
+													id="championship-owner"
+													name="playerId"
+													className={FIELD_CLASS}
+												>
+													<option value="">Selecionar jogador</option>
+													{activePlayers
+														.filter(
+															(player) =>
+																player.user_id && player.user_id !== createdBy,
+														)
+														.map((player) => (
+															<option key={player.id} value={player.id}>
+																{playerVisibleName(player)}
+															</option>
+														))}
+												</Field>
+												<FormError name="playerId" />
+												{transferError && (
+													<p className={ERROR_CLASS}>{transferError}</p>
+												)}
+											</div>
+											<Button
+												type="submit"
+												variant={BUTTON_VARIANT.danger}
+												disabled={isTransferring || !isValid}
+												className="h-9 shrink-0"
+											>
+												Transferir
+											</Button>
+										</Form>
+									)}
+								</Formik>
 							</div>
 						)}
 						{canDelete && (

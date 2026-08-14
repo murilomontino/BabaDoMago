@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AppDialog } from "@/components/atoms/app-dialog";
+import { PlayerNameLink } from "@/components/molecules/player-name-link";
 import {
 	ASSIGNABLE_CHAMPIONSHIP_ROLES,
 	type AssignableChampionshipRole,
@@ -7,8 +8,8 @@ import {
 	CHAMPIONSHIP_ROLE_LABEL,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
-import { playerVisibleName } from "@/const/player-name";
-import { MODAL_CLASS, PLAYER_AVATAR_CLASS } from "@/const/ui";
+import { PLAYER_PROFILE_LABEL } from "@/const/player-profile";
+import { MODAL_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 const ROLE_TAG_CLASS =
@@ -39,55 +40,37 @@ export function RosterPlayerCell({
 	const canEditRole = Boolean(
 		onChangeRole && player.user_id && !isChampionshipOwner,
 	);
-	const visibleName = playerVisibleName(player);
-	const showLegalName = visibleName !== player.display_name;
 
 	return (
 		<div className="flex min-w-0 items-center gap-3">
-			{player.avatar_url && (
-				<img
-					src={player.avatar_url}
-					alt=""
-					referrerPolicy="no-referrer"
-					className={`${PLAYER_AVATAR_CLASS} rounded-full object-cover`}
-				/>
-			)}
-			{!player.avatar_url && (
-				<span
-					className={`flex items-center justify-center rounded-full bg-pitch-soft text-sm font-medium text-pitch-fg ${PLAYER_AVATAR_CLASS}`}
-				>
-					{visibleName.charAt(0).toUpperCase()}
-				</span>
-			)}
-			<div className="min-w-0">
-				<p className="truncate font-medium text-fg">{visibleName}</p>
-				{showLegalName && (
-					<p className="truncate text-xs text-fg-muted">
-						{player.display_name}
-					</p>
-				)}
-				{!player.user_id && (
-					<span className="mt-1 inline-flex rounded-full bg-surface-muted px-2 py-0.5 text-xs font-medium text-fg-muted">
-						Sem conta
-					</span>
-				)}
-				{player.user_id && canEditRole && onChangeRole && (
-					<button
-						type="button"
-						className={`${ROLE_TAG_CLASS} cursor-pointer hover:opacity-80`}
-						onClick={() => {
-							setOpen(true);
-						}}
-					>
-						{CHAMPIONSHIP_ROLE_LABEL[displayRole]}
-					</button>
-				)}
-				{player.user_id && !canEditRole && (
-					<span className={ROLE_TAG_CLASS}>
-						{CHAMPIONSHIP_ROLE_LABEL[displayRole]}
-					</span>
-				)}
-			</div>
+			<PlayerNameLink
+				player={player}
+				afterName={
+					<>
+						{!player.user_id && (
+							<span className="mt-1 inline-flex rounded-full bg-surface-muted px-2 py-0.5 text-xs font-medium text-fg-muted">
+								{PLAYER_PROFILE_LABEL.noAccount}
+							</span>
+						)}
+						{player.user_id && canEditRole && onChangeRole && (
+							<button
+								type="button"
+								className={`${ROLE_TAG_CLASS} cursor-pointer hover:opacity-80`}
+								onClick={() => {
+									setOpen(true);
+								}}
+							>
+								{CHAMPIONSHIP_ROLE_LABEL[displayRole]}
+							</button>
+						)}
+						{player.user_id && !canEditRole && (
+							<span className={ROLE_TAG_CLASS}>
+								{CHAMPIONSHIP_ROLE_LABEL[displayRole]}
+							</span>
+						)}
+					</>
+				}
+			/>
 			{open && canEditRole && onChangeRole && (
 				<AppDialog
 					onClose={() => {

@@ -34,6 +34,41 @@ export const EVENT_MATCH_LABEL = {
 	select: "Selecionar",
 } as const;
 
+export const EVENT_MATCH_END_INTENT = {
+	end: "end",
+	next: "next",
+} as const;
+
+export type EventMatchEndIntent =
+	(typeof EVENT_MATCH_END_INTENT)[keyof typeof EVENT_MATCH_END_INTENT];
+
+export const EVENT_MATCH_REOPEN_LABEL = {
+	title: "Editar partida",
+	hint: "A partida volta para edição. Estatísticas saem até encerrar de novo.",
+	confirm: "Editar",
+	cancel: "Cancelar",
+} as const;
+
+export const EVENT_MATCH_END_LABEL = {
+	title: "Encerrar partida",
+	nextTitle: "Próxima partida",
+	hint: "Placar e vencedor ficam gravados.",
+	confirm: "Encerrar",
+	nextConfirm: "Próxima partida",
+	cancel: "Cancelar",
+} as const;
+
+export const EVENT_MATCH_SUBSTITUTION_LABEL = {
+	hint: "Conte se jogou a maior parte. Não conte se saiu no início ou foi embora.",
+	count: "Contar",
+	skip: "Não contar",
+	chip: "Substituído",
+} as const;
+
+export function eventMatchSubstitutionTitle(playerName: string): string {
+	return `Contar estatísticas de ${playerName}?`;
+}
+
 export const EVENT_GOAL_KIND = {
 	assist: "assist",
 	none: "none",
@@ -81,7 +116,31 @@ export function matchTeamPlayers(
 ): ChampionshipEventMatchPlayer[] {
 	return [...players]
 		.filter((player) => player.team_id === teamId)
-		.sort((left, right) => left.slot - right.slot);
+		.sort((left, right) => {
+			if (left.is_substituted !== right.is_substituted) {
+				return left.is_substituted ? 1 : -1;
+			}
+
+			return (left.slot ?? 11) - (right.slot ?? 11);
+		});
+}
+
+export function matchActiveTeamPlayers(
+	players: readonly ChampionshipEventMatchPlayer[],
+	teamId: number,
+): ChampionshipEventMatchPlayer[] {
+	return matchTeamPlayers(players, teamId).filter(
+		(player) => !player.is_substituted,
+	);
+}
+
+export function matchSubstitutedTeamPlayers(
+	players: readonly ChampionshipEventMatchPlayer[],
+	teamId: number,
+): ChampionshipEventMatchPlayer[] {
+	return matchTeamPlayers(players, teamId).filter(
+		(player) => player.is_substituted,
+	);
 }
 
 export function matchTeamSlots(
@@ -93,14 +152,15 @@ export function matchTeamSlots(
 		{ length: playersPerTeam },
 		() => null as ChampionshipEventMatchPlayer | null,
 	);
-	const team = matchTeamPlayers(players, teamId);
+	const team = matchActiveTeamPlayers(players, teamId);
 
 	return team.reduce((next, player) => {
-		if (player.slot < 0 || player.slot >= next.length) {
+		const slot = player.slot;
+		if (slot === null || slot < 0 || slot >= next.length) {
 			return next;
 		}
 
-		next[player.slot] = player;
+		next[slot] = player;
 		return next;
 	}, slots);
 }
@@ -118,7 +178,7 @@ export function matchAssistCandidates(
 	teamId: number,
 	scorerPlayerId: number,
 ): ChampionshipEventMatchPlayer[] {
-	return matchTeamPlayers(players, teamId).filter(
+	return matchActiveTeamPlayers(players, teamId).filter(
 		(player) => player.player_id !== scorerPlayerId,
 	);
 }
@@ -287,7 +347,7 @@ export function matchTeamStarName(
 	teamId: number,
 	roster: ReadonlyMap<number, MatchStarRosterPlayer>,
 ): string | null {
-	const team = matchTeamPlayers(players, teamId);
+	const team = matchActiveTeamPlayers(players, teamId);
 	const star = team.reduce<ChampionshipEventMatchPlayer | null>(
 		(best, player) => {
 			if (!best) {
@@ -300,8 +360,8 @@ export function matchTeamStarName(
 				return playerRating > bestRating ? player : best;
 			}
 
-			if (player.slot !== best.slot) {
-				return player.slot < best.slot ? player : best;
+			if ((player.slot ?? 11) !== (best.slot ?? 11)) {
+				return (player.slot ?? 11) < (best.slot ?? 11) ? player : best;
 			}
 
 			return player.player_id < best.player_id ? player : best;
@@ -343,6 +403,56 @@ export function matchGoalTimeline(
 
 		return left.id - right.id;
 	});
+}
+
+export function lastMatchGoal(
+	goals: readonly ChampionshipEventGoal[],
+): ChampionshipEventGoal | null {
+	const timeline = matchGoalTimeline(goals);
+	return timeline[timeline.length - 1] ?? null;
+}
+
+export function eventMatchEndTitle(intent: EventMatchEndIntent): string {
+	switch (intent) {
+		case EVENT_MATCH_END_INTENT.end:
+			return EVENT_MATCH_END_LABEL.title;
+		case EVENT_MATCH_END_INTENT.next:
+			return EVENT_MATCH_END_LABEL.nextTitle;
+		default: {
+			const _exhaustive: never = intent;
+			return _exhaustive;
+		}
+	}
+}
+
+export function eventMatchEndConfirmLabel(intent: EventMatchEndIntent): string {
+	switch (intent) {
+		case EVENT_MATCH_END_INTENT.end:
+			return EVENT_MATCH_END_LABEL.confirm;
+		case EVENT_MATCH_END_INTENT.next:
+			return EVENT_MATCH_END_LABEL.nextConfirm;
+		default: {
+			const _exhaustive: never = intent;
+			return _exhaustive;
+		}
+	}
+}
+
+export function matchEndWinnerLabel(
+	winnerTeamId: number | null,
+	teamAId: number,
+	nameA: string,
+	nameB: string,
+): string {
+	if (winnerTeamId === teamAId) {
+		return nameA;
+	}
+
+	if (winnerTeamId !== null) {
+		return nameB;
+	}
+
+	return EVENT_MATCH_LABEL.draw;
 }
 
 export function formatGoalTimelineLine(values: {

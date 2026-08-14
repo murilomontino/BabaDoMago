@@ -1,12 +1,12 @@
 import {
 	ChartColumn,
+	Merge,
 	Unlink,
 	UserCheck,
 	UserPen,
 	UserPlus,
 	UserX,
 } from "lucide-react";
-import { Button } from "@/components/button";
 import { IconTooltipButton } from "@/components/molecules/icon-tooltip-button";
 import { EVENT_ACTION } from "@/const/championship-event";
 import {
@@ -23,9 +23,12 @@ import type { ChampionshipPlayer } from "@/types/championship";
 const ROSTER_ACTION_LABEL = {
 	connect: "Conectar",
 	disconnect: "Desconectar",
+	merge: "Unir",
 	deactivate: "Desativar",
 	activate: "Ativar",
 } as const;
+
+const ROSTER_ACTIONS_PER_ROW = 3 as const;
 
 export type RosterPlayerActionsProps = {
 	player: ChampionshipPlayer;
@@ -41,6 +44,7 @@ export type RosterPlayerActionsProps = {
 	eventStatsPlayerId?: number | null;
 	onUnlink?: (playerId: number) => void;
 	unlinkingPlayerId?: number | null;
+	onMerge?: (playerId: number) => void;
 	onDeactivate?: (playerId: number) => void;
 	deactivatingPlayerId?: number | null;
 	onReactivate?: (playerId: number) => void;
@@ -61,6 +65,7 @@ export function RosterPlayerActions({
 	eventStatsPlayerId,
 	onUnlink,
 	unlinkingPlayerId,
+	onMerge,
 	onDeactivate,
 	deactivatingPlayerId,
 	onReactivate,
@@ -77,6 +82,9 @@ export function RosterPlayerActions({
 	);
 	const canUnlink = Boolean(
 		onUnlink && player.user_id && !isChampionshipOwner && !player.deleted_at,
+	);
+	const canMerge = Boolean(
+		onMerge && !isChampionshipOwner && !player.deleted_at,
 	);
 	const canDeactivate = Boolean(
 		onDeactivate && !isChampionshipOwner && !player.deleted_at,
@@ -96,6 +104,7 @@ export function RosterPlayerActions({
 		!canEditNickname &&
 		!canEditEventStats &&
 		!canUnlink &&
+		!canMerge &&
 		!canDeactivate &&
 		!canReactivate
 	) {
@@ -103,7 +112,12 @@ export function RosterPlayerActions({
 	}
 
 	return (
-		<div className="flex flex-wrap justify-center gap-2">
+		<div
+			className="mx-auto inline-grid w-max justify-items-center"
+			style={{
+				gridTemplateColumns: `repeat(${ROSTER_ACTIONS_PER_ROW}, min-content)`,
+			}}
+		>
 			{canEditNickname && onEditNickname && (
 				<IconTooltipButton
 					label={PLAYER_LABEL.nickname}
@@ -121,14 +135,12 @@ export function RosterPlayerActions({
 				/>
 			)}
 			{canClaim && onClaim && (
-				<Button
-					variant={BUTTON_VARIANT.secondary}
+				<IconTooltipButton
+					label={ROSTER_ACTION_LABEL.connect}
+					icon={<UserPlus className="size-4" />}
 					onClick={() => onClaim(player.id)}
 					disabled={claimingPlayerId === player.id}
-				>
-					<UserPlus className="size-4" />
-					{ROSTER_ACTION_LABEL.connect}
-				</Button>
+				/>
 			)}
 			{canUnlink && onUnlink && (
 				<IconTooltipButton
@@ -136,6 +148,13 @@ export function RosterPlayerActions({
 					icon={<Unlink className="size-4" />}
 					onClick={() => onUnlink(player.id)}
 					disabled={unlinkingPlayerId === player.id}
+				/>
+			)}
+			{canMerge && onMerge && (
+				<IconTooltipButton
+					label={ROSTER_ACTION_LABEL.merge}
+					icon={<Merge className="size-4" />}
+					onClick={() => onMerge(player.id)}
 				/>
 			)}
 			{canDeactivate && onDeactivate && (

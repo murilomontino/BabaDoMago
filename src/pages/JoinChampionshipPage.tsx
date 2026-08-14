@@ -1,12 +1,19 @@
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { Trophy, UserPlus, Users } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
 import { ChampionshipLogo } from "@/components/championship-logo";
 import { ChampionshipRoster } from "@/components/championship-roster";
+import { DataTableSkeleton } from "@/components/molecules/data-table-skeleton";
 import { SectionCard } from "@/components/section-card";
 import { ThemeToggle } from "@/components/theme-toggle";
+import {
+	confirmClaimPlayerMessage,
+	playerVisibleName,
+} from "@/const/player-name";
 import { ROUTES } from "@/const/routes";
+import { SKELETON_LABEL } from "@/const/skeleton";
 import {
 	BUTTON_VARIANT,
 	CARD_CLASS,
@@ -21,6 +28,12 @@ import {
 } from "@/hooks/championships/use-championships";
 import { withClaimQuery } from "@/lib/safe-path";
 import type { ChampionshipPlayer } from "@/types/championship";
+
+const JOIN_PAGE = {
+	hint: "Se seu nome já está no elenco, clique em Conectar.",
+	notInList: "Não estou na lista",
+	loginToConnect: "Entrar para conectar",
+} as const;
 
 export function JoinChampionshipPage() {
 	const { inviteCode } = useParams({ from: "/join/$inviteCode" });
@@ -71,6 +84,15 @@ export function JoinChampionshipPage() {
 	}, [user, claim, claimPlayer, inviteCode, navigate]);
 
 	function handleClaim(playerId: number) {
+		const player = data?.players.find((item) => item.id === playerId);
+		if (!player) {
+			return;
+		}
+
+		if (!window.confirm(confirmClaimPlayerMessage(playerVisibleName(player)))) {
+			return;
+		}
+
 		if (user) {
 			claimPlayer.mutate(playerId, {
 				onSuccess: (claimed) => {
@@ -92,12 +114,20 @@ export function JoinChampionshipPage() {
 		});
 	}
 
+	function handleJoin() {
+		joinChampionship.mutate(undefined, {
+			onSuccess: (joined) => {
+				void navigate({
+					to: ROUTES.championship,
+					params: { championshipId: String(joined.championship_id) },
+					replace: true,
+				});
+			},
+		});
+	}
+
 	if (isPending || isAuthLoading) {
-		return (
-			<main className={PAGE_SHELL_CLASS}>
-				<p className="text-fg-muted">Carregando campeonato...</p>
-			</main>
-		);
+		return <JoinChampionshipPageSkeleton />;
 	}
 
 	if (isError) {
@@ -135,6 +165,9 @@ export function JoinChampionshipPage() {
 				title="Elenco"
 				icon={<Users className="size-4 text-pitch-fg" />}
 			>
+				{!alreadyMember && (
+					<p className="mb-3 text-sm text-fg-muted">{JOIN_PAGE.hint}</p>
+				)}
 				<ChampionshipRoster
 					players={data.players}
 					createdBy={data.created_by}
@@ -145,11 +178,12 @@ export function JoinChampionshipPage() {
 			</SectionCard>
 			{!alreadyMember && user && (
 				<Button
-					onClick={() => joinChampionship.mutate()}
+					variant={BUTTON_VARIANT.secondary}
+					onClick={handleJoin}
 					disabled={joinChampionship.isPending}
 				>
 					<UserPlus className="size-4" />
-					Inscrever-me
+					{JOIN_PAGE.notInList}
 				</Button>
 			)}
 			{!user && (
@@ -162,7 +196,7 @@ export function JoinChampionshipPage() {
 						})
 					}
 				>
-					Entrar para se inscrever
+					{JOIN_PAGE.loginToConnect}
 				</Button>
 			)}
 			{joinChampionship.isError && (
@@ -171,6 +205,34 @@ export function JoinChampionshipPage() {
 			{claimPlayer.isError && (
 				<p className={ERROR_CLASS}>{claimPlayer.error.message}</p>
 			)}
+		</main>
+	);
+}
+
+function JoinChampionshipPageSkeleton() {
+	return (
+		<main className={`${PAGE_SHELL_CLASS} space-y-6`}>
+			<SkeletonRegion label={SKELETON_LABEL.championship} className="space-y-6">
+				<div className="flex justify-end">
+					<ThemeToggle />
+				</div>
+				<section className={CARD_CLASS}>
+					<p className="mb-3 flex items-center gap-2 text-sm font-medium uppercase tracking-wide text-pitch-fg">
+						<Trophy className="size-4" />
+						Campeonato
+					</p>
+					<div className="flex items-center gap-3">
+						<Skeleton className="h-16 w-16 rounded-full" />
+						<Skeleton className="h-8 w-48" />
+					</div>
+				</section>
+				<SectionCard
+					title="Elenco"
+					icon={<Users className="size-4 text-pitch-fg" />}
+				>
+					<DataTableSkeleton withSearch withColumns />
+				</SectionCard>
+			</SkeletonRegion>
 		</main>
 	);
 }

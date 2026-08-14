@@ -15,6 +15,13 @@ export const CHAMPIONSHIP_EVENT = {
 	playersPerTeamDefault: 5,
 	minTeams: 2,
 	minAttendance: 2,
+	skipGuestGoalkeeperMatchesDefault: true,
+} as const;
+
+export const EVENT_CONFIG_LABEL = {
+	skipGuestGoalkeeperMatches: "Goleiro de outro time",
+	skipGuestGoalkeeperMatchesHint:
+		"Partida do goleiro emprestado só conta se o time vencer.",
 } as const;
 
 export const EVENT_BUILDER_STEP = {
@@ -58,7 +65,7 @@ export const EVENT_STATUS_LABEL = {
 } as const;
 
 export const EVENT_ERROR_MESSAGE = {
-	"event already exists": "Já existe evento neste dia",
+	"event already exists": "Já existe rodada neste dia",
 	"invalid teams": "Times inválidos",
 	"invalid team color": "Cor inválida",
 	"duplicate team color": "Cores repetidas",
@@ -68,14 +75,14 @@ export const EVENT_ERROR_MESSAGE = {
 	"invalid event time": "Hora inválida",
 	"invalid players per team": "Limite inválido",
 	"same team": "Escolha dois times",
-	"team not in event": "Time não pertence ao evento",
-	"event not found": "Evento não encontrado",
+	"team not in event": "Time não pertence à rodada",
+	"event not found": "Rodada não encontrada",
 	"invalid attendance": "Lista de presença inválida",
 	"duplicate attendance": "Jogador repetido na presença",
 	"player not present": "Jogador não está presente",
 	"invalid goalkeeper": "Informe o goleiro",
-	"event already ended": "Evento já encerrado",
-	"event has matches": "Evento já tem partidas",
+	"event already ended": "Rodada já encerrada",
+	"event has matches": "Rodada já tem partidas",
 	"team has matches": "Time já tem partidas",
 	"match already open": "Já tem partida em andamento",
 	"match already ended": "Partida já encerrada",
@@ -85,24 +92,29 @@ export const EVENT_ERROR_MESSAGE = {
 	"invalid slot": "Vaga inválida",
 	"team not in match": "Time não está na partida",
 	"player not in match": "Jogador não está na partida",
+	"player substituted": "Jogador já foi substituído",
 	"assist not in team": "Assistência de outro time",
+	"no goal to undo": "Nenhum gol para desfazer",
+	"goal not found": "Gol não encontrado",
 	"invalid attendance stats": "Números inválidos",
 	"wins exceed matches": "Vitórias acima dos jogos",
 	"invalid rating": "Nota inválida",
-	"event still open": "Evento ainda aberto",
+	"event still open": "Rodada ainda aberta",
 } as const;
 
 export const EVENT_ACTION = {
-	create: "Criar evento",
+	create: "Criar rodada",
 	saveTeams: "Salvar times",
 	editTeams: "Editar times",
-	newEvent: "Novo evento",
+	newEvent: "Nova rodada",
 	addAttendance: "Adicionar presença",
 	addMatch: "Adicionar partida",
 	startMatch: "Iniciar partida",
 	continueMatch: "Continuar partida",
 	nextMatch: "Próxima partida",
 	endMatch: "Encerrar",
+	undoGoal: "Desfazer gol",
+	editMatch: "Editar partida",
 	copyMatchLink: "Copiar link",
 	markGoal: "Marcar gol",
 	swapPlayer: "Trocar",
@@ -121,11 +133,18 @@ export const EVENT_ACTION = {
 	removeTeam: "Excluir time",
 	drawTeams: "Sortear times",
 	endEvent: "Encerrar",
+	setMvp: "Escolher MVP",
+	deleteEvent: "Excluir rodada",
+} as const;
+
+export const EVENT_SECTION_LABEL = {
+	matches: "Partidas",
+	attendance: "Presentes",
 } as const;
 
 export const EVENT_END_LABEL = {
-	title: "Encerrar evento",
-	hint: "O evento fica marcado como encerrado. Ainda dá para adicionar partidas depois.",
+	title: "Encerrar rodada",
+	hint: "A rodada fica marcada como encerrada. Ainda dá para adicionar partidas depois.",
 	confirm: "Encerrar",
 	cancel: "Cancelar",
 } as const;
@@ -163,6 +182,9 @@ export const EVENT_TEAM_MESSAGE = {
 	needAttendance: "Marque a presença primeiro",
 	drawing: "Buscando melhor cenário...",
 	drawFailed: "Não foi possível sortear os times",
+	drawReplaceTitle: "Sortear times de novo?",
+	drawReplaceHint: "Os times atuais serão substituídos.",
+	drawReplaceCancel: "Cancelar",
 } as const;
 
 export const EVENT_ATTENDANCE_MESSAGE = {
@@ -198,6 +220,7 @@ export const EVENT_ATTENDANCE_COLUMN_LABEL = {
 	assists: "Assistências",
 	ownGoals: "Gols contra",
 	wins: "Vitórias",
+	mvp: "MVP",
 	matches: "Jogos",
 } as const;
 
@@ -282,11 +305,11 @@ export type PlayerEventStatsDraft = {
 };
 
 export const PLAYER_EVENT_STATS_LABEL = {
-	title: "Stats do evento",
-	event: "Evento",
-	emptyEvents: "Nenhum evento encerrado",
+	title: "Stats da rodada",
+	event: "Rodada",
+	emptyEvents: "Nenhuma rodada encerrada",
 	ratingHint:
-		"O rate só muda neste jogador se ainda não tinha sido aplicado neste evento.",
+		"O rate só muda neste jogador se ainda não tinha sido aplicado nesta rodada.",
 } as const;
 
 export type EventAttendanceStatsDraft = {
@@ -982,6 +1005,12 @@ export function draftAttendanceForEnd(
 
 export function teamSlotsToPlayerIds(slots: readonly string[]): number[] {
 	return slots.filter(Boolean).map(Number);
+}
+
+export function builderTeamsHavePlayers(
+	teams: readonly EventTeamBuilderTeam[],
+): boolean {
+	return teams.some((team) => teamSlotsToPlayerIds(team.slots).length > 0);
 }
 
 export function eventTeamSlotPosition(slot: number): EventTeamPosition {

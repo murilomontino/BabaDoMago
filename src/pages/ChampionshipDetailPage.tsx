@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from "@tanstack/react-router";
+import { Users } from "lucide-react";
 import { type FormEvent, useState } from "react";
-import { ChampionshipDeactivatedTab } from "@/components/championship-deactivated-tab";
+import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { ChampionshipDetailHeader } from "@/components/championship-detail-header";
 import { ChampionshipEvents } from "@/components/championship-events";
 import { ChampionshipLogoCrop } from "@/components/championship-logo-crop";
@@ -11,6 +12,9 @@ import { ConfirmRatingModal } from "@/components/confirm-rating-modal";
 import { DeleteChampionshipModal } from "@/components/delete-championship-modal";
 import { EditPlayerEventStatsModal } from "@/components/edit-player-event-stats-modal";
 import { EditPlayerNicknameModal } from "@/components/edit-player-nickname-modal";
+import { MergeChampionshipPlayersModal } from "@/components/merge-championship-players-modal";
+import { DataTableSkeleton } from "@/components/molecules/data-table-skeleton";
+import { SectionCard } from "@/components/section-card";
 import { Tabs } from "@/components/tabs";
 import type { PlayerEventStatsDraft } from "@/const/championship-event";
 import { assertChampionshipLogoSource } from "@/const/championship-logo";
@@ -22,6 +26,7 @@ import {
 	canDeleteChampionship,
 	canInvite,
 	canManageEvent,
+	canMergePlayers,
 	canOverrideEndedEvent,
 	canReactivatePlayer,
 	canRenameChampionship,
@@ -35,16 +40,21 @@ import {
 } from "@/const/championship-role";
 import {
 	CHAMPIONSHIP_TAB,
+	CHAMPIONSHIP_TAB_LABEL,
 	CHAMPIONSHIP_TABS,
 	type ChampionshipTab,
 } from "@/const/championship-tab";
-import { playerVisibleName } from "@/const/player-name";
+import {
+	confirmClaimPlayerMessage,
+	playerVisibleName,
+} from "@/const/player-name";
 import {
 	championshipRatingCeiling,
 	PLAYER_RATING,
 } from "@/const/player-rating";
 import { ROUTES } from "@/const/routes";
-import { ERROR_CLASS } from "@/const/ui";
+import { SKELETON_LABEL } from "@/const/skeleton";
+import { CARD_CLASS, ERROR_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
 import {
 	useChampionshipEvents,
@@ -56,6 +66,7 @@ import {
 	useClaimPlayer,
 	useDeactivatePlayer,
 	useDeleteChampionship,
+	useMergeChampionshipPlayers,
 	useReactivatePlayer,
 	useRenameChampionship,
 	useSetPlayerRole,
@@ -80,6 +91,7 @@ export function ChampionshipDetailPage() {
 	const addPlayer = useAddManualPlayer(championshipId);
 	const claimPlayer = useClaimPlayer();
 	const unlinkPlayer = useUnlinkPlayer();
+	const mergePlayers = useMergeChampionshipPlayers();
 	const deactivatePlayer = useDeactivatePlayer();
 	const reactivatePlayer = useReactivatePlayer();
 	const updateRating = useUpdatePlayerRating();
@@ -109,7 +121,10 @@ export function ChampionshipDetailPage() {
 		useState<ChampionshipPlayer | null>(null);
 	const [pendingEventStatsPlayer, setPendingEventStatsPlayer] =
 		useState<ChampionshipPlayer | null>(null);
+	const [pendingMergePlayer, setPendingMergePlayer] =
+		useState<ChampionshipPlayer | null>(null);
 	const [tab, setTab] = useState<ChampionshipTab>(CHAMPIONSHIP_TAB.roster);
+	const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
 	const currentPlayer = data?.players.find(
 		(player) => !player.deleted_at && player.user_id === user?.id,
@@ -127,6 +142,7 @@ export function ChampionshipDetailPage() {
 		deleteChampionship: canDeleteChampionship(actorRole),
 		transferOwnership: canTransferOwnership(actorRole),
 		unlink: canUnlinkPlayer(actorRole),
+		merge: canMergePlayers(actorRole),
 		deactivate: canDeactivatePlayer(actorRole),
 		reactivate: canReactivatePlayer(actorRole),
 		updateEventConfig: canUpdateEventConfig(actorRole),
@@ -143,13 +159,18 @@ export function ChampionshipDetailPage() {
 	const deactivatedPlayers = (data?.players ?? []).filter(
 		(player) => player.deleted_at,
 	);
-	const visibleTabs = CHAMPIONSHIP_TABS.filter(
-		(item) =>
-			item.id !== CHAMPIONSHIP_TAB.deactivated || permissions.reactivate,
-	);
-	const selectedTab = visibleTabs.some((item) => item.id === tab)
-		? tab
-		: CHAMPIONSHIP_TAB.roster;
+	const canOpenSettings =
+		permissions.rename ||
+		permissions.updateEventConfig ||
+		permissions.updateVisibility ||
+		permissions.transferOwnership ||
+		permissions.deleteChampionship ||
+		permissions.reactivate;
+
+	function handleTabChange(id: ChampionshipTab) {
+		setIsSettingsOpen(false);
+		setTab(id);
+	}
 
 	function applyRating(playerId: number, rating: number) {
 		updateRating.mutate(
@@ -288,6 +309,19 @@ export function ChampionshipDetailPage() {
 		setPendingEventStatsPlayer(null);
 	}
 
+	function handleClaim(playerId: number) {
+		const player = activePlayers.find((item) => item.id === playerId);
+		if (!player) {
+			return;
+		}
+
+		if (!window.confirm(confirmClaimPlayerMessage(playerVisibleName(player)))) {
+			return;
+		}
+
+		claimPlayer.mutate(playerId);
+	}
+
 	function handleUnlink(playerId: number) {
 		if (!permissions.unlink) {
 			return;
@@ -298,6 +332,40 @@ export function ChampionshipDetailPage() {
 		}
 
 		unlinkPlayer.mutate(playerId);
+	}
+
+	function handleMerge(playerId: number) {
+		if (!permissions.merge) {
+			return;
+		}
+
+		const player = activePlayers.find((item) => item.id === playerId);
+		if (!player) {
+			return;
+		}
+
+		mergePlayers.reset();
+		setPendingMergePlayer(player);
+	}
+
+	function handleMergeCancel() {
+		if (mergePlayers.isPending) {
+			return;
+		}
+
+		mergePlayers.reset();
+		setPendingMergePlayer(null);
+	}
+
+	function handleMergeConfirm(keepPlayerId: number, absorbPlayerId: number) {
+		mergePlayers.mutate(
+			{ keepPlayerId, absorbPlayerId },
+			{
+				onSuccess: () => {
+					setPendingMergePlayer(null);
+				},
+			},
+		);
 	}
 
 	function handleDeactivate(playerId: number) {
@@ -388,7 +456,7 @@ export function ChampionshipDetailPage() {
 	}
 
 	if (isPending) {
-		return <p className="text-fg-muted">Carregando campeonato...</p>;
+		return <ChampionshipDetailPageSkeleton />;
 	}
 
 	if (isError) {
@@ -409,7 +477,12 @@ export function ChampionshipDetailPage() {
 				isUploading={uploadLogo.isPending}
 				logoSourceError={logoSourceError}
 				uploadError={uploadLogo.isError ? uploadLogo.error.message : null}
+				canOpenSettings={canOpenSettings}
+				isSettingsOpen={isSettingsOpen}
 				onLogoChange={handleLogoChange}
+				onToggleSettings={() => {
+					setIsSettingsOpen((open) => !open);
+				}}
 			/>
 			{logoCropSrc && (
 				<ChampionshipLogoCrop
@@ -427,6 +500,19 @@ export function ChampionshipDetailPage() {
 					}
 					onCancel={handleNicknameCancel}
 					onConfirm={handleNicknameConfirm}
+				/>
+			)}
+			{pendingMergePlayer && (
+				<MergeChampionshipPlayersModal
+					players={activePlayers}
+					createdBy={data.created_by}
+					starter={pendingMergePlayer}
+					isPending={mergePlayers.isPending}
+					errorMessage={
+						mergePlayers.isError ? mergePlayers.error.message : null
+					}
+					onCancel={handleMergeCancel}
+					onConfirm={handleMergeConfirm}
 				/>
 			)}
 			{pendingEventStatsPlayer && (
@@ -472,8 +558,14 @@ export function ChampionshipDetailPage() {
 					}}
 				/>
 			)}
-			<Tabs value={selectedTab} items={visibleTabs} onChange={setTab} />
-			{selectedTab === CHAMPIONSHIP_TAB.roster && (
+			{!isSettingsOpen && (
+				<Tabs
+					value={tab}
+					items={CHAMPIONSHIP_TABS}
+					onChange={handleTabChange}
+				/>
+			)}
+			{!isSettingsOpen && tab === CHAMPIONSHIP_TAB.roster && (
 				<ChampionshipRosterTab
 					players={activePlayers}
 					createdBy={data.created_by}
@@ -510,6 +602,12 @@ export function ChampionshipDetailPage() {
 						unlinkPlayer.isPending ? (unlinkPlayer.variables ?? null) : null
 					}
 					unlinkError={unlinkPlayer.isError ? unlinkPlayer.error.message : null}
+					canMerge={permissions.merge}
+					mergeError={
+						mergePlayers.isError && !pendingMergePlayer
+							? mergePlayers.error.message
+							: null
+					}
 					deactivatingPlayerId={
 						deactivatePlayer.isPending
 							? (deactivatePlayer.variables ?? null)
@@ -524,7 +622,7 @@ export function ChampionshipDetailPage() {
 					onAddPlayer={async (values) => {
 						await addPlayer.mutateAsync(values);
 					}}
-					onClaim={(playerId) => claimPlayer.mutate(playerId)}
+					onClaim={handleClaim}
 					onChangeRating={handleChangeRating}
 					onEditNickname={handleEditNickname}
 					onEditEventStats={
@@ -540,23 +638,40 @@ export function ChampionshipDetailPage() {
 						setPlayerRole.mutate({ playerId, role })
 					}
 					onUnlink={handleUnlink}
+					onMerge={handleMerge}
 					onDeactivate={handleDeactivate}
 				/>
 			)}
-			{selectedTab === CHAMPIONSHIP_TAB.events && (
+			{!isSettingsOpen && tab === CHAMPIONSHIP_TAB.events && (
 				<ChampionshipEvents
 					championshipId={championshipId}
 					eventTime={data.event_time}
 					canManage={permissions.manageEvent}
 				/>
 			)}
-			{selectedTab === CHAMPIONSHIP_TAB.podium && (
-				<ChampionshipPodiumTab players={activePlayers} />
+			{!isSettingsOpen && tab === CHAMPIONSHIP_TAB.podium && (
+				<ChampionshipPodiumTab
+					players={activePlayers}
+					championshipName={data.name}
+					events={eventsQuery.data ?? []}
+				/>
 			)}
-			{selectedTab === CHAMPIONSHIP_TAB.deactivated && (
-				<ChampionshipDeactivatedTab
-					players={deactivatedPlayers}
+			{isSettingsOpen && (
+				<ChampionshipSettingsTab
+					name={data.name}
 					createdBy={data.created_by}
+					eventTime={data.event_time}
+					playersPerTeam={data.players_per_team}
+					skipGuestGoalkeeperMatches={data.skip_guest_goalkeeper_matches}
+					isVisible={data.is_visible}
+					activePlayers={activePlayers}
+					canRename={permissions.rename}
+					canUpdateEventConfig={permissions.updateEventConfig}
+					canUpdateVisibility={permissions.updateVisibility}
+					canTransferOwnership={permissions.transferOwnership}
+					canDelete={permissions.deleteChampionship}
+					canReactivate={permissions.reactivate}
+					deactivatedPlayers={deactivatedPlayers}
 					currentUserId={user?.id ?? null}
 					reactivatingPlayerId={
 						reactivatePlayer.isPending
@@ -566,22 +681,6 @@ export function ChampionshipDetailPage() {
 					reactivateError={
 						reactivatePlayer.isError ? reactivatePlayer.error.message : null
 					}
-					onReactivate={handleReactivate}
-				/>
-			)}
-			{selectedTab === CHAMPIONSHIP_TAB.settings && (
-				<ChampionshipSettingsTab
-					name={data.name}
-					createdBy={data.created_by}
-					eventTime={data.event_time}
-					playersPerTeam={data.players_per_team}
-					isVisible={data.is_visible}
-					activePlayers={activePlayers}
-					canRename={permissions.rename}
-					canUpdateEventConfig={permissions.updateEventConfig}
-					canUpdateVisibility={permissions.updateVisibility}
-					canTransferOwnership={permissions.transferOwnership}
-					canDelete={permissions.deleteChampionship}
 					isRenaming={renameChampionship.isPending}
 					renameError={
 						renameChampionship.isError ? renameChampionship.error.message : null
@@ -611,8 +710,44 @@ export function ChampionshipDetailPage() {
 						await transferOwner.mutateAsync(playerId);
 					}}
 					onDelete={() => setIsDeleteOpen(true)}
+					onReactivate={handleReactivate}
 				/>
 			)}
 		</main>
 	);
+}
+
+function ChampionshipDetailPageSkeleton() {
+	return (
+		<SkeletonRegion label={SKELETON_LABEL.championship}>
+			<main className="space-y-6">
+				<section className={CARD_CLASS}>
+					<div className="flex items-start gap-4">
+						<Skeleton className="h-16 w-16 shrink-0 rounded-full" />
+						<div className="min-w-0 flex-1">
+							<Skeleton className="h-7 w-48" />
+							<span className="mt-2 inline-flex items-center gap-1 rounded-full bg-pitch-soft px-2 py-0.5">
+								<Skeleton className="h-3 w-16 rounded-full bg-pitch/20" />
+							</span>
+						</div>
+					</div>
+				</section>
+				<Tabs
+					value={CHAMPIONSHIP_TAB.roster}
+					items={CHAMPIONSHIP_TABS}
+					onChange={ignoreTabChange}
+				/>
+				<SectionCard
+					title={CHAMPIONSHIP_TAB_LABEL.roster}
+					icon={<Users className="size-4 text-pitch-fg" />}
+				>
+					<DataTableSkeleton withSearch withColumns />
+				</SectionCard>
+			</main>
+		</SkeletonRegion>
+	);
+}
+
+function ignoreTabChange() {
+	return;
 }

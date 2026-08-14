@@ -7,20 +7,31 @@ import {
 	canConfirmMatchTeams,
 	EVENT_GOAL_KIND,
 	EVENT_GOAL_LABEL,
+	EVENT_MATCH_END_INTENT,
+	EVENT_MATCH_END_LABEL,
+	EVENT_MATCH_LABEL,
+	EVENT_MATCH_REOPEN_LABEL,
 	EVENT_MATCH_STATUS,
+	EVENT_MATCH_SUBSTITUTION_LABEL,
+	eventMatchEndConfirmLabel,
+	eventMatchEndTitle,
 	eventMatchStatus,
+	eventMatchSubstitutionTitle,
 	formatGoalTimelineLine,
 	formatMatchScore,
 	isMatchSlotGoalkeeper,
 	isOpenMatch,
+	lastMatchGoal,
 	matchAssistCandidates,
 	matchBenchPlayerIds,
+	matchEndWinnerLabel,
 	matchGoalForTeamA,
 	matchGoalPayload,
 	matchGoalTimeline,
 	matchPlayUrl,
 	matchScore,
 	matchSlotCount,
+	matchSubstitutedTeamPlayers,
 	matchTeamScore,
 	matchTeamSlots,
 	matchTeamStarName,
@@ -41,7 +52,9 @@ function check(actual: unknown, expected: unknown, message: string): void {
 
 function player(
 	overrides: Partial<ChampionshipEventMatchPlayer> &
-		Pick<ChampionshipEventMatchPlayer, "player_id" | "team_id" | "slot">,
+		Pick<ChampionshipEventMatchPlayer, "player_id" | "team_id"> & {
+			slot: number | null;
+		},
 ): ChampionshipEventMatchPlayer {
 	return {
 		id: overrides.id ?? overrides.player_id,
@@ -49,6 +62,8 @@ function player(
 		event_id: 1,
 		display_name: String(overrides.player_id),
 		is_goalkeeper: overrides.slot === 0,
+		is_substituted: false,
+		include_stats: true,
 		...overrides,
 	};
 }
@@ -113,6 +128,66 @@ const assists = matchAssistCandidates(
 );
 check(assists.length, 1, "one assist candidate");
 check(assists[0]?.player_id, 2, "teammate only");
+
+const substituted = player({
+	player_id: 4,
+	team_id: 1,
+	slot: null,
+	is_substituted: true,
+	include_stats: false,
+});
+const slotsWithSub = matchTeamSlots(
+	[
+		player({ player_id: 1, team_id: 1, slot: 0 }),
+		substituted,
+		player({ player_id: 5, team_id: 1, slot: 1 }),
+	],
+	1,
+	3,
+);
+check(slotsWithSub[0]?.player_id, 1, "sub skipped gk");
+check(slotsWithSub[1]?.player_id, 5, "sub skipped field");
+check(slotsWithSub[2], null, "sub not occupying");
+check(
+	matchSubstitutedTeamPlayers(
+		[substituted, player({ player_id: 1, team_id: 1, slot: 0 })],
+		1,
+	).length,
+	1,
+	"substituted list",
+);
+check(
+	String(
+		matchBenchPlayerIds(
+			[1, 4, 9],
+			[player({ player_id: 1, team_id: 1, slot: 0 }), substituted],
+		),
+	),
+	"9",
+	"bench excludes substituted",
+);
+const assistsSkipSub = matchAssistCandidates(
+	[
+		player({ player_id: 1, team_id: 1, slot: 0 }),
+		substituted,
+		player({ player_id: 2, team_id: 1, slot: 1 }),
+	],
+	1,
+	1,
+);
+check(assistsSkipSub.length, 1, "assist skips substituted");
+check(assistsSkipSub[0]?.player_id, 2, "active teammate");
+const scoreWithSub = matchScore(
+	[goal({ scorer_player_id: 4, is_own_goal: false })],
+	new Set([1, 4]),
+);
+check(scoreWithSub.teamA, 1, "subbed scorer still counts score");
+check(
+	eventMatchSubstitutionTitle("Ana"),
+	"Contar estatísticas de Ana?",
+	"sub title",
+);
+check(EVENT_MATCH_SUBSTITUTION_LABEL.chip, "Substituído", "sub chip");
 
 const teamA = new Set([1, 2]);
 const goals = [
@@ -230,6 +305,24 @@ check(
 	"star fallback display",
 );
 check(matchTeamStarName([], 1, starRoster), null, "empty team star");
+check(
+	matchTeamStarName(
+		[
+			player({ player_id: 3, team_id: 1, slot: 0 }),
+			player({
+				player_id: 4,
+				team_id: 1,
+				slot: null,
+				is_substituted: true,
+				include_stats: false,
+			}),
+		],
+		1,
+		starRoster,
+	),
+	"Low",
+	"star ignores substituted",
+);
 
 const timeline = matchGoalTimeline([
 	goal({
@@ -299,5 +392,36 @@ check(
 	`A · ${EVENT_GOAL_LABEL.ownGoal}`,
 	"timeline own goal",
 );
+check(lastMatchGoal(timeline)?.id, 2, "last goal");
+check(lastMatchGoal([]), null, "empty last goal");
+check(matchEndWinnerLabel(10, 10, "A", "B"), "A", "end winner a");
+check(matchEndWinnerLabel(20, 10, "A", "B"), "B", "end winner b");
+check(
+	matchEndWinnerLabel(null, 10, "A", "B"),
+	EVENT_MATCH_LABEL.draw,
+	"end draw",
+);
+check(
+	eventMatchEndTitle(EVENT_MATCH_END_INTENT.end),
+	EVENT_MATCH_END_LABEL.title,
+	"end title",
+);
+check(
+	eventMatchEndTitle(EVENT_MATCH_END_INTENT.next),
+	EVENT_MATCH_END_LABEL.nextTitle,
+	"next title",
+);
+check(
+	eventMatchEndConfirmLabel(EVENT_MATCH_END_INTENT.end),
+	EVENT_MATCH_END_LABEL.confirm,
+	"end confirm",
+);
+check(
+	eventMatchEndConfirmLabel(EVENT_MATCH_END_INTENT.next),
+	EVENT_MATCH_END_LABEL.nextConfirm,
+	"next confirm",
+);
+check(EVENT_MATCH_REOPEN_LABEL.title, "Editar partida", "reopen title");
+check(EVENT_MATCH_REOPEN_LABEL.hint.includes("edição"), true, "reopen hint");
 
 console.log("championship-event-match ok");

@@ -1,10 +1,11 @@
 import { ChevronDown } from "lucide-react";
+import { Switch } from "@/components/atoms/switch";
 
 type ColumnVisibilityItem = {
 	id: string;
 	label: string;
 	visible: boolean;
-	onToggle: (event: unknown) => void;
+	onToggle: (visible: boolean) => void;
 };
 
 type ColumnVisibilityPanelProps = {
@@ -24,19 +25,22 @@ export function ColumnVisibilityPanel({ items }: ColumnVisibilityPanelProps) {
 			</summary>
 			<div className="absolute z-10 mt-2 min-w-56 rounded-lg border border-line bg-surface p-3 shadow-sm">
 				<ul className="space-y-2">
-					{items.map((item) => (
-						<li key={item.id}>
-							<label className="flex items-center gap-2 text-sm text-fg-muted">
-								<input
-									type="checkbox"
-									checked={item.visible}
-									onChange={item.onToggle}
-									className="accent-pitch"
-								/>
-								{item.label}
-							</label>
-						</li>
-					))}
+					{items.map((item) => {
+						const switchId = `column-visibility-${item.id}`;
+
+						return (
+							<li key={item.id}>
+								<div className="flex items-center justify-between gap-3 text-sm text-fg-muted">
+									<label htmlFor={switchId}>{item.label}</label>
+									<Switch
+										id={switchId}
+										checked={item.visible}
+										onCheckedChange={item.onToggle}
+									/>
+								</div>
+							</li>
+						);
+					})}
 				</ul>
 			</div>
 		</details>

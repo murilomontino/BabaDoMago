@@ -1,3 +1,4 @@
+import { eventMvpStarDelta } from "./event-mvp.ts";
 import { playerVisibleName } from "./player-name.ts";
 import { championshipRatingCeiling, PLAYER_RATING } from "./player-rating.ts";
 
@@ -14,6 +15,7 @@ export type EventRatingPreviewRow = {
 	name: string;
 	from: number;
 	to: number;
+	isMvp: boolean;
 };
 
 function roundAwayFromZero1(value: number): number {
@@ -132,6 +134,7 @@ export function eventRatingPreview({
 	attendance,
 	players,
 	presentPlayerIds,
+	mvpPlayerIds = [],
 }: {
 	attendance: readonly {
 		player_id: number;
@@ -146,21 +149,26 @@ export function eventRatingPreview({
 		display_name: string;
 	}[];
 	presentPlayerIds: readonly number[] | null;
+	mvpPlayerIds?: readonly number[];
 }): EventRatingPreviewRow[] {
 	const playerById = new Map(players.map((player) => [player.id, player]));
 	const statsById = new Map(attendance.map((row) => [row.player_id, row]));
+	const mvpIds = new Set(mvpPlayerIds);
 	const ceiling = championshipRatingCeiling(
 		players.map((player) => player.rating),
 	);
+	const mvpBonus = eventMvpStarDelta();
 	const ids = presentPlayerIds ?? attendance.map((row) => row.player_id);
 
 	return ids.map((playerId) => {
 		const player = playerById.get(playerId);
 		const stats = statsById.get(playerId);
 		const from = player?.rating ?? PLAYER_RATING.default;
+		const isMvp = mvpIds.has(playerId);
 		const to = applyEventRatingDelta(
 			from,
-			eventRatingDelta(stats?.wins ?? 0, stats?.matches ?? 0, from, ceiling),
+			eventRatingDelta(stats?.wins ?? 0, stats?.matches ?? 0, from, ceiling) +
+				(isMvp ? mvpBonus : 0),
 		);
 
 		return {
@@ -173,6 +181,7 @@ export function eventRatingPreview({
 			),
 			from,
 			to,
+			isMvp,
 		};
 	});
 }

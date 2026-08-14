@@ -1,13 +1,21 @@
-import { ArrowLeftRight, Goal, Handshake } from "lucide-react";
+import { ArrowLeftRight, Goal } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/button";
 import { ChampionshipEventBenchModal } from "@/components/championship-event-bench-modal";
 import { ChampionshipEventGoalModal } from "@/components/championship-event-goal-modal";
+import { ChampionshipEventSubstitutionModal } from "@/components/championship-event-substitution-modal";
+import { EndEventMatchModal } from "@/components/end-event-match-modal";
 import {
+	EVENT_TEAM_PLAYER_SLOT_CLASS,
+	EVENT_TEAM_POSITION_CHIP_CLASS,
 	EventTeamColorDot,
 	EventTeamPlayerRow,
 	EventTeamRatingAverage,
 } from "@/components/event-team-player";
+import {
+	MATCH_GOAL_TIMELINE_GRID_CLASS,
+	MatchGoalTimeline,
+} from "@/components/molecules/match-goal-timeline";
 import {
 	EVENT_ACTION,
 	EVENT_TEAM_POSITION_LABEL,
@@ -17,28 +25,32 @@ import {
 import {
 	canConfirmMatchTeams,
 	EVENT_GOAL_LABEL,
+	EVENT_MATCH_END_INTENT,
 	EVENT_MATCH_LABEL,
+	EVENT_MATCH_SUBSTITUTION_LABEL,
+	type EventMatchEndIntent,
 	formatMatchScore,
+	matchActiveTeamPlayers,
 	matchAssistCandidates,
 	matchBenchPlayerIds,
+	matchEndWinnerLabel,
 	matchGoalPayload,
-	matchGoalTimeline,
 	matchScore,
-	matchTeamPlayers,
+	matchSubstitutedTeamPlayers,
 	matchTeamSlots,
 	matchTeamStarName,
+	matchWinnerTeamId,
 	toggleMatchTeamSelection,
 } from "@/const/championship-event-match";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
 import {
-	EVENT_TEAM_COLOR,
 	type EventTeamColor,
 	eventTeamColorStyle,
 	eventTeamName,
 } from "@/const/event-team-color";
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
-import { BUTTON_VARIANT, CHIP_CLASS, ERROR_CLASS } from "@/const/ui";
+import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type {
 	ChampionshipEvent,
@@ -50,6 +62,13 @@ import type {
 type SlotTarget = {
 	teamId: number;
 	slot: number;
+};
+
+type PendingSwap = {
+	teamId: number;
+	slot: number;
+	incomingPlayerId: number;
+	outgoingName: string;
 };
 
 type GoalTarget = {
@@ -76,6 +95,7 @@ function fallbackPlayer(
 		own_goals: 0,
 		wins: 0,
 		matches: 0,
+		mvps: 0,
 	};
 }
 
@@ -97,6 +117,8 @@ type ChampionshipEventPlayProps = {
 	playerError: string | null;
 	savingGoal: boolean;
 	goalError: string | null;
+	undoing: boolean;
+	undoError: string | null;
 	ending: boolean;
 	endError: string | null;
 	onStart: (teamAId: number, teamBId: number) => Promise<void>;
@@ -104,6 +126,7 @@ type ChampionshipEventPlayProps = {
 		teamId: number,
 		slot: number,
 		playerId: number | null,
+		includeStats?: boolean,
 	) => Promise<void>;
 	onSetGoalkeeper: (teamId: number, playerId: number) => Promise<void>;
 	onAddGoal: (values: {
@@ -111,6 +134,7 @@ type ChampionshipEventPlayProps = {
 		assistPlayerId: number | null;
 		isOwnGoal: boolean;
 	}) => Promise<void>;
+	onUndoGoal: (goalId: number) => Promise<void>;
 	onEnd: () => Promise<void>;
 	onNext: () => Promise<void>;
 };
@@ -163,18 +187,11 @@ function TeamPick({
 					const position = eventTeamPlayerPosition(row.is_goalkeeper);
 
 					return (
-						<li
-							key={row.id}
-							className="flex min-h-7 items-center gap-1.5 rounded-md bg-white px-1.5 py-1"
-						>
-							<span className={`${CHIP_CLASS} shrink-0`}>
+						<li key={row.id} className={EVENT_TEAM_PLAYER_SLOT_CLASS}>
+							<span className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}>
 								{EVENT_TEAM_POSITION_LABEL[position]}
 							</span>
-							<EventTeamPlayerRow
-								player={player}
-								ceiling={ceiling}
-								backgroundColor={EVENT_TEAM_COLOR.white}
-							/>
+							<EventTeamPlayerRow player={player} ceiling={ceiling} />
 						</li>
 					);
 				})}
@@ -190,6 +207,7 @@ function MatchTeamBlock({
 	color,
 	sortOrder,
 	slots,
+	substituted,
 	rosterById,
 	disabled,
 	onMarkGoal,
@@ -199,6 +217,7 @@ function MatchTeamBlock({
 	color: EventTeamColor | null;
 	sortOrder: number;
 	slots: readonly (ChampionshipEventMatchPlayer | null)[];
+	substituted: readonly ChampionshipEventMatchPlayer[];
 	rosterById: Map<number, ChampionshipPlayer>;
 	disabled: boolean;
 	onMarkGoal: (player: ChampionshipEventMatchPlayer) => void;
@@ -229,11 +248,8 @@ function MatchTeamBlock({
 							: eventTeamSlotPosition(slot);
 
 						return (
-							<li
-								key={`slot-${slot}`}
-								className="flex items-center gap-1 rounded-md bg-white/80 px-1.5 py-1"
-							>
-								<span className={`${CHIP_CLASS} shrink-0`}>
+							<li key={`slot-${slot}`} className={EVENT_TEAM_PLAYER_SLOT_CLASS}>
+								<span className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}>
 									{EVENT_TEAM_POSITION_LABEL[position]}
 								</span>
 								{player && (
@@ -293,45 +309,23 @@ function MatchTeamBlock({
 					},
 				)}
 			</ul>
+			{substituted.length > 0 && (
+				<ul className="mt-2 space-y-1 border-t border-line pt-2">
+					{substituted.map((row) => (
+						<li key={row.id} className={EVENT_TEAM_PLAYER_SLOT_CLASS}>
+							<span className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}>
+								{EVENT_MATCH_SUBSTITUTION_LABEL.chip}
+							</span>
+							<p className="min-w-0 flex-1 truncate text-xs text-fg-muted">
+								{playerVisibleName(
+									resolvePlayer(row.player_id, row.display_name, rosterById),
+								)}
+							</p>
+						</li>
+					))}
+				</ul>
+			)}
 		</section>
-	);
-}
-
-function GoalTimelineEvent({
-	scorerName,
-	assistName,
-	isOwnGoal,
-	mirror,
-}: {
-	scorerName: string;
-	assistName: string | null;
-	isOwnGoal: boolean;
-	mirror: boolean;
-}) {
-	return (
-		<span
-			className={`inline-flex min-w-0 max-w-full items-center gap-1 text-xs text-fg-muted ${
-				mirror ? "flex-row-reverse" : ""
-			}`}
-		>
-			{isOwnGoal && (
-				<Goal
-					className="size-3 shrink-0 text-danger-fg"
-					aria-label={EVENT_GOAL_LABEL.ownGoal}
-				/>
-			)}
-			{!isOwnGoal && (
-				<Goal className="size-3 shrink-0" aria-label={EVENT_GOAL_LABEL.goal} />
-			)}
-			<span className="truncate">{scorerName}</span>
-			{assistName && (
-				<Handshake
-					className="size-3 shrink-0"
-					aria-label={EVENT_GOAL_LABEL.assist}
-				/>
-			)}
-			{assistName && <span className="truncate">{assistName}</span>}
-		</span>
 	);
 }
 
@@ -365,12 +359,15 @@ export function ChampionshipEventPlay({
 	playerError,
 	savingGoal,
 	goalError,
+	undoing,
+	undoError,
 	ending,
 	endError,
 	onStart,
 	onSetPlayer,
 	onSetGoalkeeper,
 	onAddGoal,
+	onUndoGoal,
 	onEnd,
 	onNext,
 }: ChampionshipEventPlayProps) {
@@ -381,9 +378,11 @@ export function ChampionshipEventPlay({
 	);
 	const [selected, setSelected] = useState<number[]>([]);
 	const [slotTarget, setSlotTarget] = useState<SlotTarget | null>(null);
+	const [pendingSwap, setPendingSwap] = useState<PendingSwap | null>(null);
 	const [goalTarget, setGoalTarget] = useState<GoalTarget | null>(null);
 	const [ownGoalTeamId, setOwnGoalTeamId] = useState<number | null>(null);
-	const busy = starting || savingPlayer || savingGoal || ending;
+	const [endIntent, setEndIntent] = useState<EventMatchEndIntent | null>(null);
+	const busy = starting || savingPlayer || savingGoal || undoing || ending;
 	const canStartSelected = canConfirmMatchTeams(selected);
 
 	if (!match) {
@@ -451,9 +450,19 @@ export function ChampionshipEventPlay({
 	const starB =
 		matchTeamStarName(match.players, match.team_b_id, rosterById) ??
 		eventTeamName(teamB.color, teamB.sort_order);
-	const timeline = matchGoalTimeline(match.goals);
+	const winnerLabel = matchEndWinnerLabel(
+		matchWinnerTeamId(
+			match.team_a_id,
+			match.team_b_id,
+			score.teamA,
+			score.teamB,
+		),
+		match.team_a_id,
+		starA,
+		starB,
+	);
 	const ownGoalPlayers = ownGoalTeamId
-		? matchTeamPlayers(match.players, ownGoalTeamId).map((row) =>
+		? matchActiveTeamPlayers(match.players, ownGoalTeamId).map((row) =>
 				resolvePlayer(row.player_id, row.display_name, rosterById),
 			)
 		: [];
@@ -486,6 +495,10 @@ export function ChampionshipEventPlay({
 					match.team_a_id,
 					event.players_per_team,
 				)}
+				substituted={matchSubstitutedTeamPlayers(
+					match.players,
+					match.team_a_id,
+				)}
 				rosterById={rosterById}
 				disabled={busy}
 				onMarkGoal={(player) => {
@@ -510,7 +523,7 @@ export function ChampionshipEventPlay({
 					void onSetGoalkeeper(match.team_a_id, player.player_id);
 				}}
 			/>
-			<div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-2 gap-y-0.5">
+			<div className={MATCH_GOAL_TIMELINE_GRID_CLASS}>
 				<p className="flex min-w-0 items-center justify-end gap-1 text-sm font-medium text-fg">
 					<OwnGoalButton
 						disabled={busy}
@@ -540,50 +553,24 @@ export function ChampionshipEventPlay({
 						}}
 					/>
 				</p>
-				{timeline.map((goal) => {
-					const scorer = matchPlayerById.get(goal.scorer_player_id);
-					const assist =
-						goal.assist_player_id === null
-							? null
-							: matchPlayerById.get(goal.assist_player_id);
-					const forTeamA = teamAIds.has(goal.scorer_player_id);
-					const event = (
-						<GoalTimelineEvent
-							scorerName={playerVisibleName(
-								resolvePlayer(
-									goal.scorer_player_id,
-									scorer?.display_name ?? "",
-									rosterById,
-								),
-							)}
-							assistName={
-								assist
-									? playerVisibleName(
-											resolvePlayer(
-												assist.player_id,
-												assist.display_name,
-												rosterById,
-											),
-										)
-									: null
-							}
-							isOwnGoal={goal.is_own_goal}
-							mirror={forTeamA}
-						/>
-					);
+				<MatchGoalTimeline
+					goals={match.goals}
+					teamAPlayerIds={teamAIds}
+					undoDisabled={busy}
+					onUndoGoal={(goalId) => {
+						if (busy) {
+							return;
+						}
 
-					return (
-						<div key={goal.id} className="contents">
-							<div className="flex min-w-0 justify-end">
-								{forTeamA && event}
-							</div>
-							<span />
-							<div className="flex min-w-0 justify-start">
-								{!forTeamA && event}
-							</div>
-						</div>
-					);
-				})}
+						void onUndoGoal(goalId);
+					}}
+					playerName={(playerId) => {
+						const row = matchPlayerById.get(playerId);
+						return playerVisibleName(
+							resolvePlayer(playerId, row?.display_name ?? "", rosterById),
+						);
+					}}
+				/>
 			</div>
 			<MatchTeamBlock
 				color={teamB.color}
@@ -592,6 +579,10 @@ export function ChampionshipEventPlay({
 					match.players,
 					match.team_b_id,
 					event.players_per_team,
+				)}
+				substituted={matchSubstitutedTeamPlayers(
+					match.players,
+					match.team_b_id,
 				)}
 				rosterById={rosterById}
 				disabled={busy}
@@ -617,15 +608,21 @@ export function ChampionshipEventPlay({
 					void onSetGoalkeeper(match.team_b_id, player.player_id);
 				}}
 			/>
-			{(playerError || goalError || endError) && (
-				<p className={ERROR_CLASS}>{playerError || goalError || endError}</p>
+			{(playerError || goalError || undoError || endError) && (
+				<p className={ERROR_CLASS}>
+					{playerError || goalError || undoError || endError}
+				</p>
 			)}
 			<div className="mt-auto grid grid-cols-2 gap-2">
 				<Button
 					variant={BUTTON_VARIANT.ghost}
 					disabled={busy}
 					onClick={() => {
-						void onEnd();
+						if (busy) {
+							return;
+						}
+
+						setEndIntent(EVENT_MATCH_END_INTENT.end);
 					}}
 				>
 					{EVENT_ACTION.endMatch}
@@ -633,7 +630,11 @@ export function ChampionshipEventPlay({
 				<Button
 					disabled={busy}
 					onClick={() => {
-						void onNext();
+						if (busy) {
+							return;
+						}
+
+						setEndIntent(EVENT_MATCH_END_INTENT.next);
 					}}
 				>
 					{EVENT_ACTION.nextMatch}
@@ -716,8 +717,96 @@ export function ChampionshipEventPlay({
 						setSlotTarget(null);
 					}}
 					onSelect={async (playerId) => {
-						await onSetPlayer(slotTarget.teamId, slotTarget.slot, playerId);
+						const occupied = matchTeamSlots(
+							match.players,
+							slotTarget.teamId,
+							event.players_per_team,
+						)[slotTarget.slot];
+						if (!occupied) {
+							await onSetPlayer(slotTarget.teamId, slotTarget.slot, playerId);
+							setSlotTarget(null);
+							return;
+						}
+
+						setPendingSwap({
+							teamId: slotTarget.teamId,
+							slot: slotTarget.slot,
+							incomingPlayerId: playerId,
+							outgoingName: playerVisibleName(
+								resolvePlayer(
+									occupied.player_id,
+									occupied.display_name,
+									rosterById,
+								),
+							),
+						});
 						setSlotTarget(null);
+					}}
+				/>
+			)}
+			{pendingSwap && (
+				<ChampionshipEventSubstitutionModal
+					playerName={pendingSwap.outgoingName}
+					isPending={savingPlayer}
+					errorMessage={playerError}
+					onCancel={() => {
+						if (savingPlayer) {
+							return;
+						}
+
+						setPendingSwap(null);
+					}}
+					onConfirm={(includeStats) => {
+						void (async () => {
+							try {
+								await onSetPlayer(
+									pendingSwap.teamId,
+									pendingSwap.slot,
+									pendingSwap.incomingPlayerId,
+									includeStats,
+								);
+								setPendingSwap(null);
+							} catch {
+								return;
+							}
+						})();
+					}}
+				/>
+			)}
+			{endIntent && (
+				<EndEventMatchModal
+					intent={endIntent}
+					scoreLabel={formatMatchScore(score.teamA, score.teamB)}
+					winnerLabel={winnerLabel}
+					isPending={ending}
+					errorMessage={endError}
+					onCancel={() => {
+						if (ending) {
+							return;
+						}
+
+						setEndIntent(null);
+					}}
+					onConfirm={() => {
+						void (async () => {
+							try {
+								switch (endIntent) {
+									case EVENT_MATCH_END_INTENT.end:
+										await onEnd();
+										break;
+									case EVENT_MATCH_END_INTENT.next:
+										await onNext();
+										break;
+									default: {
+										const _exhaustive: never = endIntent;
+										return _exhaustive;
+									}
+								}
+								setEndIntent(null);
+							} catch {
+								return;
+							}
+						})();
 					}}
 				/>
 			)}
