@@ -95,6 +95,29 @@ export function EventTeamRemoveButton({
 	);
 }
 
+type EventTeamPlayerAvatarProps = {
+	player: ChampionshipPlayer;
+};
+
+export function EventTeamPlayerAvatar({ player }: EventTeamPlayerAvatarProps) {
+	if (player.avatar_url) {
+		return (
+			<img
+				src={player.avatar_url}
+				alt=""
+				referrerPolicy="no-referrer"
+				className="h-6 w-6 shrink-0 rounded-full object-cover"
+			/>
+		);
+	}
+
+	return (
+		<span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-black/20 text-[10px] font-medium">
+			{playerVisibleName(player).charAt(0).toUpperCase()}
+		</span>
+	);
+}
+
 type EventTeamPlayerRowProps = {
 	player: ChampionshipPlayer;
 	ceiling: number;
@@ -112,19 +135,7 @@ export function EventTeamPlayerRow({
 
 	return (
 		<div className="flex min-w-0 flex-1 items-center gap-1.5">
-			{player.avatar_url && (
-				<img
-					src={player.avatar_url}
-					alt=""
-					referrerPolicy="no-referrer"
-					className="h-6 w-6 shrink-0 rounded-full object-cover"
-				/>
-			)}
-			{!player.avatar_url && (
-				<span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-black/20 text-[10px] font-medium">
-					{visibleName.charAt(0).toUpperCase()}
-				</span>
-			)}
+			<EventTeamPlayerAvatar player={player} />
 			<p className="min-w-0 flex-1 truncate text-xs font-medium">
 				{visibleName}
 			</p>

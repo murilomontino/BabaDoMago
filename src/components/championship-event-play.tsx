@@ -10,6 +10,7 @@ import {
 	EVENT_TEAM_PLAYER_SLOT_CLASS,
 	EVENT_TEAM_POSITION_CHIP_CLASS,
 	EventTeamColorDot,
+	EventTeamPlayerAvatar,
 	EventTeamPlayerRow,
 	EventTeamRatingAverage,
 } from "@/components/event-team-player";
@@ -349,8 +350,11 @@ function MatchTeamBlock({
 										disabled={disabled}
 										onClick={() => onMarkGoal(row)}
 									>
-										<span className="min-w-0 flex-1 truncate text-left text-xs font-medium">
-											{playerVisibleName(player)}
+										<span className="flex min-w-0 flex-1 items-center gap-1.5">
+											<EventTeamPlayerAvatar player={player} />
+											<span className="min-w-0 flex-1 truncate text-left text-xs font-medium">
+												{playerVisibleName(player)}
+											</span>
 										</span>
 										<SoccerBallIcon className="size-4 shrink-0" />
 									</button>
