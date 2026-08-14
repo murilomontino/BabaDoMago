@@ -46,6 +46,8 @@ type ChampionshipRosterTabProps = {
 	onClaim: (playerId: number) => void;
 	onChangeRating: (playerId: number, rating: number) => void;
 	onEditNickname: (playerId: number) => void;
+	onEditEventStats?: (playerId: number) => void;
+	eventStatsPlayerId?: number | null;
 	onChangeRole: (playerId: number, role: AssignableChampionshipRole) => void;
 	onUnlink: (playerId: number) => void;
 	onDeactivate: (playerId: number) => void;
@@ -79,6 +81,8 @@ export function ChampionshipRosterTab({
 	onClaim,
 	onChangeRating,
 	onEditNickname,
+	onEditEventStats,
+	eventStatsPlayerId,
 	onChangeRole,
 	onUnlink,
 	onDeactivate,
@@ -157,6 +161,8 @@ export function ChampionshipRosterTab({
 				ratingPlayerId={ratingPlayerId}
 				onEditNickname={onEditNickname}
 				nicknamePlayerId={nicknamePlayerId}
+				onEditEventStats={onEditEventStats}
+				eventStatsPlayerId={eventStatsPlayerId}
 				onChangeRole={canSetRoles ? onChangeRole : undefined}
 				onUnlink={canUnlink ? onUnlink : undefined}
 				unlinkingPlayerId={unlinkingPlayerId}

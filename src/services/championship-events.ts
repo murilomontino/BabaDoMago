@@ -1,6 +1,7 @@
 import {
 	championshipEventErrorMessage,
 	type EventAttendanceStatsDraft,
+	type PlayerEventStatsDraft,
 	parsePlayersPerTeam,
 } from "@/const/championship-event";
 import {
@@ -51,7 +52,8 @@ const EVENT_COLUMNS = `
 		own_goals,
 		wins,
 		matches,
-		rating
+		rating,
+		rating_delta
 	),
 	championship_event_matches (
 		id,
@@ -110,6 +112,7 @@ function asAttendance(value: unknown): ChampionshipEventAttendance {
 		wins: Number(row.wins ?? 0),
 		matches: Number(row.matches ?? 0),
 		rating: Number(row.rating ?? 0),
+		rating_delta: Number(row.rating_delta ?? 0),
 	};
 }
 
@@ -416,6 +419,25 @@ export async function saveChampionshipEventAttendanceStats(
 			stats: [...stats],
 		},
 	);
+
+	if (error) {
+		throwEventError(error);
+	}
+}
+
+export async function saveChampionshipPlayerEventStats(
+	playerId: number,
+	eventId: number,
+	stats: PlayerEventStatsDraft,
+): Promise<void> {
+	const { error } = await supabase.rpc("save_championship_player_event_stats", {
+		player_id: playerId,
+		event_id: eventId,
+		goals: stats.goals,
+		assists: stats.assists,
+		wins: stats.wins,
+		matches: stats.matches,
+	});
 
 	if (error) {
 		throwEventError(error);

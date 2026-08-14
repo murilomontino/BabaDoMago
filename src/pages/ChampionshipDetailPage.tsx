@@ -9,8 +9,10 @@ import { ChampionshipRosterTab } from "@/components/championship-roster-tab";
 import { ChampionshipSettingsTab } from "@/components/championship-settings-tab";
 import { ConfirmRatingModal } from "@/components/confirm-rating-modal";
 import { DeleteChampionshipModal } from "@/components/delete-championship-modal";
+import { EditPlayerEventStatsModal } from "@/components/edit-player-event-stats-modal";
 import { EditPlayerNicknameModal } from "@/components/edit-player-nickname-modal";
 import { Tabs } from "@/components/tabs";
+import type { PlayerEventStatsDraft } from "@/const/championship-event";
 import { assertChampionshipLogoSource } from "@/const/championship-logo";
 import {
 	type AssignableChampionshipRole,
@@ -20,6 +22,7 @@ import {
 	canDeleteChampionship,
 	canInvite,
 	canManageEvent,
+	canOverrideEndedEvent,
 	canReactivatePlayer,
 	canRenameChampionship,
 	canSetRoles,
@@ -43,6 +46,10 @@ import {
 import { ROUTES } from "@/const/routes";
 import { ERROR_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
+import {
+	useChampionshipEvents,
+	useSaveChampionshipPlayerEventStats,
+} from "@/hooks/championships/use-championship-events";
 import {
 	useAddManualPlayer,
 	useChampionship,
@@ -77,6 +84,9 @@ export function ChampionshipDetailPage() {
 	const reactivatePlayer = useReactivatePlayer();
 	const updateRating = useUpdatePlayerRating();
 	const updateNickname = useUpdatePlayerNickname();
+	const eventsQuery = useChampionshipEvents(championshipId);
+	const savePlayerEventStats =
+		useSaveChampionshipPlayerEventStats(championshipId);
 	const renameChampionship = useRenameChampionship(championshipId);
 	const updateEventConfig = useUpdateChampionshipEventConfig(championshipId);
 	const updateVisibility = useUpdateChampionshipVisibility(championshipId);
@@ -96,6 +106,8 @@ export function ChampionshipDetailPage() {
 		to: number;
 	} | null>(null);
 	const [pendingNicknamePlayer, setPendingNicknamePlayer] =
+		useState<ChampionshipPlayer | null>(null);
+	const [pendingEventStatsPlayer, setPendingEventStatsPlayer] =
 		useState<ChampionshipPlayer | null>(null);
 	const [tab, setTab] = useState<ChampionshipTab>(CHAMPIONSHIP_TAB.roster);
 
@@ -120,6 +132,7 @@ export function ChampionshipDetailPage() {
 		updateEventConfig: canUpdateEventConfig(actorRole),
 		updateVisibility: canUpdateVisibility(actorRole),
 		manageEvent: canManageEvent(actorRole),
+		overrideEnded: canOverrideEndedEvent(actorRole),
 	};
 	const activePlayers = (data?.players ?? []).filter(
 		(player) => !player.deleted_at,
@@ -234,6 +247,45 @@ export function ChampionshipDetailPage() {
 				},
 			},
 		);
+	}
+
+	function handleEditEventStats(playerId: number) {
+		if (!permissions.overrideEnded) {
+			return;
+		}
+
+		const player = activePlayers.find((item) => item.id === playerId);
+		if (!player) {
+			return;
+		}
+
+		savePlayerEventStats.reset();
+		setPendingEventStatsPlayer(player);
+	}
+
+	function handleEventStatsCancel() {
+		if (savePlayerEventStats.isPending) {
+			return;
+		}
+
+		savePlayerEventStats.reset();
+		setPendingEventStatsPlayer(null);
+	}
+
+	async function handleEventStatsSave(
+		eventId: number,
+		stats: PlayerEventStatsDraft,
+	) {
+		if (!pendingEventStatsPlayer) {
+			return;
+		}
+
+		await savePlayerEventStats.mutateAsync({
+			playerId: pendingEventStatsPlayer.id,
+			eventId,
+			stats,
+		});
+		setPendingEventStatsPlayer(null);
 	}
 
 	function handleUnlink(playerId: number) {
@@ -377,6 +429,21 @@ export function ChampionshipDetailPage() {
 					onConfirm={handleNicknameConfirm}
 				/>
 			)}
+			{pendingEventStatsPlayer && (
+				<EditPlayerEventStatsModal
+					player={pendingEventStatsPlayer}
+					events={eventsQuery.data ?? []}
+					ceiling={rosterCeiling}
+					isPending={savePlayerEventStats.isPending}
+					errorMessage={
+						savePlayerEventStats.isError
+							? savePlayerEventStats.error.message
+							: null
+					}
+					onCancel={handleEventStatsCancel}
+					onSave={handleEventStatsSave}
+				/>
+			)}
 			{pendingRatingChange && (
 				<ConfirmRatingModal
 					playerName={pendingRatingChange.playerName}
@@ -460,6 +527,15 @@ export function ChampionshipDetailPage() {
 					onClaim={(playerId) => claimPlayer.mutate(playerId)}
 					onChangeRating={handleChangeRating}
 					onEditNickname={handleEditNickname}
+					onEditEventStats={
+						permissions.overrideEnded ? handleEditEventStats : undefined
+					}
+					eventStatsPlayerId={
+						pendingEventStatsPlayer?.id ??
+						(savePlayerEventStats.isPending
+							? (savePlayerEventStats.variables?.playerId ?? null)
+							: null)
+					}
 					onChangeRole={(playerId, role: AssignableChampionshipRole) =>
 						setPlayerRole.mutate({ playerId, role })
 					}

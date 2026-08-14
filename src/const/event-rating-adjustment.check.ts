@@ -4,6 +4,8 @@ import {
 	eventRatingDelta,
 	eventRatingPreview,
 	formatEventRating,
+	playerEventRatingAfterSave,
+	recomputePlayerEventRating,
 } from "./event-rating-adjustment.ts";
 import { PLAYER_RATING } from "./player-rating.ts";
 
@@ -164,5 +166,65 @@ check(draftPreview.length, 2, "preview segue rascunho");
 check(draftPreview[0]?.playerId, 5, "rascunho primeiro");
 check(draftPreview[0]?.to, 3, "rascunho sem stats nao muda");
 check(draftPreview[1]?.to, 4.4, "rascunho joao sobe");
+
+check(
+	recomputePlayerEventRating(40, 0, 4, 6, 75),
+	46.3,
+	"esquecido oldDelta 0",
+);
+check(
+	recomputePlayerEventRating(46.3, 6.3, 4, 6, 75),
+	46.3,
+	"correcao mesmos stats",
+);
+check(
+	recomputePlayerEventRating(46.3, 6.3, 1, 3, 75),
+	46.3 - 6.3 + eventRatingDelta(1, 3, 46.3, 75),
+	"correcao desfaz e aplica",
+);
+check(
+	recomputePlayerEventRating(46.3, 6.3, 1, 3, 75),
+	applyEventRatingDelta(46.3, -6.3 + eventRatingDelta(1, 3, 46.3, 75)),
+	"correcao via apply",
+);
+check(
+	playerEventRatingAfterSave({
+		rating: 40,
+		storedDelta: 0,
+		oldWins: 0,
+		oldMatches: 0,
+		wins: 4,
+		matches: 6,
+		ceiling: 75,
+	}),
+	46.3,
+	"esquecido aplica",
+);
+check(
+	playerEventRatingAfterSave({
+		rating: 46.3,
+		storedDelta: 0,
+		oldWins: 4,
+		oldMatches: 6,
+		wins: 5,
+		matches: 6,
+		ceiling: 75,
+	}),
+	46.3,
+	"ja ranqueado congela",
+);
+check(
+	playerEventRatingAfterSave({
+		rating: 46.3,
+		storedDelta: 6.3,
+		oldWins: 4,
+		oldMatches: 6,
+		wins: 4,
+		matches: 6,
+		ceiling: 75,
+	}),
+	46.3,
+	"delta gravado mesmos stats",
+);
 
 console.log("event-rating-adjustment ok");
