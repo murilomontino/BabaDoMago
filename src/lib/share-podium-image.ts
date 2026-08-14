@@ -11,7 +11,9 @@ import {
 	PODIUM_SHARE_LABEL,
 	PODIUM_SHARE_MEDAL,
 	type PodiumShareCard,
+	type PodiumShareFileParts,
 	type PodiumSharePlace,
+	podiumShareAllFileName,
 	podiumShareAllText,
 	podiumShareFileName,
 	podiumSharePlacesInDisplayOrder,
@@ -334,9 +336,10 @@ async function renderPodiumsPng(
 async function fileFromCard(
 	card: PodiumShareCard,
 	ceiling: number,
+	parts: PodiumShareFileParts,
 ): Promise<File> {
 	const blob = await renderPodiumsPng([card], ceiling);
-	return new File([blob], podiumShareFileName(card.metric), {
+	return new File([blob], podiumShareFileName(card.metric, parts), {
 		type: PODIUM_SHARE.mimePng,
 	});
 }
@@ -344,13 +347,14 @@ async function fileFromCard(
 export async function sharePodiumImages(
 	cards: readonly PodiumShareCard[],
 	ceiling: number,
+	parts: PodiumShareFileParts,
 ): Promise<void> {
 	if (cards.length === 0) {
 		throw new Error(PODIUM_SHARE_LABEL.shareFailed);
 	}
 
 	const files = await Promise.all(
-		cards.map((card) => fileFromCard(card, ceiling)),
+		cards.map((card) => fileFromCard(card, ceiling, parts)),
 	);
 	const text = podiumShareAllText(cards);
 	const title = PODIUM_SHARE.title;
@@ -368,7 +372,7 @@ export async function sharePodiumImages(
 	const stacked = await renderPodiumsPng(cards, ceiling);
 	await shareOrDownload({
 		files: [
-			new File([stacked], PODIUM_SHARE.fileAll, {
+			new File([stacked], podiumShareAllFileName(parts), {
 				type: PODIUM_SHARE.mimePng,
 			}),
 		],

@@ -646,6 +646,7 @@ export function ChampionshipDetailPage() {
 			{!isSettingsOpen && tab === CHAMPIONSHIP_TAB.podium && (
 				<ChampionshipPodiumTab
 					players={activePlayers}
+					championshipName={data.name}
 					events={eventsQuery.data ?? []}
 				/>
 			)}

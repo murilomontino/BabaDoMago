@@ -166,6 +166,7 @@ function AttendanceStatLine({
 
 type ChampionshipEventDetailProps = {
 	event: ChampionshipEvent;
+	championshipName: string;
 	players: ChampionshipPlayer[];
 	attendanceCounts: ReadonlyMap<number, number>;
 	canManage: boolean;
@@ -271,6 +272,7 @@ function playersFromEventAttendance(
 
 export function ChampionshipEventDetail({
 	event,
+	championshipName,
 	players,
 	attendanceCounts,
 	canManage,
@@ -396,7 +398,7 @@ export function ChampionshipEventDetail({
 			await shareEventTeamsImage(
 				eventTeamsShareCards(detailTeams, players),
 				ceiling,
-				event.starts_at,
+				{ championshipName, startsAt: event.starts_at },
 			);
 		} catch {
 			setShareError(EVENT_TEAM_SHARE_LABEL.shareFailed);
@@ -486,6 +488,7 @@ export function ChampionshipEventDetail({
 					attendanceCounts={attendanceCounts}
 					step={builderStep}
 					startsAt={event.starts_at}
+					championshipName={championshipName}
 					initialPresentIds={event.attendance.map((row) => row.player_id)}
 					initialGoalkeeperIds={volunteerGoalkeeperIds}
 					initialTeams={detailTeams}
@@ -737,7 +740,11 @@ export function ChampionshipEventDetail({
 				</div>
 			)}
 			{selectedTab === EVENT_TAB.podium && (
-				<ChampionshipPodiumTab players={podiumPlayers} />
+				<ChampionshipPodiumTab
+					players={podiumPlayers}
+					championshipName={championshipName}
+					eventStartsAt={event.starts_at}
+				/>
 			)}
 			{isAttendanceOpen && (
 				<EditEventAttendanceModal

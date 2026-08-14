@@ -117,6 +117,7 @@ export function ChampionshipEventDetailPage() {
 			/>
 			<ChampionshipEventDetail
 				event={event}
+				championshipName={championship?.name ?? ""}
 				players={activePlayers}
 				attendanceCounts={attendanceCounts}
 				canManage={canManage}

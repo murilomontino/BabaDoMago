@@ -164,22 +164,22 @@ export function ChampionshipPodium({
 				/>
 			)}
 			{standings.length > 0 && (
-				<div className="flex items-end justify-center gap-3 sm:gap-6">
+				<div className="flex flex-wrap items-end justify-center gap-3 sm:gap-6">
 					{PODIUM_DISPLAY_ORDER.flatMap((place) => {
 						const standing = standings.find((item) => item.place === place);
 						if (!standing) {
 							return [];
 						}
 
-						return [
+						return standing.rows.map((row) => (
 							<PodiumPlaceCard
-								key={`${metric}-${place}-${standing.row.id}`}
+								key={`${metric}-${place}-${row.id}`}
 								place={place}
-								row={standing.row}
+								row={row}
 								metric={metric}
 								ceiling={ceiling}
-							/>,
-						];
+							/>
+						));
 					})}
 				</div>
 			)}

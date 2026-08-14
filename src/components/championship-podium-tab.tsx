@@ -29,7 +29,9 @@ import {
 import {
 	PODIUM_SHARE_LABEL,
 	podiumShareCardsFromPlayers,
+	podiumSharePeriodSlug,
 } from "@/const/podium-share";
+import { shareFileDateStamp } from "@/const/share-file-name";
 import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
 import { sharePodiumImages } from "@/lib/share-podium-image";
 import type { ChampionshipPlayer } from "@/types/championship";
@@ -50,12 +52,16 @@ function filterChipClass(on: boolean): string {
 
 type ChampionshipPodiumTabProps = {
 	players: ChampionshipPlayer[];
+	championshipName: string;
 	events?: readonly ChampionshipEvent[];
+	eventStartsAt?: string;
 };
 
 export function ChampionshipPodiumTab({
 	players,
+	championshipName,
 	events,
+	eventStartsAt,
 }: ChampionshipPodiumTabProps) {
 	const [metric, setMetric] = useState<PodiumMetricId>(PODIUM_DEFAULT_METRIC);
 	const [semester, setSemester] = useState<PodiumSemester | null>(null);
@@ -92,7 +98,13 @@ export function ChampionshipPodiumTab({
 		setIsSharing(mode);
 		setShareError(null);
 		try {
-			await sharePodiumImages(cards, ceiling);
+			await sharePodiumImages(cards, ceiling, {
+				championshipName,
+				context: eventStartsAt
+					? shareFileDateStamp(eventStartsAt)
+					: podiumSharePeriodSlug(semester, months),
+				generatedAt: new Date().toISOString(),
+			});
 		} catch {
 			setShareError(PODIUM_SHARE_LABEL.shareFailed);
 		} finally {

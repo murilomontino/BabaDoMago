@@ -79,6 +79,7 @@ type ChampionshipEventBuilderProps = {
 	attendanceCounts: ReadonlyMap<number, number>;
 	step: EventBuilderStep;
 	startsAt: string;
+	championshipName: string;
 	initialPresentIds?: readonly number[];
 	initialGoalkeeperIds?: readonly number[];
 	initialTeams?: EventTeamBuilderTeam[];
@@ -103,6 +104,7 @@ export function ChampionshipEventBuilder({
 	attendanceCounts,
 	step,
 	startsAt,
+	championshipName,
 	initialPresentIds = [],
 	initialGoalkeeperIds = [],
 	initialTeams,
@@ -276,7 +278,7 @@ export function ChampionshipEventBuilder({
 			await shareEventTeamsImage(
 				eventTeamsShareCards(teams, presentPlayers),
 				ceiling,
-				startsAt,
+				{ championshipName, startsAt },
 			);
 		} catch {
 			setTeamsError(EVENT_TEAM_SHARE_LABEL.shareFailed);

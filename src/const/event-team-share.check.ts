@@ -85,11 +85,29 @@ check(
 );
 
 check(
-	eventTeamShareFileName("2026-08-14T22:00:00.000Z"),
-	"times-14-08-2026.png",
+	eventTeamShareFileName({
+		championshipName: "Baba do Mago",
+		startsAt: "2026-08-14T22:00:00.000Z",
+		generatedAt: "2026-08-14T13:00:00.000Z",
+	}),
+	"times-baba-do-mago-14-08-2026-14-08-2026.png",
 );
-check(eventTeamShareFileName(""), EVENT_TEAM_SHARE.fileName);
-check(eventTeamShareFileName("nope"), EVENT_TEAM_SHARE.fileName);
+check(
+	eventTeamShareFileName({
+		championshipName: "",
+		startsAt: "",
+		generatedAt: "nope",
+	}),
+	EVENT_TEAM_SHARE.fileName,
+);
+check(
+	eventTeamShareFileName({
+		championshipName: "",
+		startsAt: "nope",
+		generatedAt: "nope",
+	}),
+	EVENT_TEAM_SHARE.fileName,
+);
 
 check(
 	eventTeamsShareText(cards, "2026-08-14T22:00:00.000Z"),

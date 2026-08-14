@@ -2,11 +2,16 @@ import type { ChampionshipPlayer } from "../types/championship.ts";
 import { playerVisibleName } from "./player-name.ts";
 import {
 	formatPodiumMetric,
+	isPodiumAllMonthsSelected,
 	PODIUM_DISPLAY_ORDER,
+	PODIUM_FILTER_LABEL,
 	PODIUM_LABEL,
 	PODIUM_METRICS,
+	PODIUM_MONTH_LABEL,
 	type PodiumMetricId,
+	type PodiumMonth,
 	type PodiumPlace,
+	type PodiumSemester,
 	type PodiumStanding,
 	podiumStandings,
 	rankPodiumRows,
@@ -16,6 +21,7 @@ import {
 	type RosterRow,
 	toRosterRow,
 } from "./roster-stats.ts";
+import { shareFileDateStamp, sharePngFileName } from "./share-file-name.ts";
 
 export const PODIUM_SHARE = {
 	width: 1080,
@@ -25,7 +31,7 @@ export const PODIUM_SHARE = {
 	avatar: 80,
 	star: 22,
 	filePrefix: "podio",
-	fileAll: "podio-tudo.png",
+	fileAll: "tudo",
 	mimePng: "image/png",
 	title: PODIUM_LABEL.tab,
 } as const;
@@ -75,22 +81,62 @@ export function podiumShareHeading(metric: PodiumMetricId): string {
 	return `${PODIUM_SHARE.title} · ${ROSTER_COLUMN_LABEL[metric]}`;
 }
 
-export function podiumShareFileName(metric: PodiumMetricId): string {
-	return `${PODIUM_SHARE.filePrefix}-${metric}.png`;
+export type PodiumShareFileParts = {
+	championshipName: string;
+	context: string | null;
+	generatedAt: string;
+};
+
+export function podiumSharePeriodSlug(
+	semester: PodiumSemester | null,
+	months: readonly PodiumMonth[],
+): string {
+	if (
+		isPodiumAllMonthsSelected(months) ||
+		(semester === null && months.length === 0)
+	) {
+		return PODIUM_FILTER_LABEL.season;
+	}
+
+	if (semester) {
+		return PODIUM_FILTER_LABEL[semester];
+	}
+
+	return [...months]
+		.sort((left, right) => left - right)
+		.map((month) => PODIUM_MONTH_LABEL[month])
+		.join("-");
+}
+
+export function podiumShareFileName(
+	metric: PodiumMetricId,
+	parts: PodiumShareFileParts,
+): string {
+	return sharePngFileName([
+		PODIUM_SHARE.filePrefix,
+		parts.championshipName,
+		ROSTER_COLUMN_LABEL[metric],
+		parts.context,
+		shareFileDateStamp(parts.generatedAt),
+	]);
+}
+
+export function podiumShareAllFileName(parts: PodiumShareFileParts): string {
+	return sharePngFileName([
+		PODIUM_SHARE.filePrefix,
+		parts.championshipName,
+		PODIUM_SHARE.fileAll,
+		parts.context,
+		shareFileDateStamp(parts.generatedAt),
+	]);
 }
 
 export function podiumSharePlacesInDisplayOrder(
 	places: readonly PodiumSharePlace[],
 ): PodiumSharePlace[] {
-	const byPlace = new Map(places.map((place) => [place.place, place]));
-	return PODIUM_DISPLAY_ORDER.flatMap((place) => {
-		const item = byPlace.get(place);
-		if (!item) {
-			return [];
-		}
-
-		return [item];
-	});
+	return PODIUM_DISPLAY_ORDER.flatMap((place) =>
+		places.filter((item) => item.place === place),
+	);
 }
 
 export function podiumShareText(card: PodiumShareCard): string {
@@ -115,13 +161,15 @@ export function podiumShareCardFromStandings(
 	return {
 		metric,
 		title: podiumShareHeading(metric),
-		places: standings.map((standing) => ({
-			place: standing.place,
-			name: playerVisibleName(standing.row),
-			rating: standing.row.rating,
-			value: formatPodiumMetric(metric, standing.row[metric]),
-			avatarUrl: standing.row.avatar_url,
-		})),
+		places: standings.flatMap((standing) =>
+			standing.rows.map((row) => ({
+				place: standing.place,
+				name: playerVisibleName(row),
+				rating: row.rating,
+				value: formatPodiumMetric(metric, row[metric]),
+				avatarUrl: row.avatar_url,
+			})),
+		),
 	};
 }
 

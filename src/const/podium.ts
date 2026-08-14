@@ -118,7 +118,7 @@ export const PODIUM_CONFETTI = {
 
 export type PodiumStanding = {
 	place: PodiumPlace;
-	row: RosterRow;
+	rows: RosterRow[];
 };
 
 export function parsePodiumMetric(value: string): PodiumMetricId {
@@ -167,17 +167,24 @@ export function podiumStandings(
 	ranked: readonly RosterRow[],
 	metric: PodiumMetricId,
 ): PodiumStanding[] {
-	const scored = ranked
-		.filter((row) => row[metric] > 0)
-		.slice(0, PODIUM_PLACES.length);
+	const scored = ranked.filter((row) => row[metric] > 0);
+	const distinct = [...new Set(scored.map((row) => row[metric]))].slice(
+		0,
+		PODIUM_PLACES.length,
+	);
 
-	return scored.flatMap((row, index) => {
+	return distinct.flatMap((score, index) => {
 		const place = PODIUM_PLACES[index];
 		if (!place) {
 			return [];
 		}
 
-		return [{ place, row }];
+		return [
+			{
+				place,
+				rows: scored.filter((row) => row[metric] === score),
+			},
+		];
 	});
 }
 
@@ -323,8 +330,6 @@ type PodiumStatAcc = {
 	own_goals: number;
 	wins: number;
 	matches: number;
-	ratingSum: number;
-	ratingCount: number;
 };
 
 function emptyPodiumStatAcc(): PodiumStatAcc {
@@ -334,8 +339,6 @@ function emptyPodiumStatAcc(): PodiumStatAcc {
 		own_goals: 0,
 		wins: 0,
 		matches: 0,
-		ratingSum: 0,
-		ratingCount: 0,
 	};
 }
 
@@ -360,8 +363,6 @@ export function aggregatePodiumPlayersFromEvents(
 			acc.own_goals += row.own_goals;
 			acc.wins += row.wins;
 			acc.matches += row.matches;
-			acc.ratingSum += row.rating;
-			acc.ratingCount += 1;
 			byPlayerId.set(row.player_id, acc);
 		}
 	}
@@ -380,7 +381,6 @@ export function aggregatePodiumPlayersFromEvents(
 				own_goals: acc.own_goals,
 				wins: acc.wins,
 				matches: acc.matches,
-				rating: acc.ratingCount === 0 ? 0 : acc.ratingSum / acc.ratingCount,
 			},
 		];
 	});

@@ -4,6 +4,7 @@ import {
 } from "./championship-event.ts";
 import { eventTeamName } from "./event-team-color.ts";
 import { playerVisibleName } from "./player-name.ts";
+import { shareFileDateStamp, sharePngFileName } from "./share-file-name.ts";
 
 export const EVENT_TEAM_SHARE = {
 	width: 1080,
@@ -61,14 +62,21 @@ type EventTeamShareRosterPlayer = {
 	avatar_url: string | null;
 };
 
-export function eventTeamShareFileName(startsAt: string): string {
-	const parsed = new Date(startsAt);
-	if (Number.isNaN(parsed.getTime())) {
-		return EVENT_TEAM_SHARE.fileName;
-	}
-
-	const stamp = formatEventStartsAt(startsAt).date.replaceAll("/", "-");
-	return `${EVENT_TEAM_SHARE.filePrefix}-${stamp}.png`;
+export function eventTeamShareFileName({
+	championshipName,
+	startsAt,
+	generatedAt,
+}: {
+	championshipName: string;
+	startsAt: string;
+	generatedAt: string;
+}): string {
+	return sharePngFileName([
+		EVENT_TEAM_SHARE.filePrefix,
+		championshipName,
+		shareFileDateStamp(startsAt),
+		shareFileDateStamp(generatedAt),
+	]);
 }
 
 export function eventTeamsShareText(

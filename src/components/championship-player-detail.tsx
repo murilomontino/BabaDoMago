@@ -1,6 +1,7 @@
 import { createColumnHelper } from "@tanstack/react-table";
-import { CalendarDays } from "lucide-react";
-import { useMemo } from "react";
+import { CalendarDays, LoaderCircle, Share2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
 import { PlayerRatingHistoryChart } from "@/components/molecules/player-rating-history-chart";
 import {
@@ -26,13 +27,23 @@ import {
 	playerRatingHistoryChartSeries,
 } from "@/const/player-profile";
 import {
+	PLAYER_PROFILE_SHARE_LABEL,
+	playerProfileShareCard,
+} from "@/const/player-profile-share";
+import {
 	formatRosterStat,
 	ROSTER_COLUMN_ABBR,
 	ROSTER_COLUMN_LABEL,
 	ROSTER_STAT_COLUMNS,
 	type RosterRow,
 } from "@/const/roster-stats";
-import { CARD_CLASS, CHIP_CLASS, ERROR_CLASS } from "@/const/ui";
+import {
+	BUTTON_VARIANT,
+	CARD_CLASS,
+	CHIP_CLASS,
+	ERROR_CLASS,
+} from "@/const/ui";
+import { sharePlayerProfileImage } from "@/lib/share-player-profile-image";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 const historyColumnHelper = createColumnHelper<
@@ -46,6 +57,7 @@ const ROLE_TAG_CLASS =
 type ChampionshipPlayerDetailProps = {
 	player: ChampionshipPlayer;
 	createdBy: string;
+	championshipName: string;
 	ceiling: number;
 	isOwnerViewer: boolean;
 	career: RosterRow;
@@ -58,13 +70,19 @@ type ChampionshipPlayerDetailProps = {
 function PlayerProfileHeader({
 	player,
 	createdBy,
+	championshipName,
 	ceiling,
 	isOwnerViewer,
+	career,
+	history,
 }: {
 	player: ChampionshipPlayer;
 	createdBy: string;
+	championshipName: string;
 	ceiling: number;
 	isOwnerViewer: boolean;
+	career: RosterRow;
+	history: readonly PlayerProfileHistoryRow[];
 }) {
 	const visibleName = playerVisibleName(player);
 	const showLegalName = visibleName !== player.display_name;
@@ -73,44 +91,91 @@ function PlayerProfileHeader({
 		player.user_id,
 		player.role,
 	);
+	const [isSharing, setIsSharing] = useState(false);
+	const [shareError, setShareError] = useState<string | null>(null);
+
+	async function handleShare() {
+		setIsSharing(true);
+		setShareError(null);
+		try {
+			await sharePlayerProfileImage(
+				playerProfileShareCard(
+					player,
+					career,
+					createdBy,
+					championshipName,
+					history,
+					new Date().toISOString(),
+				),
+				ceiling,
+			);
+		} catch {
+			setShareError(PLAYER_PROFILE_SHARE_LABEL.shareFailed);
+		} finally {
+			setIsSharing(false);
+		}
+	}
 
 	return (
-		<div className="flex flex-wrap items-center gap-4">
-			{player.avatar_url && (
-				<img
-					src={player.avatar_url}
-					alt=""
-					referrerPolicy="no-referrer"
-					className="size-16 rounded-full object-cover"
-				/>
-			)}
-			{!player.avatar_url && (
-				<span className="flex size-16 shrink-0 items-center justify-center rounded-full bg-pitch-soft text-lg font-medium text-pitch-fg">
-					{visibleName.charAt(0).toUpperCase()}
-				</span>
-			)}
-			<div className="min-w-0">
-				<p className="truncate text-lg font-semibold text-fg">{visibleName}</p>
-				{showLegalName && (
-					<p className="truncate text-sm text-fg-muted">
-						{player.display_name}
+		<div className="space-y-3">
+			<div className="flex flex-wrap items-center gap-4">
+				{player.avatar_url && (
+					<img
+						src={player.avatar_url}
+						alt=""
+						referrerPolicy="no-referrer"
+						className="size-16 rounded-full object-cover"
+					/>
+				)}
+				{!player.avatar_url && (
+					<span className="flex size-16 shrink-0 items-center justify-center rounded-full bg-pitch-soft text-lg font-medium text-pitch-fg">
+						{visibleName.charAt(0).toUpperCase()}
+					</span>
+				)}
+				<div className="min-w-0">
+					<p className="truncate text-lg font-semibold text-fg">
+						{visibleName}
 					</p>
-				)}
-				{!player.user_id && (
-					<span className="mt-1 inline-flex rounded-full bg-surface-muted px-2 py-0.5 text-xs font-medium text-fg-muted">
-						{PLAYER_PROFILE_LABEL.noAccount}
-					</span>
-				)}
-				{player.user_id && (
-					<span className={ROLE_TAG_CLASS}>
-						{CHAMPIONSHIP_ROLE_LABEL[displayRole]}
-					</span>
-				)}
+					{showLegalName && (
+						<p className="truncate text-sm text-fg-muted">
+							{player.display_name}
+						</p>
+					)}
+					{!player.user_id && (
+						<span className="mt-1 inline-flex rounded-full bg-surface-muted px-2 py-0.5 text-xs font-medium text-fg-muted">
+							{PLAYER_PROFILE_LABEL.noAccount}
+						</span>
+					)}
+					{player.user_id && (
+						<span className={ROLE_TAG_CLASS}>
+							{CHAMPIONSHIP_ROLE_LABEL[displayRole]}
+						</span>
+					)}
+				</div>
+				<div className="ml-auto flex items-center gap-2">
+					<div className="flex items-center gap-2">
+						<PlayerRating rating={player.rating} ceiling={ceiling} />
+						{isOwnerViewer && (
+							<span className={CHIP_CLASS}>{player.rating}</span>
+						)}
+					</div>
+					<Button
+						variant={BUTTON_VARIANT.secondary}
+						disabled={isSharing}
+						onClick={() => {
+							void handleShare();
+						}}
+					>
+						{isSharing && (
+							<LoaderCircle className="size-4 animate-spin" aria-hidden />
+						)}
+						{!isSharing && <Share2 className="size-4" />}
+						{isSharing && PLAYER_PROFILE_SHARE_LABEL.sharing}
+						{!isSharing && PLAYER_PROFILE_SHARE_LABEL.share}
+					</Button>
+				</div>
 			</div>
-			<div className="flex items-center gap-2">
-				<PlayerRating rating={player.rating} ceiling={ceiling} />
-				{isOwnerViewer && <span className={CHIP_CLASS}>{player.rating}</span>}
-			</div>
+			{shareError && <p className={ERROR_CLASS}>{shareError}</p>}
 		</div>
 	);
 }
@@ -249,6 +314,7 @@ function PlayerHistoryTable({
 export function ChampionshipPlayerDetail({
 	player,
 	createdBy,
+	championshipName,
 	ceiling,
 	isOwnerViewer,
 	career,
@@ -263,8 +329,11 @@ export function ChampionshipPlayerDetail({
 				<PlayerProfileHeader
 					player={player}
 					createdBy={createdBy}
+					championshipName={championshipName}
 					ceiling={ceiling}
 					isOwnerViewer={isOwnerViewer}
+					career={career}
+					history={history}
 				/>
 			</section>
 			<SectionCard title={PLAYER_PROFILE_LABEL.career}>

@@ -346,16 +346,28 @@ async function renderEventTeamsPng(
 export async function shareEventTeamsImage(
 	cards: readonly EventTeamShareCard[],
 	ceiling: number,
-	startsAt: string,
+	{
+		championshipName,
+		startsAt,
+	}: {
+		championshipName: string;
+		startsAt: string;
+	},
 ): Promise<void> {
 	if (cards.length === 0) {
 		throw new Error(EVENT_TEAM_SHARE_LABEL.shareFailed);
 	}
 
 	const blob = await renderEventTeamsPng(cards, ceiling);
-	const file = new File([blob], eventTeamShareFileName(startsAt), {
-		type: EVENT_TEAM_SHARE.mimePng,
-	});
+	const file = new File(
+		[blob],
+		eventTeamShareFileName({
+			championshipName,
+			startsAt,
+			generatedAt: new Date().toISOString(),
+		}),
+		{ type: EVENT_TEAM_SHARE.mimePng },
+	);
 	await shareOrDownload({
 		files: [file],
 		text: eventTeamsShareText(cards, startsAt),

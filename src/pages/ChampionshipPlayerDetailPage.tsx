@@ -103,6 +103,7 @@ export function ChampionshipPlayerDetailPage() {
 			<ChampionshipPlayerDetail
 				player={player}
 				createdBy={championship.created_by}
+				championshipName={championship.name}
 				ceiling={ceiling}
 				isOwnerViewer={actorRole === CHAMPIONSHIP_ROLE.owner}
 				career={toRosterRow(player)}

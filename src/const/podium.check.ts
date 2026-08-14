@@ -87,11 +87,34 @@ check(
 );
 
 const standings = podiumStandings(ranked, ROSTER_COLUMN.goals);
-check(standings.length === 3, "top three with goals");
+check(standings.length === 2, "two distinct goal totals");
 check(standings[0]?.place === PODIUM_PLACE.first, "first standing");
-check(standings[0]?.row.display_name === "Bruno", "first is bruno");
-check(standings[1]?.row.display_name === "Ana", "second is ana");
-check(standings[2]?.row.display_name === "Caio", "third is caio");
+check(
+	standings[0]?.rows.map((row) => row.display_name).join(",") === "Bruno,Ana",
+	"tied first bruno and ana",
+);
+check(standings[1]?.place === PODIUM_PLACE.second, "second standing");
+check(standings[1]?.rows[0]?.display_name === "Caio", "caio second");
+
+const secondTie = podiumStandings(
+	rankPodiumRows(
+		[
+			toRosterRow(player(1, "Ana", { goals: 5 })),
+			toRosterRow(player(2, "Bruno", { goals: 3 })),
+			toRosterRow(player(3, "Caio", { goals: 3 })),
+			toRosterRow(player(4, "Dora", { goals: 2 })),
+		],
+		ROSTER_COLUMN.goals,
+	),
+	ROSTER_COLUMN.goals,
+);
+check(secondTie.length === 3, "three distinct scores");
+check(secondTie[0]?.rows[0]?.display_name === "Ana", "solo first");
+check(
+	secondTie[1]?.rows.map((row) => row.display_name).join(",") === "Bruno,Caio",
+	"tied second",
+);
+check(secondTie[2]?.rows[0]?.display_name === "Dora", "third after tie");
 
 const zeros = rankPodiumRows(
 	[
@@ -112,7 +135,7 @@ const onlyOne = rankPodiumRows(
 );
 const partial = podiumStandings(onlyOne, ROSTER_COLUMN.goals);
 check(partial.length === 1, "partial podium");
-check(partial[0]?.row.display_name === "Ana", "only ana on podium");
+check(partial[0]?.rows[0]?.display_name === "Ana", "only ana on podium");
 
 const skippedZero = rankPodiumRows(
 	[
@@ -124,9 +147,9 @@ const skippedZero = rankPodiumRows(
 );
 const skipped = podiumStandings(skippedZero, ROSTER_COLUMN.goals);
 check(skipped.length === 2, "skips zero between scorers");
-check(skipped[0]?.row.display_name === "Ana", "scorer first");
+check(skipped[0]?.rows[0]?.display_name === "Ana", "scorer first");
 check(skipped[1]?.place === PODIUM_PLACE.second, "next scorer is second");
-check(skipped[1]?.row.display_name === "Caio", "caio second not third");
+check(skipped[1]?.rows[0]?.display_name === "Caio", "caio second not third");
 
 const nickTie = rankPodiumRows(
 	[
@@ -146,7 +169,10 @@ check(
 );
 const ratingStandings = podiumStandings(byRating, ROSTER_COLUMN.rating);
 check(ratingStandings.length === 3, "rating podium top three");
-check(ratingStandings[0]?.row.display_name === "Dora", "highest rating first");
+check(
+	ratingStandings[0]?.rows[0]?.display_name === "Dora",
+	"highest rating first",
+);
 check(
 	podiumStandings(
 		rankPodiumRows(
@@ -373,8 +399,9 @@ check(anaAgg?.assists === 1, "ana assists summed");
 check(anaAgg?.own_goals === 1, "ana own goals summed");
 check(anaAgg?.wins === 3, "ana wins summed");
 check(anaAgg?.matches === 5, "ana matches summed");
-check(anaAgg?.rating === 7, "ana rating averaged");
+check(anaAgg?.rating === 9, "ana rating stays live");
 check(brunoAgg?.goals === 1, "bruno july only");
+check(brunoAgg?.rating === 9, "bruno rating stays live");
 check(anaAgg?.goals !== 99, "ignores championship totals");
 
 const h1Only = aggregatePodiumPlayersFromEvents(
