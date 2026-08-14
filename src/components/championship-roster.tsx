@@ -252,6 +252,19 @@ export function ChampionshipRoster({
 						</span>
 					),
 				}),
+				rosterColumnHelper.accessor("assisted_goals", {
+					id: ROSTER_COLUMN.assisted_goals,
+					header: ROSTER_COLUMN_ABBR.assisted_goals,
+					meta: {
+						align: "right",
+						title: ROSTER_COLUMN_LABEL.assisted_goals,
+					},
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatRosterCount(getValue())}
+						</span>
+					),
+				}),
 				rosterColumnHelper.accessor("own_goals", {
 					id: ROSTER_COLUMN.own_goals,
 					header: ROSTER_COLUMN_ABBR.own_goals,
@@ -279,6 +292,26 @@ export function ChampionshipRoster({
 					id: ROSTER_COLUMN.wins,
 					header: ROSTER_COLUMN_ABBR.wins,
 					meta: { align: "right", title: ROSTER_COLUMN_LABEL.wins },
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatRosterCount(getValue())}
+						</span>
+					),
+				}),
+				rosterColumnHelper.accessor("losses", {
+					id: ROSTER_COLUMN.losses,
+					header: ROSTER_COLUMN_ABBR.losses,
+					meta: { align: "right", title: ROSTER_COLUMN_LABEL.losses },
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatRosterCount(getValue())}
+						</span>
+					),
+				}),
+				rosterColumnHelper.accessor("draws", {
+					id: ROSTER_COLUMN.draws,
+					header: ROSTER_COLUMN_ABBR.draws,
+					meta: { align: "right", title: ROSTER_COLUMN_LABEL.draws },
 					cell: ({ getValue }) => (
 						<span className="tabular-nums">
 							{formatRosterCount(getValue())}

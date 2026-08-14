@@ -8,6 +8,7 @@ export type Json =
 
 type ChampionshipPlayersRow = {
 	assists: number;
+	assisted_goals: number;
 	avatar_url: string | null;
 	championship_id: number;
 	created_at: string;
@@ -23,6 +24,8 @@ type ChampionshipPlayersRow = {
 	role: string;
 	user_id: string | null;
 	wins: number;
+	losses: number;
+	draws: number;
 	mvps: number;
 };
 
@@ -32,6 +35,7 @@ export type Database = {
 			championship_event_attendance: {
 				Row: {
 					assists: number;
+					assisted_goals: number;
 					display_name: string;
 					event_date: string;
 					event_id: number;
@@ -44,11 +48,14 @@ export type Database = {
 					rating: number;
 					rating_delta: number;
 					wins: number;
+					losses: number;
+					draws: number;
 					is_mvp: boolean;
 					mvp_overridden: boolean;
 				};
 				Insert: {
 					assists?: number;
+					assisted_goals?: number;
 					display_name: string;
 					event_date?: string;
 					event_id: number;
@@ -61,11 +68,14 @@ export type Database = {
 					rating?: number;
 					rating_delta?: number;
 					wins?: number;
+					losses?: number;
+					draws?: number;
 					is_mvp?: boolean;
 					mvp_overridden?: boolean;
 				};
 				Update: {
 					assists?: number;
+					assisted_goals?: number;
 					display_name?: string;
 					event_date?: string;
 					is_goalkeeper?: boolean;
@@ -78,6 +88,8 @@ export type Database = {
 					rating?: number;
 					rating_delta?: number;
 					wins?: number;
+					losses?: number;
+					draws?: number;
 					is_mvp?: boolean;
 					mvp_overridden?: boolean;
 				};
@@ -359,6 +371,7 @@ export type Database = {
 				Row: ChampionshipPlayersRow;
 				Insert: {
 					assists?: number;
+					assisted_goals?: number;
 					avatar_url?: string | null;
 					championship_id: number;
 					created_at?: string;
@@ -374,10 +387,13 @@ export type Database = {
 					role?: string;
 					user_id?: string | null;
 					wins?: number;
+					losses?: number;
+					draws?: number;
 					mvps?: number;
 				};
 				Update: {
 					assists?: number;
+					assisted_goals?: number;
 					avatar_url?: string | null;
 					championship_id?: number;
 					created_at?: string;
@@ -393,6 +409,8 @@ export type Database = {
 					role?: string;
 					user_id?: string | null;
 					wins?: number;
+					losses?: number;
+					draws?: number;
 					mvps?: number;
 				};
 				Relationships: [
@@ -681,6 +699,8 @@ export type Database = {
 					goals: number;
 					assists: number;
 					wins: number;
+					losses: number;
+					draws: number;
 					matches: number;
 				};
 				Returns: Json;

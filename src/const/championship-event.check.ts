@@ -541,6 +541,7 @@ check(isEventBuilderStep(EVENT_BUILDER_STEP.teams), true);
 check(isEventBuilderStep("nope"), false);
 check(isEventBuilderStep(null), false);
 check(EVENT_ATTENDANCE_STAT_ABBR.goals, "G");
+check(EVENT_ATTENDANCE_STAT_ABBR.assistedGoals, "GS");
 check(EVENT_ATTENDANCE_STAT_ABBR.ownGoals, "GC");
 
 const statsDraft = [
@@ -550,6 +551,8 @@ const statsDraft = [
 		assists: 1,
 		own_goals: 0,
 		wins: 1,
+		losses: 1,
+		draws: 0,
 		matches: 2,
 	},
 	{
@@ -558,6 +561,8 @@ const statsDraft = [
 		assists: 0,
 		own_goals: 0,
 		wins: 0,
+		losses: 2,
+		draws: 0,
 		matches: 2,
 	},
 ];
@@ -571,7 +576,7 @@ check(
 		[{ ...statsDraft[0], wins: 3, matches: 2 }, statsDraft[1]],
 		[1, 2],
 	),
-	EVENT_ATTENDANCE_MESSAGE.winsExceedMatches,
+	EVENT_ATTENDANCE_MESSAGE.resultStatsMismatch,
 );
 check(
 	validateEventAttendanceStats(
@@ -589,8 +594,8 @@ check(
 	EVENT_ERROR_MESSAGE["invalid attendance stats"],
 );
 check(
-	championshipEventErrorMessage("wins exceed matches"),
-	EVENT_ERROR_MESSAGE["wins exceed matches"],
+	championshipEventErrorMessage("result stats mismatch"),
+	EVENT_ERROR_MESSAGE["result stats mismatch"],
 );
 check(
 	championshipEventErrorMessage("invalid rating"),
@@ -621,27 +626,31 @@ const playerEventDraft = playerEventStatsFromAttendance({
 	goals: 2,
 	assists: 1,
 	wins: 4,
+	losses: 2,
+	draws: 0,
 	matches: 6,
 });
 check(playerEventDraft.goals, 2);
 check(playerEventDraft.assists, 1);
 check(playerEventDraft.wins, 4);
+check(playerEventDraft.losses, 2);
+check(playerEventDraft.draws, 0);
 check(playerEventDraft.matches, 6);
 check(playerEventStatsFromAttendance(null).matches, 0);
 check(setPlayerEventStat(playerEventDraft, "goals", 9).goals, 9);
 check(validatePlayerEventStats(playerEventDraft), null);
 check(
 	validatePlayerEventStats({ ...playerEventDraft, wins: 7 }),
-	EVENT_ATTENDANCE_MESSAGE.winsExceedMatches,
+	EVENT_ATTENDANCE_MESSAGE.resultStatsMismatch,
 );
 check(
 	validatePlayerEventStats({ ...playerEventDraft, goals: -1 }),
 	EVENT_ATTENDANCE_MESSAGE.invalidStats,
 );
-check(PLAYER_EVENT_STAT_META.length, 4);
+check(PLAYER_EVENT_STAT_META.length, 6);
 check(
 	PLAYER_EVENT_STAT_META.map((field) => field.id).join(","),
-	"goals,assists,wins,matches",
+	"goals,assists,wins,losses,draws,matches",
 );
 
 console.log("championship-event ok");

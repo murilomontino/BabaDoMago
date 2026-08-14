@@ -97,8 +97,11 @@ function fallbackPlayer(
 		deleted_at: null,
 		goals: 0,
 		assists: 0,
+		assisted_goals: 0,
 		own_goals: 0,
 		wins: 0,
+		losses: 0,
+		draws: 0,
 		matches: 0,
 		mvps: 0,
 	};

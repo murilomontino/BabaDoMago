@@ -23,6 +23,11 @@ import {
 import { PLAYER_PROFILE_SHARE_LABEL } from "@/const/player-profile-share";
 import { championshipRatingCeiling, PLAYER_STARS } from "@/const/player-rating";
 import {
+	playerSynergyPartners,
+	SYNERGY_LABEL,
+	SYNERGY_PARTNER_LEGEND,
+} from "@/const/player-synergy";
+import {
 	ROSTER_COLUMN_ABBR,
 	ROSTER_STAT_COLUMNS,
 	toRosterRow,
@@ -59,6 +64,15 @@ export function ChampionshipPlayerDetailPage() {
 	const history = useMemo(
 		() => playerProfileHistory(eventsQuery.data ?? [], playerId),
 		[eventsQuery.data, playerId],
+	);
+	const partners = useMemo(
+		() =>
+			playerSynergyPartners(
+				eventsQuery.data ?? [],
+				championshipQuery.data?.players ?? [],
+				playerId,
+			),
+		[eventsQuery.data, championshipQuery.data?.players, playerId],
 	);
 	const ceiling = championshipRatingCeiling(
 		(championship?.players ?? []).flatMap((item) =>
@@ -130,6 +144,7 @@ export function ChampionshipPlayerDetailPage() {
 						? `${PLAYER_PROFILE_LABEL.eventsError}: ${eventsQuery.error.message}`
 						: null
 				}
+				partners={partners}
 				onOpenEvent={(eventId) => {
 					void navigate({
 						to: ROUTES.championshipEvent,
@@ -195,6 +210,13 @@ function ChampionshipPlayerDetailPageSkeleton({
 								</div>
 							))}
 						</div>
+					</SectionCard>
+					<SectionCard title={SYNERGY_LABEL.partners}>
+						<DataTableSkeleton
+							headers={SYNERGY_PARTNER_LEGEND.map((item) => item.abbr)}
+							legendItems={SYNERGY_PARTNER_LEGEND}
+							withPlayerColumn={false}
+						/>
 					</SectionCard>
 					<SectionCard title={PLAYER_PROFILE_LABEL.history}>
 						<div className="space-y-4">

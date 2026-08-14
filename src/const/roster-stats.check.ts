@@ -32,12 +32,18 @@ check(formatRosterWinRate(0) === "0%", "win rate zero format");
 check(formatRosterWinRate(0.5) === "50%", "win rate percent");
 check(formatRosterStat(ROSTER_COLUMN.goals, 4) === "4", "stat goals");
 check(formatRosterStat(ROSTER_COLUMN.assists, 2) === "2", "stat assists");
+check(
+	formatRosterStat(ROSTER_COLUMN.assisted_goals, 3) === "3",
+	"stat assisted goals",
+);
 check(formatRosterStat(ROSTER_COLUMN.own_goals, 1) === "1", "stat own goals");
 check(
 	formatRosterStat(ROSTER_COLUMN.goalInvolvement, 6) === "6",
 	"stat involvement",
 );
 check(formatRosterStat(ROSTER_COLUMN.wins, 3) === "3", "stat wins");
+check(formatRosterStat(ROSTER_COLUMN.losses, 2) === "2", "stat losses");
+check(formatRosterStat(ROSTER_COLUMN.draws, 1) === "1", "stat draws");
 check(formatRosterStat(ROSTER_COLUMN.mvps, 2) === "2", "stat mvps");
 check(formatRosterStat(ROSTER_COLUMN.matches, 6) === "6", "stat matches");
 check(
@@ -57,14 +63,25 @@ check(
 	Object.keys(ROSTER_COLUMN).every((id) => id in ROSTER_COLUMN_LABEL),
 	"every column has label",
 );
+check(ROSTER_COLUMN_ABBR.assisted_goals === "GS", "assisted goals abbr");
+check(
+	ROSTER_COLUMN_LABEL.assisted_goals === "Gols servidos",
+	"assisted goals label",
+);
 check(ROSTER_COLUMN_ABBR.own_goals === "GC", "own goals abbr");
 check(ROSTER_COLUMN_LABEL.own_goals === "Gols contra", "own goals label");
+check(ROSTER_COLUMN_ABBR.losses === "D", "losses abbr");
+check(ROSTER_COLUMN_LABEL.losses === "Derrotas", "losses label");
+check(ROSTER_COLUMN_ABBR.draws === "E", "draws abbr");
+check(ROSTER_COLUMN_LABEL.draws === "Empates", "draws label");
 check(ROSTER_COLUMN_ABBR.goals === "G", "goals abbr");
 check(ROSTER_COLUMN_LABEL.goals === "Gols", "goals label");
 check(ROSTER_COLUMN_ABBR.rating === "Rat", "rating abbr");
 check(ROSTER_COLUMN_LABEL.rating === "Rating", "rating label");
 check(ROSTER_COLUMN_ABBR.actions === "Ações", "actions abbr");
 check(ROSTER_COLUMN_LABEL.actions === "Ações", "actions label");
+check(ROSTER_COLUMN_ABBR.mvps === "MVP", "mvps abbr");
+check(ROSTER_COLUMN_LABEL.mvps === "Destaque da rodada", "mvps label");
 
 const player: ChampionshipPlayer = {
 	id: 1,
@@ -78,16 +95,22 @@ const player: ChampionshipPlayer = {
 	deleted_at: null,
 	goals: 4,
 	assists: 2,
+	assisted_goals: 3,
 	own_goals: 1,
 	wins: 3,
+	losses: 2,
+	draws: 1,
 	matches: 6,
 	mvps: 0,
 };
 const row = toRosterRow(player);
 check(row.goals === 4, "row keeps goals");
 check(row.assists === 2, "row keeps assists");
+check(row.assisted_goals === 3, "row keeps assisted goals");
 check(row.own_goals === 1, "row keeps own goals");
 check(row.wins === 3, "row keeps wins");
+check(row.losses === 2, "row keeps losses");
+check(row.draws === 1, "row keeps draws");
 check(row.matches === 6, "row keeps matches");
 check(row.goalInvolvement === 6, "row involvement");
 check(row.goalsAverage === 4 / 6, "row goals average");
@@ -109,6 +132,8 @@ const broken = toRosterRow({
 	goals: Number.NaN,
 	assists: Number.NaN,
 	wins: Number.NaN,
+	losses: Number.NaN,
+	draws: Number.NaN,
 	matches: Number.NaN,
 });
 check(broken.goals === 0, "broken goals");

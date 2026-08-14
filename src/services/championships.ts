@@ -23,7 +23,7 @@ import type {
 } from "@/types/championship";
 
 const PLAYER_COLUMNS =
-	"id, championship_id, user_id, display_name, nickname, avatar_url, rating, role, deleted_at, goals, assists, own_goals, wins, matches, mvps" as const;
+	"id, championship_id, user_id, display_name, nickname, avatar_url, rating, role, deleted_at, goals, assists, assisted_goals, own_goals, wins, losses, draws, matches, mvps" as const;
 
 const CHAMPIONSHIP_COLUMNS =
 	"id, name, invite_code, created_by, logo_path, event_time, players_per_team, skip_guest_goalkeeper_matches, is_visible" as const;
@@ -82,8 +82,11 @@ function asPlayer(value: unknown): ChampionshipPlayer {
 		deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
 		goals: rosterSafeCount(row.goals),
 		assists: rosterSafeCount(row.assists),
+		assisted_goals: rosterSafeCount(row.assisted_goals),
 		own_goals: rosterSafeCount(row.own_goals),
 		wins: rosterSafeCount(row.wins),
+		losses: rosterSafeCount(row.losses),
+		draws: rosterSafeCount(row.draws),
 		matches: rosterSafeCount(row.matches),
 		mvps: rosterSafeCount(row.mvps),
 	};

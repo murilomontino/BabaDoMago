@@ -22,8 +22,11 @@ export type ChampionshipPlayer = {
 	deleted_at: string | null;
 	goals: number;
 	assists: number;
+	assisted_goals: number;
 	own_goals: number;
 	wins: number;
+	losses: number;
+	draws: number;
 	matches: number;
 	mvps: number;
 };

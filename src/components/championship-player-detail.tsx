@@ -1,11 +1,12 @@
 import { createColumnHelper } from "@tanstack/react-table";
-import { CalendarDays, LoaderCircle, Share2 } from "lucide-react";
+import { CalendarDays, Handshake, LoaderCircle, Share2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AppDialog } from "@/components/atoms/app-dialog";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
 import { DataTableSkeleton } from "@/components/molecules/data-table-skeleton";
+import { PlayerNameLink } from "@/components/molecules/player-name-link";
 import { PlayerRatingHistoryChart } from "@/components/molecules/player-rating-history-chart";
 import {
 	DataTable,
@@ -35,6 +36,16 @@ import {
 	PLAYER_PROFILE_SHARE_LABEL,
 	playerProfileShareCard,
 } from "@/const/player-profile-share";
+import {
+	formatSynergyStat,
+	SYNERGY_COLUMN,
+	SYNERGY_COLUMN_ABBR,
+	SYNERGY_LABEL,
+	SYNERGY_PARTNER_COLUMN_LABEL,
+	SYNERGY_PARTNER_LEGEND,
+	SYNERGY_STAT_COLUMN_OPTIONS,
+	type SynergyPartnerRow,
+} from "@/const/player-synergy";
 import {
 	formatRosterStat,
 	ROSTER_COLUMN_ABBR,
@@ -71,6 +82,7 @@ type ChampionshipPlayerDetailProps = {
 	history: readonly PlayerProfileHistoryRow[];
 	historyPending: boolean;
 	historyError: string | null;
+	partners: readonly SynergyPartnerRow[];
 	onOpenEvent: (eventId: number) => void;
 };
 
@@ -275,6 +287,18 @@ function PlayerHistoryTable({
 						<span className="tabular-nums">{getValue()}</span>
 					),
 				}),
+				historyColumnHelper.accessor("assistedGoals", {
+					id: PLAYER_PROFILE_HISTORY_COLUMN.assisted_goals,
+					header: PLAYER_PROFILE_HISTORY_ABBR.assisted_goals,
+					enableHiding: false,
+					meta: {
+						align: "right" as const,
+						title: PLAYER_PROFILE_HISTORY_COLUMN_LABEL.assisted_goals,
+					},
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">{getValue()}</span>
+					),
+				}),
 				historyColumnHelper.accessor("ownGoals", {
 					id: PLAYER_PROFILE_HISTORY_COLUMN.own_goals,
 					header: PLAYER_PROFILE_HISTORY_ABBR.own_goals,
@@ -294,6 +318,30 @@ function PlayerHistoryTable({
 					meta: {
 						align: "right" as const,
 						title: PLAYER_PROFILE_HISTORY_COLUMN_LABEL.wins,
+					},
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">{getValue()}</span>
+					),
+				}),
+				historyColumnHelper.accessor("losses", {
+					id: PLAYER_PROFILE_HISTORY_COLUMN.losses,
+					header: PLAYER_PROFILE_HISTORY_ABBR.losses,
+					enableHiding: false,
+					meta: {
+						align: "right" as const,
+						title: PLAYER_PROFILE_HISTORY_COLUMN_LABEL.losses,
+					},
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">{getValue()}</span>
+					),
+				}),
+				historyColumnHelper.accessor("draws", {
+					id: PLAYER_PROFILE_HISTORY_COLUMN.draws,
+					header: PLAYER_PROFILE_HISTORY_ABBR.draws,
+					enableHiding: false,
+					meta: {
+						align: "right" as const,
+						title: PLAYER_PROFILE_HISTORY_COLUMN_LABEL.draws,
 					},
 					cell: ({ getValue }) => (
 						<span className="tabular-nums">{getValue()}</span>
@@ -354,6 +402,80 @@ function PlayerHistoryTable({
 	);
 }
 
+const partnerColumnHelper = createColumnHelper<
+	DataTableFeatures,
+	SynergyPartnerRow
+>();
+
+function PlayerPartnersTable({
+	partners,
+}: {
+	partners: readonly SynergyPartnerRow[];
+}) {
+	const columns = useMemo(
+		() =>
+			partnerColumnHelper.columns([
+				partnerColumnHelper.accessor((row) => playerVisibleName(row.partner), {
+					id: SYNERGY_COLUMN.player,
+					header: SYNERGY_PARTNER_COLUMN_LABEL.player,
+					enableHiding: false,
+					meta: { title: SYNERGY_PARTNER_COLUMN_LABEL.player },
+					cell: ({ row }) => <PlayerNameLink player={row.original.partner} />,
+				}),
+				partnerColumnHelper.accessor("wins", {
+					id: SYNERGY_COLUMN.wins,
+					header: SYNERGY_COLUMN_ABBR.wins,
+					meta: {
+						align: "right" as const,
+						title: SYNERGY_PARTNER_COLUMN_LABEL.wins,
+					},
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatSynergyStat(SYNERGY_COLUMN.wins, getValue())}
+						</span>
+					),
+				}),
+				partnerColumnHelper.accessor("matches", {
+					id: SYNERGY_COLUMN.matches,
+					header: SYNERGY_COLUMN_ABBR.matches,
+					meta: {
+						align: "right" as const,
+						title: SYNERGY_PARTNER_COLUMN_LABEL.matches,
+					},
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatSynergyStat(SYNERGY_COLUMN.matches, getValue())}
+						</span>
+					),
+				}),
+				partnerColumnHelper.accessor("winRate", {
+					id: SYNERGY_COLUMN.winRate,
+					header: SYNERGY_COLUMN_ABBR.winRate,
+					meta: {
+						align: "right" as const,
+						title: SYNERGY_PARTNER_COLUMN_LABEL.winRate,
+					},
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatSynergyStat(SYNERGY_COLUMN.winRate, getValue())}
+						</span>
+					),
+				}),
+			]),
+		[],
+	);
+
+	return (
+		<DataTable
+			data={[...partners]}
+			columns={columns}
+			getRowId={(row) => String(row.partner.id)}
+			hideableColumns={SYNERGY_STAT_COLUMN_OPTIONS}
+			legendItems={SYNERGY_PARTNER_LEGEND}
+		/>
+	);
+}
+
 export function ChampionshipPlayerDetail({
 	player,
 	createdBy,
@@ -364,6 +486,7 @@ export function ChampionshipPlayerDetail({
 	history,
 	historyPending,
 	historyError,
+	partners,
 	onOpenEvent,
 }: ChampionshipPlayerDetailProps) {
 	return (
@@ -381,6 +504,25 @@ export function ChampionshipPlayerDetail({
 			</section>
 			<SectionCard title={PLAYER_PROFILE_LABEL.career}>
 				<PlayerCareerStats career={career} />
+			</SectionCard>
+			<SectionCard title={SYNERGY_LABEL.partners}>
+				{historyPending && (
+					<DataTableSkeleton
+						headers={SYNERGY_PARTNER_LEGEND.map((item) => item.abbr)}
+						legendItems={SYNERGY_PARTNER_LEGEND}
+						withPlayerColumn={false}
+					/>
+				)}
+				{historyError && <p className={ERROR_CLASS}>{historyError}</p>}
+				{!historyPending && !historyError && partners.length === 0 && (
+					<EmptyState
+						icon={<Handshake className="size-10" />}
+						title={SYNERGY_LABEL.emptyPartners}
+					/>
+				)}
+				{!historyPending && !historyError && partners.length > 0 && (
+					<PlayerPartnersTable partners={partners} />
+				)}
 			</SectionCard>
 			<SectionCard title={PLAYER_PROFILE_LABEL.history}>
 				{historyPending && <PlayerHistorySkeleton />}

@@ -21,6 +21,10 @@ check(
 	"view photo label",
 );
 check(PLAYER_PROFILE_HISTORY_COLUMN.delta === "delta", "delta column");
+check(
+	PLAYER_PROFILE_HISTORY_COLUMN.assisted_goals === "assisted_goals",
+	"gs column",
+);
 
 check(playerProfileDelta(1.2) === 1.2, "delta number");
 check(playerProfileDelta(-0.5) === -0.5, "delta negative");
@@ -42,8 +46,11 @@ const openEvent = {
 			player_id: 7,
 			goals: 1,
 			assists: 0,
+			assisted_goals: 0,
 			own_goals: 0,
 			wins: 1,
+			losses: 1,
+			draws: 0,
 			matches: 2,
 			rating: 50,
 			rating_delta: 0,
@@ -61,8 +68,11 @@ const endedOther = {
 			player_id: 8,
 			goals: 3,
 			assists: 1,
+			assisted_goals: 0,
 			own_goals: 0,
 			wins: 2,
+			losses: 1,
+			draws: 0,
 			matches: 3,
 			rating: 40,
 			rating_delta: 1.2,
@@ -80,8 +90,11 @@ const endedOlder = {
 			player_id: 7,
 			goals: 0,
 			assists: 2,
+			assisted_goals: 0,
 			own_goals: 1,
 			wins: 0,
+			losses: 2,
+			draws: 1,
 			matches: 3,
 			rating: 50,
 			rating_delta: -0.5,
@@ -99,8 +112,11 @@ const endedNewer = {
 			player_id: 7,
 			goals: 2,
 			assists: 1,
+			assisted_goals: 2,
 			own_goals: 0,
 			wins: 2,
+			losses: 1,
+			draws: 0,
 			matches: 3,
 			rating: 49.5,
 			rating_delta: 1.2,
@@ -123,7 +139,10 @@ check(history.length === 2, "two ended rows");
 check(history[0]?.eventId === 4, "newest first");
 check(history[1]?.eventId === 3, "older second");
 check(history[0]?.goals === 2, "newer goals");
+check(history[0]?.assistedGoals === 2, "newer assisted goals");
 check(history[0]?.mvps === 1, "newer mvp");
+check(history[0]?.losses === 1, "newer losses");
+check(history[1]?.draws === 1, "older draws");
 check(history[1]?.ownGoals === 1, "older own goals");
 check(history[0]?.ratingDelta === 1.2, "newer delta");
 check(history[1]?.ratingDelta === -0.5, "older delta");
@@ -145,8 +164,11 @@ const capped = playerProfileHistory(
 					player_id: 7,
 					goals: 0,
 					assists: 0,
+					assisted_goals: 0,
 					own_goals: 0,
 					wins: 5,
+					losses: 0,
+					draws: 0,
 					matches: 5,
 					rating: 99.5,
 					rating_delta: 2,

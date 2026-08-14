@@ -9,8 +9,11 @@ export type ChampionshipEventAttendance = {
 	event_date: string;
 	goals: number;
 	assists: number;
+	assisted_goals: number;
 	own_goals: number;
 	wins: number;
+	losses: number;
+	draws: number;
 	matches: number;
 	rating: number;
 	rating_delta: number;
@@ -79,6 +82,7 @@ export type ChampionshipEvent = {
 	championship_id: number;
 	starts_at: string;
 	players_per_team: number;
+	skip_guest_goalkeeper_matches: boolean;
 	ended_at: string | null;
 	attendance: ChampionshipEventAttendance[];
 	teams: ChampionshipEventTeam[];
