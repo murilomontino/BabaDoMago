@@ -16,6 +16,10 @@ function check(condition: boolean, message: string) {
 check(PLAYER_PROFILE_LABEL.emptyHistory === "Ainda não jogou", "empty label");
 check(PLAYER_PROFILE_LABEL.notFound === "Jogador não encontrado", "not found");
 check(PLAYER_PROFILE_LABEL.rating === "Nota", "rating label");
+check(
+	PLAYER_PROFILE_LABEL.viewPhoto === "Ver foto de perfil",
+	"view photo label",
+);
 check(PLAYER_PROFILE_HISTORY_COLUMN.delta === "delta", "delta column");
 
 check(playerProfileDelta(1.2) === 1.2, "delta number");

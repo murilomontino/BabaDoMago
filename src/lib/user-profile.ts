@@ -1,5 +1,16 @@
 import type { User } from "@supabase/supabase-js";
 
+const AVATAR_PREVIEW_SIZE = 800 as const;
+
+export function enlargeAvatarUrl(url: string): string {
+	const googleSized = url.replace(/=s\d+\b/, `=s${AVATAR_PREVIEW_SIZE}`);
+	if (googleSized !== url) {
+		return googleSized;
+	}
+
+	return url.replace(/([?&])sz=\d+/, `$1sz=${AVATAR_PREVIEW_SIZE}`);
+}
+
 export function getUserAvatarUrl(user: User | null): string | null {
 	if (!user) {
 		return null;

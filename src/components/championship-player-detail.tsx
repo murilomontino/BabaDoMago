@@ -1,6 +1,7 @@
 import { createColumnHelper } from "@tanstack/react-table";
 import { CalendarDays, LoaderCircle, Share2 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { AppDialog } from "@/components/atoms/app-dialog";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
@@ -49,6 +50,7 @@ import {
 	ERROR_CLASS,
 } from "@/const/ui";
 import { sharePlayerProfileImage } from "@/lib/share-player-profile-image";
+import { enlargeAvatarUrl } from "@/lib/user-profile";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 const historyColumnHelper = createColumnHelper<
@@ -98,6 +100,7 @@ function PlayerProfileHeader({
 	);
 	const [isSharing, setIsSharing] = useState(false);
 	const [shareError, setShareError] = useState<string | null>(null);
+	const [previewOpen, setPreviewOpen] = useState(false);
 
 	async function handleShare() {
 		setIsSharing(true);
@@ -125,12 +128,35 @@ function PlayerProfileHeader({
 		<div className="space-y-3">
 			<div className="flex flex-wrap items-center gap-4">
 				{player.avatar_url && (
-					<img
-						src={player.avatar_url}
-						alt=""
-						referrerPolicy="no-referrer"
-						className="size-16 rounded-full object-cover"
-					/>
+					<button
+						type="button"
+						aria-label={PLAYER_PROFILE_LABEL.viewPhoto}
+						className="shrink-0 rounded-full hover:opacity-80"
+						onClick={() => {
+							setPreviewOpen(true);
+						}}
+					>
+						<img
+							src={player.avatar_url}
+							alt=""
+							referrerPolicy="no-referrer"
+							className="size-16 rounded-full object-cover"
+						/>
+					</button>
+				)}
+				{previewOpen && player.avatar_url && (
+					<AppDialog
+						onClose={() => {
+							setPreviewOpen(false);
+						}}
+					>
+						<img
+							src={enlargeAvatarUrl(player.avatar_url)}
+							alt={visibleName}
+							referrerPolicy="no-referrer"
+							className="size-[min(80vw,20rem)] rounded-full object-cover"
+						/>
+					</AppDialog>
 				)}
 				{!player.avatar_url && (
 					<span className="flex size-16 shrink-0 items-center justify-center rounded-full bg-pitch-soft text-lg font-medium text-pitch-fg">

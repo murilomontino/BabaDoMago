@@ -11,6 +11,7 @@ export const PLAYER_PROFILE_LABEL = {
 	noAccount: "Sem conta",
 	delta: "Delta",
 	rating: "Nota",
+	viewPhoto: "Ver foto de perfil",
 } as const;
 
 export const PLAYER_RATING_HISTORY_CHART = {
