@@ -4,6 +4,8 @@ export const PLAYER_SEARCH = {
 	label: "Buscar",
 	placeholder: "vitinho, murilo",
 	empty: "Nenhum jogador encontrado",
+	countLabel: "jogadores",
+	filteredLabel: "filtrados",
 } as const;
 
 function normalizePlayerSearch(value: string): string {

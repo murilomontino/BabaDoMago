@@ -37,7 +37,7 @@ import {
 	type RosterRow,
 	toRosterRow,
 } from "@/const/roster-stats";
-import { FIELD_CLASS } from "@/const/ui";
+import { CHIP_CLASS, FIELD_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 const rosterColumnHelper = createColumnHelper<DataTableFeatures, RosterRow>();
@@ -348,7 +348,12 @@ export function ChampionshipRoster({
 				htmlFor="roster-player-search"
 				className="block text-sm text-fg-muted"
 			>
-				{PLAYER_SEARCH.label}
+				<span className="flex items-center justify-between gap-2">
+					{PLAYER_SEARCH.label}
+					<span className={CHIP_CLASS}>
+						{`${players.length} ${PLAYER_SEARCH.countLabel}`}
+					</span>
+				</span>
 				<input
 					id="roster-player-search"
 					type="search"

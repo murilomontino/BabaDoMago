@@ -71,6 +71,25 @@ export function eventTeamShareFileName(startsAt: string): string {
 	return `${EVENT_TEAM_SHARE.filePrefix}-${stamp}.png`;
 }
 
+export function eventTeamsShareText(
+	cards: readonly EventTeamShareCard[],
+	startsAt: string,
+): string {
+	const parsed = new Date(startsAt);
+	const heading = Number.isNaN(parsed.getTime())
+		? EVENT_TEAM_SHARE.title
+		: `${EVENT_TEAM_SHARE.title} ${formatEventStartsAt(startsAt).date}`;
+	const blocks = cards.map((card) => {
+		const lines = [
+			card.title,
+			...card.players.map((player) => `${player.number} - ${player.name}`),
+		];
+		return lines.join("\n");
+	});
+
+	return [heading, ...blocks].join("\n\n");
+}
+
 export function eventTeamShareCardHeight(playerCount: number): number {
 	return (
 		EVENT_TEAM_SHARE.cardPadding * 2 +

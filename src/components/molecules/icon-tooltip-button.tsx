@@ -3,13 +3,18 @@ import { TOOLTIP_ID } from "@/const/tooltip";
 import { BUTTON_VARIANT, type ButtonVariant } from "@/const/ui";
 
 const ICON_TOOLTIP_BUTTON_BASE =
-	"inline-flex size-6 items-center justify-center rounded-md p-0 transition disabled:opacity-50";
+	"inline-flex items-center justify-center rounded-md transition disabled:opacity-50";
 
-const ICON_TOOLTIP_BUTTON_CLASS = {
-	primary: `${ICON_TOOLTIP_BUTTON_BASE} text-pitch-fg hover:bg-pitch-soft`,
-	secondary: `${ICON_TOOLTIP_BUTTON_BASE} text-fg-muted hover:bg-surface-muted`,
-	danger: `${ICON_TOOLTIP_BUTTON_BASE} text-danger-fg hover:bg-danger-soft`,
-	ghost: `${ICON_TOOLTIP_BUTTON_BASE} text-fg-muted hover:bg-surface-muted`,
+const ICON_TOOLTIP_BUTTON_ICON_ONLY = "size-6 p-0";
+
+const ICON_TOOLTIP_BUTTON_WITH_LABEL =
+	"size-6 p-0 sm:h-8 sm:w-auto sm:gap-1.5 sm:px-2.5 sm:text-xs sm:font-medium";
+
+const ICON_TOOLTIP_BUTTON_TONE = {
+	primary: "text-pitch-fg hover:bg-pitch-soft",
+	secondary: "text-fg-muted hover:bg-surface-muted",
+	danger: "text-danger-fg hover:bg-danger-soft",
+	ghost: "text-fg-muted hover:bg-surface-muted",
 } as const;
 
 type IconTooltipButtonProps = {
@@ -19,6 +24,7 @@ type IconTooltipButtonProps = {
 	disabled?: boolean;
 	variant?: ButtonVariant;
 	type?: "button" | "submit";
+	showLabel?: boolean;
 };
 
 export function IconTooltipButton({
@@ -28,7 +34,12 @@ export function IconTooltipButton({
 	disabled,
 	variant = BUTTON_VARIANT.secondary,
 	type = "button",
+	showLabel = false,
 }: IconTooltipButtonProps) {
+	const sizeClass = showLabel
+		? ICON_TOOLTIP_BUTTON_WITH_LABEL
+		: ICON_TOOLTIP_BUTTON_ICON_ONLY;
+
 	return (
 		<button
 			type={type}
@@ -37,9 +48,10 @@ export function IconTooltipButton({
 			data-tooltip-content={label}
 			onClick={onClick}
 			disabled={disabled}
-			className={ICON_TOOLTIP_BUTTON_CLASS[variant]}
+			className={`${ICON_TOOLTIP_BUTTON_BASE} ${sizeClass} ${ICON_TOOLTIP_BUTTON_TONE[variant]}`}
 		>
 			{icon}
+			{showLabel && <span className="hidden sm:inline">{label}</span>}
 		</button>
 	);
 }

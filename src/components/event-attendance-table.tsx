@@ -17,7 +17,12 @@ import { playerVisibleName } from "@/const/player-name";
 import { PLAYER_NAME_LIST } from "@/const/player-name-list";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import { filterPlayersBySearch, PLAYER_SEARCH } from "@/const/player-search";
-import { BUTTON_VARIANT, FIELD_CLASS, PLAYER_AVATAR_CLASS } from "@/const/ui";
+import {
+	BUTTON_VARIANT,
+	CHIP_CLASS,
+	FIELD_CLASS,
+	PLAYER_AVATAR_CLASS,
+} from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 type AttendanceRow = {
@@ -224,7 +229,17 @@ export function EventAttendanceTable({
 				htmlFor="event-attendance-search"
 				className="block text-sm text-fg-muted"
 			>
-				{PLAYER_SEARCH.label}
+				<span className="flex items-center justify-between gap-2">
+					{PLAYER_SEARCH.label}
+					<span className="flex items-center gap-1">
+						<span className={CHIP_CLASS}>
+							{`${presentIds.length}/${players.length}`}
+						</span>
+						<span className={CHIP_CLASS}>
+							{`${visiblePlayers.length} ${PLAYER_SEARCH.filteredLabel}`}
+						</span>
+					</span>
+				</span>
 				<textarea
 					id="event-attendance-search"
 					rows={4}

@@ -9,15 +9,22 @@ import {
 	PODIUM_FILTER_LABEL,
 	PODIUM_LABEL,
 	PODIUM_METRICS,
+	PODIUM_MONTHS,
 	PODIUM_PLACE,
 	PODIUM_PLACES,
 	PODIUM_SEASON_YEAR,
 	PODIUM_SEMESTER,
 	parsePodiumMetric,
+	parsePodiumMonth,
 	podiumStandings,
 	rankPodiumRows,
+	selectPodiumAllMonths,
+	selectPodiumCurrentMonth,
+	togglePodiumMonth,
 	togglePodiumSeason,
 	togglePodiumSemester,
+	isPodiumAllMonthsSelected,
+	isPodiumCurrentMonthSelected,
 } from "./podium.ts";
 import { ROSTER_COLUMN, toRosterRow } from "./roster-stats.ts";
 
@@ -160,10 +167,9 @@ check(
 	PODIUM_FILTER_LABEL[PODIUM_SEMESTER.first] === "Primeiro Semestre",
 	"first semester label",
 );
-check(
-	PODIUM_FILTER_LABEL[PODIUM_SEMESTER.second] === "Segundo Semestre",
-	"second semester label",
-);
+check(PODIUM_FILTER_LABEL.currentMonth === "Mês atual", "current month label");
+check(PODIUM_FILTER_LABEL.allMonths === "Todos", "all months label");
+check(PODIUM_MONTHS.length === 12, "twelve months");
 
 const march = "2026-03-15T12:00:00.000Z";
 const july = "2026-07-15T12:00:00.000Z";
@@ -218,6 +224,58 @@ check(
 	togglePodiumSemester(PODIUM_SEMESTER.first, PODIUM_SEMESTER.second)
 		.semester === PODIUM_SEMESTER.second,
 	"switch semester",
+);
+
+check(parsePodiumMonth(8) === 8, "parse august");
+check(parsePodiumMonth(0) === null, "parse invalid month");
+check(
+	togglePodiumMonth([], 3).join(",") === "3",
+	"select march",
+);
+check(
+	togglePodiumMonth([3], 7).join(",") === "3,7",
+	"add july",
+);
+check(
+	togglePodiumMonth([3, 7], 3).join(",") === "7",
+	"deselect march",
+);
+check(
+	selectPodiumCurrentMonth(8).join(",") === "8",
+	"current month only august",
+);
+check(
+	isPodiumCurrentMonthSelected([8], 8),
+	"current month selected",
+);
+check(
+	!isPodiumCurrentMonthSelected([8, 9], 8),
+	"current month not exclusive",
+);
+check(
+	!isPodiumCurrentMonthSelected([], 8),
+	"empty is not current month",
+);
+check(selectPodiumAllMonths().join(",") === "1,2,3,4,5,6,7,8,9,10,11,12", "all months");
+check(isPodiumAllMonthsSelected(selectPodiumAllMonths()), "all months selected");
+check(!isPodiumAllMonthsSelected([1, 2]), "partial is not all months");
+check(!isPodiumAllMonthsSelected([]), "empty is not all months");
+check(
+	eventMatchesPodiumPeriod(march, PODIUM_SEASON_YEAR, null, [3]),
+	"month filter march",
+);
+check(
+	!eventMatchesPodiumPeriod(july, PODIUM_SEASON_YEAR, null, [3]),
+	"month filter drops july",
+);
+check(
+	eventMatchesPodiumPeriod(
+		july,
+		PODIUM_SEASON_YEAR,
+		PODIUM_SEMESTER.first,
+		[7],
+	),
+	"months override semester",
 );
 
 function attendanceRow(
@@ -349,5 +407,36 @@ const h1Only = aggregatePodiumPlayersFromEvents(
 check(h1Only.length === 1, "h1 drops bruno");
 check(h1Only[0]?.id === 1, "h1 keeps ana");
 check(h1Only[0]?.goals === 2, "h1 ana march only");
+
+const julyOnly = aggregatePodiumPlayersFromEvents(
+	[anaPlayer, brunoPlayer],
+	[
+		eventAt(1, march, [
+			attendanceRow(1, {
+				goals: 2,
+				assists: 1,
+				own_goals: 0,
+				wins: 1,
+				matches: 2,
+				rating: 6,
+			}),
+		]),
+		eventAt(2, july, [
+			attendanceRow(2, {
+				goals: 1,
+				assists: 0,
+				own_goals: 0,
+				wins: 0,
+				matches: 1,
+				rating: 4,
+			}),
+		]),
+	],
+	PODIUM_SEASON_YEAR,
+	null,
+	[7],
+);
+check(julyOnly.length === 1, "july month drops ana");
+check(julyOnly[0]?.id === 2, "july month keeps bruno");
 
 console.log("podium ok");

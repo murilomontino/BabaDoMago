@@ -1,8 +1,19 @@
 import { Link } from "@tanstack/react-router";
-import { Copy, Pencil, X } from "lucide-react";
+import {
+	ChartColumn,
+	CircleStop,
+	Copy,
+	LoaderCircle,
+	Pencil,
+	Play,
+	Plus,
+	Share2,
+	Trash2,
+	UserPlus,
+	X,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AddEventTeamModal } from "@/components/add-event-team-modal";
-import { Button } from "@/components/button";
 import { ChampionshipEventBuilder } from "@/components/championship-event-builder";
 import { ChampionshipPodiumTab } from "@/components/championship-podium-tab";
 import { DeleteEventAttendanceModal } from "@/components/delete-event-attendance-modal";
@@ -17,11 +28,13 @@ import {
 	EventTeamPlayerRow,
 	EventTeamRatingAverage,
 } from "@/components/event-team-player";
+import { IconTooltipButton } from "@/components/molecules/icon-tooltip-button";
 import { PlayerRating } from "@/components/player-rating";
 import { Tabs } from "@/components/tabs";
 import {
 	attendanceGoalkeeperIds,
 	builderTeamsFromEvent,
+	builderTeamsHavePlayers,
 	CHAMPIONSHIP_EVENT,
 	canEditEventTeams,
 	canRemoveEventAttendance,
@@ -31,15 +44,15 @@ import {
 	EVENT_ATTENDANCE_COLUMN_LABEL,
 	EVENT_ATTENDANCE_STAT_ABBR,
 	EVENT_BUILDER_STEP,
+	EVENT_BUILDER_STEP_LABEL,
+	EVENT_SECTION_LABEL,
 	EVENT_STATUS,
-	EVENT_STATUS_LABEL,
 	EVENT_TEAM_POSITION_LABEL,
 	type EventAttendanceStatsDraft,
 	type EventTeamDraft,
 	eventStatus,
 	eventTeamPlayerIds,
 	eventTeamPlayerPosition,
-	formatEventStartsAt,
 	keepGoalkeepersPresent,
 	teamHasMatches,
 } from "@/const/championship-event";
@@ -61,12 +74,17 @@ import {
 	eventTeamColorStyle,
 	eventTeamName,
 } from "@/const/event-team-color";
+import {
+	EVENT_TEAM_SHARE_LABEL,
+	eventTeamsShareCards,
+} from "@/const/event-team-share";
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import { ROUTES } from "@/const/routes";
-import { BUTTON_VARIANT, CHIP_CLASS } from "@/const/ui";
+import { BUTTON_VARIANT, CHIP_CLASS, ERROR_CLASS } from "@/const/ui";
 import { useEventBuilderStep } from "@/hooks/use-event-builder-step";
 import { useEventTab } from "@/hooks/use-event-tab";
+import { shareEventTeamsImage } from "@/lib/share-event-teams-image";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type {
 	ChampionshipEvent,
@@ -316,7 +334,6 @@ export function ChampionshipEventDetail({
 	deleting,
 	deleteError,
 }: ChampionshipEventDetailProps) {
-	const when = formatEventStartsAt(event.starts_at);
 	const status = eventStatus(event.ended_at);
 	const ended = status === EVENT_STATUS.ended;
 	const teamById = new Map(event.teams.map((team) => [team.id, team]));
@@ -341,6 +358,13 @@ export function ChampionshipEventDetail({
 		teamsEditable && event.teams.length < CHAMPIONSHIP_EVENT.minTeams;
 	const showTeamBuilder = teamsEditable && (step !== null || mustBuild);
 	const builderStep = step ?? EVENT_BUILDER_STEP.attendance;
+	const detailTeams = builderTeamsFromEvent(
+		event.teams,
+		event.players_per_team,
+		event.attendance.length,
+	);
+	const showShareTeams =
+		!showTeamBuilder && builderTeamsHavePlayers(detailTeams);
 	const showAttendanceActions = canOverrideEnded && !showTeamBuilder;
 	const showAddTeam = canOverrideEnded && !showTeamBuilder;
 	const showStartMatch =
@@ -351,6 +375,8 @@ export function ChampionshipEventDetail({
 		});
 	const openMatch = openEventMatch(event.matches);
 	const [copied, setCopied] = useState(false);
+	const [isSharing, setIsSharing] = useState(false);
+	const [shareError, setShareError] = useState<string | null>(null);
 	const showMatchDelete = canOverrideEnded && !showTeamBuilder;
 	const [isEndOpen, setIsEndOpen] = useState(false);
 	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -395,102 +421,84 @@ export function ChampionshipEventDetail({
 		void setStep(EVENT_BUILDER_STEP.attendance);
 	}, [mustBuild, setStep, step]);
 
+	async function handleShareTeams() {
+		setIsSharing(true);
+		setShareError(null);
+		try {
+			await shareEventTeamsImage(
+				eventTeamsShareCards(detailTeams, players),
+				ceiling,
+				event.starts_at,
+			);
+		} catch {
+			setShareError(EVENT_TEAM_SHARE_LABEL.shareFailed);
+		} finally {
+			setIsSharing(false);
+		}
+	}
+
+	async function handleCopyMatchLink() {
+		const url = matchPlayUrl(
+			window.location.origin,
+			event.championship_id,
+			event.id,
+			ROUTES.championshipEventPlay,
+		);
+		await navigator.clipboard.writeText(url);
+		setCopied(true);
+	}
+
 	return (
 		<article className="space-y-6">
-			<div className="flex flex-wrap items-center gap-2">
-				<p className="text-sm font-semibold tracking-tight text-fg">
-					{when.date} · {when.time}
-				</p>
-				<span className={CHIP_CLASS}>{EVENT_STATUS_LABEL[status]}</span>
-				{(canManage || showStartMatch) && (
-					<div className="ml-auto flex flex-wrap items-center gap-2">
+			{(showStartMatch || canManage) && (
+				<div className="flex flex-wrap items-center gap-2">
+					{showStartMatch && (
+						<Link
+							to={ROUTES.championshipEventPlay}
+							params={{
+								championshipId: String(event.championship_id),
+								eventId: String(event.id),
+							}}
+							className="inline-flex items-center justify-center gap-2 rounded-lg bg-pitch px-4 py-2 text-sm font-medium text-white hover:bg-pitch-dark"
+						>
+							<Play className="size-4" />
+							{openMatch ? EVENT_ACTION.continueMatch : EVENT_ACTION.startMatch}
+						</Link>
+					)}
+					<div className="ml-auto flex items-center gap-1">
 						{showStartMatch && (
-							<Link
-								to={ROUTES.championshipEventPlay}
-								params={{
-									championshipId: String(event.championship_id),
-									eventId: String(event.id),
-								}}
-								className="inline-flex items-center justify-center gap-2 rounded-lg bg-pitch px-4 py-2 text-sm font-medium text-white hover:bg-pitch-dark"
-							>
-								{openMatch
-									? EVENT_ACTION.continueMatch
-									: EVENT_ACTION.startMatch}
-							</Link>
-						)}
-						{showStartMatch && (
-							<Button
-								variant={BUTTON_VARIANT.secondary}
-								onClick={async () => {
-									const url = matchPlayUrl(
-										window.location.origin,
-										event.championship_id,
-										event.id,
-										ROUTES.championshipEventPlay,
-									);
-									await navigator.clipboard.writeText(url);
-									setCopied(true);
-								}}
-							>
-								<Copy className="size-4" />
-								{copied ? EVENT_MATCH_LABEL.copied : EVENT_ACTION.copyMatchLink}
-							</Button>
-						)}
-						{canManage && teamsEditable && !showTeamBuilder && (
-							<Button
-								variant={BUTTON_VARIANT.secondary}
+							<IconTooltipButton
+								showLabel
+								label={
+									copied ? EVENT_MATCH_LABEL.copied : EVENT_ACTION.copyMatchLink
+								}
+								icon={<Copy className="size-4" />}
 								onClick={() => {
-									void setStep(EVENT_BUILDER_STEP.teams);
+									void handleCopyMatchLink();
 								}}
-							>
-								{EVENT_ACTION.editTeams}
-							</Button>
-						)}
-						{canManage && showAttendanceActions && (
-							<Button
-								variant={BUTTON_VARIANT.secondary}
-								onClick={() => setIsAttendanceOpen(true)}
-							>
-								{EVENT_ACTION.addAttendance}
-							</Button>
-						)}
-						{canManage &&
-							showAttendanceActions &&
-							event.attendance.length > 0 && (
-								<Button
-									variant={BUTTON_VARIANT.secondary}
-									onClick={() => setIsAttendanceStatsOpen(true)}
-								>
-									{EVENT_ACTION.markAttendanceStats}
-								</Button>
-							)}
-						{canManage && showAddTeam && (
-							<Button
-								variant={BUTTON_VARIANT.secondary}
-								onClick={() => setIsAddTeamOpen(true)}
-							>
-								{EVENT_ACTION.addTeam}
-							</Button>
+							/>
 						)}
 						{canManage && status === EVENT_STATUS.open && (
-							<Button
+							<IconTooltipButton
+								showLabel
+								label={EVENT_ACTION.endEvent}
+								icon={<CircleStop className="size-4" />}
 								variant={BUTTON_VARIANT.ghost}
 								onClick={() => setIsEndOpen(true)}
-							>
-								{EVENT_ACTION.endEvent}
-							</Button>
+							/>
 						)}
 						{canManage && (
-							<Button
+							<IconTooltipButton
+								showLabel
+								label={EVENT_ACTION.deleteEvent}
+								icon={<Trash2 className="size-4" />}
 								variant={BUTTON_VARIANT.danger}
 								onClick={() => setIsDeleteOpen(true)}
-							>
-								Excluir
-							</Button>
+							/>
 						)}
 					</div>
-				)}
-			</div>
+				</div>
+			)}
 			<Tabs
 				value={selectedTab}
 				items={EVENT_TABS}
@@ -512,11 +520,7 @@ export function ChampionshipEventDetail({
 					startsAt={event.starts_at}
 					initialPresentIds={event.attendance.map((row) => row.player_id)}
 					initialGoalkeeperIds={volunteerGoalkeeperIds}
-					initialTeams={builderTeamsFromEvent(
-						event.teams,
-						event.players_per_team,
-						event.attendance.length,
-					)}
+					initialTeams={detailTeams}
 					isPending={savingTeams}
 					errorMessage={saveTeamsError}
 					onStepChange={(next) => {
@@ -543,84 +547,136 @@ export function ChampionshipEventDetail({
 				/>
 			)}
 			{selectedTab === EVENT_TAB.event && !showTeamBuilder && (
-				<ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-					{event.teams.map((team) => {
-						const cardStyle = eventTeamColorStyle(team.color);
-						const teamRoster = team.players.map((row) => ({
-							row,
-							player: resolveRosterPlayer(
-								row.player_id,
-								row.display_name,
-								rosterById,
-							),
-						}));
+				<div>
+					<div className="mb-1 flex items-center gap-2">
+						<p className="text-xs font-medium uppercase tracking-wide text-fg-muted">
+							{EVENT_BUILDER_STEP_LABEL.teams}
+						</p>
+						<div className="ml-auto flex items-center gap-1">
+							{showShareTeams && (
+								<IconTooltipButton
+									showLabel
+									label={
+										isSharing
+											? EVENT_TEAM_SHARE_LABEL.sharing
+											: EVENT_TEAM_SHARE_LABEL.shareTeams
+									}
+									icon={
+										<>
+											{isSharing && (
+												<LoaderCircle className="size-4 animate-spin" />
+											)}
+											{!isSharing && <Share2 className="size-4" />}
+										</>
+									}
+									disabled={isSharing}
+									onClick={() => {
+										void handleShareTeams();
+									}}
+								/>
+							)}
+							{canManage && teamsEditable && (
+								<IconTooltipButton
+									showLabel
+									label={EVENT_ACTION.editTeams}
+									icon={<Pencil className="size-4" />}
+									onClick={() => {
+										void setStep(EVENT_BUILDER_STEP.teams);
+									}}
+								/>
+							)}
+							{canManage && showAddTeam && (
+								<IconTooltipButton
+									showLabel
+									label={EVENT_ACTION.addTeam}
+									icon={<Plus className="size-4" />}
+									onClick={() => setIsAddTeamOpen(true)}
+								/>
+							)}
+						</div>
+					</div>
+					{shareError && <p className={ERROR_CLASS}>{shareError}</p>}
+					<ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+						{event.teams.map((team) => {
+							const cardStyle = eventTeamColorStyle(team.color);
+							const teamRoster = team.players.map((row) => ({
+								row,
+								player: resolveRosterPlayer(
+									row.player_id,
+									row.display_name,
+									rosterById,
+								),
+							}));
 
-						return (
-							<li
-								key={team.id}
-								className="relative rounded-lg border border-line bg-surface p-2 text-sm"
-								style={cardStyle}
-							>
-								<EventTeamColorDot color={team.color} />
-								<div className="mb-1 flex items-center gap-1 pr-5">
-									<p className="min-w-0 flex-1 text-xs font-medium">
-										{eventTeamName(team.color, team.sort_order)}
-									</p>
-									{canOverrideEnded && (
-										<button
-											type="button"
-											aria-label={EVENT_ACTION.editTeam}
-											className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-fg-muted hover:bg-black/10"
-											onClick={() => setTeamToEdit(team)}
-										>
-											<Pencil className="size-3.5" />
-										</button>
-									)}
-									{canOverrideEnded &&
-										!teamHasMatches(team.id, event.matches) && (
+							return (
+								<li
+									key={team.id}
+									className="relative rounded-lg border border-line bg-surface p-2 text-sm"
+									style={cardStyle}
+								>
+									<EventTeamColorDot color={team.color} />
+									<div className="mb-1 flex items-center gap-1 pr-5">
+										<p className="min-w-0 flex-1 text-xs font-medium">
+											{eventTeamName(team.color, team.sort_order)}
+										</p>
+										{canOverrideEnded && (
 											<button
 												type="button"
-												aria-label={EVENT_ACTION.removeTeam}
-												className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-fg-muted hover:bg-black/10 hover:text-danger-fg"
-												onClick={() => setTeamToRemove(team)}
+												aria-label={EVENT_ACTION.editTeam}
+												className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-fg-muted hover:bg-black/10"
+												onClick={() => setTeamToEdit(team)}
 											>
-												<X className="size-3.5" />
+												<Pencil className="size-3.5" />
 											</button>
 										)}
-								</div>
-								<ul className="space-y-1">
-									{teamRoster.map(({ row, player }) => {
-										const position = eventTeamPlayerPosition(row.is_goalkeeper);
+										{canOverrideEnded &&
+											!teamHasMatches(team.id, event.matches) && (
+												<button
+													type="button"
+													aria-label={EVENT_ACTION.removeTeam}
+													className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-fg-muted hover:bg-black/10 hover:text-danger-fg"
+													onClick={() => setTeamToRemove(team)}
+												>
+													<X className="size-3.5" />
+												</button>
+											)}
+									</div>
+									<ul className="space-y-1">
+										{teamRoster.map(({ row, player }) => {
+											const position = eventTeamPlayerPosition(
+												row.is_goalkeeper,
+											);
 
-										return (
-											<li
-												key={row.id}
-												className="flex min-h-7 items-center gap-1.5 rounded-md bg-white px-1.5 py-1"
-											>
-												<span className={`${CHIP_CLASS} shrink-0`}>
-													{EVENT_TEAM_POSITION_LABEL[position]}
-												</span>
-												<EventTeamPlayerRow
-													player={player}
-													ceiling={ceiling}
-													backgroundColor={EVENT_TEAM_COLOR.white}
-												/>
-											</li>
-										);
-									})}
-								</ul>
-								<EventTeamRatingAverage
-									ratings={teamRoster.map(({ player }) => player.rating)}
-								/>
-							</li>
-						);
-					})}
-				</ul>
+											return (
+												<li
+													key={row.id}
+													className="flex min-h-7 items-center gap-1.5 rounded-md bg-white px-1.5 py-1"
+												>
+													<span className={`${CHIP_CLASS} shrink-0`}>
+														{EVENT_TEAM_POSITION_LABEL[position]}
+													</span>
+													<EventTeamPlayerRow
+														player={player}
+														ceiling={ceiling}
+														backgroundColor={EVENT_TEAM_COLOR.white}
+													/>
+												</li>
+											);
+										})}
+									</ul>
+									<EventTeamRatingAverage
+										ratings={teamRoster.map(({ player }) => player.rating)}
+									/>
+								</li>
+							);
+						})}
+					</ul>
+				</div>
 			)}
 			{selectedTab === EVENT_TAB.event && !showTeamBuilder && (
 				<div>
 					<p className="mb-1 text-xs font-medium uppercase tracking-wide text-fg-muted">
-						Partidas
+						{EVENT_SECTION_LABEL.matches}
 					</p>
 					{event.matches.length === 0 && (
 						<p className="text-sm text-fg-muted">{EVENT_MATCH_LABEL.none}</p>
@@ -737,9 +793,31 @@ export function ChampionshipEventDetail({
 			)}
 			{selectedTab === EVENT_TAB.event && !showTeamBuilder && (
 				<div>
-					<p className="mb-1 text-xs font-medium uppercase tracking-wide text-fg-muted">
-						Presentes
-					</p>
+					<div className="mb-1 flex items-center gap-2">
+						<p className="text-xs font-medium uppercase tracking-wide text-fg-muted">
+							{EVENT_SECTION_LABEL.attendance}
+						</p>
+						<div className="ml-auto flex items-center gap-1">
+							{canManage && showAttendanceActions && (
+								<IconTooltipButton
+									showLabel
+									label={EVENT_ACTION.addAttendance}
+									icon={<UserPlus className="size-4" />}
+									onClick={() => setIsAttendanceOpen(true)}
+								/>
+							)}
+							{canManage &&
+								showAttendanceActions &&
+								event.attendance.length > 0 && (
+									<IconTooltipButton
+										showLabel
+										label={EVENT_ACTION.markAttendanceStats}
+										icon={<ChartColumn className="size-4" />}
+										onClick={() => setIsAttendanceStatsOpen(true)}
+									/>
+								)}
+						</div>
+					</div>
 					{event.attendance.length === 0 && (
 						<p className="text-sm text-fg-muted">Ninguém marcado.</p>
 					)}

@@ -121,6 +121,12 @@ export const EVENT_ACTION = {
 	removeTeam: "Excluir time",
 	drawTeams: "Sortear times",
 	endEvent: "Encerrar",
+	deleteEvent: "Excluir evento",
+} as const;
+
+export const EVENT_SECTION_LABEL = {
+	matches: "Partidas",
+	attendance: "Presentes",
 } as const;
 
 export const EVENT_END_LABEL = {

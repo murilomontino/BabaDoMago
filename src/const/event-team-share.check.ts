@@ -5,6 +5,7 @@ import {
 	eventTeamShareFileName,
 	eventTeamShareImageHeight,
 	eventTeamsShareCards,
+	eventTeamsShareText,
 } from "./event-team-share.ts";
 
 function check(actual: unknown, expected: unknown): void {
@@ -89,3 +90,12 @@ check(
 );
 check(eventTeamShareFileName(""), EVENT_TEAM_SHARE.fileName);
 check(eventTeamShareFileName("nope"), EVENT_TEAM_SHARE.fileName);
+
+check(
+	eventTeamsShareText(cards, "2026-08-14T22:00:00.000Z"),
+	"Times 14/08/2026\n\nVermelho\n1 - Nena\n3 - Bruno\n\nTime 2",
+);
+check(
+	eventTeamsShareText(cards, ""),
+	"Times\n\nVermelho\n1 - Nena\n3 - Bruno\n\nTime 2",
+);

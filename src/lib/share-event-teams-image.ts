@@ -11,6 +11,7 @@ import {
 	eventTeamShareCardWidth,
 	eventTeamShareFileName,
 	eventTeamShareImageHeight,
+	eventTeamsShareText,
 } from "@/const/event-team-share";
 import {
 	PLAYER_RATING,
@@ -31,16 +32,8 @@ function isShareAbort(error: unknown): boolean {
 	return error instanceof DOMException && error.name === "AbortError";
 }
 
-function canShareFile(file: File): boolean {
-	if (typeof navigator.canShare !== "function") {
-		return false;
-	}
-
-	try {
-		return navigator.canShare({ files: [file] });
-	} catch {
-		return false;
-	}
+function canOpenShareSheet(): boolean {
+	return typeof navigator.share === "function";
 }
 
 function downloadFile(file: File) {
@@ -382,8 +375,10 @@ export async function shareEventTeamsImage(
 	const file = new File([blob], eventTeamShareFileName(startsAt), {
 		type: EVENT_TEAM_SHARE.mimePng,
 	});
+	const text = eventTeamsShareText(cards, startsAt);
+	const title = EVENT_TEAM_SHARE.title;
 
-	if (!canShareFile(file)) {
+	if (!canOpenShareSheet()) {
 		downloadFile(file);
 		return;
 	}
@@ -391,7 +386,20 @@ export async function shareEventTeamsImage(
 	try {
 		await navigator.share({
 			files: [file],
-			title: EVENT_TEAM_SHARE.title,
+			text,
+			title,
+		});
+		return;
+	} catch (error) {
+		if (isShareAbort(error)) {
+			return;
+		}
+	}
+
+	try {
+		await navigator.share({
+			text,
+			title,
 		});
 	} catch (error) {
 		if (isShareAbort(error)) {
