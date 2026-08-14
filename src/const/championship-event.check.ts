@@ -1,4 +1,6 @@
 import {
+	ATTENDANCE_STATS_TEAM_FILTER,
+	ATTENDANCE_STATS_TEAM_FILTER_LABEL,
 	applyVisibleAttendance,
 	areAllVisiblePresent,
 	attendanceGoalkeeperIds,
@@ -25,12 +27,14 @@ import {
 	EVENT_TEAM_POSITION_LABEL,
 	type EventTeamDraft,
 	emptyTeamSlots,
+	eventTeamByPlayerId,
 	eventTeamCount,
 	eventTeamPlayerIds,
 	eventTeamPlayerOptionLabel,
 	eventTeamPlayerPosition,
 	eventTeamRatingAverage,
 	eventTeamSlotPosition,
+	filterAttendanceByTeam,
 	formatEventTeamRatingAverage,
 	initialBuilderTeams,
 	isEventBuilderStep,
@@ -45,6 +49,7 @@ import {
 	resizeBuilderTeams,
 	setAttendanceStat,
 	setPlayerEventStat,
+	sortAttendanceByTeam,
 	teamHasMatches,
 	teamPlayerSlots,
 	teamSlotsToPlayerIds,
@@ -576,6 +581,20 @@ check(
 		[{ ...statsDraft[0], wins: 3, matches: 2 }, statsDraft[1]],
 		[1, 2],
 	),
+	EVENT_ATTENDANCE_MESSAGE.winsExceedMatches,
+);
+check(
+	validateEventAttendanceStats(
+		[{ ...statsDraft[0], losses: 0, draws: 0 }, statsDraft[1]],
+		[1, 2],
+	),
+	null,
+);
+check(
+	validateEventAttendanceStats(
+		[{ ...statsDraft[0], losses: 2, draws: 0 }, statsDraft[1]],
+		[1, 2],
+	),
 	EVENT_ATTENDANCE_MESSAGE.resultStatsMismatch,
 );
 check(
@@ -589,6 +608,65 @@ check(parseAttendanceStatInput(""), 0);
 check(parseAttendanceStatInput("4"), 4);
 check(parseAttendanceStatInput("-1"), null);
 check(setAttendanceStat(statsDraft, 1, "goals", 9)[0]?.goals, 9);
+check(ATTENDANCE_STATS_TEAM_FILTER_LABEL.all, "Todos");
+check(ATTENDANCE_STATS_TEAM_FILTER_LABEL.none, "Sem time");
+const statsByTeam = eventTeamByPlayerId([
+	{
+		id: 20,
+		color: EVENT_TEAM_COLOR.blue,
+		sort_order: 1,
+		players: [{ player_id: 2 }, { player_id: 3 }],
+	},
+	{
+		id: 10,
+		color: EVENT_TEAM_COLOR.red,
+		sort_order: 0,
+		players: [{ player_id: 4 }, { player_id: 1 }],
+	},
+]);
+check(statsByTeam.get(1)?.color, EVENT_TEAM_COLOR.red);
+check(statsByTeam.get(1)?.slot, 1);
+check(statsByTeam.get(1)?.team_id, 10);
+check(statsByTeam.get(2)?.color, EVENT_TEAM_COLOR.blue);
+const statsPlayers = [
+	{ player_id: 2 },
+	{ player_id: 5 },
+	{ player_id: 1 },
+	{ player_id: 4 },
+	{ player_id: 3 },
+];
+check(
+	sortAttendanceByTeam(statsPlayers, statsByTeam)
+		.map((row) => row.player_id)
+		.join(","),
+	"4,1,2,3,5",
+);
+check(
+	filterAttendanceByTeam(
+		statsPlayers,
+		statsByTeam,
+		ATTENDANCE_STATS_TEAM_FILTER.all,
+	)
+		.map((row) => row.player_id)
+		.join(","),
+	"2,5,1,4,3",
+);
+check(
+	filterAttendanceByTeam(statsPlayers, statsByTeam, 10)
+		.map((row) => row.player_id)
+		.join(","),
+	"1,4",
+);
+check(
+	filterAttendanceByTeam(
+		statsPlayers,
+		statsByTeam,
+		ATTENDANCE_STATS_TEAM_FILTER.none,
+	)
+		.map((row) => row.player_id)
+		.join(","),
+	"5",
+);
 check(
 	championshipEventErrorMessage("invalid attendance stats"),
 	EVENT_ERROR_MESSAGE["invalid attendance stats"],
@@ -641,7 +719,11 @@ check(setPlayerEventStat(playerEventDraft, "goals", 9).goals, 9);
 check(validatePlayerEventStats(playerEventDraft), null);
 check(
 	validatePlayerEventStats({ ...playerEventDraft, wins: 7 }),
-	EVENT_ATTENDANCE_MESSAGE.resultStatsMismatch,
+	EVENT_ATTENDANCE_MESSAGE.winsExceedMatches,
+);
+check(
+	validatePlayerEventStats({ ...playerEventDraft, losses: 0, draws: 0 }),
+	null,
 );
 check(
 	validatePlayerEventStats({ ...playerEventDraft, goals: -1 }),

@@ -881,6 +881,7 @@ export function ChampionshipEventDetail({
 			{isAttendanceStatsOpen && (
 				<EditEventAttendanceStatsModal
 					attendance={event.attendance}
+					teams={event.teams}
 					players={players}
 					isPending={savingAttendanceStats}
 					errorMessage={saveAttendanceStatsError}

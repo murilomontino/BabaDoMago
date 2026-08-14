@@ -98,7 +98,7 @@ export const EVENT_ERROR_MESSAGE = {
 	"goal not found": "Gol não encontrado",
 	"invalid attendance stats": "Números inválidos",
 	"wins exceed matches": "Vitórias acima dos jogos",
-	"result stats mismatch": "Resultado diferente dos jogos",
+	"result stats mismatch": "Resultado acima dos jogos",
 	"invalid rating": "Nota inválida",
 	"event still open": "Rodada ainda aberta",
 } as const;
@@ -195,7 +195,7 @@ export const EVENT_ATTENDANCE_MESSAGE = {
 	duplicate: "Jogador repetido na presença",
 	invalidStats: "Números inválidos",
 	winsExceedMatches: "Vitórias acima dos jogos",
-	resultStatsMismatch: "Resultado diferente dos jogos",
+	resultStatsMismatch: "Resultado acima dos jogos",
 } as const;
 
 export const EVENT_ATTENDANCE_COLUMN = {
@@ -358,6 +358,21 @@ export type EventAttendanceStatsDraft = {
 	draws: number;
 	matches: number;
 };
+
+export const ATTENDANCE_STATS_TEAM_FILTER = {
+	all: "all",
+	none: "none",
+} as const;
+
+export type AttendanceStatsTeamFilter =
+	| (typeof ATTENDANCE_STATS_TEAM_FILTER)[keyof typeof ATTENDANCE_STATS_TEAM_FILTER]
+	| number;
+
+export const ATTENDANCE_STATS_TEAM_FILTER_LABEL = {
+	group: "Time",
+	all: "Todos",
+	none: "Sem time",
+} as const;
 
 export const EVENT_ATTENDANCE_ACTION = {
 	selectAll: "Selecionar todos",
@@ -1196,13 +1211,21 @@ export function isAttendanceStatCount(value: unknown): value is number {
 	return typeof value === "number" && Number.isInteger(value) && value >= 0;
 }
 
-function attendanceResultTotals(row: {
+function attendanceResultError(row: {
 	wins: number;
 	losses: number;
 	draws: number;
 	matches: number;
-}): boolean {
-	return row.wins + row.losses + row.draws === row.matches;
+}): string | null {
+	if (row.wins > row.matches) {
+		return EVENT_ATTENDANCE_MESSAGE.winsExceedMatches;
+	}
+
+	if (row.wins + row.losses + row.draws > row.matches) {
+		return EVENT_ATTENDANCE_MESSAGE.resultStatsMismatch;
+	}
+
+	return null;
 }
 
 export function attendanceStatsFromRows(
@@ -1218,6 +1241,77 @@ export function attendanceStatsFromRows(
 		draws: row.draws,
 		matches: row.matches,
 	}));
+}
+
+const UNASSIGNED_ATTENDANCE_TEAM_ORDER = Number.MAX_SAFE_INTEGER;
+
+export type EventPlayerTeam = {
+	team_id: number;
+	color: string | null;
+	sort_order: number;
+	slot: number;
+};
+
+export function eventTeamByPlayerId(
+	teams: readonly {
+		id: number;
+		color: string | null;
+		sort_order: number;
+		players: readonly { player_id: number }[];
+	}[],
+): ReadonlyMap<number, EventPlayerTeam> {
+	return new Map(
+		teams.flatMap((team) =>
+			team.players.map(
+				(player, slot) =>
+					[
+						player.player_id,
+						{
+							team_id: team.id,
+							color: team.color,
+							sort_order: team.sort_order,
+							slot,
+						},
+					] as const,
+			),
+		),
+	);
+}
+
+export function sortAttendanceByTeam<T extends { player_id: number }>(
+	rows: readonly T[],
+	teamByPlayerId: ReadonlyMap<number, EventPlayerTeam>,
+): T[] {
+	return [...rows].sort((left, right) => {
+		const leftTeam = teamByPlayerId.get(left.player_id);
+		const rightTeam = teamByPlayerId.get(right.player_id);
+		const leftOrder = leftTeam?.sort_order ?? UNASSIGNED_ATTENDANCE_TEAM_ORDER;
+		const rightOrder =
+			rightTeam?.sort_order ?? UNASSIGNED_ATTENDANCE_TEAM_ORDER;
+		if (leftOrder !== rightOrder) {
+			return leftOrder - rightOrder;
+		}
+
+		return (leftTeam?.slot ?? 0) - (rightTeam?.slot ?? 0);
+	});
+}
+
+export function filterAttendanceByTeam<T extends { player_id: number }>(
+	rows: readonly T[],
+	teamByPlayerId: ReadonlyMap<number, EventPlayerTeam>,
+	filter: AttendanceStatsTeamFilter,
+): T[] {
+	if (filter === ATTENDANCE_STATS_TEAM_FILTER.all) {
+		return [...rows];
+	}
+
+	if (filter === ATTENDANCE_STATS_TEAM_FILTER.none) {
+		return rows.filter((row) => !teamByPlayerId.has(row.player_id));
+	}
+
+	return rows.filter(
+		(row) => teamByPlayerId.get(row.player_id)?.team_id === filter,
+	);
 }
 
 export function parseAttendanceStatInput(value: string): number | null {
@@ -1277,7 +1371,7 @@ function isAttendanceStatRow(row: EventAttendanceStatsDraft): boolean {
 		return false;
 	}
 
-	return attendanceResultTotals(row);
+	return attendanceResultError(row) === null;
 }
 
 export function playerEventStatsFromAttendance(
@@ -1335,11 +1429,7 @@ export function validatePlayerEventStats(
 		return EVENT_ATTENDANCE_MESSAGE.invalidStats;
 	}
 
-	if (!attendanceResultTotals(draft)) {
-		return EVENT_ATTENDANCE_MESSAGE.resultStatsMismatch;
-	}
-
-	return null;
+	return attendanceResultError(draft);
 }
 
 export function validateEventAttendanceStats(
@@ -1370,10 +1460,12 @@ export function validateEventAttendanceStats(
 			isAttendanceStatCount(invalid.wins) &&
 			isAttendanceStatCount(invalid.losses) &&
 			isAttendanceStatCount(invalid.draws) &&
-			isAttendanceStatCount(invalid.matches) &&
-			!attendanceResultTotals(invalid)
+			isAttendanceStatCount(invalid.matches)
 		) {
-			return EVENT_ATTENDANCE_MESSAGE.resultStatsMismatch;
+			const resultError = attendanceResultError(invalid);
+			if (resultError) {
+				return resultError;
+			}
 		}
 
 		return EVENT_ATTENDANCE_MESSAGE.invalidStats;
