@@ -61,9 +61,7 @@ export const PODIUM_FILTER_LABEL = {
 	allMonths: "Todos",
 } as const;
 
-export const PODIUM_MONTHS = [
-	1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
-] as const;
+export const PODIUM_MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 
 export type PodiumMonth = (typeof PODIUM_MONTHS)[number];
 
@@ -330,6 +328,7 @@ type PodiumStatAcc = {
 	own_goals: number;
 	wins: number;
 	matches: number;
+	mvps: number;
 };
 
 function emptyPodiumStatAcc(): PodiumStatAcc {
@@ -339,6 +338,7 @@ function emptyPodiumStatAcc(): PodiumStatAcc {
 		own_goals: 0,
 		wins: 0,
 		matches: 0,
+		mvps: 0,
 	};
 }
 
@@ -363,6 +363,7 @@ export function aggregatePodiumPlayersFromEvents(
 			acc.own_goals += row.own_goals;
 			acc.wins += row.wins;
 			acc.matches += row.matches;
+			acc.mvps += row.is_mvp ? 1 : 0;
 			byPlayerId.set(row.player_id, acc);
 		}
 	}
@@ -381,6 +382,7 @@ export function aggregatePodiumPlayersFromEvents(
 				own_goals: acc.own_goals,
 				wins: acc.wins,
 				matches: acc.matches,
+				mvps: acc.mvps,
 			},
 		];
 	});

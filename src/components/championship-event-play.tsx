@@ -3,6 +3,8 @@ import { useState } from "react";
 import { Button } from "@/components/button";
 import { ChampionshipEventBenchModal } from "@/components/championship-event-bench-modal";
 import { ChampionshipEventGoalModal } from "@/components/championship-event-goal-modal";
+import { ChampionshipEventSubstitutionModal } from "@/components/championship-event-substitution-modal";
+import { EndEventMatchModal } from "@/components/end-event-match-modal";
 import {
 	EVENT_TEAM_PLAYER_SLOT_CLASS,
 	EVENT_TEAM_POSITION_CHIP_CLASS,
@@ -23,15 +25,22 @@ import {
 import {
 	canConfirmMatchTeams,
 	EVENT_GOAL_LABEL,
+	EVENT_MATCH_END_INTENT,
 	EVENT_MATCH_LABEL,
+	EVENT_MATCH_SUBSTITUTION_LABEL,
+	type EventMatchEndIntent,
 	formatMatchScore,
+	lastMatchGoal,
+	matchActiveTeamPlayers,
 	matchAssistCandidates,
 	matchBenchPlayerIds,
+	matchEndWinnerLabel,
 	matchGoalPayload,
 	matchScore,
-	matchTeamPlayers,
+	matchSubstitutedTeamPlayers,
 	matchTeamSlots,
 	matchTeamStarName,
+	matchWinnerTeamId,
 	toggleMatchTeamSelection,
 } from "@/const/championship-event-match";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
@@ -54,6 +63,13 @@ import type {
 type SlotTarget = {
 	teamId: number;
 	slot: number;
+};
+
+type PendingSwap = {
+	teamId: number;
+	slot: number;
+	incomingPlayerId: number;
+	outgoingName: string;
 };
 
 type GoalTarget = {
@@ -80,6 +96,7 @@ function fallbackPlayer(
 		own_goals: 0,
 		wins: 0,
 		matches: 0,
+		mvps: 0,
 	};
 }
 
@@ -101,6 +118,8 @@ type ChampionshipEventPlayProps = {
 	playerError: string | null;
 	savingGoal: boolean;
 	goalError: string | null;
+	undoing: boolean;
+	undoError: string | null;
 	ending: boolean;
 	endError: string | null;
 	onStart: (teamAId: number, teamBId: number) => Promise<void>;
@@ -108,6 +127,7 @@ type ChampionshipEventPlayProps = {
 		teamId: number,
 		slot: number,
 		playerId: number | null,
+		includeStats?: boolean,
 	) => Promise<void>;
 	onSetGoalkeeper: (teamId: number, playerId: number) => Promise<void>;
 	onAddGoal: (values: {
@@ -115,6 +135,7 @@ type ChampionshipEventPlayProps = {
 		assistPlayerId: number | null;
 		isOwnGoal: boolean;
 	}) => Promise<void>;
+	onUndoLastGoal: () => Promise<void>;
 	onEnd: () => Promise<void>;
 	onNext: () => Promise<void>;
 };
@@ -167,17 +188,11 @@ function TeamPick({
 					const position = eventTeamPlayerPosition(row.is_goalkeeper);
 
 					return (
-						<li
-							key={row.id}
-							className={EVENT_TEAM_PLAYER_SLOT_CLASS}
-						>
+						<li key={row.id} className={EVENT_TEAM_PLAYER_SLOT_CLASS}>
 							<span className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}>
 								{EVENT_TEAM_POSITION_LABEL[position]}
 							</span>
-							<EventTeamPlayerRow
-								player={player}
-								ceiling={ceiling}
-							/>
+							<EventTeamPlayerRow player={player} ceiling={ceiling} />
 						</li>
 					);
 				})}
@@ -193,6 +208,7 @@ function MatchTeamBlock({
 	color,
 	sortOrder,
 	slots,
+	substituted,
 	rosterById,
 	disabled,
 	onMarkGoal,
@@ -202,6 +218,7 @@ function MatchTeamBlock({
 	color: EventTeamColor | null;
 	sortOrder: number;
 	slots: readonly (ChampionshipEventMatchPlayer | null)[];
+	substituted: readonly ChampionshipEventMatchPlayer[];
 	rosterById: Map<number, ChampionshipPlayer>;
 	disabled: boolean;
 	onMarkGoal: (player: ChampionshipEventMatchPlayer) => void;
@@ -232,10 +249,7 @@ function MatchTeamBlock({
 							: eventTeamSlotPosition(slot);
 
 						return (
-							<li
-								key={`slot-${slot}`}
-								className={EVENT_TEAM_PLAYER_SLOT_CLASS}
-							>
+							<li key={`slot-${slot}`} className={EVENT_TEAM_PLAYER_SLOT_CLASS}>
 								<span className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}>
 									{EVENT_TEAM_POSITION_LABEL[position]}
 								</span>
@@ -296,6 +310,22 @@ function MatchTeamBlock({
 					},
 				)}
 			</ul>
+			{substituted.length > 0 && (
+				<ul className="mt-2 space-y-1 border-t border-line pt-2">
+					{substituted.map((row) => (
+						<li key={row.id} className={EVENT_TEAM_PLAYER_SLOT_CLASS}>
+							<span className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}>
+								{EVENT_MATCH_SUBSTITUTION_LABEL.chip}
+							</span>
+							<p className="min-w-0 flex-1 truncate text-xs text-fg-muted">
+								{playerVisibleName(
+									resolvePlayer(row.player_id, row.display_name, rosterById),
+								)}
+							</p>
+						</li>
+					))}
+				</ul>
+			)}
 		</section>
 	);
 }
@@ -330,12 +360,15 @@ export function ChampionshipEventPlay({
 	playerError,
 	savingGoal,
 	goalError,
+	undoing,
+	undoError,
 	ending,
 	endError,
 	onStart,
 	onSetPlayer,
 	onSetGoalkeeper,
 	onAddGoal,
+	onUndoLastGoal,
 	onEnd,
 	onNext,
 }: ChampionshipEventPlayProps) {
@@ -346,9 +379,11 @@ export function ChampionshipEventPlay({
 	);
 	const [selected, setSelected] = useState<number[]>([]);
 	const [slotTarget, setSlotTarget] = useState<SlotTarget | null>(null);
+	const [pendingSwap, setPendingSwap] = useState<PendingSwap | null>(null);
 	const [goalTarget, setGoalTarget] = useState<GoalTarget | null>(null);
 	const [ownGoalTeamId, setOwnGoalTeamId] = useState<number | null>(null);
-	const busy = starting || savingPlayer || savingGoal || ending;
+	const [endIntent, setEndIntent] = useState<EventMatchEndIntent | null>(null);
+	const busy = starting || savingPlayer || savingGoal || undoing || ending;
 	const canStartSelected = canConfirmMatchTeams(selected);
 
 	if (!match) {
@@ -410,14 +445,26 @@ export function ChampionshipEventPlay({
 			.map((player) => player.player_id),
 	);
 	const score = matchScore(match.goals, teamAIds);
+	const lastGoal = lastMatchGoal(match.goals);
 	const starA =
 		matchTeamStarName(match.players, match.team_a_id, rosterById) ??
 		eventTeamName(teamA.color, teamA.sort_order);
 	const starB =
 		matchTeamStarName(match.players, match.team_b_id, rosterById) ??
 		eventTeamName(teamB.color, teamB.sort_order);
+	const winnerLabel = matchEndWinnerLabel(
+		matchWinnerTeamId(
+			match.team_a_id,
+			match.team_b_id,
+			score.teamA,
+			score.teamB,
+		),
+		match.team_a_id,
+		starA,
+		starB,
+	);
 	const ownGoalPlayers = ownGoalTeamId
-		? matchTeamPlayers(match.players, ownGoalTeamId).map((row) =>
+		? matchActiveTeamPlayers(match.players, ownGoalTeamId).map((row) =>
 				resolvePlayer(row.player_id, row.display_name, rosterById),
 			)
 		: [];
@@ -449,6 +496,10 @@ export function ChampionshipEventPlay({
 					match.players,
 					match.team_a_id,
 					event.players_per_team,
+				)}
+				substituted={matchSubstitutedTeamPlayers(
+					match.players,
+					match.team_a_id,
 				)}
 				rosterById={rosterById}
 				disabled={busy}
@@ -523,6 +574,10 @@ export function ChampionshipEventPlay({
 					match.team_b_id,
 					event.players_per_team,
 				)}
+				substituted={matchSubstitutedTeamPlayers(
+					match.players,
+					match.team_b_id,
+				)}
 				rosterById={rosterById}
 				disabled={busy}
 				onMarkGoal={(player) => {
@@ -547,15 +602,32 @@ export function ChampionshipEventPlay({
 					void onSetGoalkeeper(match.team_b_id, player.player_id);
 				}}
 			/>
-			{(playerError || goalError || endError) && (
-				<p className={ERROR_CLASS}>{playerError || goalError || endError}</p>
+			{(playerError || goalError || undoError || endError) && (
+				<p className={ERROR_CLASS}>
+					{playerError || goalError || undoError || endError}
+				</p>
+			)}
+			{lastGoal && (
+				<Button
+					variant={BUTTON_VARIANT.ghost}
+					disabled={busy}
+					onClick={() => {
+						void onUndoLastGoal();
+					}}
+				>
+					{EVENT_ACTION.undoGoal}
+				</Button>
 			)}
 			<div className="mt-auto grid grid-cols-2 gap-2">
 				<Button
 					variant={BUTTON_VARIANT.ghost}
 					disabled={busy}
 					onClick={() => {
-						void onEnd();
+						if (busy) {
+							return;
+						}
+
+						setEndIntent(EVENT_MATCH_END_INTENT.end);
 					}}
 				>
 					{EVENT_ACTION.endMatch}
@@ -563,7 +635,11 @@ export function ChampionshipEventPlay({
 				<Button
 					disabled={busy}
 					onClick={() => {
-						void onNext();
+						if (busy) {
+							return;
+						}
+
+						setEndIntent(EVENT_MATCH_END_INTENT.next);
 					}}
 				>
 					{EVENT_ACTION.nextMatch}
@@ -646,8 +722,96 @@ export function ChampionshipEventPlay({
 						setSlotTarget(null);
 					}}
 					onSelect={async (playerId) => {
-						await onSetPlayer(slotTarget.teamId, slotTarget.slot, playerId);
+						const occupied = matchTeamSlots(
+							match.players,
+							slotTarget.teamId,
+							event.players_per_team,
+						)[slotTarget.slot];
+						if (!occupied) {
+							await onSetPlayer(slotTarget.teamId, slotTarget.slot, playerId);
+							setSlotTarget(null);
+							return;
+						}
+
+						setPendingSwap({
+							teamId: slotTarget.teamId,
+							slot: slotTarget.slot,
+							incomingPlayerId: playerId,
+							outgoingName: playerVisibleName(
+								resolvePlayer(
+									occupied.player_id,
+									occupied.display_name,
+									rosterById,
+								),
+							),
+						});
 						setSlotTarget(null);
+					}}
+				/>
+			)}
+			{pendingSwap && (
+				<ChampionshipEventSubstitutionModal
+					playerName={pendingSwap.outgoingName}
+					isPending={savingPlayer}
+					errorMessage={playerError}
+					onCancel={() => {
+						if (savingPlayer) {
+							return;
+						}
+
+						setPendingSwap(null);
+					}}
+					onConfirm={(includeStats) => {
+						void (async () => {
+							try {
+								await onSetPlayer(
+									pendingSwap.teamId,
+									pendingSwap.slot,
+									pendingSwap.incomingPlayerId,
+									includeStats,
+								);
+								setPendingSwap(null);
+							} catch {
+								return;
+							}
+						})();
+					}}
+				/>
+			)}
+			{endIntent && (
+				<EndEventMatchModal
+					intent={endIntent}
+					scoreLabel={formatMatchScore(score.teamA, score.teamB)}
+					winnerLabel={winnerLabel}
+					isPending={ending}
+					errorMessage={endError}
+					onCancel={() => {
+						if (ending) {
+							return;
+						}
+
+						setEndIntent(null);
+					}}
+					onConfirm={() => {
+						void (async () => {
+							try {
+								switch (endIntent) {
+									case EVENT_MATCH_END_INTENT.end:
+										await onEnd();
+										break;
+									case EVENT_MATCH_END_INTENT.next:
+										await onNext();
+										break;
+									default: {
+										const _exhaustive: never = endIntent;
+										return _exhaustive;
+									}
+								}
+								setEndIntent(null);
+							} catch {
+								return;
+							}
+						})();
 					}}
 				/>
 			)}

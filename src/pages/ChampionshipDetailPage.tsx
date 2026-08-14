@@ -1,5 +1,7 @@
 import { useNavigate, useParams } from "@tanstack/react-router";
+import { Users } from "lucide-react";
 import { type FormEvent, useState } from "react";
+import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { ChampionshipDetailHeader } from "@/components/championship-detail-header";
 import { ChampionshipEvents } from "@/components/championship-events";
 import { ChampionshipLogoCrop } from "@/components/championship-logo-crop";
@@ -11,6 +13,8 @@ import { DeleteChampionshipModal } from "@/components/delete-championship-modal"
 import { EditPlayerEventStatsModal } from "@/components/edit-player-event-stats-modal";
 import { EditPlayerNicknameModal } from "@/components/edit-player-nickname-modal";
 import { MergeChampionshipPlayersModal } from "@/components/merge-championship-players-modal";
+import { DataTableSkeleton } from "@/components/molecules/data-table-skeleton";
+import { SectionCard } from "@/components/section-card";
 import { Tabs } from "@/components/tabs";
 import type { PlayerEventStatsDraft } from "@/const/championship-event";
 import { assertChampionshipLogoSource } from "@/const/championship-logo";
@@ -36,6 +40,7 @@ import {
 } from "@/const/championship-role";
 import {
 	CHAMPIONSHIP_TAB,
+	CHAMPIONSHIP_TAB_LABEL,
 	CHAMPIONSHIP_TABS,
 	type ChampionshipTab,
 } from "@/const/championship-tab";
@@ -48,7 +53,8 @@ import {
 	PLAYER_RATING,
 } from "@/const/player-rating";
 import { ROUTES } from "@/const/routes";
-import { ERROR_CLASS } from "@/const/ui";
+import { SKELETON_LABEL } from "@/const/skeleton";
+import { CARD_CLASS, ERROR_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
 import {
 	useChampionshipEvents,
@@ -450,7 +456,7 @@ export function ChampionshipDetailPage() {
 	}
 
 	if (isPending) {
-		return <p className="text-fg-muted">Carregando campeonato...</p>;
+		return <ChampionshipDetailPageSkeleton />;
 	}
 
 	if (isError) {
@@ -656,6 +662,7 @@ export function ChampionshipDetailPage() {
 					createdBy={data.created_by}
 					eventTime={data.event_time}
 					playersPerTeam={data.players_per_team}
+					skipGuestGoalkeeperMatches={data.skip_guest_goalkeeper_matches}
 					isVisible={data.is_visible}
 					activePlayers={activePlayers}
 					canRename={permissions.rename}
@@ -708,4 +715,39 @@ export function ChampionshipDetailPage() {
 			)}
 		</main>
 	);
+}
+
+function ChampionshipDetailPageSkeleton() {
+	return (
+		<SkeletonRegion label={SKELETON_LABEL.championship}>
+			<main className="space-y-6">
+				<section className={CARD_CLASS}>
+					<div className="flex items-start gap-4">
+						<Skeleton className="h-16 w-16 shrink-0 rounded-full" />
+						<div className="min-w-0 flex-1">
+							<Skeleton className="h-7 w-48" />
+							<span className="mt-2 inline-flex items-center gap-1 rounded-full bg-pitch-soft px-2 py-0.5">
+								<Skeleton className="h-3 w-16 rounded-full bg-pitch/20" />
+							</span>
+						</div>
+					</div>
+				</section>
+				<Tabs
+					value={CHAMPIONSHIP_TAB.roster}
+					items={CHAMPIONSHIP_TABS}
+					onChange={ignoreTabChange}
+				/>
+				<SectionCard
+					title={CHAMPIONSHIP_TAB_LABEL.roster}
+					icon={<Users className="size-4 text-pitch-fg" />}
+				>
+					<DataTableSkeleton withSearch withColumns />
+				</SectionCard>
+			</main>
+		</SkeletonRegion>
+	);
+}
+
+function ignoreTabChange() {
+	return;
 }

@@ -8,6 +8,7 @@ export const ROSTER_COLUMN = {
 	own_goals: "own_goals",
 	goalInvolvement: "goalInvolvement",
 	wins: "wins",
+	mvps: "mvps",
 	matches: "matches",
 	goalsAverage: "goalsAverage",
 	assistsAverage: "assistsAverage",
@@ -25,6 +26,7 @@ export const ROSTER_COLUMN_ABBR = {
 	own_goals: "GC",
 	goalInvolvement: "PG",
 	wins: "V",
+	mvps: "MVP",
 	matches: "J",
 	goalsAverage: "MG",
 	assistsAverage: "MA",
@@ -40,6 +42,7 @@ export const ROSTER_COLUMN_LABEL = {
 	own_goals: "Gols contra",
 	goalInvolvement: "Participação em Gols",
 	wins: "Vitórias",
+	mvps: "MVPs",
 	matches: "Jogos",
 	goalsAverage: "Média de Gols",
 	assistsAverage: "Média de Assistências",
@@ -53,6 +56,7 @@ export const ROSTER_STAT_COLUMNS = [
 	ROSTER_COLUMN.own_goals,
 	ROSTER_COLUMN.goalInvolvement,
 	ROSTER_COLUMN.wins,
+	ROSTER_COLUMN.mvps,
 	ROSTER_COLUMN.matches,
 	ROSTER_COLUMN.goalsAverage,
 	ROSTER_COLUMN.assistsAverage,
@@ -142,6 +146,7 @@ export function formatRosterStat(
 		case ROSTER_COLUMN.own_goals:
 		case ROSTER_COLUMN.goalInvolvement:
 		case ROSTER_COLUMN.wins:
+		case ROSTER_COLUMN.mvps:
 		case ROSTER_COLUMN.matches:
 			return formatRosterCount(value);
 		case ROSTER_COLUMN.goalsAverage:

@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import {
+	Award,
 	ChartColumn,
 	CircleStop,
 	Copy,
@@ -33,6 +34,7 @@ import {
 } from "@/components/event-team-player";
 import { IconTooltipButton } from "@/components/molecules/icon-tooltip-button";
 import { PlayerRating } from "@/components/player-rating";
+import { SetEventMvpModal } from "@/components/set-event-mvp-modal";
 import { Tabs } from "@/components/tabs";
 import {
 	attendanceGoalkeeperIds,
@@ -66,6 +68,11 @@ import {
 } from "@/const/championship-event-match";
 import { EVENT_TAB, EVENT_TABS } from "@/const/championship-event-tab";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
+import {
+	EVENT_MVP_LABEL,
+	eventMvpPlayerIds,
+	toggleEventMvpPlayerId,
+} from "@/const/event-mvp";
 import { eventRatingPreview } from "@/const/event-rating-adjustment";
 import {
 	type EventTeamColor,
@@ -149,6 +156,14 @@ function AttendanceStatLine({
 				>
 					{row.rating}
 				</span>
+				{row.is_mvp && (
+					<span
+						className={CHIP_CLASS}
+						title={EVENT_ATTENDANCE_COLUMN_LABEL.mvp}
+					>
+						{EVENT_MVP_LABEL.badge}
+					</span>
+				)}
 			</div>
 			<p className="flex flex-wrap gap-x-2 text-xs text-fg-muted">
 				<span title={EVENT_ATTENDANCE_COLUMN_LABEL.eventDate}>
@@ -171,6 +186,7 @@ type ChampionshipEventDetailProps = {
 	attendanceCounts: ReadonlyMap<number, number>;
 	canManage: boolean;
 	canOverrideEnded: boolean;
+	canSetMvp: boolean;
 	onSaveTeams: (values: {
 		presentPlayerIds: number[];
 		goalkeeperPlayerIds: number[];
@@ -194,7 +210,11 @@ type ChampionshipEventDetailProps = {
 	}) => Promise<void>;
 	onDeleteTeam: (teamId: number) => Promise<void>;
 	onDeleteMatch: (matchId: number) => Promise<void>;
-	onEnd: (presentPlayerIds: number[] | null) => Promise<void>;
+	onEnd: (
+		presentPlayerIds: number[] | null,
+		mvpPlayerIds: number[] | null,
+	) => Promise<void>;
+	onSetMvps: (playerIds: number[]) => Promise<void>;
 	onDelete: () => Promise<void>;
 	savingTeams: boolean;
 	saveTeamsError: string | null;
@@ -212,6 +232,8 @@ type ChampionshipEventDetailProps = {
 	deleteMatchError: string | null;
 	ending: boolean;
 	endError: string | null;
+	settingMvp: boolean;
+	setMvpError: string | null;
 	deleting: boolean;
 	deleteError: string | null;
 };
@@ -235,6 +257,7 @@ function fallbackRosterPlayer(
 		own_goals: 0,
 		wins: 0,
 		matches: 0,
+		mvps: 0,
 	};
 }
 
@@ -266,6 +289,7 @@ function playersFromEventAttendance(
 		own_goals: row.own_goals,
 		wins: row.wins,
 		matches: row.matches,
+		mvps: row.is_mvp ? 1 : 0,
 		rating: row.rating,
 	}));
 }
@@ -277,6 +301,7 @@ export function ChampionshipEventDetail({
 	attendanceCounts,
 	canManage,
 	canOverrideEnded,
+	canSetMvp,
 	onSaveTeams,
 	onSaveAttendance,
 	onSaveAttendanceStats,
@@ -285,6 +310,7 @@ export function ChampionshipEventDetail({
 	onDeleteTeam,
 	onDeleteMatch,
 	onEnd,
+	onSetMvps,
 	onDelete,
 	savingTeams,
 	saveTeamsError,
@@ -302,6 +328,8 @@ export function ChampionshipEventDetail({
 	deleteMatchError,
 	ending,
 	endError,
+	settingMvp,
+	setMvpError,
 	deleting,
 	deleteError,
 }: ChampionshipEventDetailProps) {
@@ -349,6 +377,8 @@ export function ChampionshipEventDetail({
 	const [shareError, setShareError] = useState<string | null>(null);
 	const showMatchDelete = canOverrideEnded && !showTeamBuilder;
 	const [isEndOpen, setIsEndOpen] = useState(false);
+	const [endMvpPlayerIds, setEndMvpPlayerIds] = useState<number[] | null>(null);
+	const [isMvpOpen, setIsMvpOpen] = useState(false);
 	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 	const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
 	const [isAttendanceStatsOpen, setIsAttendanceStatsOpen] = useState(false);
@@ -366,13 +396,25 @@ export function ChampionshipEventDetail({
 		event.attendance.map((row) => row.player_id),
 	);
 
+	const presentPlayerIdsForEnd = draftAttendanceForEnd(
+		showTeamBuilder,
+		draftPresentIdsRef.current,
+	);
+	const autoMvpPlayerIds = eventMvpPlayerIds({
+		matches: event.matches,
+		teams: event.teams,
+		attendance: event.attendance,
+	}).filter(
+		(playerId) =>
+			presentPlayerIdsForEnd === null ||
+			presentPlayerIdsForEnd.includes(playerId),
+	);
+	const mvpPlayerIds = endMvpPlayerIds ?? autoMvpPlayerIds;
 	const ratingPreview = eventRatingPreview({
 		attendance: event.attendance,
 		players,
-		presentPlayerIds: draftAttendanceForEnd(
-			showTeamBuilder,
-			draftPresentIdsRef.current,
-		),
+		presentPlayerIds: presentPlayerIdsForEnd,
+		mvpPlayerIds,
 	});
 	const previewCeiling = championshipRatingCeiling([
 		...players.map((player) => player.rating),
@@ -454,7 +496,10 @@ export function ChampionshipEventDetail({
 								label={EVENT_ACTION.endEvent}
 								icon={<CircleStop className="size-4" />}
 								variant={BUTTON_VARIANT.ghost}
-								onClick={() => setIsEndOpen(true)}
+								onClick={() => {
+									setEndMvpPlayerIds(null);
+									setIsEndOpen(true);
+								}}
 							/>
 						)}
 						{canManage && (
@@ -661,6 +706,14 @@ export function ChampionshipEventDetail({
 							{EVENT_SECTION_LABEL.attendance}
 						</p>
 						<div className="ml-auto flex items-center gap-1">
+							{canSetMvp && ended && event.attendance.length > 0 && (
+								<IconTooltipButton
+									showLabel
+									label={EVENT_ACTION.setMvp}
+									icon={<Award className="size-4" />}
+									onClick={() => setIsMvpOpen(true)}
+								/>
+							)}
 							{canManage && showAttendanceActions && (
 								<IconTooltipButton
 									showLabel
@@ -921,27 +974,60 @@ export function ChampionshipEventDetail({
 					}}
 				/>
 			)}
+			{isMvpOpen && (
+				<SetEventMvpModal
+					players={event.attendance.map((row) => ({
+						id: row.player_id,
+						name: playerVisibleName(
+							resolveRosterPlayer(row.player_id, row.display_name, rosterById),
+						),
+					}))}
+					initialPlayerIds={event.attendance.flatMap((row) =>
+						row.is_mvp ? [row.player_id] : [],
+					)}
+					isPending={settingMvp}
+					errorMessage={setMvpError}
+					onCancel={() => {
+						if (settingMvp) {
+							return;
+						}
+
+						setIsMvpOpen(false);
+					}}
+					onSave={async (playerIds) => {
+						await onSetMvps(playerIds);
+						setIsMvpOpen(false);
+					}}
+				/>
+			)}
 			{isEndOpen && (
 				<EndEventModal
 					rows={ratingPreview}
 					ceiling={previewCeiling}
+					canSetMvp={canSetMvp}
 					isPending={ending}
 					errorMessage={endError}
+					onToggleMvp={(playerId) => {
+						setEndMvpPlayerIds((current) =>
+							toggleEventMvpPlayerId(current ?? autoMvpPlayerIds, playerId),
+						);
+					}}
 					onCancel={() => {
 						if (ending) {
 							return;
 						}
 
+						setEndMvpPlayerIds(null);
 						setIsEndOpen(false);
 					}}
 					onConfirm={() => {
 						void (async () => {
 							try {
-								const presentPlayerIds = draftAttendanceForEnd(
-									showTeamBuilder,
-									draftPresentIdsRef.current,
+								await onEnd(
+									presentPlayerIdsForEnd,
+									canSetMvp ? mvpPlayerIds : null,
 								);
-								await onEnd(presentPlayerIds);
+								setEndMvpPlayerIds(null);
 								setIsEndOpen(false);
 							} catch {
 								return;

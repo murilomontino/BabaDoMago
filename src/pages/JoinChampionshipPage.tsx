@@ -1,9 +1,11 @@
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { Trophy, UserPlus, Users } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
 import { ChampionshipLogo } from "@/components/championship-logo";
 import { ChampionshipRoster } from "@/components/championship-roster";
+import { DataTableSkeleton } from "@/components/molecules/data-table-skeleton";
 import { SectionCard } from "@/components/section-card";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
@@ -11,6 +13,7 @@ import {
 	playerVisibleName,
 } from "@/const/player-name";
 import { ROUTES } from "@/const/routes";
+import { SKELETON_LABEL } from "@/const/skeleton";
 import {
 	BUTTON_VARIANT,
 	CARD_CLASS,
@@ -124,11 +127,7 @@ export function JoinChampionshipPage() {
 	}
 
 	if (isPending || isAuthLoading) {
-		return (
-			<main className={PAGE_SHELL_CLASS}>
-				<p className="text-fg-muted">Carregando campeonato...</p>
-			</main>
-		);
+		return <JoinChampionshipPageSkeleton />;
 	}
 
 	if (isError) {
@@ -206,6 +205,34 @@ export function JoinChampionshipPage() {
 			{claimPlayer.isError && (
 				<p className={ERROR_CLASS}>{claimPlayer.error.message}</p>
 			)}
+		</main>
+	);
+}
+
+function JoinChampionshipPageSkeleton() {
+	return (
+		<main className={`${PAGE_SHELL_CLASS} space-y-6`}>
+			<SkeletonRegion label={SKELETON_LABEL.championship} className="space-y-6">
+				<div className="flex justify-end">
+					<ThemeToggle />
+				</div>
+				<section className={CARD_CLASS}>
+					<p className="mb-3 flex items-center gap-2 text-sm font-medium uppercase tracking-wide text-pitch-fg">
+						<Trophy className="size-4" />
+						Campeonato
+					</p>
+					<div className="flex items-center gap-3">
+						<Skeleton className="h-16 w-16 rounded-full" />
+						<Skeleton className="h-8 w-48" />
+					</div>
+				</section>
+				<SectionCard
+					title="Elenco"
+					icon={<Users className="size-4 text-pitch-fg" />}
+				>
+					<DataTableSkeleton withSearch withColumns />
+				</SectionCard>
+			</SkeletonRegion>
 		</main>
 	);
 }

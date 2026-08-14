@@ -53,7 +53,9 @@ const EVENT_COLUMNS = `
 		wins,
 		matches,
 		rating,
-		rating_delta
+		rating_delta,
+		is_mvp,
+		mvp_overridden
 	),
 	championship_event_matches (
 		id,
@@ -113,6 +115,8 @@ function asAttendance(value: unknown): ChampionshipEventAttendance {
 		matches: Number(row.matches ?? 0),
 		rating: Number(row.rating ?? 0),
 		rating_delta: Number(row.rating_delta ?? 0),
+		is_mvp: row.is_mvp === true,
+		mvp_overridden: row.mvp_overridden === true,
 	};
 }
 
@@ -198,7 +202,9 @@ function asMatchPlayer(value: unknown): ChampionshipEventMatchPlayer {
 		player_id: Number(row.player_id),
 		display_name: row.display_name,
 		is_goalkeeper: row.is_goalkeeper === true,
-		slot: Number(row.slot),
+		slot: typeof row.slot === "number" ? row.slot : null,
+		is_substituted: row.is_substituted === true,
+		include_stats: row.include_stats !== false,
 	};
 }
 
@@ -255,7 +261,11 @@ function asMatch(value: unknown): ChampionshipEventMatch {
 				return left.team_id - right.team_id;
 			}
 
-			return left.slot - right.slot;
+			if (left.is_substituted !== right.is_substituted) {
+				return left.is_substituted ? 1 : -1;
+			}
+
+			return (left.slot ?? 11) - (right.slot ?? 11);
 		}),
 		goals: [...goals].sort((left, right) =>
 			left.created_at.localeCompare(right.created_at),
@@ -527,12 +537,14 @@ export async function setChampionshipEventMatchPlayer(
 	teamId: number,
 	slot: number,
 	playerId: number | null,
+	includeStats = false,
 ): Promise<void> {
 	const { error } = await supabase.rpc("set_championship_event_match_player", {
 		match_id: matchId,
 		team_id: teamId,
 		slot,
 		player_id: playerId,
+		include_stats: includeStats,
 	});
 
 	if (error) {
@@ -577,6 +589,18 @@ export async function addChampionshipEventGoal(
 	}
 }
 
+export async function undoChampionshipEventGoal(
+	matchId: number,
+): Promise<void> {
+	const { error } = await supabase.rpc("undo_championship_event_goal", {
+		match_id: matchId,
+	});
+
+	if (error) {
+		throwEventError(error);
+	}
+}
+
 export async function endChampionshipEventMatch(
 	matchId: number,
 ): Promise<void> {
@@ -604,10 +628,26 @@ export async function deleteChampionshipEventMatch(
 export async function endChampionshipEvent(
 	eventId: number,
 	presentPlayerIds: readonly number[] | null = null,
+	mvpPlayerIds: readonly number[] | null = null,
 ): Promise<void> {
 	const { error } = await supabase.rpc("end_championship_event", {
 		event_id: eventId,
 		present_player_ids: presentPlayerIds ? [...presentPlayerIds] : null,
+		mvp_player_ids: mvpPlayerIds == null ? null : [...mvpPlayerIds],
+	});
+
+	if (error) {
+		throwEventError(error);
+	}
+}
+
+export async function setChampionshipEventMvps(
+	eventId: number,
+	playerIds: readonly number[],
+): Promise<void> {
+	const { error } = await supabase.rpc("set_championship_event_mvps", {
+		event_id: eventId,
+		player_ids: [...playerIds],
 	});
 
 	if (error) {

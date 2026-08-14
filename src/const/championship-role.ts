@@ -39,6 +39,7 @@ type ChampionshipPermissions = {
 	updateEventConfig: boolean;
 	updateVisibility: boolean;
 	manageEvent: boolean;
+	setEventMvp: boolean;
 };
 
 export function resolveChampionshipRole(
@@ -84,6 +85,7 @@ export function championshipPermissions(
 				updateEventConfig: true,
 				updateVisibility: true,
 				manageEvent: true,
+				setEventMvp: true,
 			};
 		case CHAMPIONSHIP_ROLE.captain:
 			return {
@@ -101,6 +103,7 @@ export function championshipPermissions(
 				updateEventConfig: true,
 				updateVisibility: true,
 				manageEvent: true,
+				setEventMvp: true,
 			};
 		case CHAMPIONSHIP_ROLE.admin:
 			return {
@@ -118,6 +121,7 @@ export function championshipPermissions(
 				updateEventConfig: false,
 				updateVisibility: false,
 				manageEvent: true,
+				setEventMvp: false,
 			};
 		case CHAMPIONSHIP_ROLE.member:
 			return {
@@ -135,6 +139,7 @@ export function championshipPermissions(
 				updateEventConfig: false,
 				updateVisibility: false,
 				manageEvent: false,
+				setEventMvp: false,
 			};
 		default: {
 			const _exhaustive: never = role;
@@ -213,4 +218,8 @@ export function canManageEvent(role: ChampionshipRole): boolean {
 
 export function canOverrideEndedEvent(role: ChampionshipRole): boolean {
 	return role === CHAMPIONSHIP_ROLE.owner;
+}
+
+export function canSetEventMvp(role: ChampionshipRole): boolean {
+	return championshipPermissions(role).setEventMvp;
 }

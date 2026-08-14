@@ -15,6 +15,13 @@ export const CHAMPIONSHIP_EVENT = {
 	playersPerTeamDefault: 5,
 	minTeams: 2,
 	minAttendance: 2,
+	skipGuestGoalkeeperMatchesDefault: true,
+} as const;
+
+export const EVENT_CONFIG_LABEL = {
+	skipGuestGoalkeeperMatches: "Goleiro de outro time",
+	skipGuestGoalkeeperMatchesHint:
+		"Partida do goleiro emprestado só conta se o time vencer.",
 } as const;
 
 export const EVENT_BUILDER_STEP = {
@@ -85,7 +92,9 @@ export const EVENT_ERROR_MESSAGE = {
 	"invalid slot": "Vaga inválida",
 	"team not in match": "Time não está na partida",
 	"player not in match": "Jogador não está na partida",
+	"player substituted": "Jogador já foi substituído",
 	"assist not in team": "Assistência de outro time",
+	"no goal to undo": "Nenhum gol para desfazer",
 	"invalid attendance stats": "Números inválidos",
 	"wins exceed matches": "Vitórias acima dos jogos",
 	"invalid rating": "Nota inválida",
@@ -103,6 +112,7 @@ export const EVENT_ACTION = {
 	continueMatch: "Continuar partida",
 	nextMatch: "Próxima partida",
 	endMatch: "Encerrar",
+	undoGoal: "Desfazer gol",
 	copyMatchLink: "Copiar link",
 	markGoal: "Marcar gol",
 	swapPlayer: "Trocar",
@@ -121,6 +131,7 @@ export const EVENT_ACTION = {
 	removeTeam: "Excluir time",
 	drawTeams: "Sortear times",
 	endEvent: "Encerrar",
+	setMvp: "Escolher MVP",
 	deleteEvent: "Excluir rodada",
 } as const;
 
@@ -207,6 +218,7 @@ export const EVENT_ATTENDANCE_COLUMN_LABEL = {
 	assists: "Assistências",
 	ownGoals: "Gols contra",
 	wins: "Vitórias",
+	mvp: "MVP",
 	matches: "Jogos",
 } as const;
 

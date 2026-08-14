@@ -1,8 +1,10 @@
 import { createColumnHelper } from "@tanstack/react-table";
 import { CalendarDays, LoaderCircle, Share2 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
+import { DataTableSkeleton } from "@/components/molecules/data-table-skeleton";
 import { PlayerRatingHistoryChart } from "@/components/molecules/player-rating-history-chart";
 import {
 	DataTable,
@@ -21,8 +23,10 @@ import {
 	PLAYER_PROFILE_HISTORY_ABBR,
 	PLAYER_PROFILE_HISTORY_COLUMN,
 	PLAYER_PROFILE_HISTORY_COLUMN_LABEL,
+	PLAYER_PROFILE_HISTORY_COLUMNS,
 	PLAYER_PROFILE_HISTORY_LEGEND,
 	PLAYER_PROFILE_LABEL,
+	PLAYER_RATING_HISTORY_CHART,
 	type PlayerProfileHistoryRow,
 	playerRatingHistoryChartSeries,
 } from "@/const/player-profile";
@@ -37,6 +41,7 @@ import {
 	ROSTER_STAT_COLUMNS,
 	type RosterRow,
 } from "@/const/roster-stats";
+import { SKELETON_LABEL } from "@/const/skeleton";
 import {
 	BUTTON_VARIANT,
 	CARD_CLASS,
@@ -268,6 +273,18 @@ function PlayerHistoryTable({
 						<span className="tabular-nums">{getValue()}</span>
 					),
 				}),
+				historyColumnHelper.accessor("mvps", {
+					id: PLAYER_PROFILE_HISTORY_COLUMN.mvps,
+					header: PLAYER_PROFILE_HISTORY_ABBR.mvps,
+					enableHiding: false,
+					meta: {
+						align: "right" as const,
+						title: PLAYER_PROFILE_HISTORY_COLUMN_LABEL.mvps,
+					},
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">{getValue()}</span>
+					),
+				}),
 				historyColumnHelper.accessor("matches", {
 					id: PLAYER_PROFILE_HISTORY_COLUMN.matches,
 					header: PLAYER_PROFILE_HISTORY_ABBR.matches,
@@ -340,11 +357,7 @@ export function ChampionshipPlayerDetail({
 				<PlayerCareerStats career={career} />
 			</SectionCard>
 			<SectionCard title={PLAYER_PROFILE_LABEL.history}>
-				{historyPending && (
-					<p className="text-sm text-fg-muted">
-						{PLAYER_PROFILE_LABEL.eventsLoading}
-					</p>
-				)}
+				{historyPending && <PlayerHistorySkeleton />}
 				{historyError && <p className={ERROR_CLASS}>{historyError}</p>}
 				{!historyPending && !historyError && history.length === 0 && (
 					<EmptyState
@@ -367,5 +380,24 @@ export function ChampionshipPlayerDetail({
 				)}
 			</SectionCard>
 		</div>
+	);
+}
+
+function PlayerHistorySkeleton() {
+	return (
+		<SkeletonRegion label={SKELETON_LABEL.events}>
+			<div className="space-y-4">
+				<div style={{ height: PLAYER_RATING_HISTORY_CHART.height }}>
+					<Skeleton className="h-full w-full" />
+				</div>
+				<DataTableSkeleton
+					headers={PLAYER_PROFILE_HISTORY_COLUMNS.map(
+						(id) => PLAYER_PROFILE_HISTORY_ABBR[id],
+					)}
+					legendItems={PLAYER_PROFILE_HISTORY_LEGEND}
+					withPlayerColumn={false}
+				/>
+			</div>
+		</SkeletonRegion>
 	);
 }

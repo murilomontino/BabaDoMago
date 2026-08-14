@@ -21,7 +21,9 @@ import {
 	saveChampionshipPlayerEventStats,
 	setChampionshipEventMatchGoalkeeper,
 	setChampionshipEventMatchPlayer,
+	setChampionshipEventMvps,
 	startChampionshipEventMatch,
+	undoChampionshipEventGoal,
 	updateChampionshipEventTeam,
 } from "@/services/championship-events";
 import {
@@ -260,12 +262,21 @@ export function useSetChampionshipEventMatchPlayer(_championshipId: number) {
 			teamId,
 			slot,
 			playerId,
+			includeStats,
 		}: {
 			matchId: number;
 			teamId: number;
 			slot: number;
 			playerId: number | null;
-		}) => setChampionshipEventMatchPlayer(matchId, teamId, slot, playerId),
+			includeStats?: boolean;
+		}) =>
+			setChampionshipEventMatchPlayer(
+				matchId,
+				teamId,
+				slot,
+				playerId,
+				includeStats,
+			),
 		onSuccess: async () => {
 			await invalidateChampionshipEventQueries(queryClient);
 		},
@@ -320,6 +331,17 @@ export function useAddChampionshipEventGoal(_championshipId: number) {
 	});
 }
 
+export function useUndoChampionshipEventGoal(_championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (matchId: number) => undoChampionshipEventGoal(matchId),
+		onSuccess: async () => {
+			await invalidateChampionshipEventQueries(queryClient);
+		},
+	});
+}
+
 export function useEndChampionshipEventMatch(_championshipId: number) {
 	const queryClient = useQueryClient();
 
@@ -355,12 +377,37 @@ export function useEndChampionshipEvent(_championshipId: number) {
 		mutationFn: ({
 			eventId,
 			presentPlayerIds,
+			mvpPlayerIds,
 		}: {
 			eventId: number;
 			presentPlayerIds: readonly number[] | null;
-		}) => endChampionshipEvent(eventId, presentPlayerIds),
+			mvpPlayerIds?: readonly number[] | null;
+		}) => endChampionshipEvent(eventId, presentPlayerIds, mvpPlayerIds ?? null),
 		onSuccess: async () => {
-			await invalidateChampionshipEventQueries(queryClient);
+			await Promise.all([
+				invalidateChampionshipEventQueries(queryClient),
+				invalidateChampionshipQueries(queryClient),
+			]);
+		},
+	});
+}
+
+export function useSetChampionshipEventMvps(_championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({
+			eventId,
+			playerIds,
+		}: {
+			eventId: number;
+			playerIds: readonly number[];
+		}) => setChampionshipEventMvps(eventId, playerIds),
+		onSuccess: async () => {
+			await Promise.all([
+				invalidateChampionshipEventQueries(queryClient),
+				invalidateChampionshipQueries(queryClient),
+			]);
 		},
 	});
 }

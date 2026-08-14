@@ -8,6 +8,7 @@ import {
 	canOverrideEndedEvent,
 	canReactivatePlayer,
 	canRenameChampionship,
+	canSetEventMvp,
 	canSetRoles,
 	canTransferOwnership,
 	canUnlinkPlayer,
@@ -43,6 +44,7 @@ check(canReactivatePlayer(owner), "owner reactivates");
 check(canUpdateEventConfig(owner), "owner updates event config");
 check(canUpdateVisibility(owner), "owner updates visibility");
 check(canOverrideEndedEvent(owner), "owner overrides ended event");
+check(canSetEventMvp(owner), "owner sets mvp");
 
 check(!canDeleteChampionship(captain), "captain cannot delete");
 check(!canSetRoles(captain), "captain cannot set roles");
@@ -58,6 +60,7 @@ check(!canReactivatePlayer(captain), "captain cannot reactivate");
 check(canUpdateEventConfig(captain), "captain updates event config");
 check(canUpdateVisibility(captain), "captain updates visibility");
 check(!canOverrideEndedEvent(captain), "captain cannot override ended event");
+check(canSetEventMvp(captain), "captain sets mvp");
 
 check(!canDeleteChampionship(admin), "admin cannot delete");
 check(!canSetRoles(admin), "admin cannot set roles");
@@ -73,6 +76,7 @@ check(!canReactivatePlayer(admin), "admin cannot reactivate");
 check(!canUpdateEventConfig(admin), "admin cannot update event config");
 check(!canUpdateVisibility(admin), "admin cannot update visibility");
 check(!canOverrideEndedEvent(admin), "admin cannot override ended event");
+check(!canSetEventMvp(admin), "admin cannot set mvp");
 
 check(!canDeleteChampionship(member), "member cannot delete");
 check(!canSetRoles(member), "member cannot set roles");
@@ -88,6 +92,7 @@ check(!canReactivatePlayer(member), "member cannot reactivate");
 check(!canUpdateEventConfig(member), "member cannot update event config");
 check(!canUpdateVisibility(member), "member cannot update visibility");
 check(!canOverrideEndedEvent(member), "member cannot override ended event");
+check(!canSetEventMvp(member), "member cannot set mvp");
 
 check(
 	resolveChampionshipRole("owner-id", "owner-id", member) === owner,

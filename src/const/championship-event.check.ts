@@ -5,6 +5,7 @@ import {
 	builderTeamsFromDrafts,
 	builderTeamsFromEvent,
 	builderTeamsHavePlayers,
+	CHAMPIONSHIP_EVENT,
 	canAddEventMatch,
 	canEditEventTeams,
 	canRemoveEventAttendance,
@@ -17,6 +18,7 @@ import {
 	EVENT_ATTENDANCE_MESSAGE,
 	EVENT_ATTENDANCE_STAT_ABBR,
 	EVENT_BUILDER_STEP,
+	EVENT_CONFIG_LABEL,
 	EVENT_ERROR_MESSAGE,
 	EVENT_TEAM_MESSAGE,
 	EVENT_TEAM_POSITION,
@@ -60,6 +62,9 @@ function check(actual: unknown, expected: unknown): void {
 		throw new Error(`expected ${String(expected)}, got ${String(actual)}`);
 	}
 }
+
+check(EVENT_CONFIG_LABEL.skipGuestGoalkeeperMatches, "Goleiro de outro time");
+check(CHAMPIONSHIP_EVENT.skipGuestGoalkeeperMatchesDefault, true);
 
 function draft(
 	color: EventTeamDraft["color"],
@@ -594,6 +599,14 @@ check(
 check(
 	championshipEventErrorMessage("event still open"),
 	EVENT_ERROR_MESSAGE["event still open"],
+);
+check(
+	championshipEventErrorMessage("no goal to undo"),
+	EVENT_ERROR_MESSAGE["no goal to undo"],
+);
+check(
+	championshipEventErrorMessage("player substituted"),
+	EVENT_ERROR_MESSAGE["player substituted"],
 );
 
 const playerEventDraft = playerEventStatsFromAttendance({

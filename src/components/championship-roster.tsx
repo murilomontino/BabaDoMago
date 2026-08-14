@@ -277,6 +277,16 @@ export function ChampionshipRoster({
 						</span>
 					),
 				}),
+				rosterColumnHelper.accessor("mvps", {
+					id: ROSTER_COLUMN.mvps,
+					header: ROSTER_COLUMN_ABBR.mvps,
+					meta: { align: "right", title: ROSTER_COLUMN_LABEL.mvps },
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatRosterCount(getValue())}
+						</span>
+					),
+				}),
 				rosterColumnHelper.accessor("matches", {
 					id: ROSTER_COLUMN.matches,
 					header: ROSTER_COLUMN_ABBR.matches,

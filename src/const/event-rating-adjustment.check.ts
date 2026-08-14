@@ -135,6 +135,30 @@ check(preview[0]?.from, 4, "preview from joao");
 check(preview[0]?.to, 4.4, "preview to joao");
 check(preview[1]?.to, 3.1, "preview to pedro");
 check(preview[2]?.to, 5.8, "preview to ana");
+check(preview[0]?.isMvp, false, "preview without mvp");
+
+const mvpPreview = eventRatingPreview({
+	attendance: [
+		{
+			player_id: 1,
+			display_name: "Joao",
+			wins: 4,
+			matches: 6,
+		},
+	],
+	players: [
+		{
+			id: 1,
+			rating: 4,
+			nickname: "Joao",
+			display_name: "Joao Silva",
+		},
+	],
+	presentPlayerIds: null,
+	mvpPlayerIds: [1],
+});
+check(mvpPreview[0]?.isMvp, true, "preview marks mvp");
+check(mvpPreview[0]?.to, 4.5, "preview adds mvp bonus");
 
 const draftPreview = eventRatingPreview({
 	attendance: [

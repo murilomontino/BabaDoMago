@@ -46,6 +46,7 @@ function player(
 		own_goals: 0,
 		wins: 0,
 		matches: 0,
+		mvps: 0,
 		...stats,
 	};
 }

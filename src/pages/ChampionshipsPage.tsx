@@ -1,7 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { ChevronRight, Plus, Trophy } from "lucide-react";
+import { SkeletonRegion } from "@/components/atoms/skeleton";
 import { ChampionshipLogo } from "@/components/championship-logo";
 import { EmptyState } from "@/components/empty-state";
+import { ListRowSkeleton } from "@/components/molecules/list-row-skeleton";
 import { PageHeader } from "@/components/page-header";
 import {
 	championshipQuotaHint,
@@ -10,6 +12,7 @@ import {
 } from "@/const/championship-quota";
 import { CHAMPIONSHIP_VISIBILITY } from "@/const/championship-visibility";
 import { ROUTES } from "@/const/routes";
+import { SKELETON_LABEL, SKELETON_LIST_ROWS } from "@/const/skeleton";
 import {
 	BUTTON_VARIANT,
 	buttonClassName,
@@ -24,7 +27,7 @@ export function ChampionshipsPage() {
 	const { data: championships, isPending, isError, error } = useChampionships();
 
 	if (isPending) {
-		return <p className="text-fg-muted">Carregando campeonatos...</p>;
+		return <ChampionshipsPageSkeleton />;
 	}
 
 	if (isError) {
@@ -107,5 +110,32 @@ export function ChampionshipsPage() {
 				</ul>
 			)}
 		</main>
+	);
+}
+
+function ChampionshipsPageSkeleton() {
+	return (
+		<SkeletonRegion label={SKELETON_LABEL.championships}>
+			<main>
+				<PageHeader
+					title="Campeonatos"
+					description="Seus babas e peladas"
+					action={
+						<Link
+							to={ROUTES.championshipNew}
+							className={buttonClassName(BUTTON_VARIANT.primary)}
+						>
+							<Plus className="size-4" />
+							Novo campeonato
+						</Link>
+					}
+				/>
+				<ul className="space-y-2">
+					{SKELETON_LIST_ROWS.map((row) => (
+						<ListRowSkeleton key={row} />
+					))}
+				</ul>
+			</main>
+		</SkeletonRegion>
 	);
 }

@@ -29,6 +29,7 @@ const player: ChampionshipPlayer = {
 	own_goals: 1,
 	wins: 3,
 	matches: 6,
+	mvps: 1,
 };
 
 const guest: ChampionshipPlayer = {
@@ -50,6 +51,7 @@ const history: readonly PlayerProfileHistoryRow[] = [
 		assists: 0,
 		ownGoals: 0,
 		wins: 1,
+		mvps: 1,
 		matches: 1,
 		ratingFrom: 7,
 		ratingDelta: 1,

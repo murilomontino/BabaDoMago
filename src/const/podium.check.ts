@@ -4,6 +4,8 @@ import {
 	aggregatePodiumPlayersFromEvents,
 	eventMatchesPodiumPeriod,
 	formatPodiumMetric,
+	isPodiumAllMonthsSelected,
+	isPodiumCurrentMonthSelected,
 	PODIUM_DEFAULT_METRIC,
 	PODIUM_DISPLAY_ORDER,
 	PODIUM_FILTER_LABEL,
@@ -23,8 +25,6 @@ import {
 	togglePodiumMonth,
 	togglePodiumSeason,
 	togglePodiumSemester,
-	isPodiumAllMonthsSelected,
-	isPodiumCurrentMonthSelected,
 } from "./podium.ts";
 import { ROSTER_COLUMN, toRosterRow } from "./roster-stats.ts";
 
@@ -69,6 +69,7 @@ function player(
 		own_goals: 0,
 		wins: 0,
 		matches: 0,
+		mvps: 0,
 		...stats,
 	};
 }
@@ -254,36 +255,24 @@ check(
 
 check(parsePodiumMonth(8) === 8, "parse august");
 check(parsePodiumMonth(0) === null, "parse invalid month");
-check(
-	togglePodiumMonth([], 3).join(",") === "3",
-	"select march",
-);
-check(
-	togglePodiumMonth([3], 7).join(",") === "3,7",
-	"add july",
-);
-check(
-	togglePodiumMonth([3, 7], 3).join(",") === "7",
-	"deselect march",
-);
+check(togglePodiumMonth([], 3).join(",") === "3", "select march");
+check(togglePodiumMonth([3], 7).join(",") === "3,7", "add july");
+check(togglePodiumMonth([3, 7], 3).join(",") === "7", "deselect march");
 check(
 	selectPodiumCurrentMonth(8).join(",") === "8",
 	"current month only august",
 );
+check(isPodiumCurrentMonthSelected([8], 8), "current month selected");
+check(!isPodiumCurrentMonthSelected([8, 9], 8), "current month not exclusive");
+check(!isPodiumCurrentMonthSelected([], 8), "empty is not current month");
 check(
-	isPodiumCurrentMonthSelected([8], 8),
-	"current month selected",
+	selectPodiumAllMonths().join(",") === "1,2,3,4,5,6,7,8,9,10,11,12",
+	"all months",
 );
 check(
-	!isPodiumCurrentMonthSelected([8, 9], 8),
-	"current month not exclusive",
+	isPodiumAllMonthsSelected(selectPodiumAllMonths()),
+	"all months selected",
 );
-check(
-	!isPodiumCurrentMonthSelected([], 8),
-	"empty is not current month",
-);
-check(selectPodiumAllMonths().join(",") === "1,2,3,4,5,6,7,8,9,10,11,12", "all months");
-check(isPodiumAllMonthsSelected(selectPodiumAllMonths()), "all months selected");
 check(!isPodiumAllMonthsSelected([1, 2]), "partial is not all months");
 check(!isPodiumAllMonthsSelected([]), "empty is not all months");
 check(
@@ -313,6 +302,7 @@ function attendanceRow(
 		wins: number;
 		matches: number;
 		rating: number;
+		is_mvp?: boolean;
 	},
 ) {
 	return {
@@ -324,6 +314,8 @@ function attendanceRow(
 		event_date: "2026-03-15",
 		rating_delta: 0,
 		...stats,
+		is_mvp: stats.is_mvp === true,
+		mvp_overridden: false,
 	};
 }
 
@@ -357,6 +349,7 @@ const aggregated = aggregatePodiumPlayersFromEvents(
 				wins: 1,
 				matches: 2,
 				rating: 6,
+				is_mvp: true,
 			}),
 		]),
 		eventAt(2, july, [
@@ -398,6 +391,7 @@ check(anaAgg?.goals === 5, "ana goals summed");
 check(anaAgg?.assists === 1, "ana assists summed");
 check(anaAgg?.own_goals === 1, "ana own goals summed");
 check(anaAgg?.wins === 3, "ana wins summed");
+check(anaAgg?.mvps === 1, "ana mvps summed");
 check(anaAgg?.matches === 5, "ana matches summed");
 check(anaAgg?.rating === 9, "ana rating stays live");
 check(brunoAgg?.goals === 1, "bruno july only");

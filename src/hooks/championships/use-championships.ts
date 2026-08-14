@@ -162,11 +162,18 @@ export function useUpdateChampionshipEventConfig(championshipId: number) {
 		mutationFn: ({
 			eventTime,
 			playersPerTeam,
+			skipGuestGoalkeeperMatches,
 		}: {
 			eventTime: string;
 			playersPerTeam: number;
+			skipGuestGoalkeeperMatches: boolean;
 		}) =>
-			updateChampionshipEventConfig(championshipId, eventTime, playersPerTeam),
+			updateChampionshipEventConfig(
+				championshipId,
+				eventTime,
+				playersPerTeam,
+				skipGuestGoalkeeperMatches,
+			),
 		onSuccess: async () => {
 			await invalidateChampionshipQueries(queryClient);
 		},

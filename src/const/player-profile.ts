@@ -2,11 +2,9 @@ import { applyEventRatingDelta } from "./event-rating-adjustment.ts";
 import { rosterSafeCount } from "./roster-stats.ts";
 
 export const PLAYER_PROFILE_LABEL = {
-	loading: "Carregando perfil...",
 	notFound: "Jogador não encontrado",
 	championshipError: "Erro ao carregar campeonato",
 	eventsError: "Erro ao carregar rodadas",
-	eventsLoading: "Carregando rodadas...",
 	career: "Carreira",
 	history: "Histórico",
 	emptyHistory: "Ainda não jogou",
@@ -27,6 +25,7 @@ export const PLAYER_PROFILE_HISTORY_COLUMN = {
 	assists: "assists",
 	own_goals: "own_goals",
 	wins: "wins",
+	mvps: "mvps",
 	matches: "matches",
 	delta: "delta",
 } as const;
@@ -40,6 +39,7 @@ export const PLAYER_PROFILE_HISTORY_COLUMNS = [
 	PLAYER_PROFILE_HISTORY_COLUMN.assists,
 	PLAYER_PROFILE_HISTORY_COLUMN.own_goals,
 	PLAYER_PROFILE_HISTORY_COLUMN.wins,
+	PLAYER_PROFILE_HISTORY_COLUMN.mvps,
 	PLAYER_PROFILE_HISTORY_COLUMN.matches,
 	PLAYER_PROFILE_HISTORY_COLUMN.delta,
 ] as const;
@@ -50,6 +50,7 @@ export const PLAYER_PROFILE_HISTORY_ABBR = {
 	assists: "A",
 	own_goals: "GC",
 	wins: "V",
+	mvps: "MVP",
 	matches: "J",
 	delta: "Δ",
 } as const;
@@ -60,6 +61,7 @@ export const PLAYER_PROFILE_HISTORY_COLUMN_LABEL = {
 	assists: "Assistências",
 	own_goals: "Gols contra",
 	wins: "Vitórias",
+	mvps: "MVP",
 	matches: "Jogos",
 	delta: PLAYER_PROFILE_LABEL.delta,
 } as const;
@@ -86,6 +88,7 @@ export type PlayerProfileEventInput = {
 		matches: number;
 		rating: number;
 		rating_delta: number;
+		is_mvp?: boolean;
 	}[];
 };
 
@@ -97,6 +100,7 @@ export type PlayerProfileHistoryRow = {
 	assists: number;
 	ownGoals: number;
 	wins: number;
+	mvps: number;
 	matches: number;
 	ratingFrom: number;
 	ratingDelta: number;
@@ -160,6 +164,7 @@ export function playerProfileHistory(
 					assists: rosterSafeCount(attendance.assists),
 					ownGoals: rosterSafeCount(attendance.own_goals),
 					wins: rosterSafeCount(attendance.wins),
+					mvps: attendance.is_mvp === true ? 1 : 0,
 					matches: rosterSafeCount(attendance.matches),
 					ratingFrom,
 					ratingDelta,

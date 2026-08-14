@@ -2,6 +2,7 @@ import { AppDialog } from "@/components/atoms/app-dialog";
 import { Button } from "@/components/button";
 import { PlayerRating } from "@/components/player-rating";
 import { EVENT_END_LABEL } from "@/const/championship-event";
+import { EVENT_MVP_LABEL } from "@/const/event-mvp";
 import {
 	type EventRatingPreviewRow,
 	formatEventRating,
@@ -12,8 +13,10 @@ import { BUTTON_VARIANT, CHIP_CLASS, ERROR_CLASS } from "@/const/ui";
 type EndEventModalProps = {
 	rows: readonly EventRatingPreviewRow[];
 	ceiling: number;
+	canSetMvp: boolean;
 	isPending: boolean;
 	errorMessage: string | null;
+	onToggleMvp: (playerId: number) => void;
 	onCancel: () => void;
 	onConfirm: () => void;
 };
@@ -37,11 +40,70 @@ function RatingSnapshot({
 	);
 }
 
+function EndEventPreviewCardBody({
+	row,
+	ceiling,
+}: {
+	row: EventRatingPreviewRow;
+	ceiling: number;
+}) {
+	return (
+		<>
+			<p className="truncate text-sm font-medium text-fg">{row.name}</p>
+			{row.isMvp && <span className={CHIP_CLASS}>{EVENT_MVP_LABEL.badge}</span>}
+			<div className="mt-1 flex flex-nowrap items-center gap-1 overflow-hidden">
+				<RatingSnapshot rating={row.from} ceiling={ceiling} />
+				<span className="text-xs font-bold text-fg">→</span>
+				<RatingSnapshot rating={row.to} ceiling={ceiling} />
+			</div>
+		</>
+	);
+}
+
+function EndEventPreviewCard({
+	row,
+	ceiling,
+	canSetMvp,
+	isPending,
+	onToggleMvp,
+}: {
+	row: EventRatingPreviewRow;
+	ceiling: number;
+	canSetMvp: boolean;
+	isPending: boolean;
+	onToggleMvp: (playerId: number) => void;
+}) {
+	const body = <EndEventPreviewCardBody row={row} ceiling={ceiling} />;
+
+	if (!canSetMvp) {
+		return <li className="rounded-lg border border-line p-2">{body}</li>;
+	}
+
+	const borderClass = row.isMvp ? "border-pitch" : "border-line";
+
+	return (
+		<li>
+			<button
+				type="button"
+				className={`w-full rounded-lg border p-2 text-left ${borderClass}`}
+				disabled={isPending}
+				onClick={() => {
+					onToggleMvp(row.playerId);
+				}}
+			>
+				{body}
+			</button>
+		</li>
+	);
+}
+
 export function EndEventModal({
 	rows,
 	ceiling,
+	canSetMvp,
 	isPending,
 	errorMessage,
+	onToggleMvp,
 	onCancel,
 	onConfirm,
 }: EndEventModalProps) {
@@ -52,22 +114,22 @@ export function EndEventModal({
 					{EVENT_END_LABEL.title}
 				</p>
 				<p className="mb-3 text-sm text-fg-muted">{EVENT_END_LABEL.hint}</p>
+				{canSetMvp && (
+					<p className="mb-3 text-sm text-fg-muted">
+						{EVENT_MVP_LABEL.toggleHint}
+					</p>
+				)}
 				{rows.length > 0 && (
 					<ul className="mb-3 grid grid-cols-3 gap-2">
 						{rows.map((row) => (
-							<li
+							<EndEventPreviewCard
 								key={row.playerId}
-								className="rounded-lg border border-line p-2"
-							>
-								<p className="truncate text-sm font-medium text-fg">
-									{row.name}
-								</p>
-								<div className="mt-1 flex flex-nowrap items-center gap-1 overflow-hidden">
-									<RatingSnapshot rating={row.from} ceiling={ceiling} />
-									<span className="text-xs font-bold text-fg">→</span>
-									<RatingSnapshot rating={row.to} ceiling={ceiling} />
-								</div>
-							</li>
+								row={row}
+								ceiling={ceiling}
+								canSetMvp={canSetMvp}
+								isPending={isPending}
+								onToggleMvp={onToggleMvp}
+							/>
 						))}
 					</ul>
 				)}

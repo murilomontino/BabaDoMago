@@ -98,7 +98,9 @@ export function DataTable<TData extends RowData>({
 				id: item.id,
 				label: item.label,
 				visible: column.getIsVisible(),
-				onToggle: column.getToggleVisibilityHandler(),
+				onToggle: (visible: boolean) => {
+					column.toggleVisibility(visible);
+				},
 			},
 		];
 	});

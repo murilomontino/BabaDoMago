@@ -14,6 +14,8 @@ export type ChampionshipEventAttendance = {
 	matches: number;
 	rating: number;
 	rating_delta: number;
+	is_mvp: boolean;
+	mvp_overridden: boolean;
 };
 
 export type ChampionshipEventTeamPlayer = {
@@ -41,7 +43,9 @@ export type ChampionshipEventMatchPlayer = {
 	player_id: number;
 	display_name: string;
 	is_goalkeeper: boolean;
-	slot: number;
+	slot: number | null;
+	is_substituted: boolean;
+	include_stats: boolean;
 };
 
 export type ChampionshipEventGoal = {

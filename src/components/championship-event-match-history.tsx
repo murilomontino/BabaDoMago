@@ -12,6 +12,7 @@ import {
 } from "@/const/championship-event";
 import {
 	EVENT_MATCH_LABEL,
+	EVENT_MATCH_SUBSTITUTION_LABEL,
 	formatMatchScore,
 	isOpenMatch,
 	matchScore,
@@ -59,6 +60,7 @@ function fallbackRosterPlayer(
 		own_goals: 0,
 		wins: 0,
 		matches: 0,
+		mvps: 0,
 	};
 }
 
@@ -122,6 +124,11 @@ function MatchLineupPlayer({
 				alignEnd ? "justify-end" : "justify-start"
 			}`}
 		>
+			{row.is_substituted && (
+				<span className={CHIP_CLASS}>
+					{EVENT_MATCH_SUBSTITUTION_LABEL.chip}
+				</span>
+			)}
 			{isGoalkeeper && (
 				<span className={CHIP_CLASS}>
 					{EVENT_TEAM_POSITION_LABEL[position]}

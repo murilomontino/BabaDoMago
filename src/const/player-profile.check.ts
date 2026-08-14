@@ -100,6 +100,7 @@ const endedNewer = {
 			matches: 3,
 			rating: 49.5,
 			rating_delta: 1.2,
+			is_mvp: true,
 		},
 	],
 };
@@ -118,6 +119,7 @@ check(history.length === 2, "two ended rows");
 check(history[0]?.eventId === 4, "newest first");
 check(history[1]?.eventId === 3, "older second");
 check(history[0]?.goals === 2, "newer goals");
+check(history[0]?.mvps === 1, "newer mvp");
 check(history[1]?.ownGoals === 1, "older own goals");
 check(history[0]?.ratingDelta === 1.2, "newer delta");
 check(history[1]?.ratingDelta === -0.5, "older delta");

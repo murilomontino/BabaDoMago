@@ -190,7 +190,9 @@ export function AddEventTeamModal({
 										key={`slot-${slot}`}
 										className={EVENT_TEAM_PLAYER_SLOT_CLASS}
 									>
-										<span className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}>
+										<span
+											className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}
+										>
 											{EVENT_TEAM_POSITION_LABEL[eventTeamSlotPosition(slot)]}
 										</span>
 										{player && (

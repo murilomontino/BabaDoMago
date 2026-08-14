@@ -2,9 +2,11 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Field, Form, Formik } from "formik";
 import { CalendarDays, ChevronRight, Plus } from "lucide-react";
 import { useState } from "react";
+import { SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
 import { FormError } from "@/components/form-error";
+import { ListRowSkeleton } from "@/components/molecules/list-row-skeleton";
 import { SectionCard } from "@/components/section-card";
 import {
 	championshipEventToday,
@@ -18,6 +20,11 @@ import {
 import { CHAMPIONSHIP_TAB_LABEL } from "@/const/championship-tab";
 import { startEventFormSchema } from "@/const/form-schema";
 import { ROUTES } from "@/const/routes";
+import {
+	LIST_ROW_SKELETON_VARIANT,
+	SKELETON_LABEL,
+	SKELETON_LIST_ROWS,
+} from "@/const/skeleton";
 import {
 	BUTTON_VARIANT,
 	CHIP_CLASS,
@@ -62,7 +69,7 @@ export function ChampionshipEvents({
 	}
 
 	if (eventsQuery.isPending) {
-		return <p className="text-fg-muted">Carregando rodadas...</p>;
+		return <ChampionshipEventsSkeleton />;
 	}
 
 	if (eventsQuery.isError) {
@@ -198,5 +205,25 @@ export function ChampionshipEvents({
 				</ul>
 			)}
 		</SectionCard>
+	);
+}
+
+function ChampionshipEventsSkeleton() {
+	return (
+		<SkeletonRegion label={SKELETON_LABEL.events}>
+			<SectionCard
+				title={CHAMPIONSHIP_TAB_LABEL.events}
+				icon={<CalendarDays className="size-4 text-pitch-fg" />}
+			>
+				<ul className="space-y-2">
+					{SKELETON_LIST_ROWS.map((row) => (
+						<ListRowSkeleton
+							key={row}
+							variant={LIST_ROW_SKELETON_VARIANT.event}
+						/>
+					))}
+				</ul>
+			</SectionCard>
+		</SkeletonRegion>
 	);
 }

@@ -1,4 +1,4 @@
-import { number, object, string } from "yup";
+import { boolean, number, object, string } from "yup";
 import { CHAMPIONSHIP_EVENT } from "./championship-event.ts";
 import { PLAYER_NICKNAME } from "./player-name.ts";
 import { parsePlayerNameList } from "./player-name-list.ts";
@@ -75,6 +75,7 @@ export const eventConfigFormSchema = object({
 			FORM_MESSAGE.playersPerTeamInvalid,
 		)
 		.required(FORM_MESSAGE.playersPerTeamInvalid),
+	skipGuestGoalkeeperMatches: boolean().required(),
 });
 
 export const startEventFormSchema = object({

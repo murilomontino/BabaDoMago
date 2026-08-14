@@ -1,6 +1,8 @@
+import { CHAMPIONSHIP_EVENT } from "./championship-event.ts";
 import {
 	addPlayerFormSchema,
 	deleteChampionshipSchema,
+	eventConfigFormSchema,
 	FORM_MESSAGE,
 	mergePlayersSchema,
 	nameFormSchema,
@@ -117,6 +119,22 @@ check(
 		eventTime: "invalid",
 	}),
 	"start event time invalid",
+);
+
+check(
+	eventConfigFormSchema.isValidSync({
+		eventTime: "19:00",
+		playersPerTeam: CHAMPIONSHIP_EVENT.playersPerTeamDefault,
+		skipGuestGoalkeeperMatches: true,
+	}),
+	"event config ok",
+);
+check(
+	!eventConfigFormSchema.isValidSync({
+		eventTime: "19:00",
+		playersPerTeam: CHAMPIONSHIP_EVENT.playersPerTeamDefault,
+	}),
+	"event config needs guest keeper flag",
 );
 
 const deleteSchema = deleteChampionshipSchema("Baba do Mago");

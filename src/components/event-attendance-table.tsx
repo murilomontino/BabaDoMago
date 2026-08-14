@@ -1,5 +1,6 @@
 import { createColumnHelper } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
+import { Switch } from "@/components/atoms/switch";
 import { Button } from "@/components/button";
 import {
 	DataTable,
@@ -164,14 +165,19 @@ export function EventAttendanceTable({
 					return (
 						<label
 							htmlFor={inputId}
-							className="pointer-events-none inline-flex"
+							className="inline-flex"
+							onClick={(event) => {
+								event.stopPropagation();
+							}}
+							onKeyDown={(event) => {
+								event.stopPropagation();
+							}}
 						>
-							<input
+							<Switch
 								id={inputId}
-								type="checkbox"
 								checked={row.original.present}
-								onChange={() => {
-									onSetPresent([row.original.id], !row.original.present);
+								onCheckedChange={(checked) => {
+									onSetPresent([row.original.id], checked);
 								}}
 							/>
 						</label>
@@ -201,16 +207,12 @@ export function EventAttendanceTable({
 								event.stopPropagation();
 							}}
 						>
-							<input
+							<Switch
 								id={inputId}
-								type="checkbox"
 								checked={row.original.goalkeeper}
 								disabled={!onSetGoalkeeper}
-								onChange={() => {
-									onSetGoalkeeper?.(
-										[row.original.id],
-										!row.original.goalkeeper,
-									);
+								onCheckedChange={(checked) => {
+									onSetGoalkeeper?.([row.original.id], checked);
 								}}
 							/>
 						</label>

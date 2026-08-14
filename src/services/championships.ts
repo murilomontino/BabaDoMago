@@ -23,10 +23,10 @@ import type {
 } from "@/types/championship";
 
 const PLAYER_COLUMNS =
-	"id, championship_id, user_id, display_name, nickname, avatar_url, rating, role, deleted_at, goals, assists, own_goals, wins, matches" as const;
+	"id, championship_id, user_id, display_name, nickname, avatar_url, rating, role, deleted_at, goals, assists, own_goals, wins, matches, mvps" as const;
 
 const CHAMPIONSHIP_COLUMNS =
-	"id, name, invite_code, created_by, logo_path, event_time, players_per_team, is_visible" as const;
+	"id, name, invite_code, created_by, logo_path, event_time, players_per_team, skip_guest_goalkeeper_matches, is_visible" as const;
 
 function asChampionship(value: unknown): Championship {
 	if (!value || typeof value !== "object") {
@@ -46,6 +46,7 @@ function asChampionship(value: unknown): Championship {
 		logo_path: typeof row.logo_path === "string" ? row.logo_path : null,
 		event_time: parseEventTime(row.event_time),
 		players_per_team: parsePlayersPerTeam(row.players_per_team),
+		skip_guest_goalkeeper_matches: row.skip_guest_goalkeeper_matches !== false,
 		is_visible: row.is_visible !== false,
 	};
 }
@@ -84,6 +85,7 @@ function asPlayer(value: unknown): ChampionshipPlayer {
 		own_goals: rosterSafeCount(row.own_goals),
 		wins: rosterSafeCount(row.wins),
 		matches: rosterSafeCount(row.matches),
+		mvps: rosterSafeCount(row.mvps),
 	};
 }
 
@@ -322,6 +324,7 @@ export async function updateChampionshipEventConfig(
 	championshipId: number,
 	eventTime: string,
 	playersPerTeam: number,
+	skipGuestGoalkeeperMatches: boolean,
 ): Promise<Championship> {
 	const { data, error } = await supabase.rpc(
 		"update_championship_event_config",
@@ -329,6 +332,7 @@ export async function updateChampionshipEventConfig(
 			championship_id: championshipId,
 			event_time: eventTime,
 			players_per_team: playersPerTeam,
+			skip_guest_goalkeeper_matches: skipGuestGoalkeeperMatches,
 		},
 	);
 
