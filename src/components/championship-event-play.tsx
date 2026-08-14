@@ -30,7 +30,6 @@ import {
 	EVENT_MATCH_SUBSTITUTION_LABEL,
 	type EventMatchEndIntent,
 	formatMatchScore,
-	lastMatchGoal,
 	matchActiveTeamPlayers,
 	matchAssistCandidates,
 	matchBenchPlayerIds,
@@ -135,7 +134,7 @@ type ChampionshipEventPlayProps = {
 		assistPlayerId: number | null;
 		isOwnGoal: boolean;
 	}) => Promise<void>;
-	onUndoLastGoal: () => Promise<void>;
+	onUndoGoal: (goalId: number) => Promise<void>;
 	onEnd: () => Promise<void>;
 	onNext: () => Promise<void>;
 };
@@ -368,7 +367,7 @@ export function ChampionshipEventPlay({
 	onSetPlayer,
 	onSetGoalkeeper,
 	onAddGoal,
-	onUndoLastGoal,
+	onUndoGoal,
 	onEnd,
 	onNext,
 }: ChampionshipEventPlayProps) {
@@ -445,7 +444,6 @@ export function ChampionshipEventPlay({
 			.map((player) => player.player_id),
 	);
 	const score = matchScore(match.goals, teamAIds);
-	const lastGoal = lastMatchGoal(match.goals);
 	const starA =
 		matchTeamStarName(match.players, match.team_a_id, rosterById) ??
 		eventTeamName(teamA.color, teamA.sort_order);
@@ -558,6 +556,14 @@ export function ChampionshipEventPlay({
 				<MatchGoalTimeline
 					goals={match.goals}
 					teamAPlayerIds={teamAIds}
+					undoDisabled={busy}
+					onUndoGoal={(goalId) => {
+						if (busy) {
+							return;
+						}
+
+						void onUndoGoal(goalId);
+					}}
 					playerName={(playerId) => {
 						const row = matchPlayerById.get(playerId);
 						return playerVisibleName(
@@ -606,17 +612,6 @@ export function ChampionshipEventPlay({
 				<p className={ERROR_CLASS}>
 					{playerError || goalError || undoError || endError}
 				</p>
-			)}
-			{lastGoal && (
-				<Button
-					variant={BUTTON_VARIANT.ghost}
-					disabled={busy}
-					onClick={() => {
-						void onUndoLastGoal();
-					}}
-				>
-					{EVENT_ACTION.undoGoal}
-				</Button>
 			)}
 			<div className="mt-auto grid grid-cols-2 gap-2">
 				<Button

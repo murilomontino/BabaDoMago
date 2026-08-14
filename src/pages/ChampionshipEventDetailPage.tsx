@@ -5,7 +5,6 @@ import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { ChampionshipEventDetail } from "@/components/championship-event-detail";
 import { TeamCardSkeleton } from "@/components/molecules/team-card-skeleton";
 import { PageHeader } from "@/components/page-header";
-import { Tabs } from "@/components/tabs";
 import {
 	countPlayerAttendance,
 	EVENT_BUILDER_STEP_LABEL,
@@ -13,7 +12,6 @@ import {
 	eventStatus,
 	formatEventStartsAt,
 } from "@/const/championship-event";
-import { EVENT_TAB, EVENT_TABS } from "@/const/championship-event-tab";
 import {
 	CHAMPIONSHIP_ROLE,
 	canManageEvent,
@@ -33,6 +31,7 @@ import {
 	useDeleteChampionshipEventMatch,
 	useDeleteChampionshipEventTeam,
 	useEndChampionshipEvent,
+	useReopenChampionshipEventMatch,
 	useSaveChampionshipEventAttendance,
 	useSaveChampionshipEventAttendanceStats,
 	useSaveChampionshipEventTeams,
@@ -61,6 +60,7 @@ export function ChampionshipEventDetailPage() {
 	const updateTeam = useUpdateChampionshipEventTeam(championshipId);
 	const deleteTeam = useDeleteChampionshipEventTeam(championshipId);
 	const deleteMatch = useDeleteChampionshipEventMatch(championshipId);
+	const reopenMatch = useReopenChampionshipEventMatch(championshipId);
 	const endEvent = useEndChampionshipEvent(championshipId);
 	const setMvps = useSetChampionshipEventMvps(championshipId);
 	const deleteEvent = useDeleteChampionshipEvent(championshipId);
@@ -155,6 +155,8 @@ export function ChampionshipEventDetailPage() {
 				deleteMatchError={
 					deleteMatch.isError ? deleteMatch.error.message : null
 				}
+				openingMatch={reopenMatch.isPending}
+				openMatchError={reopenMatch.isError ? reopenMatch.error.message : null}
 				ending={endEvent.isPending}
 				endError={endEvent.isError ? endEvent.error.message : null}
 				settingMvp={setMvps.isPending}
@@ -208,6 +210,19 @@ export function ChampionshipEventDetailPage() {
 				onDeleteMatch={async (matchId) => {
 					await deleteMatch.mutateAsync(matchId);
 				}}
+				onOpenMatch={async (match) => {
+					if (match.ended_at !== null) {
+						await reopenMatch.mutateAsync(match.id);
+					}
+
+					await navigate({
+						to: ROUTES.championshipEventPlay,
+						params: {
+							championshipId: String(championshipId),
+							eventId: String(eventId),
+						},
+					});
+				}}
 				onEnd={async (presentPlayerIds, mvpPlayerIds) => {
 					await endEvent.mutateAsync({
 						eventId: event.id,
@@ -256,11 +271,6 @@ function ChampionshipEventDetailPageSkeleton({
 					</Link>
 				</div>
 				<article className="space-y-6">
-					<Tabs
-						value={EVENT_TAB.event}
-						items={EVENT_TABS}
-						onChange={ignoreEventTabChange}
-					/>
 					<div>
 						<p className="mb-1 text-xs font-medium uppercase tracking-wide text-fg-muted">
 							{EVENT_BUILDER_STEP_LABEL.teams}
@@ -277,8 +287,4 @@ function ChampionshipEventDetailPageSkeleton({
 			</main>
 		</SkeletonRegion>
 	);
-}
-
-function ignoreEventTabChange() {
-	return;
 }

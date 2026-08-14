@@ -6,6 +6,7 @@ import {
 	eventMvpPickCandidates,
 	eventMvpPlayerIds,
 	eventMvpStarDelta,
+	formatEventMvpCount,
 	toggleEventMvpPlayerId,
 } from "./event-mvp.ts";
 
@@ -20,7 +21,12 @@ check(EVENT_MVP.candidateLimit === 3, "candidate limit");
 check(EVENT_MVP_LABEL.badge === "MVP", "badge");
 check(EVENT_MVP_LABEL.toggleHint.includes("nota"), "toggle hint");
 check(EVENT_MVP_LABEL.pickHint.includes("3"), "pick hint");
+check(EVENT_MVP_LABEL.explain.includes("+0,1"), "explain bonus");
+check(EVENT_MVP_LABEL.explain.includes("3"), "explain limit");
 check(eventMvpStarDelta() === 0.1, "bonus fixo no jogador");
+check(formatEventMvpCount(1) === "1/3 MVP", "count 1/3");
+check(formatEventMvpCount(3) === "3/3 MVP", "count 3/3");
+check(formatEventMvpCount(0) === "0/3 MVP", "count 0/3");
 
 const teamA = {
 	id: 1,
@@ -116,6 +122,14 @@ check(
 
 check(toggleEventMvpPlayerId([10], 11).join(",") === "10,11", "toggle add");
 check(toggleEventMvpPlayerId([10, 11], 10).join(",") === "11", "toggle remove");
+check(
+	toggleEventMvpPlayerId([10, 11, 12], 13).join(",") === "10,11,12",
+	"toggle refuses fourth",
+);
+check(
+	toggleEventMvpPlayerId([10, 11, 12], 10).join(",") === "11,12",
+	"toggle remove at limit",
+);
 
 check(
 	eventMvpNames(

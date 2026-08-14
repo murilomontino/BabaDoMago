@@ -10,6 +10,7 @@ import {
 	EVENT_MATCH_END_INTENT,
 	EVENT_MATCH_END_LABEL,
 	EVENT_MATCH_LABEL,
+	EVENT_MATCH_REOPEN_LABEL,
 	EVENT_MATCH_STATUS,
 	EVENT_MATCH_SUBSTITUTION_LABEL,
 	eventMatchEndConfirmLabel,
@@ -420,5 +421,7 @@ check(
 	EVENT_MATCH_END_LABEL.nextConfirm,
 	"next confirm",
 );
+check(EVENT_MATCH_REOPEN_LABEL.title, "Editar partida", "reopen title");
+check(EVENT_MATCH_REOPEN_LABEL.hint.includes("edição"), true, "reopen hint");
 
 console.log("championship-event-match ok");

@@ -42,6 +42,13 @@ export const EVENT_MATCH_END_INTENT = {
 export type EventMatchEndIntent =
 	(typeof EVENT_MATCH_END_INTENT)[keyof typeof EVENT_MATCH_END_INTENT];
 
+export const EVENT_MATCH_REOPEN_LABEL = {
+	title: "Editar partida",
+	hint: "A partida volta para edição. Estatísticas saem até encerrar de novo.",
+	confirm: "Editar",
+	cancel: "Cancelar",
+} as const;
+
 export const EVENT_MATCH_END_LABEL = {
 	title: "Encerrar partida",
 	nextTitle: "Próxima partida",

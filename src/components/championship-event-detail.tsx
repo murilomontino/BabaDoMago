@@ -34,6 +34,7 @@ import {
 } from "@/components/event-team-player";
 import { IconTooltipButton } from "@/components/molecules/icon-tooltip-button";
 import { PlayerRating } from "@/components/player-rating";
+import { ReopenEventMatchModal } from "@/components/reopen-event-match-modal";
 import { SetEventMvpModal } from "@/components/set-event-mvp-modal";
 import { Tabs } from "@/components/tabs";
 import {
@@ -63,15 +64,20 @@ import {
 } from "@/const/championship-event";
 import {
 	EVENT_MATCH_LABEL,
+	isOpenMatch,
 	matchPlayUrl,
 	openEventMatch,
 } from "@/const/championship-event-match";
-import { EVENT_TAB, EVENT_TABS } from "@/const/championship-event-tab";
+import {
+	EVENT_TAB,
+	EVENT_TABS,
+	showEventDetailTabs,
+} from "@/const/championship-event-tab";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
 import {
 	EVENT_MVP_LABEL,
+	eventMvpCandidates,
 	eventMvpPickCandidates,
-	eventMvpPlayerIds,
 	toggleEventMvpPlayerId,
 } from "@/const/event-mvp";
 import { eventRatingPreview } from "@/const/event-rating-adjustment";
@@ -211,6 +217,7 @@ type ChampionshipEventDetailProps = {
 	}) => Promise<void>;
 	onDeleteTeam: (teamId: number) => Promise<void>;
 	onDeleteMatch: (matchId: number) => Promise<void>;
+	onOpenMatch: (match: ChampionshipEventMatch) => Promise<void>;
 	onEnd: (
 		presentPlayerIds: number[] | null,
 		mvpPlayerIds: number[] | null,
@@ -231,6 +238,8 @@ type ChampionshipEventDetailProps = {
 	deleteTeamError: string | null;
 	deletingMatch: boolean;
 	deleteMatchError: string | null;
+	openingMatch: boolean;
+	openMatchError: string | null;
 	ending: boolean;
 	endError: string | null;
 	settingMvp: boolean;
@@ -310,6 +319,7 @@ export function ChampionshipEventDetail({
 	onUpdateTeam,
 	onDeleteTeam,
 	onDeleteMatch,
+	onOpenMatch,
 	onEnd,
 	onSetMvps,
 	onDelete,
@@ -327,6 +337,8 @@ export function ChampionshipEventDetail({
 	deleteTeamError,
 	deletingMatch,
 	deleteMatchError,
+	openingMatch,
+	openMatchError,
 	ending,
 	endError,
 	settingMvp,
@@ -351,11 +363,17 @@ export function ChampionshipEventDetail({
 	const teamsEditable = canManage && canEditEventTeams(event);
 	const [step, setStep] = useEventBuilderStep();
 	const [tab, setTab] = useEventTab();
-	const selectedTab =
-		tab === EVENT_TAB.podium ? EVENT_TAB.podium : EVENT_TAB.event;
 	const mustBuild =
 		teamsEditable && event.teams.length < CHAMPIONSHIP_EVENT.minTeams;
 	const showTeamBuilder = teamsEditable && (step !== null || mustBuild);
+	const showEventTabs = showEventDetailTabs({
+		showTeamBuilder,
+		attendanceCount: event.attendance.length,
+	});
+	const selectedTab =
+		showEventTabs && tab === EVENT_TAB.podium
+			? EVENT_TAB.podium
+			: EVENT_TAB.event;
 	const builderStep = step ?? EVENT_BUILDER_STEP.attendance;
 	const detailTeams = builderTeamsFromEvent(
 		event.teams,
@@ -393,6 +411,8 @@ export function ChampionshipEventDetail({
 		useState<ChampionshipPlayer | null>(null);
 	const [matchToRemove, setMatchToRemove] =
 		useState<ChampionshipEventMatch | null>(null);
+	const [matchToReopen, setMatchToReopen] =
+		useState<ChampionshipEventMatch | null>(null);
 	const draftPresentIdsRef = useRef(
 		event.attendance.map((row) => row.player_id),
 	);
@@ -401,22 +421,20 @@ export function ChampionshipEventDetail({
 		showTeamBuilder,
 		draftPresentIdsRef.current,
 	);
-	const autoMvpPlayerIds = eventMvpPlayerIds({
-		matches: event.matches,
-		teams: event.teams,
-		attendance: event.attendance,
-	}).filter(
-		(playerId) =>
-			presentPlayerIdsForEnd === null ||
-			presentPlayerIdsForEnd.includes(playerId),
-	);
+	const mvpCandidateIds = eventMvpCandidates(event.attendance)
+		.map((row) => row.playerId)
+		.filter(
+			(playerId) =>
+				presentPlayerIdsForEnd === null ||
+				presentPlayerIdsForEnd.includes(playerId),
+		);
 	const selectedMvpIds = event.attendance.flatMap((row) =>
 		row.is_mvp ? [row.player_id] : [],
 	);
 	const attendanceNameByPlayerId = new Map(
 		event.attendance.map((row) => [row.player_id, row.display_name]),
 	);
-	const mvpPlayerIds = endMvpPlayerIds ?? autoMvpPlayerIds;
+	const mvpPlayerIds = endMvpPlayerIds ?? mvpCandidateIds;
 	const ratingPreview = eventRatingPreview({
 		attendance: event.attendance,
 		players,
@@ -521,18 +539,20 @@ export function ChampionshipEventDetail({
 					</div>
 				</div>
 			)}
-			<Tabs
-				value={selectedTab}
-				items={EVENT_TABS}
-				onChange={(id) => {
-					if (id === EVENT_TAB.event) {
-						void setTab(null);
-						return;
-					}
+			{showEventTabs && (
+				<Tabs
+					value={selectedTab}
+					items={EVENT_TABS}
+					onChange={(id) => {
+						if (id === EVENT_TAB.event) {
+							void setTab(null);
+							return;
+						}
 
-					void setTab(id);
-				}}
-			/>
+						void setTab(id);
+					}}
+				/>
+			)}
 			{selectedTab === EVENT_TAB.event && showTeamBuilder && (
 				<ChampionshipEventBuilder
 					playersPerTeam={event.players_per_team}
@@ -703,6 +723,15 @@ export function ChampionshipEventDetail({
 					teams={event.teams}
 					rosterById={rosterById}
 					showMatchDelete={showMatchDelete}
+					canOpenMatch={!ended}
+					onOpenMatch={(match) => {
+						if (isOpenMatch(match)) {
+							void onOpenMatch(match);
+							return;
+						}
+
+						setMatchToReopen(match);
+					}}
 					onRemoveMatch={setMatchToRemove}
 				/>
 			)}
@@ -799,7 +828,7 @@ export function ChampionshipEventDetail({
 					)}
 				</div>
 			)}
-			{selectedTab === EVENT_TAB.podium && (
+			{showEventTabs && selectedTab === EVENT_TAB.podium && (
 				<ChampionshipPodiumTab
 					players={podiumPlayers}
 					championshipName={championshipName}
@@ -981,6 +1010,29 @@ export function ChampionshipEventDetail({
 					}}
 				/>
 			)}
+			{matchToReopen && (
+				<ReopenEventMatchModal
+					isPending={openingMatch}
+					errorMessage={openMatchError}
+					onCancel={() => {
+						if (openingMatch) {
+							return;
+						}
+
+						setMatchToReopen(null);
+					}}
+					onConfirm={() => {
+						void (async () => {
+							try {
+								await onOpenMatch(matchToReopen);
+								setMatchToReopen(null);
+							} catch {
+								return;
+							}
+						})();
+					}}
+				/>
+			)}
 			{isMvpOpen && (
 				<SetEventMvpModal
 					players={eventMvpPickCandidates(event.attendance, selectedMvpIds).map(
@@ -1020,11 +1072,12 @@ export function ChampionshipEventDetail({
 					rows={ratingPreview}
 					ceiling={previewCeiling}
 					canSetMvp={canSetMvp}
+					mvpCandidateIds={mvpCandidateIds}
 					isPending={ending}
 					errorMessage={endError}
 					onToggleMvp={(playerId) => {
 						setEndMvpPlayerIds((current) =>
-							toggleEventMvpPlayerId(current ?? autoMvpPlayerIds, playerId),
+							toggleEventMvpPlayerId(current ?? mvpCandidateIds, playerId),
 						);
 					}}
 					onCancel={() => {

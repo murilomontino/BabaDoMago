@@ -38,6 +38,8 @@ type ChampionshipEventMatchHistoryProps = {
 	teams: readonly ChampionshipEventTeam[];
 	rosterById: ReadonlyMap<number, ChampionshipPlayer>;
 	showMatchDelete: boolean;
+	canOpenMatch: boolean;
+	onOpenMatch: (match: ChampionshipEventMatch) => void;
 	onRemoveMatch: (match: ChampionshipEventMatch) => void;
 };
 
@@ -144,12 +146,16 @@ function MatchHistoryCard({
 	teamById,
 	rosterById,
 	showMatchDelete,
+	canOpenMatch,
+	onOpenMatch,
 	onRemoveMatch,
 }: {
 	match: ChampionshipEventMatch;
 	teamById: ReadonlyMap<number, ChampionshipEventTeam>;
 	rosterById: ReadonlyMap<number, ChampionshipPlayer>;
 	showMatchDelete: boolean;
+	canOpenMatch: boolean;
+	onOpenMatch: (match: ChampionshipEventMatch) => void;
 	onRemoveMatch: (match: ChampionshipEventMatch) => void;
 }) {
 	const teamA = teamById.get(match.team_a_id);
@@ -168,59 +174,49 @@ function MatchHistoryCard({
 	const matchPlayerById = new Map(
 		match.players.map((row) => [row.player_id, row]),
 	);
-	const cardClass = [CARD_CLASS, open && "ring-1 ring-pitch/40"]
+	const cardClass = [
+		CARD_CLASS,
+		open && "ring-1 ring-pitch/40",
+		canOpenMatch && "hover:bg-surface-muted",
+	]
 		.filter(Boolean)
 		.join(" ");
 
-	return (
-		<li className={cardClass}>
-			<div className="flex items-start gap-2">
-				<div className={`min-w-0 flex-1 ${MATCH_GOAL_TIMELINE_GRID_CLASS}`}>
-					<div className="flex min-w-0 justify-end">
-						<TeamChip color={teamA.color} sortOrder={teamA.sort_order} />
-					</div>
-					<p className="text-2xl font-semibold tabular-nums text-fg">
-						{formatMatchScore(score.teamA, score.teamB)}
-					</p>
-					<div className="flex min-w-0 justify-start">
-						<TeamChip color={teamB.color} sortOrder={teamB.sort_order} />
-					</div>
-					<div className="col-span-3 flex items-center justify-center gap-2">
-						{open && (
-							<span className={CHIP_CLASS}>{EVENT_MATCH_LABEL.open}</span>
-						)}
-						{!open && winner && (
-							<TeamChip color={winner.color} sortOrder={winner.sort_order} />
-						)}
-						{!open && !winner && (
-							<span className={CHIP_CLASS}>{EVENT_MATCH_LABEL.draw}</span>
-						)}
-					</div>
-					<MatchGoalTimeline
-						goals={match.goals}
-						teamAPlayerIds={teamAIds}
-						playerName={(playerId) => {
-							const row = matchPlayerById.get(playerId);
-							return playerVisibleName(
-								resolveRosterPlayer(
-									playerId,
-									row?.display_name ?? "",
-									rosterById,
-								),
-							);
-						}}
-					/>
+	const body = (
+		<>
+			<div className={MATCH_GOAL_TIMELINE_GRID_CLASS}>
+				<div className="flex min-w-0 justify-end">
+					<TeamChip color={teamA.color} sortOrder={teamA.sort_order} />
 				</div>
-				{showMatchDelete && (
-					<button
-						type="button"
-						aria-label={EVENT_ACTION.removeMatch}
-						className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-muted hover:text-danger-fg"
-						onClick={() => onRemoveMatch(match)}
-					>
-						<X className="size-4" />
-					</button>
-				)}
+				<p className="text-2xl font-semibold tabular-nums text-fg">
+					{formatMatchScore(score.teamA, score.teamB)}
+				</p>
+				<div className="flex min-w-0 justify-start">
+					<TeamChip color={teamB.color} sortOrder={teamB.sort_order} />
+				</div>
+				<div className="col-span-3 flex items-center justify-center gap-2">
+					{open && <span className={CHIP_CLASS}>{EVENT_MATCH_LABEL.open}</span>}
+					{!open && winner && (
+						<TeamChip color={winner.color} sortOrder={winner.sort_order} />
+					)}
+					{!open && !winner && (
+						<span className={CHIP_CLASS}>{EVENT_MATCH_LABEL.draw}</span>
+					)}
+				</div>
+				<MatchGoalTimeline
+					goals={match.goals}
+					teamAPlayerIds={teamAIds}
+					playerName={(playerId) => {
+						const row = matchPlayerById.get(playerId);
+						return playerVisibleName(
+							resolveRosterPlayer(
+								playerId,
+								row?.display_name ?? "",
+								rosterById,
+							),
+						);
+					}}
+				/>
 			</div>
 			{match.players.length > 0 && (
 				<div className="mt-3 grid grid-cols-2 gap-2 border-t border-line pt-2">
@@ -246,6 +242,39 @@ function MatchHistoryCard({
 					</ul>
 				</div>
 			)}
+		</>
+	);
+
+	return (
+		<li className={cardClass}>
+			<div className="flex items-start gap-2">
+				{canOpenMatch && (
+					<button
+						type="button"
+						aria-label={EVENT_ACTION.editMatch}
+						className="min-w-0 flex-1 text-left"
+						onClick={() => {
+							onOpenMatch(match);
+						}}
+					>
+						{body}
+					</button>
+				)}
+				{!canOpenMatch && <div className="min-w-0 flex-1">{body}</div>}
+				{showMatchDelete && (
+					<button
+						type="button"
+						aria-label={EVENT_ACTION.removeMatch}
+						className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-muted hover:text-danger-fg"
+						onClick={(event) => {
+							event.stopPropagation();
+							onRemoveMatch(match);
+						}}
+					>
+						<X className="size-4" />
+					</button>
+				)}
+			</div>
 		</li>
 	);
 }
@@ -255,6 +284,8 @@ export function ChampionshipEventMatchHistory({
 	teams,
 	rosterById,
 	showMatchDelete,
+	canOpenMatch,
+	onOpenMatch,
 	onRemoveMatch,
 }: ChampionshipEventMatchHistoryProps) {
 	const teamById = new Map(teams.map((team) => [team.id, team]));
@@ -276,6 +307,8 @@ export function ChampionshipEventMatchHistory({
 							teamById={teamById}
 							rosterById={rosterById}
 							showMatchDelete={showMatchDelete}
+							canOpenMatch={canOpenMatch}
+							onOpenMatch={onOpenMatch}
 							onRemoveMatch={onRemoveMatch}
 						/>
 					))}

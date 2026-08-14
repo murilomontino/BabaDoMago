@@ -15,6 +15,7 @@ import {
 	endChampionshipEventMatch,
 	getChampionshipEventById,
 	listChampionshipEvents,
+	reopenChampionshipEventMatch,
 	saveChampionshipEventAttendance,
 	saveChampionshipEventAttendanceStats,
 	saveChampionshipEventTeams,
@@ -335,7 +336,8 @@ export function useUndoChampionshipEventGoal(_championshipId: number) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: (matchId: number) => undoChampionshipEventGoal(matchId),
+		mutationFn: ({ matchId, goalId }: { matchId: number; goalId: number }) =>
+			undoChampionshipEventGoal(matchId, goalId),
 		onSuccess: async () => {
 			await invalidateChampionshipEventQueries(queryClient);
 		},
@@ -347,6 +349,20 @@ export function useEndChampionshipEventMatch(_championshipId: number) {
 
 	return useMutation({
 		mutationFn: (matchId: number) => endChampionshipEventMatch(matchId),
+		onSuccess: async () => {
+			await Promise.all([
+				invalidateChampionshipEventQueries(queryClient),
+				invalidateChampionshipQueries(queryClient),
+			]);
+		},
+	});
+}
+
+export function useReopenChampionshipEventMatch(_championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (matchId: number) => reopenChampionshipEventMatch(matchId),
 		onSuccess: async () => {
 			await Promise.all([
 				invalidateChampionshipEventQueries(queryClient),

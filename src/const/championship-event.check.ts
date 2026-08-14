@@ -605,8 +605,16 @@ check(
 	EVENT_ERROR_MESSAGE["no goal to undo"],
 );
 check(
+	championshipEventErrorMessage("goal not found"),
+	EVENT_ERROR_MESSAGE["goal not found"],
+);
+check(
 	championshipEventErrorMessage("player substituted"),
 	EVENT_ERROR_MESSAGE["player substituted"],
+);
+check(
+	championshipEventErrorMessage("match already open"),
+	EVENT_ERROR_MESSAGE["match already open"],
 );
 
 const playerEventDraft = playerEventStatsFromAttendance({

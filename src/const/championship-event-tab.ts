@@ -28,3 +28,10 @@ export const EVENT_TAB_SEARCH_KEY = "tab" as const;
 export const EVENT_TAB_SEARCH = {
 	tab: parseAsStringEnum<EventTab>(Object.values(EVENT_TAB)),
 };
+
+export function showEventDetailTabs(input: {
+	showTeamBuilder: boolean;
+	attendanceCount: number;
+}): boolean {
+	return !input.showTeamBuilder && input.attendanceCount > 0;
+}

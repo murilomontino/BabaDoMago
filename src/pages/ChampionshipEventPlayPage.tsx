@@ -172,12 +172,15 @@ export function ChampionshipEventPlayPage() {
 							...values,
 						});
 					}}
-					onUndoLastGoal={async () => {
+					onUndoGoal={async (goalId) => {
 						if (!openMatch) {
 							return;
 						}
 
-						await undoGoal.mutateAsync(openMatch.id);
+						await undoGoal.mutateAsync({
+							matchId: openMatch.id,
+							goalId,
+						});
 					}}
 					onEnd={async () => {
 						if (!openMatch) {

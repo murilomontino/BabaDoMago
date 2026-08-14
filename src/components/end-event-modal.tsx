@@ -1,8 +1,9 @@
 import { AppDialog } from "@/components/atoms/app-dialog";
 import { Button } from "@/components/button";
+import { EVENT_TEAM_POSITION_CHIP_CLASS } from "@/components/event-team-player";
 import { PlayerRating } from "@/components/player-rating";
 import { EVENT_END_LABEL } from "@/const/championship-event";
-import { EVENT_MVP_LABEL } from "@/const/event-mvp";
+import { EVENT_MVP_LABEL, formatEventMvpCount } from "@/const/event-mvp";
 import {
 	type EventRatingPreviewRow,
 	formatEventRating,
@@ -14,6 +15,7 @@ type EndEventModalProps = {
 	rows: readonly EventRatingPreviewRow[];
 	ceiling: number;
 	canSetMvp: boolean;
+	mvpCandidateIds: readonly number[];
 	isPending: boolean;
 	errorMessage: string | null;
 	onToggleMvp: (playerId: number) => void;
@@ -49,8 +51,16 @@ function EndEventPreviewCardBody({
 }) {
 	return (
 		<>
-			<p className="truncate text-sm font-medium text-fg">{row.name}</p>
-			{row.isMvp && <span className={CHIP_CLASS}>{EVENT_MVP_LABEL.badge}</span>}
+			<div className="flex min-w-0 items-center gap-1">
+				<p className="min-w-0 truncate text-sm font-medium text-fg">
+					{row.name}
+				</p>
+				{row.isMvp && (
+					<span className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}>
+						{EVENT_MVP_LABEL.badge}
+					</span>
+				)}
+			</div>
 			<div className="mt-1 flex flex-nowrap items-center gap-1 overflow-hidden">
 				<RatingSnapshot rating={row.from} ceiling={ceiling} />
 				<span className="text-xs font-bold text-fg">→</span>
@@ -63,19 +73,19 @@ function EndEventPreviewCardBody({
 function EndEventPreviewCard({
 	row,
 	ceiling,
-	canSetMvp,
+	canToggleMvp,
 	isPending,
 	onToggleMvp,
 }: {
 	row: EventRatingPreviewRow;
 	ceiling: number;
-	canSetMvp: boolean;
+	canToggleMvp: boolean;
 	isPending: boolean;
 	onToggleMvp: (playerId: number) => void;
 }) {
 	const body = <EndEventPreviewCardBody row={row} ceiling={ceiling} />;
 
-	if (!canSetMvp) {
+	if (!canToggleMvp) {
 		return <li className="rounded-lg border border-line p-2">{body}</li>;
 	}
 
@@ -101,12 +111,16 @@ export function EndEventModal({
 	rows,
 	ceiling,
 	canSetMvp,
+	mvpCandidateIds,
 	isPending,
 	errorMessage,
 	onToggleMvp,
 	onCancel,
 	onConfirm,
 }: EndEventModalProps) {
+	const candidateIds = new Set(mvpCandidateIds);
+	const mvpCount = rows.filter((row) => row.isMvp).length;
+
 	return (
 		<AppDialog onClose={onCancel}>
 			<div className="max-h-[90dvh] w-full max-w-5xl overflow-y-auto rounded-xl bg-surface p-4 shadow-lg">
@@ -114,6 +128,10 @@ export function EndEventModal({
 					{EVENT_END_LABEL.title}
 				</p>
 				<p className="mb-3 text-sm text-fg-muted">{EVENT_END_LABEL.hint}</p>
+				<p className="mb-3 text-sm text-fg-muted">{EVENT_MVP_LABEL.explain}</p>
+				<p className="mb-3">
+					<span className={CHIP_CLASS}>{formatEventMvpCount(mvpCount)}</span>
+				</p>
 				{canSetMvp && (
 					<p className="mb-3 text-sm text-fg-muted">
 						{EVENT_MVP_LABEL.toggleHint}
@@ -126,7 +144,7 @@ export function EndEventModal({
 								key={row.playerId}
 								row={row}
 								ceiling={ceiling}
-								canSetMvp={canSetMvp}
+								canToggleMvp={canSetMvp && candidateIds.has(row.playerId)}
 								isPending={isPending}
 								onToggleMvp={onToggleMvp}
 							/>

@@ -591,9 +591,11 @@ export async function addChampionshipEventGoal(
 
 export async function undoChampionshipEventGoal(
 	matchId: number,
+	goalId: number,
 ): Promise<void> {
 	const { error } = await supabase.rpc("undo_championship_event_goal", {
 		match_id: matchId,
+		goal_id: goalId,
 	});
 
 	if (error) {
@@ -605,6 +607,18 @@ export async function endChampionshipEventMatch(
 	matchId: number,
 ): Promise<void> {
 	const { error } = await supabase.rpc("end_championship_event_match", {
+		match_id: matchId,
+	});
+
+	if (error) {
+		throwEventError(error);
+	}
+}
+
+export async function reopenChampionshipEventMatch(
+	matchId: number,
+): Promise<void> {
+	const { error } = await supabase.rpc("reopen_championship_event_match", {
 		match_id: matchId,
 	});
 

@@ -14,6 +14,8 @@ export const EVENT_MVP_LABEL = {
 	pick: "Escolher MVP",
 	pickHint: "Os 3 com melhor estatística desta rodada.",
 	pickEmpty: "Ninguém com estatística nesta rodada.",
+	explain:
+		"MVP é o destaque da rodada. Ganha +0,1 na nota. Até 3 jogadores, pelos melhores números.",
 	toggleHint: "Toque para marcar ou desmarcar. A nota muda na hora.",
 	save: "Salvar",
 	cancel: "Cancelar",
@@ -98,6 +100,10 @@ export function eventMvpStarDelta(): number {
 	return EVENT_MVP.starBonus;
 }
 
+export function formatEventMvpCount(selected: number): string {
+	return `${selected}/${EVENT_MVP.candidateLimit} ${EVENT_MVP_LABEL.badge}`;
+}
+
 export function eventMvpPlayerIds({
 	matches,
 	teams,
@@ -169,6 +175,10 @@ export function toggleEventMvpPlayerId(
 ): number[] {
 	if (selected.includes(playerId)) {
 		return selected.filter((id) => id !== playerId);
+	}
+
+	if (selected.length >= EVENT_MVP.candidateLimit) {
+		return [...selected];
 	}
 
 	return [...selected, playerId];

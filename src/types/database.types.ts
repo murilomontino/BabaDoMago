@@ -647,8 +647,12 @@ export type Database = {
 				Args: { player_id: number };
 				Returns: Json;
 			};
-			undo_championship_event_goal: {
+			reopen_championship_event_match: {
 				Args: { match_id: number };
+				Returns: Json;
+			};
+			undo_championship_event_goal: {
+				Args: { match_id: number; goal_id: number };
 				Returns: Json;
 			};
 			unlink_player: {
