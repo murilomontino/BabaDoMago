@@ -1,8 +1,10 @@
-import { Shield } from "lucide-react";
+import { Settings, Shield } from "lucide-react";
 import type { FormEvent } from "react";
 import { ChampionshipLogo } from "@/components/championship-logo";
+import { IconTooltipButton } from "@/components/molecules/icon-tooltip-button";
 import { CHAMPIONSHIP_LOGO } from "@/const/championship-logo";
-import { CARD_CLASS, ERROR_CLASS } from "@/const/ui";
+import { CHAMPIONSHIP_TAB_LABEL } from "@/const/championship-tab";
+import { BUTTON_VARIANT, CARD_CLASS, ERROR_CLASS } from "@/const/ui";
 
 type ChampionshipDetailHeaderProps = {
 	name: string;
@@ -12,7 +14,10 @@ type ChampionshipDetailHeaderProps = {
 	isUploading: boolean;
 	logoSourceError: string | null;
 	uploadError: string | null;
+	canOpenSettings: boolean;
+	isSettingsOpen: boolean;
 	onLogoChange: (event: FormEvent<HTMLInputElement>) => void;
+	onToggleSettings: () => void;
 };
 
 export function ChampionshipDetailHeader({
@@ -23,7 +28,10 @@ export function ChampionshipDetailHeader({
 	isUploading,
 	logoSourceError,
 	uploadError,
+	canOpenSettings,
+	isSettingsOpen,
 	onLogoChange,
+	onToggleSettings,
 }: ChampionshipDetailHeaderProps) {
 	return (
 		<section className={CARD_CLASS}>
@@ -59,6 +67,17 @@ export function ChampionshipDetailHeader({
 						{roleLabel}
 					</span>
 				</div>
+				{canOpenSettings && (
+					<IconTooltipButton
+						label={CHAMPIONSHIP_TAB_LABEL.settings}
+						icon={<Settings className="size-4" />}
+						pressed={isSettingsOpen}
+						variant={
+							isSettingsOpen ? BUTTON_VARIANT.primary : BUTTON_VARIANT.secondary
+						}
+						onClick={onToggleSettings}
+					/>
+				)}
 			</div>
 			{logoSourceError && (
 				<p className={`mt-3 ${ERROR_CLASS}`}>{logoSourceError}</p>

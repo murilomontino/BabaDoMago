@@ -76,7 +76,7 @@ export function ChampionshipEventDetailPage() {
 	);
 
 	if (championshipQuery.isPending || eventQuery.isPending) {
-		return <p className="text-fg-muted">Carregando evento...</p>;
+		return <p className="text-fg-muted">Carregando rodada...</p>;
 	}
 
 	if (championshipQuery.isError) {
@@ -90,7 +90,7 @@ export function ChampionshipEventDetailPage() {
 	if (eventQuery.isError) {
 		return (
 			<p className={ERROR_CLASS}>
-				Erro ao carregar evento: {eventQuery.error.message}
+				Erro ao carregar rodada: {eventQuery.error.message}
 			</p>
 		);
 	}

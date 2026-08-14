@@ -15,6 +15,7 @@ import {
 	formatEventStartsAt,
 	parseEventTime,
 } from "@/const/championship-event";
+import { CHAMPIONSHIP_TAB_LABEL } from "@/const/championship-tab";
 import { startEventFormSchema } from "@/const/form-schema";
 import { ROUTES } from "@/const/routes";
 import {
@@ -61,20 +62,20 @@ export function ChampionshipEvents({
 	}
 
 	if (eventsQuery.isPending) {
-		return <p className="text-fg-muted">Carregando eventos...</p>;
+		return <p className="text-fg-muted">Carregando rodadas...</p>;
 	}
 
 	if (eventsQuery.isError) {
 		return (
 			<p className={ERROR_CLASS}>
-				Erro ao carregar eventos: {eventsQuery.error.message}
+				Erro ao carregar rodadas: {eventsQuery.error.message}
 			</p>
 		);
 	}
 
 	return (
 		<SectionCard
-			title="Eventos"
+			title={CHAMPIONSHIP_TAB_LABEL.events}
 			icon={<CalendarDays className="size-4 text-pitch-fg" />}
 			action={
 				canManage &&
@@ -150,8 +151,8 @@ export function ChampionshipEvents({
 			{!isCreating && events.length === 0 && (
 				<EmptyState
 					icon={<CalendarDays className="size-10" />}
-					title="Nenhum evento ainda"
-					description="Crie um evento para montar os times depois."
+					title="Nenhuma rodada ainda"
+					description="Crie uma rodada para montar os times depois."
 					action={
 						canManage && (
 							<Button onClick={() => setIsCreating(true)}>

@@ -1,6 +1,7 @@
 import { UserX } from "lucide-react";
 import { ChampionshipRoster } from "@/components/championship-roster";
 import { SectionCard } from "@/components/section-card";
+import { CHAMPIONSHIP_TAB_LABEL } from "@/const/championship-tab";
 import { ERROR_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 
@@ -23,7 +24,7 @@ export function ChampionshipDeactivatedTab({
 }: ChampionshipDeactivatedTabProps) {
 	return (
 		<SectionCard
-			title="Desativados"
+			title={CHAMPIONSHIP_TAB_LABEL.deactivated}
 			icon={<UserX className="size-4 text-pitch-fg" />}
 		>
 			<ChampionshipRoster

@@ -22,6 +22,7 @@ type IconTooltipButtonProps = {
 	icon: ReactNode;
 	onClick?: () => void;
 	disabled?: boolean;
+	pressed?: boolean;
 	variant?: ButtonVariant;
 	type?: "button" | "submit";
 	showLabel?: boolean;
@@ -32,6 +33,7 @@ export function IconTooltipButton({
 	icon,
 	onClick,
 	disabled,
+	pressed,
 	variant = BUTTON_VARIANT.secondary,
 	type = "button",
 	showLabel = false,
@@ -46,6 +48,7 @@ export function IconTooltipButton({
 			aria-label={label}
 			data-tooltip-id={TOOLTIP_ID}
 			data-tooltip-content={label}
+			aria-pressed={pressed}
 			onClick={onClick}
 			disabled={disabled}
 			className={`${ICON_TOOLTIP_BUTTON_BASE} ${sizeClass} ${ICON_TOOLTIP_BUTTON_TONE[variant]}`}

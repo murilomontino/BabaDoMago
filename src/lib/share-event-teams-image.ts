@@ -19,6 +19,7 @@ import {
 	PLAYER_STARS,
 	ratingToStarFill,
 } from "@/const/player-rating";
+import { shareOrDownload } from "@/lib/share-file";
 
 const SHARE_SCALE = 2;
 const STAR_VIEWBOX = 24;
@@ -27,26 +28,6 @@ const TEXT_GAP = 10;
 const NUMBER_WIDTH = 36;
 const CORNER = 12;
 const ROW_CORNER = 8;
-
-function isShareAbort(error: unknown): boolean {
-	return error instanceof DOMException && error.name === "AbortError";
-}
-
-function canOpenShareSheet(): boolean {
-	return typeof navigator.share === "function";
-}
-
-function downloadFile(file: File) {
-	const url = URL.createObjectURL(file);
-	const link = document.createElement("a");
-	link.href = url;
-	link.download = file.name;
-	link.rel = "noopener";
-	document.body.append(link);
-	link.click();
-	link.remove();
-	window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-}
 
 function loadAvatar(src: string): Promise<HTMLImageElement | null> {
 	return new Promise((resolve) => {
@@ -375,37 +356,9 @@ export async function shareEventTeamsImage(
 	const file = new File([blob], eventTeamShareFileName(startsAt), {
 		type: EVENT_TEAM_SHARE.mimePng,
 	});
-	const text = eventTeamsShareText(cards, startsAt);
-	const title = EVENT_TEAM_SHARE.title;
-
-	if (!canOpenShareSheet()) {
-		downloadFile(file);
-		return;
-	}
-
-	try {
-		await navigator.share({
-			files: [file],
-			text,
-			title,
-		});
-		return;
-	} catch (error) {
-		if (isShareAbort(error)) {
-			return;
-		}
-	}
-
-	try {
-		await navigator.share({
-			text,
-			title,
-		});
-	} catch (error) {
-		if (isShareAbort(error)) {
-			return;
-		}
-
-		downloadFile(file);
-	}
+	await shareOrDownload({
+		files: [file],
+		text: eventTeamsShareText(cards, startsAt),
+		title: EVENT_TEAM_SHARE.title,
+	});
 }

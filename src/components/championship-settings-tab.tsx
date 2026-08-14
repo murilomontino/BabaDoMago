@@ -2,6 +2,7 @@ import { Field, Form, Formik } from "formik";
 import { ChevronDown, Shield, Trash2 } from "lucide-react";
 import type { MouseEvent } from "react";
 import { Button } from "@/components/button";
+import { ChampionshipDeactivatedTab } from "@/components/championship-deactivated-tab";
 import { EmptyState } from "@/components/empty-state";
 import { FormError } from "@/components/form-error";
 import { SectionCard } from "@/components/section-card";
@@ -40,6 +41,11 @@ type ChampionshipSettingsTabProps = {
 	canUpdateVisibility: boolean;
 	canTransferOwnership: boolean;
 	canDelete: boolean;
+	canReactivate: boolean;
+	deactivatedPlayers: ChampionshipPlayer[];
+	currentUserId: string | null;
+	reactivatingPlayerId: number | null;
+	reactivateError: string | null;
 	isRenaming: boolean;
 	renameError: string | null;
 	isUpdatingEventConfig: boolean;
@@ -56,6 +62,7 @@ type ChampionshipSettingsTabProps = {
 	onUpdateVisibility: (isVisible: boolean) => void;
 	onTransferOwner: (playerId: number) => Promise<void>;
 	onDelete: () => void;
+	onReactivate: (playerId: number) => void;
 };
 
 export function ChampionshipSettingsTab({
@@ -70,6 +77,11 @@ export function ChampionshipSettingsTab({
 	canUpdateVisibility,
 	canTransferOwnership,
 	canDelete,
+	canReactivate,
+	deactivatedPlayers,
+	currentUserId,
+	reactivatingPlayerId,
+	reactivateError,
 	isRenaming,
 	renameError,
 	isUpdatingEventConfig,
@@ -83,6 +95,7 @@ export function ChampionshipSettingsTab({
 	onUpdateVisibility,
 	onTransferOwner,
 	onDelete,
+	onReactivate,
 }: ChampionshipSettingsTabProps) {
 	const canConfigure =
 		canRename ||
@@ -106,7 +119,7 @@ export function ChampionshipSettingsTab({
 
 	return (
 		<div className="space-y-6">
-			{!canConfigure && (
+			{!canConfigure && !canReactivate && (
 				<EmptyState
 					icon={<Shield className="size-10" />}
 					title="Nada para configurar"
@@ -175,7 +188,7 @@ export function ChampionshipSettingsTab({
 										htmlFor="championship-event-time"
 										className="block text-sm font-medium text-fg-muted"
 									>
-										Hora do evento
+										Hora da rodada
 										<Field
 											id="championship-event-time"
 											name="eventTime"
@@ -280,6 +293,16 @@ export function ChampionshipSettingsTab({
 						{transferError && <p className={ERROR_CLASS}>{transferError}</p>}
 					</div>
 				</SectionCard>
+			)}
+			{canReactivate && (
+				<ChampionshipDeactivatedTab
+					players={deactivatedPlayers}
+					createdBy={createdBy}
+					currentUserId={currentUserId}
+					reactivatingPlayerId={reactivatingPlayerId}
+					reactivateError={reactivateError}
+					onReactivate={onReactivate}
+				/>
 			)}
 			{showDangerZone && (
 				<SectionCard

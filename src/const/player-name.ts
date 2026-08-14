@@ -5,7 +5,7 @@ export const PLAYER_NICKNAME = {
 export const PLAYER_LABEL = {
 	nickname: "Apelido",
 	nicknamePlaceholder: "Apelido no baba",
-	eventStats: "Stats do evento",
+	eventStats: "Stats da rodada",
 } as const;
 
 export function playerVisibleName(player: {

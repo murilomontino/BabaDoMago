@@ -50,7 +50,7 @@ export function ChampionshipEventPlayPage() {
 	if (eventQuery.isError) {
 		return (
 			<p className={ERROR_CLASS}>
-				Erro ao carregar evento: {eventQuery.error.message}
+				Erro ao carregar rodada: {eventQuery.error.message}
 			</p>
 		);
 	}

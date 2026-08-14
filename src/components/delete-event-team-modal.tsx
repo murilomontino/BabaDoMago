@@ -23,7 +23,7 @@ export function DeleteEventTeamModal({
 					{EVENT_ACTION.removeTeam}
 				</p>
 				<p className="mb-3 text-sm text-fg-muted">
-					O time some da lista do evento.
+					O time some da lista da rodada.
 				</p>
 				{errorMessage && (
 					<p className={`mb-2 ${ERROR_CLASS}`}>{errorMessage}</p>

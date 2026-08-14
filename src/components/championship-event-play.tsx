@@ -1,13 +1,19 @@
-import { ArrowLeftRight, Goal, Handshake } from "lucide-react";
+import { ArrowLeftRight, Goal } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/button";
 import { ChampionshipEventBenchModal } from "@/components/championship-event-bench-modal";
 import { ChampionshipEventGoalModal } from "@/components/championship-event-goal-modal";
 import {
+	EVENT_TEAM_PLAYER_SLOT_CLASS,
+	EVENT_TEAM_POSITION_CHIP_CLASS,
 	EventTeamColorDot,
 	EventTeamPlayerRow,
 	EventTeamRatingAverage,
 } from "@/components/event-team-player";
+import {
+	MATCH_GOAL_TIMELINE_GRID_CLASS,
+	MatchGoalTimeline,
+} from "@/components/molecules/match-goal-timeline";
 import {
 	EVENT_ACTION,
 	EVENT_TEAM_POSITION_LABEL,
@@ -22,7 +28,6 @@ import {
 	matchAssistCandidates,
 	matchBenchPlayerIds,
 	matchGoalPayload,
-	matchGoalTimeline,
 	matchScore,
 	matchTeamPlayers,
 	matchTeamSlots,
@@ -31,14 +36,13 @@ import {
 } from "@/const/championship-event-match";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
 import {
-	EVENT_TEAM_COLOR,
 	type EventTeamColor,
 	eventTeamColorStyle,
 	eventTeamName,
 } from "@/const/event-team-color";
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
-import { BUTTON_VARIANT, CHIP_CLASS, ERROR_CLASS } from "@/const/ui";
+import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type {
 	ChampionshipEvent,
@@ -165,15 +169,14 @@ function TeamPick({
 					return (
 						<li
 							key={row.id}
-							className="flex min-h-7 items-center gap-1.5 rounded-md bg-white px-1.5 py-1"
+							className={EVENT_TEAM_PLAYER_SLOT_CLASS}
 						>
-							<span className={`${CHIP_CLASS} shrink-0`}>
+							<span className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}>
 								{EVENT_TEAM_POSITION_LABEL[position]}
 							</span>
 							<EventTeamPlayerRow
 								player={player}
 								ceiling={ceiling}
-								backgroundColor={EVENT_TEAM_COLOR.white}
 							/>
 						</li>
 					);
@@ -231,9 +234,9 @@ function MatchTeamBlock({
 						return (
 							<li
 								key={`slot-${slot}`}
-								className="flex items-center gap-1 rounded-md bg-white/80 px-1.5 py-1"
+								className={EVENT_TEAM_PLAYER_SLOT_CLASS}
 							>
-								<span className={`${CHIP_CLASS} shrink-0`}>
+								<span className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}>
 									{EVENT_TEAM_POSITION_LABEL[position]}
 								</span>
 								{player && (
@@ -294,44 +297,6 @@ function MatchTeamBlock({
 				)}
 			</ul>
 		</section>
-	);
-}
-
-function GoalTimelineEvent({
-	scorerName,
-	assistName,
-	isOwnGoal,
-	mirror,
-}: {
-	scorerName: string;
-	assistName: string | null;
-	isOwnGoal: boolean;
-	mirror: boolean;
-}) {
-	return (
-		<span
-			className={`inline-flex min-w-0 max-w-full items-center gap-1 text-xs text-fg-muted ${
-				mirror ? "flex-row-reverse" : ""
-			}`}
-		>
-			{isOwnGoal && (
-				<Goal
-					className="size-3 shrink-0 text-danger-fg"
-					aria-label={EVENT_GOAL_LABEL.ownGoal}
-				/>
-			)}
-			{!isOwnGoal && (
-				<Goal className="size-3 shrink-0" aria-label={EVENT_GOAL_LABEL.goal} />
-			)}
-			<span className="truncate">{scorerName}</span>
-			{assistName && (
-				<Handshake
-					className="size-3 shrink-0"
-					aria-label={EVENT_GOAL_LABEL.assist}
-				/>
-			)}
-			{assistName && <span className="truncate">{assistName}</span>}
-		</span>
 	);
 }
 
@@ -451,7 +416,6 @@ export function ChampionshipEventPlay({
 	const starB =
 		matchTeamStarName(match.players, match.team_b_id, rosterById) ??
 		eventTeamName(teamB.color, teamB.sort_order);
-	const timeline = matchGoalTimeline(match.goals);
 	const ownGoalPlayers = ownGoalTeamId
 		? matchTeamPlayers(match.players, ownGoalTeamId).map((row) =>
 				resolvePlayer(row.player_id, row.display_name, rosterById),
@@ -510,7 +474,7 @@ export function ChampionshipEventPlay({
 					void onSetGoalkeeper(match.team_a_id, player.player_id);
 				}}
 			/>
-			<div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-2 gap-y-0.5">
+			<div className={MATCH_GOAL_TIMELINE_GRID_CLASS}>
 				<p className="flex min-w-0 items-center justify-end gap-1 text-sm font-medium text-fg">
 					<OwnGoalButton
 						disabled={busy}
@@ -540,50 +504,16 @@ export function ChampionshipEventPlay({
 						}}
 					/>
 				</p>
-				{timeline.map((goal) => {
-					const scorer = matchPlayerById.get(goal.scorer_player_id);
-					const assist =
-						goal.assist_player_id === null
-							? null
-							: matchPlayerById.get(goal.assist_player_id);
-					const forTeamA = teamAIds.has(goal.scorer_player_id);
-					const event = (
-						<GoalTimelineEvent
-							scorerName={playerVisibleName(
-								resolvePlayer(
-									goal.scorer_player_id,
-									scorer?.display_name ?? "",
-									rosterById,
-								),
-							)}
-							assistName={
-								assist
-									? playerVisibleName(
-											resolvePlayer(
-												assist.player_id,
-												assist.display_name,
-												rosterById,
-											),
-										)
-									: null
-							}
-							isOwnGoal={goal.is_own_goal}
-							mirror={forTeamA}
-						/>
-					);
-
-					return (
-						<div key={goal.id} className="contents">
-							<div className="flex min-w-0 justify-end">
-								{forTeamA && event}
-							</div>
-							<span />
-							<div className="flex min-w-0 justify-start">
-								{!forTeamA && event}
-							</div>
-						</div>
-					);
-				})}
+				<MatchGoalTimeline
+					goals={match.goals}
+					teamAPlayerIds={teamAIds}
+					playerName={(playerId) => {
+						const row = matchPlayerById.get(playerId);
+						return playerVisibleName(
+							resolvePlayer(playerId, row?.display_name ?? "", rosterById),
+						);
+					}}
+				/>
 			</div>
 			<MatchTeamBlock
 				color={teamB.color}

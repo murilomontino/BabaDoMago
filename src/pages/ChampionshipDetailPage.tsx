@@ -1,6 +1,5 @@
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
-import { ChampionshipDeactivatedTab } from "@/components/championship-deactivated-tab";
 import { ChampionshipDetailHeader } from "@/components/championship-detail-header";
 import { ChampionshipEvents } from "@/components/championship-events";
 import { ChampionshipLogoCrop } from "@/components/championship-logo-crop";
@@ -119,6 +118,7 @@ export function ChampionshipDetailPage() {
 	const [pendingMergePlayer, setPendingMergePlayer] =
 		useState<ChampionshipPlayer | null>(null);
 	const [tab, setTab] = useState<ChampionshipTab>(CHAMPIONSHIP_TAB.roster);
+	const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
 	const currentPlayer = data?.players.find(
 		(player) => !player.deleted_at && player.user_id === user?.id,
@@ -153,13 +153,18 @@ export function ChampionshipDetailPage() {
 	const deactivatedPlayers = (data?.players ?? []).filter(
 		(player) => player.deleted_at,
 	);
-	const visibleTabs = CHAMPIONSHIP_TABS.filter(
-		(item) =>
-			item.id !== CHAMPIONSHIP_TAB.deactivated || permissions.reactivate,
-	);
-	const selectedTab = visibleTabs.some((item) => item.id === tab)
-		? tab
-		: CHAMPIONSHIP_TAB.roster;
+	const canOpenSettings =
+		permissions.rename ||
+		permissions.updateEventConfig ||
+		permissions.updateVisibility ||
+		permissions.transferOwnership ||
+		permissions.deleteChampionship ||
+		permissions.reactivate;
+
+	function handleTabChange(id: ChampionshipTab) {
+		setIsSettingsOpen(false);
+		setTab(id);
+	}
 
 	function applyRating(playerId: number, rating: number) {
 		updateRating.mutate(
@@ -466,7 +471,12 @@ export function ChampionshipDetailPage() {
 				isUploading={uploadLogo.isPending}
 				logoSourceError={logoSourceError}
 				uploadError={uploadLogo.isError ? uploadLogo.error.message : null}
+				canOpenSettings={canOpenSettings}
+				isSettingsOpen={isSettingsOpen}
 				onLogoChange={handleLogoChange}
+				onToggleSettings={() => {
+					setIsSettingsOpen((open) => !open);
+				}}
 			/>
 			{logoCropSrc && (
 				<ChampionshipLogoCrop
@@ -542,8 +552,14 @@ export function ChampionshipDetailPage() {
 					}}
 				/>
 			)}
-			<Tabs value={selectedTab} items={visibleTabs} onChange={setTab} />
-			{selectedTab === CHAMPIONSHIP_TAB.roster && (
+			{!isSettingsOpen && (
+				<Tabs
+					value={tab}
+					items={CHAMPIONSHIP_TABS}
+					onChange={handleTabChange}
+				/>
+			)}
+			{!isSettingsOpen && tab === CHAMPIONSHIP_TAB.roster && (
 				<ChampionshipRosterTab
 					players={activePlayers}
 					createdBy={data.created_by}
@@ -620,36 +636,20 @@ export function ChampionshipDetailPage() {
 					onDeactivate={handleDeactivate}
 				/>
 			)}
-			{selectedTab === CHAMPIONSHIP_TAB.events && (
+			{!isSettingsOpen && tab === CHAMPIONSHIP_TAB.events && (
 				<ChampionshipEvents
 					championshipId={championshipId}
 					eventTime={data.event_time}
 					canManage={permissions.manageEvent}
 				/>
 			)}
-			{selectedTab === CHAMPIONSHIP_TAB.podium && (
+			{!isSettingsOpen && tab === CHAMPIONSHIP_TAB.podium && (
 				<ChampionshipPodiumTab
 					players={activePlayers}
 					events={eventsQuery.data ?? []}
 				/>
 			)}
-			{selectedTab === CHAMPIONSHIP_TAB.deactivated && (
-				<ChampionshipDeactivatedTab
-					players={deactivatedPlayers}
-					createdBy={data.created_by}
-					currentUserId={user?.id ?? null}
-					reactivatingPlayerId={
-						reactivatePlayer.isPending
-							? (reactivatePlayer.variables ?? null)
-							: null
-					}
-					reactivateError={
-						reactivatePlayer.isError ? reactivatePlayer.error.message : null
-					}
-					onReactivate={handleReactivate}
-				/>
-			)}
-			{selectedTab === CHAMPIONSHIP_TAB.settings && (
+			{isSettingsOpen && (
 				<ChampionshipSettingsTab
 					name={data.name}
 					createdBy={data.created_by}
@@ -662,6 +662,17 @@ export function ChampionshipDetailPage() {
 					canUpdateVisibility={permissions.updateVisibility}
 					canTransferOwnership={permissions.transferOwnership}
 					canDelete={permissions.deleteChampionship}
+					canReactivate={permissions.reactivate}
+					deactivatedPlayers={deactivatedPlayers}
+					currentUserId={user?.id ?? null}
+					reactivatingPlayerId={
+						reactivatePlayer.isPending
+							? (reactivatePlayer.variables ?? null)
+							: null
+					}
+					reactivateError={
+						reactivatePlayer.isError ? reactivatePlayer.error.message : null
+					}
 					isRenaming={renameChampionship.isPending}
 					renameError={
 						renameChampionship.isError ? renameChampionship.error.message : null
@@ -691,6 +702,7 @@ export function ChampionshipDetailPage() {
 						await transferOwner.mutateAsync(playerId);
 					}}
 					onDelete={() => setIsDeleteOpen(true)}
+					onReactivate={handleReactivate}
 				/>
 			)}
 		</main>

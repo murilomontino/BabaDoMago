@@ -8,7 +8,7 @@ export const EVENT_TAB = {
 export type EventTab = (typeof EVENT_TAB)[keyof typeof EVENT_TAB];
 
 export const EVENT_TAB_LABEL = {
-	event: "Evento",
+	event: "Rodada",
 	podium: "Pódio",
 } as const;
 

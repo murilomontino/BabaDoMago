@@ -3,6 +3,7 @@ export const ROUTES = {
 	home: "/",
 	championshipNew: "/championships/new",
 	championship: "/championships/$championshipId",
+	championshipPlayer: "/championships/$championshipId/players/$playerId",
 	championshipEvent: "/championships/$championshipId/events/$eventId",
 	championshipEventPlay: "/championships/$championshipId/events/$eventId/play",
 	join: "/join/$inviteCode",

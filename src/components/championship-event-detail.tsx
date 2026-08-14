@@ -15,6 +15,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { AddEventTeamModal } from "@/components/add-event-team-modal";
 import { ChampionshipEventBuilder } from "@/components/championship-event-builder";
+import { ChampionshipEventMatchHistory } from "@/components/championship-event-match-history";
 import { ChampionshipPodiumTab } from "@/components/championship-podium-tab";
 import { DeleteEventAttendanceModal } from "@/components/delete-event-attendance-modal";
 import { DeleteEventMatchModal } from "@/components/delete-event-match-modal";
@@ -24,6 +25,8 @@ import { EditEventAttendanceModal } from "@/components/edit-event-attendance-mod
 import { EditEventAttendanceStatsModal } from "@/components/edit-event-attendance-stats-modal";
 import { EndEventModal } from "@/components/end-event-modal";
 import {
+	EVENT_TEAM_PLAYER_SLOT_CLASS,
+	EVENT_TEAM_POSITION_CHIP_CLASS,
 	EventTeamColorDot,
 	EventTeamPlayerRow,
 	EventTeamRatingAverage,
@@ -58,19 +61,14 @@ import {
 } from "@/const/championship-event";
 import {
 	EVENT_MATCH_LABEL,
-	formatMatchScore,
-	isOpenMatch,
 	matchPlayUrl,
-	matchScore,
 	openEventMatch,
 } from "@/const/championship-event-match";
 import { EVENT_TAB, EVENT_TABS } from "@/const/championship-event-tab";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
 import { eventRatingPreview } from "@/const/event-rating-adjustment";
 import {
-	EVENT_TEAM_COLOR,
 	type EventTeamColor,
-	eventTeamColorFg,
 	eventTeamColorStyle,
 	eventTeamName,
 } from "@/const/event-team-color";
@@ -217,35 +215,6 @@ type ChampionshipEventDetailProps = {
 	deleteError: string | null;
 };
 
-function TeamChip({
-	color,
-	sortOrder,
-}: {
-	color: EventTeamColor | null;
-	sortOrder: number;
-}) {
-	const label = eventTeamName(color, sortOrder);
-	if (color === null) {
-		return (
-			<span className="inline-flex items-center rounded-full border border-line bg-surface px-2 py-0.5 text-xs font-medium text-fg">
-				{label}
-			</span>
-		);
-	}
-
-	return (
-		<span
-			className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
-			style={{
-				backgroundColor: color,
-				color: eventTeamColorFg(color),
-			}}
-		>
-			{label}
-		</span>
-	);
-}
-
 function fallbackRosterPlayer(
 	playerId: number,
 	displayName: string,
@@ -336,7 +305,6 @@ export function ChampionshipEventDetail({
 }: ChampionshipEventDetailProps) {
 	const status = eventStatus(event.ended_at);
 	const ended = status === EVENT_STATUS.ended;
-	const teamById = new Map(event.teams.map((team) => [team.id, team]));
 	const rosterById = new Map(players.map((player) => [player.id, player]));
 	const presentPlayers = resolveEventPlayers(event.attendance, rosterById);
 	const podiumPlayers = playersFromEventAttendance(
@@ -650,15 +618,16 @@ export function ChampionshipEventDetail({
 											return (
 												<li
 													key={row.id}
-													className="flex min-h-7 items-center gap-1.5 rounded-md bg-white px-1.5 py-1"
+													className={EVENT_TEAM_PLAYER_SLOT_CLASS}
 												>
-													<span className={`${CHIP_CLASS} shrink-0`}>
+													<span
+														className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}
+													>
 														{EVENT_TEAM_POSITION_LABEL[position]}
 													</span>
 													<EventTeamPlayerRow
 														player={player}
 														ceiling={ceiling}
-														backgroundColor={EVENT_TEAM_COLOR.white}
 													/>
 												</li>
 											);
@@ -674,122 +643,13 @@ export function ChampionshipEventDetail({
 				</div>
 			)}
 			{selectedTab === EVENT_TAB.event && !showTeamBuilder && (
-				<div>
-					<p className="mb-1 text-xs font-medium uppercase tracking-wide text-fg-muted">
-						{EVENT_SECTION_LABEL.matches}
-					</p>
-					{event.matches.length === 0 && (
-						<p className="text-sm text-fg-muted">{EVENT_MATCH_LABEL.none}</p>
-					)}
-					{event.matches.length > 0 && (
-						<ul className="space-y-2">
-							{event.matches.map((match) => {
-								const teamA = teamById.get(match.team_a_id);
-								const teamB = teamById.get(match.team_b_id);
-								if (!teamA || !teamB) {
-									return null;
-								}
-
-								const teamAIds = new Set(
-									match.players
-										.filter((player) => player.team_id === match.team_a_id)
-										.map((player) => player.player_id),
-								);
-								const score = matchScore(match.goals, teamAIds);
-								const winner =
-									match.winner_team_id === null
-										? null
-										: teamById.get(match.winner_team_id);
-								const open = isOpenMatch(match);
-								const playedA = match.players.filter(
-									(player) => player.team_id === match.team_a_id,
-								);
-								const playedB = match.players.filter(
-									(player) => player.team_id === match.team_b_id,
-								);
-
-								return (
-									<li
-										key={match.id}
-										className={`rounded-lg border border-line p-2 text-sm ${
-											open ? "ring-1 ring-pitch/40" : ""
-										}`}
-									>
-										<div className="flex flex-wrap items-center gap-2">
-											<TeamChip
-												color={teamA.color}
-												sortOrder={teamA.sort_order}
-											/>
-											<span className="tabular-nums text-fg">
-												{formatMatchScore(score.teamA, score.teamB)}
-											</span>
-											<TeamChip
-												color={teamB.color}
-												sortOrder={teamB.sort_order}
-											/>
-											<span className="text-xs text-fg-muted">
-												{EVENT_MATCH_LABEL.winner}
-											</span>
-											{open && (
-												<span className={CHIP_CLASS}>
-													{EVENT_MATCH_LABEL.open}
-												</span>
-											)}
-											{!open && winner && (
-												<TeamChip
-													color={winner.color}
-													sortOrder={winner.sort_order}
-												/>
-											)}
-											{!open && !winner && (
-												<span className={CHIP_CLASS}>
-													{EVENT_MATCH_LABEL.draw}
-												</span>
-											)}
-											{showMatchDelete && (
-												<button
-													type="button"
-													aria-label={EVENT_ACTION.removeMatch}
-													className="ml-auto inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-muted hover:text-danger-fg"
-													onClick={() => setMatchToRemove(match)}
-												>
-													<X className="size-4" />
-												</button>
-											)}
-										</div>
-										{match.players.length > 0 && (
-											<p className="mt-1 text-xs text-fg-muted">
-												{playedA
-													.map((row) =>
-														playerVisibleName(
-															resolveRosterPlayer(
-																row.player_id,
-																row.display_name,
-																rosterById,
-															),
-														),
-													)
-													.join(", ")}
-												{" · "}
-												{playedB
-													.map((row) =>
-														playerVisibleName(
-															resolveRosterPlayer(
-																row.player_id,
-																row.display_name,
-																rosterById,
-															),
-														),
-													)
-													.join(", ")}
-											</p>
-										)}
-									</li>
-								);
-							})}
-						</ul>
-					)}
-				</div>
+				<ChampionshipEventMatchHistory
+					matches={event.matches}
+					teams={event.teams}
+					rosterById={rosterById}
+					showMatchDelete={showMatchDelete}
+					onRemoveMatch={setMatchToRemove}
+				/>
 			)}
 			{selectedTab === EVENT_TAB.event && !showTeamBuilder && (
 				<div>

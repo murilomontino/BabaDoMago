@@ -17,7 +17,7 @@ check(
 	PLAYER_LABEL.nicknamePlaceholder === "Apelido no baba",
 	"nickname placeholder",
 );
-check(PLAYER_LABEL.eventStats === "Stats do evento", "event stats label");
+check(PLAYER_LABEL.eventStats === "Stats da rodada", "event stats label");
 
 check(
 	playerVisibleName({ nickname: "Vitinho", display_name: "Murilo" }) ===

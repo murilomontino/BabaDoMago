@@ -5,6 +5,8 @@ import { AppDialog } from "@/components/atoms/app-dialog";
 import { Button } from "@/components/button";
 import { EventAttendanceTable } from "@/components/event-attendance-table";
 import {
+	EVENT_TEAM_PLAYER_SLOT_CLASS,
+	EVENT_TEAM_POSITION_CHIP_CLASS,
 	EventTeamColorDot,
 	EventTeamColorNoneButton,
 	EventTeamPlayerRow,
@@ -55,7 +57,6 @@ import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import {
 	BUTTON_VARIANT,
-	CHIP_CLASS,
 	ERROR_CLASS,
 	FIELD_CLASS,
 	MODAL_CLASS,
@@ -594,10 +595,10 @@ export function ChampionshipEventBuilder({
 																	return (
 																		<li
 																			key={`${team.key}-slot-${slot}`}
-																			className="flex min-h-7 items-center gap-1.5 rounded-md bg-white px-1.5 py-1"
+																			className={EVENT_TEAM_PLAYER_SLOT_CLASS}
 																		>
 																			<span
-																				className={`${CHIP_CLASS} shrink-0`}
+																				className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}
 																			>
 																				{
 																					EVENT_TEAM_POSITION_LABEL[
@@ -609,9 +610,6 @@ export function ChampionshipEventBuilder({
 																				<EventTeamPlayerRow
 																					player={player}
 																					ceiling={ceiling}
-																					backgroundColor={
-																						EVENT_TEAM_COLOR.white
-																					}
 																					isGoalkeeperVolunteer={
 																						slot !== 0 &&
 																						goalkeeperIds.includes(player.id)

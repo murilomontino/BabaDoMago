@@ -10,11 +10,15 @@ import {
 import {
 	EVENT_TEAM_COLOR_NONE_LABEL,
 	EVENT_TEAM_FG,
-	eventTeamColorFg,
 } from "@/const/event-team-color";
 import { playerVisibleName } from "@/const/player-name";
-import { CHIP_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
+
+export const EVENT_TEAM_PLAYER_SLOT_CLASS =
+	"flex min-h-7 items-center gap-1.5 rounded-md bg-surface-muted px-1.5 py-1 text-fg";
+
+export const EVENT_TEAM_POSITION_CHIP_CLASS =
+	"rounded bg-surface px-1.5 py-0.5 text-xs font-medium tabular-nums text-fg-muted";
 
 type EventTeamColorDotProps = {
 	color: string | null;
@@ -94,7 +98,6 @@ export function EventTeamRemoveButton({
 type EventTeamPlayerRowProps = {
 	player: ChampionshipPlayer;
 	ceiling: number;
-	backgroundColor: string;
 	isGoalkeeperVolunteer?: boolean;
 	onRemove?: () => void;
 };
@@ -102,12 +105,10 @@ type EventTeamPlayerRowProps = {
 export function EventTeamPlayerRow({
 	player,
 	ceiling,
-	backgroundColor,
 	isGoalkeeperVolunteer = false,
 	onRemove,
 }: EventTeamPlayerRowProps) {
 	const visibleName = playerVisibleName(player);
-	const fg = eventTeamColorFg(backgroundColor);
 
 	return (
 		<div className="flex min-w-0 flex-1 items-center gap-1.5">
@@ -128,7 +129,7 @@ export function EventTeamPlayerRow({
 				{visibleName}
 			</p>
 			{isGoalkeeperVolunteer && (
-				<span className={CHIP_CLASS}>
+				<span className={EVENT_TEAM_POSITION_CHIP_CLASS}>
 					{EVENT_TEAM_POSITION_LABEL.goalkeeper}
 				</span>
 			)}
@@ -136,7 +137,7 @@ export function EventTeamPlayerRow({
 			{onRemove && (
 				<EventTeamRemoveButton
 					label={`Remover ${visibleName}`}
-					color={fg}
+					color="currentColor"
 					onClick={onRemove}
 				/>
 			)}

@@ -1,7 +1,9 @@
-import { Trophy } from "lucide-react";
+import { LoaderCircle, Share2, Trophy } from "lucide-react";
 import { useMemo, useState } from "react";
+import { Button } from "@/components/button";
 import { ChampionshipPodium } from "@/components/championship-podium";
 import { SectionCard } from "@/components/section-card";
+import { championshipRatingCeiling } from "@/const/player-rating";
 import {
 	aggregatePodiumPlayersFromEvents,
 	isPodiumAllMonthsSelected,
@@ -24,7 +26,12 @@ import {
 	togglePodiumMonth,
 	togglePodiumSemester,
 } from "@/const/podium";
-import { FIELD_CLASS } from "@/const/ui";
+import {
+	PODIUM_SHARE_LABEL,
+	podiumShareCardsFromPlayers,
+} from "@/const/podium-share";
+import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
+import { sharePodiumImages } from "@/lib/share-podium-image";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type { ChampionshipEvent } from "@/types/championship-event";
 
@@ -53,6 +60,8 @@ export function ChampionshipPodiumTab({
 	const [metric, setMetric] = useState<PodiumMetricId>(PODIUM_DEFAULT_METRIC);
 	const [semester, setSemester] = useState<PodiumSemester | null>(null);
 	const [months, setMonths] = useState<PodiumMonth[]>([]);
+	const [isSharing, setIsSharing] = useState<"one" | "all" | null>(null);
+	const [shareError, setShareError] = useState<string | null>(null);
 	const currentMonth = podiumCurrentMonth();
 	const podiumPlayers = useMemo(() => {
 		if (!events) {
@@ -67,6 +76,29 @@ export function ChampionshipPodiumTab({
 			months,
 		);
 	}, [events, months, players, semester]);
+	const ceiling = championshipRatingCeiling(
+		podiumPlayers.map((player) => player.rating),
+	);
+	const currentCards = useMemo(
+		() => podiumShareCardsFromPlayers(podiumPlayers, [metric]),
+		[metric, podiumPlayers],
+	);
+	const allCards = useMemo(
+		() => podiumShareCardsFromPlayers(podiumPlayers),
+		[podiumPlayers],
+	);
+
+	async function handleShare(cards: typeof currentCards, mode: "one" | "all") {
+		setIsSharing(mode);
+		setShareError(null);
+		try {
+			await sharePodiumImages(cards, ceiling);
+		} catch {
+			setShareError(PODIUM_SHARE_LABEL.shareFailed);
+		} finally {
+			setIsSharing(null);
+		}
+	}
 
 	return (
 		<SectionCard
@@ -152,22 +184,61 @@ export function ChampionshipPodiumTab({
 					</div>
 				</div>
 			)}
-			<label className="mb-6 block max-w-xs text-sm text-fg-muted">
-				{PODIUM_LABEL.metric}
-				<select
-					value={metric}
-					className={`mt-1 ${FIELD_CLASS}`}
-					onChange={(event) => {
-						setMetric(parsePodiumMetric(event.target.value));
-					}}
-				>
-					{PODIUM_METRIC_OPTIONS.map((option) => (
-						<option key={option.id} value={option.id}>
-							{option.label}
-						</option>
-					))}
-				</select>
-			</label>
+			<div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+				<label className="block max-w-xs text-sm text-fg-muted">
+					{PODIUM_LABEL.metric}
+					<select
+						value={metric}
+						className={`mt-1 ${FIELD_CLASS}`}
+						onChange={(event) => {
+							setMetric(parsePodiumMetric(event.target.value));
+						}}
+					>
+						{PODIUM_METRIC_OPTIONS.map((option) => (
+							<option key={option.id} value={option.id}>
+								{option.label}
+							</option>
+						))}
+					</select>
+				</label>
+				{(currentCards.length > 0 || allCards.length > 0) && (
+					<div className="flex flex-wrap gap-2">
+						{currentCards.length > 0 && (
+							<Button
+								variant={BUTTON_VARIANT.secondary}
+								disabled={isSharing !== null}
+								onClick={() => {
+									void handleShare(currentCards, "one");
+								}}
+							>
+								{isSharing === "one" && (
+									<LoaderCircle className="size-4 animate-spin" aria-hidden />
+								)}
+								{isSharing !== "one" && <Share2 className="size-4" />}
+								{isSharing === "one" && PODIUM_SHARE_LABEL.sharing}
+								{isSharing !== "one" && PODIUM_SHARE_LABEL.shareOne}
+							</Button>
+						)}
+						{allCards.length > 0 && (
+							<Button
+								variant={BUTTON_VARIANT.secondary}
+								disabled={isSharing !== null}
+								onClick={() => {
+									void handleShare(allCards, "all");
+								}}
+							>
+								{isSharing === "all" && (
+									<LoaderCircle className="size-4 animate-spin" aria-hidden />
+								)}
+								{isSharing !== "all" && <Share2 className="size-4" />}
+								{isSharing === "all" && PODIUM_SHARE_LABEL.sharing}
+								{isSharing !== "all" && PODIUM_SHARE_LABEL.shareAll}
+							</Button>
+						)}
+					</div>
+				)}
+			</div>
+			{shareError && <p className={`mb-4 ${ERROR_CLASS}`}>{shareError}</p>}
 			<ChampionshipPodium players={podiumPlayers} metric={metric} />
 		</SectionCard>
 	);
