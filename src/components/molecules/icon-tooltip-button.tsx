@@ -72,9 +72,7 @@ export function IconTooltipButton({
 			className={`${ICON_TOOLTIP_BUTTON_BASE} ${sizeClass} ${ICON_TOOLTIP_BUTTON_TONE[variant]}`}
 		>
 			{icon}
-			{expandOnMobile && (
-				<span className="truncate md:hidden">{label}</span>
-			)}
+			{expandOnMobile && <span className="truncate md:hidden">{label}</span>}
 			{showLabel && <span className="hidden sm:inline">{label}</span>}
 		</button>
 	);

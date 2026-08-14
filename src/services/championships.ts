@@ -132,6 +132,7 @@ export async function getChampionshipById(
 		.from("championship_players")
 		.select(PLAYER_COLUMNS)
 		.eq("championship_id", championshipId)
+		.is("removed_at", null)
 		.order("id", { ascending: true });
 
 	if (playersError) {
@@ -441,6 +442,16 @@ export async function reactivatePlayer(
 	}
 
 	return asPlayer(data);
+}
+
+export async function removePlayer(playerId: number): Promise<void> {
+	const { error } = await supabase.rpc("remove_player", {
+		player_id: playerId,
+	});
+
+	if (error) {
+		throw error;
+	}
 }
 
 export async function deleteChampionship(

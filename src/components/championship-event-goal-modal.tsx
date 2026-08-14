@@ -4,8 +4,8 @@ import { Button } from "@/components/button";
 import {
 	EVENT_GOAL_KIND,
 	EVENT_GOAL_LABEL,
-	eventGoalScorerHint,
 	type EventGoalKind,
+	eventGoalScorerHint,
 } from "@/const/championship-event-match";
 import { BUTTON_VARIANT, ERROR_CLASS, MODAL_CLASS } from "@/const/ui";
 

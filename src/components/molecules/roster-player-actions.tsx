@@ -1,6 +1,7 @@
 import {
 	ChartColumn,
 	Merge,
+	Trash2,
 	Unlink,
 	UserCheck,
 	UserPen,
@@ -26,6 +27,7 @@ const ROSTER_ACTION_LABEL = {
 	merge: "Unir",
 	deactivate: "Desativar",
 	activate: "Ativar",
+	remove: "Excluir",
 } as const;
 
 export type RosterPlayerActionsProps = {
@@ -47,6 +49,8 @@ export type RosterPlayerActionsProps = {
 	deactivatingPlayerId?: number | null;
 	onReactivate?: (playerId: number) => void;
 	reactivatingPlayerId?: number | null;
+	onRemove?: (playerId: number) => void;
+	removingPlayerId?: number | null;
 };
 
 export function RosterPlayerActions({
@@ -68,6 +72,8 @@ export function RosterPlayerActions({
 	deactivatingPlayerId,
 	onReactivate,
 	reactivatingPlayerId,
+	onRemove,
+	removingPlayerId,
 }: RosterPlayerActionsProps) {
 	const displayRole = resolveChampionshipRole(
 		createdBy,
@@ -88,6 +94,7 @@ export function RosterPlayerActions({
 		onDeactivate && !isChampionshipOwner && !player.deleted_at,
 	);
 	const canReactivate = Boolean(onReactivate && player.deleted_at);
+	const canRemove = Boolean(onRemove && player.deleted_at && !player.user_id);
 	const canEditNickname = Boolean(
 		onEditNickname &&
 			!player.deleted_at &&
@@ -104,7 +111,8 @@ export function RosterPlayerActions({
 		!canUnlink &&
 		!canMerge &&
 		!canDeactivate &&
-		!canReactivate
+		!canReactivate &&
+		!canRemove
 	) {
 		return null;
 	}
@@ -173,6 +181,16 @@ export function RosterPlayerActions({
 					variant={BUTTON_VARIANT.primary}
 					onClick={() => onReactivate(player.id)}
 					disabled={reactivatingPlayerId === player.id}
+				/>
+			)}
+			{canRemove && onRemove && (
+				<IconTooltipButton
+					expandOnMobile
+					label={ROSTER_ACTION_LABEL.remove}
+					icon={<Trash2 className="size-4" />}
+					variant={BUTTON_VARIANT.danger}
+					onClick={() => onRemove(player.id)}
+					disabled={removingPlayerId === player.id}
 				/>
 			)}
 		</div>

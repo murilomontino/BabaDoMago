@@ -19,6 +19,7 @@ type ChampionshipPlayersRow = {
 	own_goals: number;
 	nickname: string | null;
 	rating: number;
+	removed_at: string | null;
 	role: string;
 	user_id: string | null;
 	wins: number;
@@ -369,6 +370,7 @@ export type Database = {
 					nickname?: string | null;
 					own_goals?: number;
 					rating?: number;
+					removed_at?: string | null;
 					role?: string;
 					user_id?: string | null;
 					wins?: number;
@@ -387,6 +389,7 @@ export type Database = {
 					nickname?: string | null;
 					own_goals?: number;
 					rating?: number;
+					removed_at?: string | null;
 					role?: string;
 					user_id?: string | null;
 					wins?: number;
@@ -571,6 +574,10 @@ export type Database = {
 			reactivate_player: {
 				Args: { player_id: number };
 				Returns: Json;
+			};
+			remove_player: {
+				Args: { player_id: number };
+				Returns: undefined;
 			};
 			set_championship_event_mvps: {
 				Args: { event_id: number; player_ids: Json };

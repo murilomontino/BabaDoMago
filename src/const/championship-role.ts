@@ -36,6 +36,7 @@ type ChampionshipPermissions = {
 	mergePlayers: boolean;
 	deactivatePlayer: boolean;
 	reactivatePlayer: boolean;
+	removePlayer: boolean;
 	updateEventConfig: boolean;
 	updateVisibility: boolean;
 	manageEvent: boolean;
@@ -82,6 +83,7 @@ export function championshipPermissions(
 				mergePlayers: true,
 				deactivatePlayer: true,
 				reactivatePlayer: true,
+				removePlayer: true,
 				updateEventConfig: true,
 				updateVisibility: true,
 				manageEvent: true,
@@ -100,6 +102,7 @@ export function championshipPermissions(
 				mergePlayers: true,
 				deactivatePlayer: true,
 				reactivatePlayer: false,
+				removePlayer: false,
 				updateEventConfig: true,
 				updateVisibility: true,
 				manageEvent: true,
@@ -118,6 +121,7 @@ export function championshipPermissions(
 				mergePlayers: true,
 				deactivatePlayer: true,
 				reactivatePlayer: false,
+				removePlayer: false,
 				updateEventConfig: false,
 				updateVisibility: false,
 				manageEvent: true,
@@ -136,6 +140,7 @@ export function championshipPermissions(
 				mergePlayers: false,
 				deactivatePlayer: false,
 				reactivatePlayer: false,
+				removePlayer: false,
 				updateEventConfig: false,
 				updateVisibility: false,
 				manageEvent: false,
@@ -202,6 +207,10 @@ export function canDeactivatePlayer(role: ChampionshipRole): boolean {
 
 export function canReactivatePlayer(role: ChampionshipRole): boolean {
 	return championshipPermissions(role).reactivatePlayer;
+}
+
+export function canRemovePlayer(role: ChampionshipRole): boolean {
+	return championshipPermissions(role).removePlayer;
 }
 
 export function canUpdateEventConfig(role: ChampionshipRole): boolean {

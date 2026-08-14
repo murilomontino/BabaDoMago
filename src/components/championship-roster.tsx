@@ -62,6 +62,8 @@ type ChampionshipRosterProps = {
 	deactivatingPlayerId?: number | null;
 	onReactivate?: (playerId: number) => void;
 	reactivatingPlayerId?: number | null;
+	onRemove?: (playerId: number) => void;
+	removingPlayerId?: number | null;
 	emptyTitle?: string;
 	withStats?: boolean;
 };
@@ -107,6 +109,8 @@ export function ChampionshipRoster({
 	deactivatingPlayerId,
 	onReactivate,
 	reactivatingPlayerId,
+	onRemove,
+	removingPlayerId,
 	emptyTitle = "Nenhum jogador ainda",
 	withStats = true,
 }: ChampionshipRosterProps) {
@@ -167,6 +171,8 @@ export function ChampionshipRoster({
 			deactivatingPlayerId,
 			onReactivate,
 			reactivatingPlayerId,
+			onRemove,
+			removingPlayerId,
 		}),
 		[
 			createdBy,
@@ -187,6 +193,8 @@ export function ChampionshipRoster({
 			deactivatingPlayerId,
 			onReactivate,
 			reactivatingPlayerId,
+			onRemove,
+			removingPlayerId,
 		],
 	);
 

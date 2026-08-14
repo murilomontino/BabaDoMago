@@ -29,6 +29,7 @@ import {
 	canMergePlayers,
 	canOverrideEndedEvent,
 	canReactivatePlayer,
+	canRemovePlayer,
 	canRenameChampionship,
 	canSetRoles,
 	canTransferOwnership,
@@ -68,6 +69,7 @@ import {
 	useDeleteChampionship,
 	useMergeChampionshipPlayers,
 	useReactivatePlayer,
+	useRemovePlayer,
 	useRenameChampionship,
 	useSetPlayerRole,
 	useTransferChampionshipOwner,
@@ -94,6 +96,7 @@ export function ChampionshipDetailPage() {
 	const mergePlayers = useMergeChampionshipPlayers();
 	const deactivatePlayer = useDeactivatePlayer();
 	const reactivatePlayer = useReactivatePlayer();
+	const removePlayer = useRemovePlayer();
 	const updateRating = useUpdatePlayerRating();
 	const updateNickname = useUpdatePlayerNickname();
 	const eventsQuery = useChampionshipEvents(championshipId);
@@ -145,6 +148,7 @@ export function ChampionshipDetailPage() {
 		merge: canMergePlayers(actorRole),
 		deactivate: canDeactivatePlayer(actorRole),
 		reactivate: canReactivatePlayer(actorRole),
+		remove: canRemovePlayer(actorRole),
 		updateEventConfig: canUpdateEventConfig(actorRole),
 		updateVisibility: canUpdateVisibility(actorRole),
 		manageEvent: canManageEvent(actorRole),
@@ -165,7 +169,8 @@ export function ChampionshipDetailPage() {
 		permissions.updateVisibility ||
 		permissions.transferOwnership ||
 		permissions.deleteChampionship ||
-		permissions.reactivate;
+		permissions.reactivate ||
+		permissions.remove;
 
 	function handleTabChange(id: ChampionshipTab) {
 		setIsSettingsOpen(false);
@@ -390,6 +395,20 @@ export function ChampionshipDetailPage() {
 		}
 
 		reactivatePlayer.mutate(playerId);
+	}
+
+	function handleRemove(playerId: number) {
+		if (!permissions.remove) {
+			return;
+		}
+
+		if (
+			!window.confirm("Excluir este jogador? Ele não aparecerá mais na lista.")
+		) {
+			return;
+		}
+
+		removePlayer.mutate(playerId);
 	}
 
 	async function handleCopyLink() {
@@ -671,6 +690,7 @@ export function ChampionshipDetailPage() {
 					canTransferOwnership={permissions.transferOwnership}
 					canDelete={permissions.deleteChampionship}
 					canReactivate={permissions.reactivate}
+					canRemove={permissions.remove}
 					deactivatedPlayers={deactivatedPlayers}
 					currentUserId={user?.id ?? null}
 					reactivatingPlayerId={
@@ -681,6 +701,10 @@ export function ChampionshipDetailPage() {
 					reactivateError={
 						reactivatePlayer.isError ? reactivatePlayer.error.message : null
 					}
+					removingPlayerId={
+						removePlayer.isPending ? (removePlayer.variables ?? null) : null
+					}
+					removeError={removePlayer.isError ? removePlayer.error.message : null}
 					isRenaming={renameChampionship.isPending}
 					renameError={
 						renameChampionship.isError ? renameChampionship.error.message : null
@@ -711,6 +735,7 @@ export function ChampionshipDetailPage() {
 					}}
 					onDelete={() => setIsDeleteOpen(true)}
 					onReactivate={handleReactivate}
+					onRemove={handleRemove}
 				/>
 			)}
 		</main>

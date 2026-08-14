@@ -7,6 +7,7 @@ import {
 	canMergePlayers,
 	canOverrideEndedEvent,
 	canReactivatePlayer,
+	canRemovePlayer,
 	canRenameChampionship,
 	canSetEventMvp,
 	canSetRoles,
@@ -41,6 +42,7 @@ check(canUnlinkPlayer(owner), "owner unlinks");
 check(canMergePlayers(owner), "owner merges");
 check(canDeactivatePlayer(owner), "owner deactivates");
 check(canReactivatePlayer(owner), "owner reactivates");
+check(canRemovePlayer(owner), "owner removes");
 check(canUpdateEventConfig(owner), "owner updates event config");
 check(canUpdateVisibility(owner), "owner updates visibility");
 check(canOverrideEndedEvent(owner), "owner overrides ended event");
@@ -57,6 +59,7 @@ check(canUnlinkPlayer(captain), "captain unlinks");
 check(canMergePlayers(captain), "captain merges");
 check(canDeactivatePlayer(captain), "captain deactivates");
 check(!canReactivatePlayer(captain), "captain cannot reactivate");
+check(!canRemovePlayer(captain), "captain cannot remove");
 check(canUpdateEventConfig(captain), "captain updates event config");
 check(canUpdateVisibility(captain), "captain updates visibility");
 check(!canOverrideEndedEvent(captain), "captain cannot override ended event");
@@ -73,6 +76,7 @@ check(canUnlinkPlayer(admin), "admin unlinks");
 check(canMergePlayers(admin), "admin merges");
 check(canDeactivatePlayer(admin), "admin deactivates");
 check(!canReactivatePlayer(admin), "admin cannot reactivate");
+check(!canRemovePlayer(admin), "admin cannot remove");
 check(!canUpdateEventConfig(admin), "admin cannot update event config");
 check(!canUpdateVisibility(admin), "admin cannot update visibility");
 check(!canOverrideEndedEvent(admin), "admin cannot override ended event");
@@ -89,6 +93,7 @@ check(!canUnlinkPlayer(member), "member cannot unlink");
 check(!canMergePlayers(member), "member cannot merge");
 check(!canDeactivatePlayer(member), "member cannot deactivate");
 check(!canReactivatePlayer(member), "member cannot reactivate");
+check(!canRemovePlayer(member), "member cannot remove");
 check(!canUpdateEventConfig(member), "member cannot update event config");
 check(!canUpdateVisibility(member), "member cannot update visibility");
 check(!canOverrideEndedEvent(member), "member cannot override ended event");

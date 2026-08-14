@@ -48,10 +48,13 @@ type ChampionshipSettingsTabProps = {
 	canTransferOwnership: boolean;
 	canDelete: boolean;
 	canReactivate: boolean;
+	canRemove: boolean;
 	deactivatedPlayers: ChampionshipPlayer[];
 	currentUserId: string | null;
 	reactivatingPlayerId: number | null;
 	reactivateError: string | null;
+	removingPlayerId: number | null;
+	removeError: string | null;
 	isRenaming: boolean;
 	renameError: string | null;
 	isUpdatingEventConfig: boolean;
@@ -70,6 +73,7 @@ type ChampionshipSettingsTabProps = {
 	onTransferOwner: (playerId: number) => Promise<void>;
 	onDelete: () => void;
 	onReactivate: (playerId: number) => void;
+	onRemove: (playerId: number) => void;
 };
 
 export function ChampionshipSettingsTab({
@@ -86,10 +90,13 @@ export function ChampionshipSettingsTab({
 	canTransferOwnership,
 	canDelete,
 	canReactivate,
+	canRemove,
 	deactivatedPlayers,
 	currentUserId,
 	reactivatingPlayerId,
 	reactivateError,
+	removingPlayerId,
+	removeError,
 	isRenaming,
 	renameError,
 	isUpdatingEventConfig,
@@ -104,6 +111,7 @@ export function ChampionshipSettingsTab({
 	onTransferOwner,
 	onDelete,
 	onReactivate,
+	onRemove,
 }: ChampionshipSettingsTabProps) {
 	const canConfigure =
 		canRename ||
@@ -128,7 +136,7 @@ export function ChampionshipSettingsTab({
 
 	return (
 		<div className="space-y-6">
-			{!canConfigure && !canReactivate && (
+			{!canConfigure && !canReactivate && !canRemove && (
 				<EmptyState
 					icon={<Shield className="size-10" />}
 					title="Nada para configurar"
@@ -272,7 +280,7 @@ export function ChampionshipSettingsTab({
 					</div>
 				</SectionCard>
 			)}
-			{canReactivate && (
+			{(canReactivate || canRemove) && (
 				<ChampionshipDeactivatedTab
 					players={deactivatedPlayers}
 					createdBy={createdBy}
@@ -280,6 +288,9 @@ export function ChampionshipSettingsTab({
 					reactivatingPlayerId={reactivatingPlayerId}
 					reactivateError={reactivateError}
 					onReactivate={onReactivate}
+					removingPlayerId={removingPlayerId}
+					removeError={removeError}
+					onRemove={canRemove ? onRemove : undefined}
 				/>
 			)}
 			{showDangerZone && (
