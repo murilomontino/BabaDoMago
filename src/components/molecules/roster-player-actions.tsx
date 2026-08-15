@@ -8,6 +8,7 @@ import {
 	UserPlus,
 	UserX,
 } from "lucide-react";
+import { Button } from "@/components/button";
 import { IconTooltipButton } from "@/components/molecules/icon-tooltip-button";
 import { EVENT_ACTION } from "@/const/championship-event";
 import {
@@ -118,7 +119,7 @@ export function RosterPlayerActions({
 	}
 
 	return (
-		<div className="grid w-full grid-cols-2 gap-1 md:mx-auto md:inline-grid md:w-max md:grid-cols-3 md:justify-items-center">
+		<div className="grid w-full grid-cols-2 gap-1 px-3 md:mx-auto md:inline-grid md:w-max md:grid-cols-3 md:justify-items-center md:px-0">
 			{canEditNickname && onEditNickname && (
 				<IconTooltipButton
 					expandOnMobile
@@ -138,13 +139,15 @@ export function RosterPlayerActions({
 				/>
 			)}
 			{canClaim && onClaim && (
-				<IconTooltipButton
-					expandOnMobile
-					label={ROSTER_ACTION_LABEL.connect}
-					icon={<UserPlus className="size-4" />}
+				<Button
+					variant={BUTTON_VARIANT.primary}
+					className="col-span-2 w-full"
 					onClick={() => onClaim(player.id)}
 					disabled={claimingPlayerId === player.id}
-				/>
+				>
+					<UserPlus />
+					{ROSTER_ACTION_LABEL.connect}
+				</Button>
 			)}
 			{canUnlink && onUnlink && (
 				<IconTooltipButton

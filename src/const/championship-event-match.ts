@@ -32,6 +32,12 @@ export const EVENT_MATCH_LABEL = {
 	none: "Nenhuma partida ainda.",
 	picked: "Time",
 	select: "Selecionar",
+	showMore: "Ver mais",
+	showLess: "Ver menos",
+} as const;
+
+export const EVENT_MATCH_TEAM_PREVIEW = {
+	players: 2,
 } as const;
 
 export const EVENT_MATCH_DURATION = {
@@ -108,6 +114,7 @@ export const EVENT_GOAL_LABEL = {
 	whoAssisted: "Quem deu a assistência?",
 	none: "Sem assistência",
 	ownGoal: "Gol contra",
+	ownGoalShort: "Contra",
 } as const;
 
 export function eventGoalScorerHint(scorerName: string): string {

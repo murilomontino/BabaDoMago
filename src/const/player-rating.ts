@@ -1,5 +1,6 @@
 export const PLAYER_RATING = {
 	min: 0,
+	floor: 0.1,
 	max: 100,
 	default: 0,
 	starCount: 5,

@@ -115,6 +115,7 @@ export function EditPlayerEventStatsModal({
 		draws: draft.draws,
 		matches: draft.matches,
 		ceiling,
+		snapshotRating: attendance?.rating ?? player.rating,
 	});
 
 	return (

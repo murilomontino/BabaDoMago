@@ -16,6 +16,16 @@ export function playerVisibleName(player: {
 	return nickname ? nickname : player.display_name;
 }
 
+export function comparePlayersByVisibleName(
+	left: { nickname: string | null; display_name: string },
+	right: { nickname: string | null; display_name: string },
+): number {
+	return playerVisibleName(left).localeCompare(
+		playerVisibleName(right),
+		"pt-BR",
+	);
+}
+
 export function confirmClaimPlayerMessage(name: string): string {
 	return `Você é ${name}?`;
 }

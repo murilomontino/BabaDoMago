@@ -137,6 +137,7 @@ export function ChampionshipEventBuilder({
 	const presentPlayers = players.filter((player) =>
 		presentIds.includes(player.id),
 	);
+	const presentRatings = presentPlayers.map((player) => player.rating);
 	const teamsStart =
 		initialTeams ??
 		initialBuilderTeams(
@@ -665,6 +666,7 @@ export function ChampionshipEventBuilder({
 
 																	return [player.rating];
 																})}
+																presentRatings={presentRatings}
 															/>
 														</article>
 													);

@@ -9,6 +9,7 @@ import { DataTableSkeleton } from "@/components/molecules/data-table-skeleton";
 import { SectionCard } from "@/components/section-card";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
+	comparePlayersByVisibleName,
 	confirmClaimPlayerMessage,
 	playerVisibleName,
 } from "@/const/player-name";
@@ -30,7 +31,7 @@ import { withClaimQuery } from "@/lib/safe-path";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 const JOIN_PAGE = {
-	hint: "Se seu nome já está no elenco, clique em Conectar.",
+	hint: "Encontre seu nome e toque em Conectar. Isso vincula sua conta a esse jogador: você entra nas rodadas e nas estatísticas. Se não estiver na lista, use o botão abaixo.",
 	notInList: "Não estou na lista",
 	loginToConnect: "Entrar para conectar",
 } as const;
@@ -140,6 +141,8 @@ export function JoinChampionshipPage() {
 		);
 	}
 
+	const rosterPlayers = [...data.players].sort(comparePlayersByVisibleName);
+
 	return (
 		<main className={`${PAGE_SHELL_CLASS} space-y-6`}>
 			<div className="flex justify-end">
@@ -169,7 +172,7 @@ export function JoinChampionshipPage() {
 					<p className="mb-3 text-sm text-fg-muted">{JOIN_PAGE.hint}</p>
 				)}
 				<ChampionshipRoster
-					players={data.players}
+					players={rosterPlayers}
 					createdBy={data.created_by}
 					currentUserId={user?.id ?? null}
 					claimingPlayerId={claimPlayer.variables ?? null}

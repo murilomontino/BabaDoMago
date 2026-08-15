@@ -110,7 +110,7 @@ export const EVENT_ACTION = {
 	newEvent: "Nova rodada",
 	addAttendance: "Adicionar presença",
 	addMatch: "Adicionar partida",
-	startMatch: "Ir para partida",
+	startMatch: "Ir para Nova Rodada",
 	continueMatch: "Continuar partida",
 	nextMatch: "Próxima partida",
 	endMatch: "Encerrar",
@@ -134,7 +134,7 @@ export const EVENT_ACTION = {
 	removeMatch: "Excluir partida",
 	removeTeam: "Excluir time",
 	drawTeams: "Sortear times",
-	endEvent: "Encerrar",
+	endEvent: "Encerrar Rodada",
 	setMvp: "Escolher MVP",
 	deleteEvent: "Excluir rodada",
 } as const;
@@ -148,6 +148,14 @@ export const EVENT_END_LABEL = {
 	title: "Encerrar rodada",
 	hint: "A rodada fica marcada como encerrada. Ainda dá para adicionar partidas depois.",
 	confirm: "Encerrar",
+	cancel: "Cancelar",
+} as const;
+
+export const EVENT_CREATE_OPEN_LABEL = {
+	title: "Rodadas em aberto",
+	hint: "Há rodadas sem encerrar. Encerrar aplica a nota com MVP automático.",
+	closeAndCreate: "Encerrar e criar",
+	createOnly: "Criar sem encerrar",
 	cancel: "Cancelar",
 } as const;
 
@@ -439,6 +447,20 @@ export function eventStatus(endedAt: string | null): EventStatus {
 	return EVENT_STATUS.open;
 }
 
+export function openChampionshipEvents<
+	T extends { id: number; starts_at: string; ended_at: string | null },
+>(events: readonly T[]): T[] {
+	return events
+		.filter((event) => event.ended_at === null)
+		.sort((left, right) => {
+			if (left.starts_at !== right.starts_at) {
+				return left.starts_at < right.starts_at ? -1 : 1;
+			}
+
+			return left.id - right.id;
+		});
+}
+
 export function championshipEventErrorMessage(message: string): string {
 	const known = Object.entries(EVENT_ERROR_MESSAGE)
 		.filter(([code]) => message.includes(code))
@@ -471,12 +493,38 @@ export function eventTeamCount(
 	);
 }
 
-export function eventTeamRatingAverage(ratings: readonly number[]): number {
+export function eventRatedAverage(ratings: readonly number[]): number {
+	const rated = ratings.filter((rating) => rating !== PLAYER_RATING.default);
+	if (rated.length === 0) {
+		return PLAYER_RATING.default;
+	}
+
+	return rated.reduce((sum, rating) => sum + rating, 0) / rated.length;
+}
+
+export function eventDrawRating(rating: number, ratedAverage: number): number {
+	if (rating !== PLAYER_RATING.default) {
+		return rating;
+	}
+
+	return ratedAverage;
+}
+
+export function eventTeamRatingAverage(
+	ratings: readonly number[],
+	presentRatings: readonly number[] = ratings,
+): number {
 	if (ratings.length === 0) {
 		return 0;
 	}
 
-	return ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length;
+	const ratedAverage = eventRatedAverage(presentRatings);
+	return (
+		ratings.reduce(
+			(sum, rating) => sum + eventDrawRating(rating, ratedAverage),
+			0,
+		) / ratings.length
+	);
 }
 
 export function formatEventTeamRatingAverage(average: number): string {
@@ -676,6 +724,24 @@ export function pickTeamGoalkeeper(
 	);
 }
 
+export function eventDrawRatings(
+	players: readonly { id: number; rating: number }[],
+): readonly { id: number; rating: number }[] {
+	const ratings = players.map((player) => player.rating);
+	const ratedAverage = eventRatedAverage(ratings);
+	if (
+		ratedAverage === PLAYER_RATING.default ||
+		ratings.every((rating) => rating !== PLAYER_RATING.default)
+	) {
+		return players;
+	}
+
+	return players.map((player) => ({
+		id: player.id,
+		rating: eventDrawRating(player.rating, ratedAverage),
+	}));
+}
+
 export function drawBalancedEventTeams(
 	players: readonly { id: number; rating: number }[],
 	playersPerTeam: number,
@@ -684,7 +750,7 @@ export function drawBalancedEventTeams(
 ): EventTeamDraft[] {
 	const teamCount = eventTeamCount(players.length, playersPerTeam);
 	const capacities = eventTeamCapacities(players.length, teamCount);
-	const ordered = players
+	const ordered = eventDrawRatings(players)
 		.map((player) => ({
 			id: player.id,
 			random: random(),

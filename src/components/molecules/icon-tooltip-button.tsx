@@ -1,17 +1,13 @@
 import type { ReactNode } from "react";
 import { TOOLTIP_ID } from "@/const/tooltip";
-import { BUTTON_VARIANT, type ButtonVariant } from "@/const/ui";
+import {
+	BUTTON_ICON_CLASS,
+	BUTTON_VARIANT,
+	type ButtonVariant,
+	ICON_BUTTON_SIZE_CLASS,
+} from "@/const/ui";
 
-const ICON_TOOLTIP_BUTTON_BASE =
-	"inline-flex items-center justify-center rounded-md transition disabled:opacity-50";
-
-const ICON_TOOLTIP_BUTTON_ICON_ONLY = "size-6 p-0";
-
-const ICON_TOOLTIP_BUTTON_WITH_LABEL =
-	"size-6 p-0 sm:h-8 sm:w-auto sm:gap-1.5 sm:px-2.5 sm:text-xs sm:font-medium";
-
-const ICON_TOOLTIP_BUTTON_EXPAND_MOBILE =
-	"h-10 w-full min-w-0 justify-center gap-1.5 px-2 text-xs font-medium md:h-6 md:w-6 md:gap-0 md:p-0";
+const ICON_TOOLTIP_BUTTON_BASE = `inline-flex items-center justify-center rounded-md transition disabled:opacity-50 ${BUTTON_ICON_CLASS}`;
 
 const ICON_TOOLTIP_BUTTON_TONE = {
 	primary: "text-pitch-fg hover:bg-pitch-soft",
@@ -37,14 +33,14 @@ function iconTooltipButtonSizeClass(
 	showLabel: boolean,
 ): string {
 	if (expandOnMobile) {
-		return ICON_TOOLTIP_BUTTON_EXPAND_MOBILE;
+		return ICON_BUTTON_SIZE_CLASS.expandOnMobile;
 	}
 
 	if (showLabel) {
-		return ICON_TOOLTIP_BUTTON_WITH_LABEL;
+		return ICON_BUTTON_SIZE_CLASS.withLabel;
 	}
 
-	return ICON_TOOLTIP_BUTTON_ICON_ONLY;
+	return ICON_BUTTON_SIZE_CLASS.iconOnly;
 }
 
 export function IconTooltipButton({
@@ -73,7 +69,7 @@ export function IconTooltipButton({
 		>
 			{icon}
 			{expandOnMobile && <span className="truncate md:hidden">{label}</span>}
-			{showLabel && <span className="hidden sm:inline">{label}</span>}
+			{showLabel && <span>{label}</span>}
 		</button>
 	);
 }

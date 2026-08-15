@@ -16,6 +16,7 @@ import {
 	EVENT_MATCH_REOPEN_LABEL,
 	EVENT_MATCH_STATUS,
 	EVENT_MATCH_SUBSTITUTION_LABEL,
+	EVENT_MATCH_TEAM_PREVIEW,
 	eventGoalScorerHint,
 	eventMatchEndConfirmLabel,
 	eventMatchEndTitle,
@@ -402,6 +403,7 @@ check(
 	`A · ${EVENT_GOAL_LABEL.ownGoal}`,
 	"timeline own goal",
 );
+check(EVENT_GOAL_LABEL.ownGoalShort, "Contra", "own goal short");
 check(lastMatchGoal(timeline)?.id, 2, "last goal");
 check(lastMatchGoal([]), null, "empty last goal");
 check(matchEndWinnerLabel(10, 10, "A", "B"), "A", "end winner a");
@@ -433,6 +435,9 @@ check(
 );
 check(EVENT_MATCH_REOPEN_LABEL.title, "Editar partida", "reopen title");
 check(EVENT_MATCH_REOPEN_LABEL.hint.includes("edição"), true, "reopen hint");
+check(EVENT_MATCH_TEAM_PREVIEW.players, 2, "team preview");
+check(EVENT_MATCH_LABEL.showMore, "Ver mais", "show more");
+check(EVENT_MATCH_LABEL.showLess, "Ver menos", "show less");
 
 const clockBase = {
 	duration_seconds: 420,

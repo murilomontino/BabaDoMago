@@ -2,19 +2,20 @@ import { Link } from "@tanstack/react-router";
 import {
 	Award,
 	ChartColumn,
-	CircleStop,
 	Copy,
 	LoaderCircle,
 	Pencil,
 	Play,
 	Plus,
 	Share2,
+	Square,
 	Trash2,
 	UserPlus,
 	X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AddEventTeamModal } from "@/components/add-event-team-modal";
+import { Button } from "@/components/button";
 import { ChampionshipEventBuilder } from "@/components/championship-event-builder";
 import { ChampionshipEventMatchHistory } from "@/components/championship-event-match-history";
 import { ChampionshipPodiumTab } from "@/components/championship-podium-tab";
@@ -93,7 +94,12 @@ import {
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import { ROUTES } from "@/const/routes";
-import { BUTTON_VARIANT, CHIP_CLASS, ERROR_CLASS } from "@/const/ui";
+import {
+	BUTTON_VARIANT,
+	buttonClassName,
+	CHIP_CLASS,
+	ERROR_CLASS,
+} from "@/const/ui";
 import { useEventBuilderStep } from "@/hooks/use-event-builder-step";
 import { useEventTab } from "@/hooks/use-event-tab";
 import { shareEventTeamsImage } from "@/lib/share-event-teams-image";
@@ -377,6 +383,7 @@ export function ChampionshipEventDetail({
 	);
 	const volunteerGoalkeeperIds = attendanceGoalkeeperIds(event.attendance);
 	const teamPlayerIds = eventTeamPlayerIds(event.teams);
+	const presentRatings = presentPlayers.map((player) => player.rating);
 	const ceiling = championshipRatingCeiling([
 		...players.map((player) => player.rating),
 		...event.attendance.map((row) => row.rating),
@@ -506,57 +513,81 @@ export function ChampionshipEventDetail({
 		setCopied(true);
 	}
 
+	function openEndEvent() {
+		setEndMvpPlayerIds(null);
+		setIsEndOpen(true);
+	}
+
+	const canEndEvent = canManage && status === EVENT_STATUS.open;
+	const copyMatchLinkLabel = copied
+		? EVENT_MATCH_LABEL.copied
+		: EVENT_ACTION.copyMatchLink;
+
 	return (
 		<article className="space-y-6">
 			{(showStartMatch || canManage) && (
-				<div className="flex flex-wrap items-center gap-2">
-					<div className="flex items-center gap-1">
+				<div className="flex flex-col gap-2">
+					<div className="flex flex-wrap items-center gap-2">
+						<div className="flex items-center gap-1">
+							{showStartMatch && (
+								<IconTooltipButton
+									showLabel
+									label={copyMatchLinkLabel}
+									icon={<Copy className="size-4" />}
+									onClick={() => {
+										void handleCopyMatchLink();
+									}}
+								/>
+							)}
+							{canEndEvent && (
+								<span className="hidden md:inline-flex">
+									<IconTooltipButton
+										showLabel
+										label={EVENT_ACTION.endEvent}
+										icon={<Square className="size-4 fill-current" />}
+										variant={BUTTON_VARIANT.ghost}
+										onClick={openEndEvent}
+									/>
+								</span>
+							)}
+							{canManage && (
+								<IconTooltipButton
+									showLabel
+									label={EVENT_ACTION.deleteEvent}
+									icon={<Trash2 className="size-4" />}
+									variant={BUTTON_VARIANT.danger}
+									onClick={() => setIsDeleteOpen(true)}
+								/>
+							)}
+						</div>
 						{showStartMatch && (
-							<IconTooltipButton
-								showLabel
-								label={
-									copied ? EVENT_MATCH_LABEL.copied : EVENT_ACTION.copyMatchLink
-								}
-								icon={<Copy className="size-4" />}
-								onClick={() => {
-									void handleCopyMatchLink();
+							<Link
+								to={ROUTES.championshipEventPlay}
+								params={{
+									championshipId: String(event.championship_id),
+									eventId: String(event.id),
 								}}
-							/>
-						)}
-						{canManage && status === EVENT_STATUS.open && (
-							<IconTooltipButton
-								showLabel
-								label={EVENT_ACTION.endEvent}
-								icon={<CircleStop className="size-4" />}
-								variant={BUTTON_VARIANT.ghost}
-								onClick={() => {
-									setEndMvpPlayerIds(null);
-									setIsEndOpen(true);
-								}}
-							/>
-						)}
-						{canManage && (
-							<IconTooltipButton
-								showLabel
-								label={EVENT_ACTION.deleteEvent}
-								icon={<Trash2 className="size-4" />}
-								variant={BUTTON_VARIANT.danger}
-								onClick={() => setIsDeleteOpen(true)}
-							/>
+								className={buttonClassName(
+									BUTTON_VARIANT.primary,
+									"w-full md:ml-auto md:w-auto",
+								)}
+							>
+								<Play className="size-4" />
+								{openMatch
+									? EVENT_ACTION.continueMatch
+									: EVENT_ACTION.startMatch}
+							</Link>
 						)}
 					</div>
-					{showStartMatch && (
-						<Link
-							to={ROUTES.championshipEventPlay}
-							params={{
-								championshipId: String(event.championship_id),
-								eventId: String(event.id),
-							}}
-							className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-pitch px-4 py-2 text-sm font-medium text-white hover:bg-pitch-dark md:ml-auto md:w-auto"
+					{canEndEvent && (
+						<Button
+							variant={BUTTON_VARIANT.secondary}
+							className="w-full md:hidden"
+							onClick={openEndEvent}
 						>
-							<Play className="size-4" />
-							{openMatch ? EVENT_ACTION.continueMatch : EVENT_ACTION.startMatch}
-						</Link>
+							<Square className="fill-current" />
+							{EVENT_ACTION.endEvent}
+						</Button>
 					)}
 				</div>
 			)}
@@ -731,6 +762,7 @@ export function ChampionshipEventDetail({
 									</ul>
 									<EventTeamRatingAverage
 										ratings={teamRoster.map(({ player }) => player.rating)}
+										presentRatings={presentRatings}
 									/>
 								</li>
 							);

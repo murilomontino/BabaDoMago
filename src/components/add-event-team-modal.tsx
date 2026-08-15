@@ -77,6 +77,7 @@ export function AddEventTeamModal({
 	const ceiling = championshipRatingCeiling(
 		presentPlayers.map((player) => player.rating),
 	);
+	const presentRatings = presentPlayers.map((player) => player.rating);
 	const [color, setColor] = useState<EventTeamColor | null>(
 		() => initialTeam?.color ?? EVENT_TEAM_COLOR_NONE,
 	);
@@ -253,6 +254,7 @@ export function AddEventTeamModal({
 
 								return [player.rating];
 							})}
+							presentRatings={presentRatings}
 						/>
 					</article>
 				)}

@@ -16,6 +16,7 @@ import {
 	useEndChampionshipEventMatch,
 	usePauseChampionshipEventMatch,
 	useResumeChampionshipEventMatch,
+	useSetChampionshipEventMatchGoalkeeper,
 	useSetChampionshipEventMatchPlayer,
 	useStartChampionshipEventClock,
 	useStartChampionshipEventMatch,
@@ -39,6 +40,7 @@ export function ChampionshipEventPlayPage() {
 	const startMatch = useStartChampionshipEventMatch(championshipId);
 	const updateTeam = useUpdateChampionshipEventTeam(championshipId);
 	const setPlayer = useSetChampionshipEventMatchPlayer(championshipId);
+	const setGoalkeeper = useSetChampionshipEventMatchGoalkeeper(championshipId);
 	const addGoal = useAddChampionshipEventGoal(championshipId);
 	const undoGoal = useUndoChampionshipEventGoal(championshipId);
 	const startClock = useStartChampionshipEventClock(championshipId);
@@ -106,8 +108,12 @@ export function ChampionshipEventPlayPage() {
 						players={activePlayers}
 						starting={startMatch.isPending}
 						startError={startMatch.isError ? startMatch.error.message : null}
-						savingPlayer={setPlayer.isPending}
-						playerError={(setPlayer.isError && setPlayer.error.message) || null}
+						savingPlayer={setPlayer.isPending || setGoalkeeper.isPending}
+						playerError={
+							(setPlayer.isError && setPlayer.error.message) ||
+							(setGoalkeeper.isError && setGoalkeeper.error.message) ||
+							null
+						}
 						savingGoal={addGoal.isPending}
 						goalError={addGoal.isError ? addGoal.error.message : null}
 						undoing={undoGoal.isPending}
@@ -162,6 +168,17 @@ export function ChampionshipEventPlayPage() {
 								slot,
 								playerId,
 								includeStats,
+							});
+						}}
+						onSetGoalkeeper={async (teamId, playerId) => {
+							if (!openMatch) {
+								return;
+							}
+
+							await setGoalkeeper.mutateAsync({
+								matchId: openMatch.id,
+								teamId,
+								playerId,
 							});
 						}}
 						onAddGoal={async (values) => {
