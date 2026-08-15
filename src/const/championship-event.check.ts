@@ -21,6 +21,7 @@ import {
 	EVENT_ATTENDANCE_STAT_ABBR,
 	EVENT_BUILDER_STEP,
 	EVENT_CONFIG_LABEL,
+	EVENT_CREATE_OPEN_LABEL,
 	EVENT_ERROR_MESSAGE,
 	EVENT_TEAM_MESSAGE,
 	EVENT_TEAM_POSITION,
@@ -42,6 +43,7 @@ import {
 	keepPresentSlots,
 	keepTeamPlayersPresent,
 	nextEventTeamColor,
+	openChampionshipEvents,
 	PLAYER_EVENT_STAT_META,
 	parseAttendanceStatInput,
 	pickTeamGoalkeeper,
@@ -70,6 +72,29 @@ function check(actual: unknown, expected: unknown): void {
 
 check(EVENT_CONFIG_LABEL.skipGuestGoalkeeperMatches, "Goleiro de outro time");
 check(CHAMPIONSHIP_EVENT.skipGuestGoalkeeperMatchesDefault, true);
+check(EVENT_CREATE_OPEN_LABEL.title, "Rodadas em aberto");
+check(EVENT_CREATE_OPEN_LABEL.hint.includes("MVP automático"), true);
+check(EVENT_CREATE_OPEN_LABEL.closeAndCreate, "Encerrar e criar");
+check(EVENT_CREATE_OPEN_LABEL.createOnly, "Criar sem encerrar");
+check(
+	openChampionshipEvents([
+		{ id: 2, starts_at: "2026-08-15T22:00:00.000Z", ended_at: null },
+		{ id: 1, starts_at: "2026-08-15T19:00:00.000Z", ended_at: null },
+		{ id: 3, starts_at: "2026-08-14T19:00:00.000Z", ended_at: "2026-08-14" },
+	])
+		.map((event) => event.id)
+		.join(","),
+	"1,2",
+);
+check(
+	openChampionshipEvents([
+		{ id: 2, starts_at: "2026-08-15T19:00:00.000Z", ended_at: null },
+		{ id: 1, starts_at: "2026-08-15T19:00:00.000Z", ended_at: null },
+	])
+		.map((event) => event.id)
+		.join(","),
+	"1,2",
+);
 
 function draft(
 	color: EventTeamDraft["color"],

@@ -1,4 +1,5 @@
 import {
+	comparePlayersByVisibleName,
 	confirmClaimPlayerMessage,
 	PLAYER_LABEL,
 	PLAYER_NICKNAME,
@@ -45,6 +46,18 @@ check(
 check(
 	confirmClaimPlayerMessage("Vitinho") === "Você é Vitinho?",
 	"claim confirm message",
+);
+
+check(
+	[
+		{ nickname: "Zeca", display_name: "A" },
+		{ nickname: null, display_name: "Ana" },
+		{ nickname: "  bruno  ", display_name: "Carlos" },
+	]
+		.sort(comparePlayersByVisibleName)
+		.map(playerVisibleName)
+		.join(",") === "Ana,bruno,Zeca",
+	"sorts by visible name",
 );
 
 console.log("player-name ok");

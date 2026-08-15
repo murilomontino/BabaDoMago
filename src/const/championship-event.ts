@@ -110,7 +110,7 @@ export const EVENT_ACTION = {
 	newEvent: "Nova rodada",
 	addAttendance: "Adicionar presença",
 	addMatch: "Adicionar partida",
-	startMatch: "Ir para partida",
+	startMatch: "Ir para Nova Rodada",
 	continueMatch: "Continuar partida",
 	nextMatch: "Próxima partida",
 	endMatch: "Encerrar",
@@ -134,7 +134,7 @@ export const EVENT_ACTION = {
 	removeMatch: "Excluir partida",
 	removeTeam: "Excluir time",
 	drawTeams: "Sortear times",
-	endEvent: "Encerrar",
+	endEvent: "Encerrar Rodada",
 	setMvp: "Escolher MVP",
 	deleteEvent: "Excluir rodada",
 } as const;
@@ -148,6 +148,14 @@ export const EVENT_END_LABEL = {
 	title: "Encerrar rodada",
 	hint: "A rodada fica marcada como encerrada. Ainda dá para adicionar partidas depois.",
 	confirm: "Encerrar",
+	cancel: "Cancelar",
+} as const;
+
+export const EVENT_CREATE_OPEN_LABEL = {
+	title: "Rodadas em aberto",
+	hint: "Há rodadas sem encerrar. Encerrar aplica a nota com MVP automático.",
+	closeAndCreate: "Encerrar e criar",
+	createOnly: "Criar sem encerrar",
 	cancel: "Cancelar",
 } as const;
 
@@ -437,6 +445,20 @@ export function eventStatus(endedAt: string | null): EventStatus {
 	}
 
 	return EVENT_STATUS.open;
+}
+
+export function openChampionshipEvents<
+	T extends { id: number; starts_at: string; ended_at: string | null },
+>(events: readonly T[]): T[] {
+	return events
+		.filter((event) => event.ended_at === null)
+		.sort((left, right) => {
+			if (left.starts_at !== right.starts_at) {
+				return left.starts_at < right.starts_at ? -1 : 1;
+			}
+
+			return left.id - right.id;
+		});
 }
 
 export function championshipEventErrorMessage(message: string): string {

@@ -4,6 +4,7 @@ import { CalendarDays, ChevronRight, Plus } from "lucide-react";
 import { useState } from "react";
 import { SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
+import { ConfirmOpenEventsModal } from "@/components/confirm-open-events-modal";
 import { EmptyState } from "@/components/empty-state";
 import { FormError } from "@/components/form-error";
 import { ListRowSkeleton } from "@/components/molecules/list-row-skeleton";
@@ -15,6 +16,7 @@ import {
 	EVENT_STATUS_LABEL,
 	eventStatus,
 	formatEventStartsAt,
+	openChampionshipEvents,
 	parseEventTime,
 } from "@/const/championship-event";
 import { CHAMPIONSHIP_TAB_LABEL } from "@/const/championship-tab";
@@ -34,6 +36,7 @@ import {
 import {
 	useChampionshipEvents,
 	useCreateChampionshipEvent,
+	useEndChampionshipEvent,
 } from "@/hooks/championships/use-championship-events";
 
 type ChampionshipEventsProps = {
@@ -50,14 +53,22 @@ export function ChampionshipEvents({
 	const navigate = useNavigate();
 	const eventsQuery = useChampionshipEvents(championshipId);
 	const createEvent = useCreateChampionshipEvent(championshipId);
+	const endEvent = useEndChampionshipEvent(championshipId);
 	const [isCreating, setIsCreating] = useState(false);
+	const [pendingCreate, setPendingCreate] = useState<{
+		eventDate: string;
+		eventTime: string;
+	} | null>(null);
 	const events = eventsQuery.data ?? [];
+	const openEvents = openChampionshipEvents(events);
+	const isPending = createEvent.isPending || endEvent.isPending;
 
 	async function handleCreate(eventDate: string, eventTime: string) {
 		const eventId = await createEvent.mutateAsync({
 			eventDate,
 			eventTime: parseEventTime(eventTime),
 		});
+		setPendingCreate(null);
 		await navigate({
 			to: ROUTES.championshipEvent,
 			params: {
@@ -66,6 +77,21 @@ export function ChampionshipEvents({
 			},
 			search: { step: EVENT_BUILDER_STEP.attendance },
 		});
+	}
+
+	async function handleCloseAndCreate(eventDate: string, eventTime: string) {
+		await openEvents.reduce(
+			(chain, event) =>
+				chain.then(() =>
+					endEvent.mutateAsync({
+						eventId: event.id,
+						presentPlayerIds: null,
+						mvpPlayerIds: null,
+					}),
+				),
+			Promise.resolve(),
+		);
+		await handleCreate(eventDate, eventTime);
 	}
 
 	if (eventsQuery.isPending) {
@@ -102,6 +128,16 @@ export function ChampionshipEvents({
 					}}
 					validationSchema={startEventFormSchema}
 					onSubmit={async (values) => {
+						if (openEvents.length > 0) {
+							createEvent.reset();
+							endEvent.reset();
+							setPendingCreate({
+								eventDate: values.eventDate,
+								eventTime: values.eventTime,
+							});
+							return;
+						}
+
 						await handleCreate(values.eventDate, values.eventTime);
 					}}
 				>
@@ -142,13 +178,15 @@ export function ChampionshipEvents({
 								variant={BUTTON_VARIANT.secondary}
 								onClick={() => {
 									createEvent.reset();
+									endEvent.reset();
+									setPendingCreate(null);
 									setIsCreating(false);
 								}}
-								disabled={createEvent.isPending}
+								disabled={isPending}
 							>
 								Cancelar
 							</Button>
-							<Button type="submit" disabled={createEvent.isPending}>
+							<Button type="submit" disabled={isPending}>
 								{EVENT_ACTION.create}
 							</Button>
 						</div>
@@ -203,6 +241,28 @@ export function ChampionshipEvents({
 						);
 					})}
 				</ul>
+			)}
+			{pendingCreate && (
+				<ConfirmOpenEventsModal
+					isPending={isPending}
+					errorMessage={
+						endEvent.error?.message ?? createEvent.error?.message ?? null
+					}
+					onCancel={() => {
+						createEvent.reset();
+						endEvent.reset();
+						setPendingCreate(null);
+					}}
+					onCreateOnly={() => {
+						void handleCreate(pendingCreate.eventDate, pendingCreate.eventTime);
+					}}
+					onCloseAndCreate={() => {
+						void handleCloseAndCreate(
+							pendingCreate.eventDate,
+							pendingCreate.eventTime,
+						);
+					}}
+				/>
 			)}
 		</SectionCard>
 	);

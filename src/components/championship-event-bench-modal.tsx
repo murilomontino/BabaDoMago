@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppDialog } from "@/components/atoms/app-dialog";
 import { Button } from "@/components/button";
-import { playerVisibleName } from "@/const/player-name";
+import { EventTeamPlayerRow } from "@/components/event-team-player";
 import { filterPlayersBySearch, PLAYER_SEARCH } from "@/const/player-search";
 import {
 	BUTTON_VARIANT,
@@ -16,6 +16,7 @@ const BENCH_SEARCH_ID = "event-bench-player-search";
 type ChampionshipEventBenchModalProps = {
 	title: string;
 	players: readonly ChampionshipPlayer[];
+	ceiling: number;
 	emptyMessage?: string;
 	isPending: boolean;
 	errorMessage: string | null;
@@ -26,6 +27,7 @@ type ChampionshipEventBenchModalProps = {
 export function ChampionshipEventBenchModal({
 	title,
 	players,
+	ceiling,
 	emptyMessage = "Ninguém no banco.",
 	isPending,
 	errorMessage,
@@ -87,7 +89,7 @@ export function ChampionshipEventBenchModal({
 												void onSelect(player.id);
 											}}
 										>
-											{playerVisibleName(player)}
+											<EventTeamPlayerRow player={player} ceiling={ceiling} />
 										</Button>
 									</li>
 								))}

@@ -8,8 +8,17 @@ export const BUTTON_VARIANT = {
 export type ButtonVariant =
 	(typeof BUTTON_VARIANT)[keyof typeof BUTTON_VARIANT];
 
-const BUTTON_BASE =
-	"inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition disabled:opacity-50";
+export const BUTTON_ICON_CLASS = "[&_svg]:size-5";
+
+export const ICON_BUTTON_SIZE_CLASS = {
+	iconOnly: "size-10 p-0",
+	withLabel:
+		"h-11 w-auto gap-1.5 px-2.5 text-xs font-medium sm:h-9",
+	expandOnMobile:
+		"h-11 w-full min-w-0 justify-center gap-1.5 px-2 text-xs font-medium md:size-10 md:gap-0 md:p-0",
+} as const;
+
+const BUTTON_BASE = `inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition disabled:opacity-50 ${BUTTON_ICON_CLASS}`;
 
 export const BUTTON_CLASS: Record<ButtonVariant, string> = {
 	primary: `${BUTTON_BASE} bg-pitch text-white hover:bg-pitch-dark`,

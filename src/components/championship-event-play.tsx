@@ -1,4 +1,4 @@
-import { ArrowLeftRight, Goal, Pause, Play } from "lucide-react";
+import { ArrowLeftRight, ChevronDown, Pause, Play } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "@/components/button";
 import { ChampionshipEventBenchModal } from "@/components/championship-event-bench-modal";
@@ -7,8 +7,10 @@ import { ChampionshipEventSubstitutionModal } from "@/components/championship-ev
 import { EndEventMatchModal } from "@/components/end-event-match-modal";
 import { EventTeamColorModal } from "@/components/event-team-color-modal";
 import {
+	EVENT_TEAM_CHIP_TIP,
 	EVENT_TEAM_PLAYER_SLOT_CLASS,
 	EVENT_TEAM_POSITION_CHIP_CLASS,
+	EventTeamChip,
 	EventTeamColorDot,
 	EventTeamPlayerAvatar,
 	EventTeamPlayerRow,
@@ -18,6 +20,12 @@ import {
 	MATCH_GOAL_TIMELINE_GRID_CLASS,
 	MatchGoalTimeline,
 } from "@/components/molecules/match-goal-timeline";
+import {
+	OWN_GOAL_LABEL_POSITION,
+	OwnGoalIcon,
+	type OwnGoalLabelPosition,
+	SoccerBallIcon,
+} from "@/components/soccer-ball-icon";
 import {
 	EVENT_ACTION,
 	EVENT_TEAM_POSITION_LABEL,
@@ -30,6 +38,7 @@ import {
 	EVENT_MATCH_CLOCK_LABEL,
 	EVENT_MATCH_END_INTENT,
 	EVENT_MATCH_LABEL,
+	EVENT_MATCH_TEAM_PREVIEW,
 	type EventMatchEndIntent,
 	formatMatchClock,
 	formatMatchScore,
@@ -138,6 +147,7 @@ type ChampionshipEventPlayProps = {
 		playerId: number | null,
 		includeStats?: boolean,
 	) => Promise<void>;
+	onSetGoalkeeper: (teamId: number, playerId: number) => Promise<void>;
 	onAddGoal: (values: {
 		scorerPlayerId: number;
 		assistPlayerId: number | null;
@@ -159,6 +169,8 @@ type ChampionshipEventPlayProps = {
 
 const TEAM_CARD_LONG_PRESS_MS = 500;
 const TEAM_CARD_LONG_PRESS_MOVE_PX = 8;
+const TEAM_PICK_EXPAND_TRANSITION =
+	"duration-300 ease-out motion-reduce:transition-none";
 
 function TeamPick({
 	team,
@@ -177,15 +189,19 @@ function TeamPick({
 	onSelect: () => void;
 	onLongPress: () => void;
 }) {
+	const [expanded, setExpanded] = useState(false);
+	const timerRef = useRef<number | null>(null);
+	const originRef = useRef<{ x: number; y: number } | null>(null);
+	const skipClickRef = useRef(false);
+	const openedRef = useRef(false);
 	const style = eventTeamColorStyle(team.color);
 	const teamRoster = team.players.map((row) => ({
 		row,
 		player: resolvePlayer(row.player_id, row.display_name, rosterById),
 	}));
-	const timerRef = useRef<number | null>(null);
-	const originRef = useRef<{ x: number; y: number } | null>(null);
-	const skipClickRef = useRef(false);
-	const openedRef = useRef(false);
+	const canExpand = teamRoster.length > EVENT_MATCH_TEAM_PREVIEW.players;
+	const previewRoster = teamRoster.slice(0, EVENT_MATCH_TEAM_PREVIEW.players);
+	const extraRoster = teamRoster.slice(EVENT_MATCH_TEAM_PREVIEW.players);
 
 	function clearTimer() {
 		if (timerRef.current === null) {
@@ -208,92 +224,138 @@ function TeamPick({
 	}
 
 	return (
-		<button
-			type="button"
-			onClick={() => {
-				if (skipClickRef.current) {
-					skipClickRef.current = false;
-					return;
-				}
-
-				onSelect();
-			}}
-			onPointerDown={(event) => {
-				if (event.button !== 0) {
-					return;
-				}
-
-				openedRef.current = false;
-				skipClickRef.current = false;
-				originRef.current = { x: event.clientX, y: event.clientY };
-				clearTimer();
-				timerRef.current = window.setTimeout(() => {
-					openColor();
-				}, TEAM_CARD_LONG_PRESS_MS);
-			}}
-			onPointerMove={(event) => {
-				const origin = originRef.current;
-				if (!origin || timerRef.current === null) {
-					return;
-				}
-
-				const movedX = Math.abs(event.clientX - origin.x);
-				const movedY = Math.abs(event.clientY - origin.y);
-				if (
-					movedX < TEAM_CARD_LONG_PRESS_MOVE_PX &&
-					movedY < TEAM_CARD_LONG_PRESS_MOVE_PX
-				) {
-					return;
-				}
-
-				clearTimer();
-			}}
-			onPointerUp={clearTimer}
-			onPointerCancel={clearTimer}
-			onContextMenu={(event) => {
-				event.preventDefault();
-				openColor();
-			}}
-			className={`relative w-full select-none rounded-lg border bg-surface p-2 text-left text-sm touch-manipulation ${
+		<div
+			className={`relative w-full overflow-hidden rounded-lg border bg-surface text-sm ${
 				selected ? "border-pitch ring-2 ring-pitch" : "border-line"
 			}`}
 			style={style}
 		>
 			<EventTeamColorDot color={team.color} />
-			<div className="mb-1 flex items-center gap-1 pr-5">
-				<p className="min-w-0 flex-1 text-xs font-medium">
-					{eventTeamName(team.color, team.sort_order)}
-				</p>
-				<span
-					className={`inline-flex h-7 shrink-0 items-center rounded-lg px-2 text-xs font-medium ${
-						selected
-							? "bg-pitch text-white"
-							: "border border-line bg-surface text-fg"
-					}`}
-				>
-					{pickOrder !== null
-						? `${EVENT_MATCH_LABEL.picked} ${pickOrder}`
-						: EVENT_MATCH_LABEL.select}
-				</span>
-			</div>
-			<ul className="space-y-1">
-				{teamRoster.map(({ row, player }) => {
-					const position = eventTeamPlayerPosition(row.is_goalkeeper);
+			<button
+				type="button"
+				onClick={() => {
+					if (skipClickRef.current) {
+						skipClickRef.current = false;
+						return;
+					}
 
-					return (
-						<li key={row.id} className={EVENT_TEAM_PLAYER_SLOT_CLASS}>
-							<span className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}>
-								{EVENT_TEAM_POSITION_LABEL[position]}
-							</span>
-							<EventTeamPlayerRow player={player} ceiling={ceiling} />
-						</li>
-					);
-				})}
-			</ul>
-			<EventTeamRatingAverage
-				ratings={teamRoster.map(({ player }) => player.rating)}
-			/>
-		</button>
+					onSelect();
+				}}
+				onPointerDown={(event) => {
+					if (event.button !== 0) {
+						return;
+					}
+
+					openedRef.current = false;
+					skipClickRef.current = false;
+					originRef.current = { x: event.clientX, y: event.clientY };
+					clearTimer();
+					timerRef.current = window.setTimeout(() => {
+						openColor();
+					}, TEAM_CARD_LONG_PRESS_MS);
+				}}
+				onPointerMove={(event) => {
+					const origin = originRef.current;
+					if (!origin || timerRef.current === null) {
+						return;
+					}
+
+					const movedX = Math.abs(event.clientX - origin.x);
+					const movedY = Math.abs(event.clientY - origin.y);
+					if (
+						movedX < TEAM_CARD_LONG_PRESS_MOVE_PX &&
+						movedY < TEAM_CARD_LONG_PRESS_MOVE_PX
+					) {
+						return;
+					}
+
+					clearTimer();
+				}}
+				onPointerUp={clearTimer}
+				onPointerCancel={clearTimer}
+				onContextMenu={(event) => {
+					event.preventDefault();
+					openColor();
+				}}
+				className="w-full select-none p-2 text-left touch-manipulation"
+			>
+				<div className="mb-1 flex items-center gap-1 pr-5">
+					<p className="min-w-0 flex-1 text-xs font-medium">
+						{eventTeamName(team.color, team.sort_order)}
+					</p>
+					<span
+						className={`inline-flex h-7 shrink-0 items-center rounded-lg px-2 text-xs font-medium ${
+							selected
+								? "bg-pitch text-white"
+								: "border border-line bg-surface text-fg"
+						}`}
+					>
+						{pickOrder !== null
+							? `${EVENT_MATCH_LABEL.picked} ${pickOrder}`
+							: EVENT_MATCH_LABEL.select}
+					</span>
+				</div>
+				<ul className="space-y-1">
+					{previewRoster.map(({ row, player }) => {
+						const position = eventTeamPlayerPosition(row.is_goalkeeper);
+
+						return (
+							<li key={row.id} className={EVENT_TEAM_PLAYER_SLOT_CLASS}>
+								<span className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}>
+									{EVENT_TEAM_POSITION_LABEL[position]}
+								</span>
+								<EventTeamPlayerRow player={player} ceiling={ceiling} />
+							</li>
+						);
+					})}
+				</ul>
+				{canExpand && (
+					<div
+						className={`grid transition-[grid-template-rows] ${TEAM_PICK_EXPAND_TRANSITION} ${
+							expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+						}`}
+					>
+						<ul className="min-h-0 space-y-1 overflow-hidden pt-1">
+							{extraRoster.map(({ row, player }) => {
+								const position = eventTeamPlayerPosition(row.is_goalkeeper);
+
+								return (
+									<li key={row.id} className={EVENT_TEAM_PLAYER_SLOT_CLASS}>
+										<span
+											className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}
+										>
+											{EVENT_TEAM_POSITION_LABEL[position]}
+										</span>
+										<EventTeamPlayerRow player={player} ceiling={ceiling} />
+									</li>
+								);
+							})}
+						</ul>
+					</div>
+				)}
+				<EventTeamRatingAverage
+					ratings={teamRoster.map(({ player }) => player.rating)}
+				/>
+			</button>
+			{canExpand && (
+				<button
+					type="button"
+					aria-expanded={expanded}
+					className="flex w-full items-center justify-center gap-1 px-2 pb-2 text-xs font-medium text-fg-muted"
+					onClick={() => {
+						setExpanded((open) => !open);
+					}}
+				>
+					{expanded && EVENT_MATCH_LABEL.showLess}
+					{!expanded && EVENT_MATCH_LABEL.showMore}
+					<ChevronDown
+						className={`size-3.5 shrink-0 transition-transform ${TEAM_PICK_EXPAND_TRANSITION} ${
+							expanded ? "rotate-180" : ""
+						}`}
+					/>
+				</button>
+			)}
+		</div>
 	);
 }
 
@@ -307,6 +369,7 @@ function MatchTeamBlock({
 	rosterById,
 	disabled,
 	onMarkGoal,
+	onSetGoalkeeper,
 	onEditSlot,
 }: {
 	color: EventTeamColor | null;
@@ -315,6 +378,7 @@ function MatchTeamBlock({
 	rosterById: Map<number, ChampionshipPlayer>;
 	disabled: boolean;
 	onMarkGoal: (player: ChampionshipEventMatchPlayer) => void;
+	onSetGoalkeeper: (player: ChampionshipEventMatchPlayer) => void;
 	onEditSlot: (slot: number) => void;
 }) {
 	const style = eventTeamColorStyle(color);
@@ -367,6 +431,17 @@ function MatchTeamBlock({
 										{EVENT_MATCH_LABEL.emptySlot}
 									</p>
 								)}
+								{row && !row.is_goalkeeper && (
+									<Button
+										variant={BUTTON_VARIANT.ghost}
+										className="h-7 shrink-0 px-1.5"
+										aria-label={EVENT_ACTION.setGoalkeeper}
+										disabled={disabled}
+										onClick={() => onSetGoalkeeper(row)}
+									>
+										<GoalkeeperGlovesIcon className="size-4" />
+									</Button>
+								)}
 								{occupied && (
 									<Button
 										variant={BUTTON_VARIANT.ghost}
@@ -397,7 +472,7 @@ function MatchTeamBlock({
 	);
 }
 
-function SoccerBallIcon({ className }: { className?: string }) {
+function GoalkeeperGlovesIcon({ className }: { className?: string }) {
 	return (
 		<svg
 			className={className}
@@ -410,33 +485,44 @@ function SoccerBallIcon({ className }: { className?: string }) {
 			aria-hidden="true"
 			focusable="false"
 		>
-			<circle cx="12" cy="12" r="10" />
-			<path d="M12 7.5 16.2 10.5 14.6 15.5h-5.2L7.8 10.5z" />
-			<path d="M12 7.5V2" />
-			<path d="m16.2 10.5 5.3-1.8" />
-			<path d="m7.8 10.5-5.3-1.8" />
-			<path d="m14.6 15.5 2.6 5.8" />
-			<path d="m9.4 15.5-2.6 5.8" />
+			<path d="M8 21h8v-4H8z" />
+			<path d="M9 17V9a1.5 1.5 0 0 1 3 0v8" />
+			<path d="M12 17V7.5a1.5 1.5 0 0 1 3 0V17" />
+			<path d="M15 17v-7a1.5 1.5 0 0 1 3 0v7" />
+			<path d="M8.5 16c-2.2-1-3.2-3.2-2-5.2 1.8.2 2.8 2.2 2.5 4.2" />
 		</svg>
 	);
 }
 
 function OwnGoalButton({
 	disabled,
+	labelPosition,
 	onClick,
 }: {
 	disabled: boolean;
+	labelPosition: OwnGoalLabelPosition;
 	onClick: () => void;
 }) {
+	const label = (
+		<span
+			className="text-xs font-medium leading-none text-danger-fg"
+			aria-hidden="true"
+		>
+			{EVENT_GOAL_LABEL.ownGoalShort}
+		</span>
+	);
+
 	return (
 		<button
 			type="button"
 			aria-label={EVENT_GOAL_LABEL.ownGoal}
 			disabled={disabled}
-			className="inline-flex shrink-0 text-danger-fg hover:opacity-80 disabled:opacity-50"
+			className="inline-flex shrink-0 items-center gap-0.5 hover:opacity-80 disabled:opacity-50"
 			onClick={onClick}
 		>
-			<Goal className="size-3.5" />
+			{labelPosition === OWN_GOAL_LABEL_POSITION.start && label}
+			<OwnGoalIcon className="size-3.5" />
+			{labelPosition === OWN_GOAL_LABEL_POSITION.end && label}
 		</button>
 	);
 }
@@ -544,6 +630,7 @@ export function ChampionshipEventPlay({
 	pausing,
 	onStart,
 	onSetPlayer,
+	onSetGoalkeeper,
 	onAddGoal,
 	onUndoGoal,
 	onEnd,
@@ -735,6 +822,13 @@ export function ChampionshipEventPlay({
 
 					setGoalTarget({ teamId: match.team_a_id, player });
 				}}
+				onSetGoalkeeper={(player) => {
+					if (busy) {
+						return;
+					}
+
+					void onSetGoalkeeper(match.team_a_id, player.player_id);
+				}}
 				onEditSlot={(slot) => {
 					if (busy) {
 						return;
@@ -745,9 +839,10 @@ export function ChampionshipEventPlay({
 			/>
 			<div className="flex shrink-0 flex-col gap-2">
 				<div className={MATCH_GOAL_TIMELINE_GRID_CLASS}>
-					<p className="flex min-w-0 items-center justify-end gap-1 text-sm font-medium text-fg">
+					<div className="flex min-w-0 items-center gap-1">
 						<OwnGoalButton
 							disabled={busy}
+							labelPosition={OWN_GOAL_LABEL_POSITION.end}
 							onClick={() => {
 								if (busy) {
 									return;
@@ -756,15 +851,30 @@ export function ChampionshipEventPlay({
 								setOwnGoalTeamId(match.team_a_id);
 							}}
 						/>
-						<span className="truncate">{starA}</span>
-					</p>
+						<p className="min-w-0 flex-1 truncate text-right text-sm font-medium text-fg">
+							{starA}
+						</p>
+						<EventTeamChip
+							color={teamA.color}
+							sortOrder={teamA.sort_order}
+							tip={EVENT_TEAM_CHIP_TIP.end}
+						/>
+					</div>
 					<p className="text-2xl font-semibold tabular-nums text-fg">
 						{formatMatchScore(score.teamA, score.teamB)}
 					</p>
-					<p className="flex min-w-0 items-center justify-start gap-1 text-sm font-medium text-fg">
-						<span className="truncate">{starB}</span>
+					<div className="flex min-w-0 items-center gap-1">
+						<EventTeamChip
+							color={teamB.color}
+							sortOrder={teamB.sort_order}
+							tip={EVENT_TEAM_CHIP_TIP.start}
+						/>
+						<p className="min-w-0 flex-1 truncate text-sm font-medium text-fg">
+							{starB}
+						</p>
 						<OwnGoalButton
 							disabled={busy}
+							labelPosition={OWN_GOAL_LABEL_POSITION.start}
 							onClick={() => {
 								if (busy) {
 									return;
@@ -773,7 +883,7 @@ export function ChampionshipEventPlay({
 								setOwnGoalTeamId(match.team_b_id);
 							}}
 						/>
-					</p>
+					</div>
 				</div>
 				<MatchClockBar
 					elapsedSeconds={elapsedSeconds}
@@ -841,6 +951,13 @@ export function ChampionshipEventPlay({
 					}
 
 					setGoalTarget({ teamId: match.team_b_id, player });
+				}}
+				onSetGoalkeeper={(player) => {
+					if (busy) {
+						return;
+					}
+
+					void onSetGoalkeeper(match.team_b_id, player.player_id);
 				}}
 				onEditSlot={(slot) => {
 					if (busy) {
@@ -927,6 +1044,7 @@ export function ChampionshipEventPlay({
 				<ChampionshipEventBenchModal
 					title={EVENT_GOAL_LABEL.ownGoal}
 					players={ownGoalPlayers}
+					ceiling={ceiling}
 					emptyMessage={EVENT_MATCH_LABEL.emptyTeam}
 					isPending={savingGoal}
 					errorMessage={goalError}
@@ -951,6 +1069,7 @@ export function ChampionshipEventPlay({
 				<ChampionshipEventBenchModal
 					title={slotTitle}
 					players={benchPlayers}
+					ceiling={ceiling}
 					isPending={savingPlayer}
 					errorMessage={playerError}
 					onCancel={() => {

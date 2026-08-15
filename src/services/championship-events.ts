@@ -337,7 +337,8 @@ export async function listChampionshipEvents(
 		.select(EVENT_COLUMNS)
 		.eq("championship_id", championshipId)
 		.is("deleted_at", null)
-		.order("starts_at", { ascending: false });
+		.order("starts_at", { ascending: false })
+		.order("id", { ascending: false });
 
 	if (error) {
 		throw error;

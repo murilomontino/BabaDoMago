@@ -10,6 +10,8 @@ import {
 import {
 	EVENT_TEAM_COLOR_NONE_LABEL,
 	EVENT_TEAM_FG,
+	eventTeamColorFg,
+	eventTeamName,
 } from "@/const/event-team-color";
 import { playerVisibleName } from "@/const/player-name";
 import type { ChampionshipPlayer } from "@/types/championship";
@@ -19,6 +21,58 @@ export const EVENT_TEAM_PLAYER_SLOT_CLASS =
 
 export const EVENT_TEAM_POSITION_CHIP_CLASS =
 	"rounded bg-surface px-1.5 py-0.5 text-xs font-medium tabular-nums text-fg-muted";
+
+export const EVENT_TEAM_CHIP_TIP = {
+	both: "both",
+	start: "start",
+	end: "end",
+} as const;
+
+export type EventTeamChipTip =
+	(typeof EVENT_TEAM_CHIP_TIP)[keyof typeof EVENT_TEAM_CHIP_TIP];
+
+const EVENT_TEAM_CHIP_ROUND = {
+	both: "rounded-full",
+	start: "rounded-l-full",
+	end: "rounded-r-full",
+} as const;
+
+type EventTeamChipProps = {
+	color: string | null;
+	sortOrder: number;
+	tip?: EventTeamChipTip;
+};
+
+export function EventTeamChip({
+	color,
+	sortOrder,
+	tip = EVENT_TEAM_CHIP_TIP.both,
+}: EventTeamChipProps) {
+	const label = eventTeamName(color, sortOrder);
+	const round = EVENT_TEAM_CHIP_ROUND[tip];
+
+	if (color === null) {
+		return (
+			<span
+				className={`inline-flex max-w-full shrink-0 items-center truncate border border-line bg-surface px-2 py-0.5 text-xs font-medium text-fg ${round}`}
+			>
+				{label}
+			</span>
+		);
+	}
+
+	return (
+		<span
+			className={`inline-flex max-w-full shrink-0 items-center truncate px-2 py-0.5 text-xs font-medium ${round}`}
+			style={{
+				backgroundColor: color,
+				color: eventTeamColorFg(color),
+			}}
+		>
+			{label}
+		</span>
+	);
+}
 
 type EventTeamColorDotProps = {
 	color: string | null;

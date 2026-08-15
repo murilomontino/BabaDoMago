@@ -61,7 +61,16 @@ function EndEventPreviewCardBody({
 					</span>
 				)}
 			</div>
-			<div className="mt-1 flex flex-nowrap items-center gap-1 overflow-hidden">
+			<p className="mt-1 flex items-center gap-1 md:hidden">
+				<span className="text-xs font-medium tabular-nums">
+					{formatEventRating(row.from)}
+				</span>
+				<span className="text-xs font-bold text-fg">→</span>
+				<span className="text-xs font-medium tabular-nums">
+					{formatEventRating(row.to)}
+				</span>
+			</p>
+			<div className="mt-1 hidden flex-nowrap items-center gap-1 overflow-hidden md:flex">
 				<RatingSnapshot rating={row.from} ceiling={ceiling} />
 				<span className="text-xs font-bold text-fg">→</span>
 				<RatingSnapshot rating={row.to} ceiling={ceiling} />

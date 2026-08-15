@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import { EventTeamChip } from "@/components/event-team-player";
 import {
 	MATCH_GOAL_TIMELINE_GRID_CLASS,
 	MatchGoalTimeline,
@@ -19,11 +20,6 @@ import {
 	matchTeamPlayers,
 } from "@/const/championship-event-match";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
-import {
-	type EventTeamColor,
-	eventTeamColorFg,
-	eventTeamName,
-} from "@/const/event-team-color";
 import { playerVisibleName } from "@/const/player-name";
 import { CARD_CLASS, CHIP_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
@@ -75,35 +71,6 @@ function resolveRosterPlayer(
 	byId: ReadonlyMap<number, ChampionshipPlayer>,
 ): ChampionshipPlayer {
 	return byId.get(playerId) ?? fallbackRosterPlayer(playerId, displayName);
-}
-
-function TeamChip({
-	color,
-	sortOrder,
-}: {
-	color: EventTeamColor | null;
-	sortOrder: number;
-}) {
-	const label = eventTeamName(color, sortOrder);
-	if (color === null) {
-		return (
-			<span className="inline-flex items-center rounded-full border border-line bg-surface px-2 py-0.5 text-xs font-medium text-fg">
-				{label}
-			</span>
-		);
-	}
-
-	return (
-		<span
-			className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
-			style={{
-				backgroundColor: color,
-				color: eventTeamColorFg(color),
-			}}
-		>
-			{label}
-		</span>
-	);
 }
 
 function MatchLineupPlayer({
@@ -189,18 +156,18 @@ function MatchHistoryCard({
 		<>
 			<div className={MATCH_GOAL_TIMELINE_GRID_CLASS}>
 				<div className="flex min-w-0 justify-end">
-					<TeamChip color={teamA.color} sortOrder={teamA.sort_order} />
+					<EventTeamChip color={teamA.color} sortOrder={teamA.sort_order} />
 				</div>
 				<p className="text-2xl font-semibold tabular-nums text-fg">
 					{formatMatchScore(score.teamA, score.teamB)}
 				</p>
 				<div className="flex min-w-0 justify-start">
-					<TeamChip color={teamB.color} sortOrder={teamB.sort_order} />
+					<EventTeamChip color={teamB.color} sortOrder={teamB.sort_order} />
 				</div>
 				<div className="col-span-3 flex items-center justify-center gap-2">
 					{open && <span className={CHIP_CLASS}>{EVENT_MATCH_LABEL.open}</span>}
 					{!open && winner && (
-						<TeamChip color={winner.color} sortOrder={winner.sort_order} />
+						<EventTeamChip color={winner.color} sortOrder={winner.sort_order} />
 					)}
 					{!open && !winner && (
 						<span className={CHIP_CLASS}>{EVENT_MATCH_LABEL.draw}</span>
