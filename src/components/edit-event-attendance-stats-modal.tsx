@@ -8,6 +8,7 @@ import {
 	type AttendanceStatsTeamFilter,
 	attendanceStatsFromRows,
 	EVENT_ACTION,
+	EVENT_ATTENDANCE_COLUMN_LABEL,
 	type EventAttendanceStatsDraft,
 	eventTeamByPlayerId,
 	filterAttendanceByTeam,
@@ -16,13 +17,9 @@ import {
 	sortAttendanceByTeam,
 	validateEventAttendanceStats,
 } from "@/const/championship-event";
-import {
-	eventTeamColorFg,
-	eventTeamColorStyle,
-	eventTeamName,
-} from "@/const/event-team-color";
+import { eventTeamColorFg, eventTeamName } from "@/const/event-team-color";
 import { playerVisibleName } from "@/const/player-name";
-import { BUTTON_VARIANT, ERROR_CLASS, STAT_FIELD_CLASS } from "@/const/ui";
+import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type {
 	ChampionshipEventAttendance,
@@ -31,9 +28,14 @@ import type {
 
 const FILTER_CHIP =
 	"inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium transition";
-const FILTER_CHIP_ON = `${FILTER_CHIP} bg-pitch text-white hover:bg-pitch-dark`;
+const FILTER_CHIP_ON = `${FILTER_CHIP} bg-transparent font-semibold text-pitch-fg hover:text-pitch`;
 const FILTER_CHIP_OFF = `${FILTER_CHIP} bg-surface-muted text-fg-muted hover:bg-black/10 hover:text-fg`;
-const TEAM_FILTER_CHIP = `${FILTER_CHIP} ring-offset-2 ring-offset-surface`;
+const TEAM_FILTER_CHIP = `${FILTER_CHIP} border border-black/20 ring-offset-2 ring-offset-surface`;
+const STAT_INPUT_CLASS =
+	"h-8 w-full min-w-0 rounded-md border border-line bg-surface px-0.5 text-center text-sm font-medium tabular-nums text-fg [appearance:textfield] focus:border-pitch focus:outline-none focus:ring-1 focus:ring-pitch/20 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
+const STATS_GRID_STYLE = {
+	gridTemplateColumns: `minmax(7.5rem,1fr) repeat(${ATTENDANCE_STAT_META.length}, minmax(2.25rem,2.75rem))`,
+} as const;
 
 function neutralFilterChipClass(selected: boolean): string {
 	if (selected) {
@@ -131,8 +133,8 @@ export function EditEventAttendanceStatsModal({
 
 	return (
 		<AppDialog onClose={onCancel}>
-			<div className="max-h-[90dvh] w-full max-w-2xl overflow-y-auto rounded-xl bg-surface p-6 shadow-lg">
-				<p className="mb-5 text-sm font-medium tracking-tight text-fg">
+			<div className="max-h-[90dvh] w-full max-w-2xl overflow-y-auto rounded-xl bg-surface p-4 shadow-lg">
+				<p className="mb-3 text-sm font-medium tracking-tight text-fg">
 					{EVENT_ACTION.markAttendanceStats}
 				</p>
 				{teams.length > 0 && (
@@ -167,52 +169,70 @@ export function EditEventAttendanceStatsModal({
 						)}
 					</fieldset>
 				)}
-				<ul className="space-y-3">
-					{visibleRows.map((row) => {
-						const player = rosterById.get(row.player_id);
-						const name = playerVisibleName({
-							nickname: player?.nickname ?? null,
-							display_name:
-								player?.display_name ??
-								attendanceById.get(row.player_id)?.display_name ??
-								String(row.player_id),
-						});
-						const avatarUrl = player?.avatar_url ?? null;
-						const team = teamByPlayerId.get(row.player_id);
+				<div className="overflow-x-auto">
+					<div
+						className="grid gap-x-1 px-2 pb-1 text-[10px] font-medium uppercase tracking-wide text-fg-muted"
+						style={STATS_GRID_STYLE}
+					>
+						<span>{EVENT_ATTENDANCE_COLUMN_LABEL.player}</span>
+						{ATTENDANCE_STAT_META.map((field) => (
+							<span key={field.id} title={field.label} className="text-center">
+								{field.abbr}
+							</span>
+						))}
+					</div>
+					<ul className="divide-y divide-line">
+						{visibleRows.map((row) => {
+							const player = rosterById.get(row.player_id);
+							const name = playerVisibleName({
+								nickname: player?.nickname ?? null,
+								display_name:
+									player?.display_name ??
+									attendanceById.get(row.player_id)?.display_name ??
+									String(row.player_id),
+							});
+							const avatarUrl = player?.avatar_url ?? null;
+							const team = teamByPlayerId.get(row.player_id);
 
-						return (
-							<li
-								key={row.player_id}
-								className="space-y-4 rounded-xl bg-surface-muted p-4 text-fg"
-								style={eventTeamColorStyle(team?.color ?? null)}
-							>
-								<div className="flex min-w-0 items-center gap-3">
-									{avatarUrl && (
-										<img
-											src={avatarUrl}
-											alt=""
-											referrerPolicy="no-referrer"
-											className="h-9 w-9 rounded-full object-cover"
-										/>
-									)}
-									{!avatarUrl && (
-										<span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pitch-soft text-xs font-medium text-pitch-fg">
-											{name.charAt(0).toUpperCase()}
-										</span>
-									)}
-									<p className="min-w-0 truncate text-sm font-medium">{name}</p>
-								</div>
-								<div className="grid grid-cols-5 gap-3">
+							return (
+								<li
+									key={row.player_id}
+									className="grid items-center gap-x-1 px-2 py-1.5"
+									style={STATS_GRID_STYLE}
+								>
+									<div className="flex min-w-0 items-center gap-2">
+										{team?.color && (
+											<span
+												aria-hidden
+												className="size-2.5 shrink-0 rounded-full border border-black/20"
+												style={{ backgroundColor: team.color }}
+											/>
+										)}
+										{avatarUrl && (
+											<img
+												src={avatarUrl}
+												alt=""
+												referrerPolicy="no-referrer"
+												className="h-6 w-6 shrink-0 rounded-full object-cover"
+											/>
+										)}
+										{!avatarUrl && (
+											<span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-pitch-soft text-[10px] font-medium text-pitch-fg">
+												{name.charAt(0).toUpperCase()}
+											</span>
+										)}
+										<p className="min-w-0 truncate text-sm font-medium text-fg">
+											{name}
+										</p>
+									</div>
 									{ATTENDANCE_STAT_META.map((field) => {
 										const inputId = `attendance-stat-${row.player_id}-${field.id}`;
 
 										return (
-											<label
-												key={field.id}
-												htmlFor={inputId}
-												className="flex flex-col items-center gap-1.5 text-xs font-medium text-fg-muted"
-											>
-												<span title={field.label}>{field.abbr}</span>
+											<label key={field.id} htmlFor={inputId} className="block">
+												<span className="sr-only">
+													{name} {field.label}
+												</span>
 												<input
 													id={inputId}
 													type="number"
@@ -220,7 +240,7 @@ export function EditEventAttendanceStatsModal({
 													step={1}
 													inputMode="numeric"
 													value={row[field.id]}
-													className={STAT_FIELD_CLASS}
+													className={STAT_INPUT_CLASS}
 													onChange={(event) => {
 														const next = parseAttendanceStatInput(
 															event.target.value,
@@ -243,16 +263,16 @@ export function EditEventAttendanceStatsModal({
 											</label>
 										);
 									})}
-								</div>
-							</li>
-						);
-					})}
-				</ul>
+								</li>
+							);
+						})}
+					</ul>
+				</div>
 				{localError && <p className={`mt-2 ${ERROR_CLASS}`}>{localError}</p>}
 				{errorMessage && (
 					<p className={`mt-2 ${ERROR_CLASS}`}>{errorMessage}</p>
 				)}
-				<div className="mt-6 flex justify-end gap-2">
+				<div className="mt-4 flex justify-end gap-2">
 					<Button
 						variant={BUTTON_VARIANT.secondary}
 						onClick={onCancel}

@@ -5,9 +5,11 @@ import { championshipRatingCeiling, PLAYER_RATING } from "./player-rating.ts";
 export const EVENT_RATING_ADJUSTMENT = {
 	upThreshold: 0.55,
 	downThreshold: 0.45,
-	expectedWinRate: 0.5,
+	expectedRate: 0.5,
 	minMatches: 3,
 	scaleDivisor: 2,
+	winPoints: 3,
+	drawPoints: 1,
 } as const;
 
 export type EventRatingPreviewRow = {
@@ -40,6 +42,7 @@ function roundRatioToTenths(numerator: number, denominator: number): number {
 
 export function eventRatingDelta(
 	wins: number,
+	draws: number,
 	matches: number,
 	rating: number,
 	ceiling: number,
@@ -52,24 +55,28 @@ export function eventRatingDelta(
 		return 0;
 	}
 
+	const points =
+		wins * EVENT_RATING_ADJUSTMENT.winPoints +
+		draws * EVENT_RATING_ADJUSTMENT.drawPoints;
+	const maxPoints = matches * EVENT_RATING_ADJUSTMENT.winPoints;
 	const wrScale = 20;
-	const winUnits = wins * wrScale;
+	const pointUnits = points * wrScale;
 	if (
-		winUnits <=
-			matches * Math.round(EVENT_RATING_ADJUSTMENT.upThreshold * wrScale) &&
-		winUnits >=
-			matches * Math.round(EVENT_RATING_ADJUSTMENT.downThreshold * wrScale)
+		pointUnits <=
+			maxPoints * Math.round(EVENT_RATING_ADJUSTMENT.upThreshold * wrScale) &&
+		pointUnits >=
+			maxPoints * Math.round(EVENT_RATING_ADJUSTMENT.downThreshold * wrScale)
 	) {
 		return 0;
 	}
 
-	// ponytail: linear no teto; teto 75 e WR 83% = +12.5. Cap de delta se o baba maduro pular demais.
+	// ponytail: linear no teto; teto 75 e 83% = +12.5. Cap de delta se o baba maduro pular demais.
 	const ceilingTenths = Math.round(
 		Math.min(PLAYER_RATING.max, Math.max(PLAYER_RATING.min, ceiling)) * 10,
 	);
 	return roundRatioToTenths(
-		(2 * wins - matches) * ceilingTenths,
-		2 * EVENT_RATING_ADJUSTMENT.scaleDivisor * matches,
+		(2 * points - maxPoints) * ceilingTenths,
+		2 * EVENT_RATING_ADJUSTMENT.scaleDivisor * maxPoints,
 	);
 }
 
@@ -84,12 +91,13 @@ export function recomputePlayerEventRating(
 	rating: number,
 	oldDelta: number,
 	wins: number,
+	draws: number,
 	matches: number,
 	ceiling: number,
 ): number {
 	return applyEventRatingDelta(
 		rating,
-		-oldDelta + eventRatingDelta(wins, matches, rating, ceiling),
+		-oldDelta + eventRatingDelta(wins, draws, matches, rating, ceiling),
 	);
 }
 
@@ -97,22 +105,26 @@ export function playerEventRatingAfterSave({
 	rating,
 	storedDelta,
 	oldWins,
+	oldDraws,
 	oldMatches,
 	wins,
+	draws,
 	matches,
 	ceiling,
 }: {
 	rating: number;
 	storedDelta: number;
 	oldWins: number;
+	oldDraws: number;
 	oldMatches: number;
 	wins: number;
+	draws: number;
 	matches: number;
 	ceiling: number;
 }): number {
 	if (
 		storedDelta === 0 &&
-		eventRatingDelta(oldWins, oldMatches, rating, ceiling) !== 0
+		eventRatingDelta(oldWins, oldDraws, oldMatches, rating, ceiling) !== 0
 	) {
 		return rating;
 	}
@@ -121,6 +133,7 @@ export function playerEventRatingAfterSave({
 		rating,
 		storedDelta,
 		wins,
+		draws,
 		matches,
 		ceiling,
 	);
@@ -140,6 +153,7 @@ export function eventRatingPreview({
 		player_id: number;
 		display_name: string;
 		wins: number;
+		draws: number;
 		matches: number;
 	}[];
 	players: readonly {
@@ -167,8 +181,13 @@ export function eventRatingPreview({
 		const isMvp = mvpIds.has(playerId);
 		const to = applyEventRatingDelta(
 			from,
-			eventRatingDelta(stats?.wins ?? 0, stats?.matches ?? 0, from, ceiling) +
-				(isMvp ? mvpBonus : 0),
+			eventRatingDelta(
+				stats?.wins ?? 0,
+				stats?.draws ?? 0,
+				stats?.matches ?? 0,
+				from,
+				ceiling,
+			) + (isMvp ? mvpBonus : 0),
 		);
 
 		return {

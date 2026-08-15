@@ -60,6 +60,7 @@ type DataTableProps<TData extends RowData> = {
 	columns: ReadonlyArray<DataTableColumnDef<TData>>;
 	getRowId: (row: TData) => string;
 	hideableColumns?: readonly DataTableHideableColumn[];
+	initialColumnVisibility?: Readonly<Record<string, boolean>>;
 	legendItems?: readonly DataTableLegendItem[];
 	onRowClick?: (row: TData) => void;
 	getRowClassName?: (row: TData) => string;
@@ -70,6 +71,7 @@ export function DataTable<TData extends RowData>({
 	columns,
 	getRowId,
 	hideableColumns = [],
+	initialColumnVisibility,
 	legendItems = [],
 	onRowClick,
 	getRowClassName,
@@ -80,6 +82,9 @@ export function DataTable<TData extends RowData>({
 			data,
 			columns,
 			getRowId,
+			initialState: {
+				columnVisibility: initialColumnVisibility ?? {},
+			},
 		},
 		(state) => ({
 			sorting: state.sorting,

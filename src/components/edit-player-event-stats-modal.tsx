@@ -109,8 +109,10 @@ export function EditPlayerEventStatsModal({
 		rating: player.rating,
 		storedDelta: attendance?.rating_delta ?? 0,
 		oldWins: attendance?.wins ?? 0,
+		oldDraws: attendance?.draws ?? 0,
 		oldMatches: attendance?.matches ?? 0,
 		wins: draft.wins,
+		draws: draft.draws,
 		matches: draft.matches,
 		ceiling,
 	});

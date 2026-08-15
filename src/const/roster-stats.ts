@@ -77,6 +77,35 @@ export const ROSTER_STAT_COLUMNS = [
 
 export type RosterStatColumnId = (typeof ROSTER_STAT_COLUMNS)[number];
 
+export const ROSTER_OPTIONAL_COLUMNS = [
+	ROSTER_COLUMN.assisted_goals,
+	ROSTER_COLUMN.losses,
+	ROSTER_COLUMN.draws,
+] as const;
+
+export type RosterOptionalColumnId = (typeof ROSTER_OPTIONAL_COLUMNS)[number];
+
+export const ROSTER_DEFAULT_COLUMN_VISIBILITY = {
+	[ROSTER_COLUMN.assisted_goals]: false,
+	[ROSTER_COLUMN.losses]: false,
+	[ROSTER_COLUMN.draws]: false,
+} as const;
+
+export const ROSTER_OPTIONAL_COLUMN_OPTIONS = ROSTER_OPTIONAL_COLUMNS.map(
+	(id) => ({
+		id,
+		label: ROSTER_COLUMN_LABEL[id],
+	}),
+);
+
+const ROSTER_OPTIONAL_COLUMN_IDS = new Set<string>(ROSTER_OPTIONAL_COLUMNS);
+
+export function isRosterOptionalColumn(
+	column: string,
+): column is RosterOptionalColumnId {
+	return ROSTER_OPTIONAL_COLUMN_IDS.has(column);
+}
+
 export type RosterRow = ChampionshipPlayer & {
 	goalInvolvement: number;
 	goalsAverage: number;

@@ -50,6 +50,8 @@ import {
 	formatRosterStat,
 	ROSTER_COLUMN_ABBR,
 	ROSTER_COLUMN_LABEL,
+	ROSTER_DEFAULT_COLUMN_VISIBILITY,
+	ROSTER_OPTIONAL_COLUMN_OPTIONS,
 	ROSTER_STAT_COLUMNS,
 	type RosterRow,
 } from "@/const/roster-stats";
@@ -290,7 +292,6 @@ function PlayerHistoryTable({
 				historyColumnHelper.accessor("assistedGoals", {
 					id: PLAYER_PROFILE_HISTORY_COLUMN.assisted_goals,
 					header: PLAYER_PROFILE_HISTORY_ABBR.assisted_goals,
-					enableHiding: false,
 					meta: {
 						align: "right" as const,
 						title: PLAYER_PROFILE_HISTORY_COLUMN_LABEL.assisted_goals,
@@ -326,7 +327,6 @@ function PlayerHistoryTable({
 				historyColumnHelper.accessor("losses", {
 					id: PLAYER_PROFILE_HISTORY_COLUMN.losses,
 					header: PLAYER_PROFILE_HISTORY_ABBR.losses,
-					enableHiding: false,
 					meta: {
 						align: "right" as const,
 						title: PLAYER_PROFILE_HISTORY_COLUMN_LABEL.losses,
@@ -338,7 +338,6 @@ function PlayerHistoryTable({
 				historyColumnHelper.accessor("draws", {
 					id: PLAYER_PROFILE_HISTORY_COLUMN.draws,
 					header: PLAYER_PROFILE_HISTORY_ABBR.draws,
-					enableHiding: false,
 					meta: {
 						align: "right" as const,
 						title: PLAYER_PROFILE_HISTORY_COLUMN_LABEL.draws,
@@ -394,6 +393,8 @@ function PlayerHistoryTable({
 			data={[...history]}
 			columns={columns}
 			getRowId={(row) => String(row.eventId)}
+			hideableColumns={ROSTER_OPTIONAL_COLUMN_OPTIONS}
+			initialColumnVisibility={ROSTER_DEFAULT_COLUMN_VISIBILITY}
 			legendItems={PLAYER_PROFILE_HISTORY_LEGEND}
 			onRowClick={(row) => {
 				onOpenEvent(row.eventId);

@@ -32,6 +32,7 @@ import {
 	ROSTER_COLUMN,
 	ROSTER_COLUMN_ABBR,
 	ROSTER_COLUMN_LABEL,
+	ROSTER_DEFAULT_COLUMN_VISIBILITY,
 	ROSTER_LEGEND_ITEMS,
 	ROSTER_STAT_COLUMN_OPTIONS,
 	type RosterRow,
@@ -448,6 +449,7 @@ export function ChampionshipRoster({
 					columns={columns}
 					getRowId={(row) => String(row.id)}
 					hideableColumns={ROSTER_STAT_COLUMN_OPTIONS}
+					initialColumnVisibility={ROSTER_DEFAULT_COLUMN_VISIBILITY}
 					legendItems={ROSTER_LEGEND_ITEMS}
 				/>
 			)}

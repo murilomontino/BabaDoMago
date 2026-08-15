@@ -1,5 +1,6 @@
 -- Recalcula rating_delta e championship_players.rating
--- a partir da nota da presença (antes do evento) + resultado (V/J) + MVP +0,1.
+-- a partir da nota da presença (antes do evento) + aproveitamento
+-- ((3*V + E) / (3*J)) + MVP +0,1.
 --
 -- Nao rode o arquivo inteiro.
 -- 1. Execute so o SELECT de preview e confira.
@@ -28,12 +29,14 @@ recomputed as (
 		a.display_name,
 		a.rating as rating_from,
 		a.wins,
+		a.draws,
 		a.matches,
 		a.is_mvp,
 		c.ceiling,
 		a.rating_delta as old_delta,
 		public.championship_event_rating_delta(
 			a.wins,
+			a.draws,
 			a.matches,
 			a.rating,
 			c.ceiling
@@ -55,6 +58,7 @@ select
 	r.display_name,
 	r.rating_from,
 	r.wins,
+	r.draws,
 	r.matches,
 	r.is_mvp,
 	r.ceiling,
@@ -90,6 +94,7 @@ select
 	a.rating_delta as old_delta,
 	public.championship_event_rating_delta(
 		a.wins,
+		a.draws,
 		a.matches,
 		a.rating,
 		c.ceiling

@@ -4,9 +4,12 @@ import {
 	formatRosterCount,
 	formatRosterStat,
 	formatRosterWinRate,
+	isRosterOptionalColumn,
 	ROSTER_COLUMN,
 	ROSTER_COLUMN_ABBR,
 	ROSTER_COLUMN_LABEL,
+	ROSTER_DEFAULT_COLUMN_VISIBILITY,
+	ROSTER_OPTIONAL_COLUMNS,
 	rosterAverage,
 	rosterGoalInvolvement,
 	rosterSafeCount,
@@ -74,6 +77,29 @@ check(ROSTER_COLUMN_ABBR.losses === "D", "losses abbr");
 check(ROSTER_COLUMN_LABEL.losses === "Derrotas", "losses label");
 check(ROSTER_COLUMN_ABBR.draws === "E", "draws abbr");
 check(ROSTER_COLUMN_LABEL.draws === "Empates", "draws label");
+check(
+	ROSTER_OPTIONAL_COLUMNS.join(",") === "assisted_goals,losses,draws",
+	"optional columns",
+);
+check(
+	ROSTER_DEFAULT_COLUMN_VISIBILITY.assisted_goals === false,
+	"assisted goals hidden by default",
+);
+check(
+	ROSTER_DEFAULT_COLUMN_VISIBILITY.losses === false,
+	"losses hidden by default",
+);
+check(
+	ROSTER_DEFAULT_COLUMN_VISIBILITY.draws === false,
+	"draws hidden by default",
+);
+check(
+	isRosterOptionalColumn(ROSTER_COLUMN.assisted_goals),
+	"assisted goals is optional",
+);
+check(isRosterOptionalColumn(ROSTER_COLUMN.losses), "losses is optional");
+check(isRosterOptionalColumn(ROSTER_COLUMN.draws), "draws is optional");
+check(!isRosterOptionalColumn(ROSTER_COLUMN.wins), "wins is not optional");
 check(ROSTER_COLUMN_ABBR.goals === "G", "goals abbr");
 check(ROSTER_COLUMN_LABEL.goals === "Gols", "goals label");
 check(ROSTER_COLUMN_ABBR.rating === "Rat", "rating abbr");

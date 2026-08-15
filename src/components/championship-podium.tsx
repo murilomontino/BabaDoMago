@@ -45,10 +45,13 @@ import {
 } from "@/const/podium";
 import {
 	formatRosterStat,
+	isRosterOptionalColumn,
 	ROSTER_COLUMN,
 	ROSTER_COLUMN_ABBR,
 	ROSTER_COLUMN_LABEL,
+	ROSTER_DEFAULT_COLUMN_VISIBILITY,
 	ROSTER_LEGEND_ITEMS,
+	ROSTER_OPTIONAL_COLUMN_OPTIONS,
 	ROSTER_STAT_COLUMNS,
 	type RosterRow,
 	toRosterRow,
@@ -114,7 +117,7 @@ function PodiumTable({ rows, metric, ceiling }: PodiumTableProps) {
 					podiumColumnHelper.accessor(column, {
 						id: column,
 						header: ROSTER_COLUMN_ABBR[column],
-						enableHiding: false,
+						enableHiding: isRosterOptionalColumn(column),
 						meta: {
 							align: "right" as const,
 							title: ROSTER_COLUMN_LABEL[column],
@@ -141,6 +144,8 @@ function PodiumTable({ rows, metric, ceiling }: PodiumTableProps) {
 			data={rows}
 			columns={columns}
 			getRowId={(row) => String(row.id)}
+			hideableColumns={ROSTER_OPTIONAL_COLUMN_OPTIONS}
+			initialColumnVisibility={ROSTER_DEFAULT_COLUMN_VISIBILITY}
 			legendItems={ROSTER_LEGEND_ITEMS}
 		/>
 	);
