@@ -6,6 +6,7 @@ import {
 	formatPodiumMetric,
 	isPodiumAllMonthsSelected,
 	isPodiumCurrentMonthSelected,
+	isPodiumPlayerMetric,
 	PODIUM_DEFAULT_METRIC,
 	PODIUM_DISPLAY_ORDER,
 	PODIUM_FILTER_LABEL,
@@ -55,11 +56,11 @@ check(parsePodiumMetric("nope") === PODIUM_DEFAULT_METRIC, "parse fallback");
 check(PODIUM_METRICS[0] === ROSTER_COLUMN.rating, "rating first in select");
 check(PODIUM_METRICS.length === 13, "podium metrics frozen");
 check(
-	PODIUM_PLAYER_METRIC_OPTIONS.every(
-		(option) => option.id !== PODIUM_METRIC.synergy,
-	),
+	PODIUM_PLAYER_METRIC_OPTIONS.length === PODIUM_METRICS.length - 1,
 	"event podium skips synergy",
 );
+check(isPodiumPlayerMetric(ROSTER_COLUMN.goals), "goals is player metric");
+check(!isPodiumPlayerMetric(PODIUM_METRIC.synergy), "synergy is not player");
 check(formatPodiumMetric(ROSTER_COLUMN.rating, 8) === "8", "format rating");
 check(formatPodiumMetric(ROSTER_COLUMN.goals, 4) === "4", "format goals");
 check(
