@@ -698,6 +698,24 @@ export function pickTeamGoalkeeper(
 	);
 }
 
+export function eventDrawRatings(
+	players: readonly { id: number; rating: number }[],
+): readonly { id: number; rating: number }[] {
+	const rated = players.filter(
+		(player) => player.rating !== PLAYER_RATING.default,
+	);
+	if (rated.length === 0 || rated.length === players.length) {
+		return players;
+	}
+
+	const average =
+		rated.reduce((sum, player) => sum + player.rating, 0) / rated.length;
+	return players.map((player) => ({
+		id: player.id,
+		rating: player.rating === PLAYER_RATING.default ? average : player.rating,
+	}));
+}
+
 export function drawBalancedEventTeams(
 	players: readonly { id: number; rating: number }[],
 	playersPerTeam: number,
@@ -706,7 +724,7 @@ export function drawBalancedEventTeams(
 ): EventTeamDraft[] {
 	const teamCount = eventTeamCount(players.length, playersPerTeam);
 	const capacities = eventTeamCapacities(players.length, teamCount);
-	const ordered = players
+	const ordered = eventDrawRatings(players)
 		.map((player) => ({
 			id: player.id,
 			random: random(),

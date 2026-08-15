@@ -1,6 +1,7 @@
 import {
 	applyEventRatingDelta,
 	EVENT_RATING_ADJUSTMENT,
+	EVENT_RATING_INITIAL,
 	eventRatingDelta,
 	eventRatingPreview,
 	formatEventRating,
@@ -21,6 +22,9 @@ check(EVENT_RATING_ADJUSTMENT.scaleDivisor, 2, "scale divisor");
 check(EVENT_RATING_ADJUSTMENT.minMatches, 3, "min matches");
 check(EVENT_RATING_ADJUSTMENT.winPoints, 3, "win points");
 check(EVENT_RATING_ADJUSTMENT.drawPoints, 1, "draw points");
+check(EVENT_RATING_INITIAL.low, 2.7, "semente baixa");
+check(EVENT_RATING_INITIAL.mid, 3, "semente media");
+check(EVENT_RATING_INITIAL.high, 3.5, "semente alta");
 
 check(eventRatingDelta(4, 0, 6, 4, 5), 0.4, "teto 5 4V/6J");
 check(eventRatingDelta(1, 0, 3, 3.5, 5), -0.4, "teto 5 1V/3J");
@@ -49,8 +53,38 @@ check(eventRatingDelta(1, 0, 2, 4, 5), 0, "abaixo do piso 2 jogos");
 check(eventRatingDelta(1, 0, 1, 4, 5), 0, "abaixo do piso 1 jogo");
 check(
 	eventRatingDelta(4, 0, 6, PLAYER_RATING.default, 5),
+	EVENT_RATING_INITIAL.high,
+	"sentinela 4V/6J vira 3.5",
+);
+check(
+	eventRatingDelta(1, 0, 3, PLAYER_RATING.default, 5),
+	EVENT_RATING_INITIAL.low,
+	"sentinela 1V/3J vira 2.7",
+);
+check(
+	eventRatingDelta(2, 0, 4, PLAYER_RATING.default, 5),
+	EVENT_RATING_INITIAL.mid,
+	"sentinela zona morta vira 3",
+);
+check(
+	eventRatingDelta(1, 0, 2, PLAYER_RATING.default, 5),
 	0,
-	"sentinela sem nota",
+	"sentinela abaixo do piso",
+);
+check(
+	eventRatingDelta(2, 2, 4, PLAYER_RATING.default, 5),
+	EVENT_RATING_INITIAL.high,
+	"sentinela 2V 2E usa pontos nao WR",
+);
+check(
+	eventRatingDelta(0, 3, 3, PLAYER_RATING.default, 5),
+	EVENT_RATING_INITIAL.low,
+	"sentinela 3E vira 2.7",
+);
+check(
+	applyEventRatingDelta(PLAYER_RATING.default, EVENT_RATING_INITIAL.high),
+	EVENT_RATING_INITIAL.high,
+	"sentinela aplica 3.5",
 );
 check(eventRatingDelta(3, 0, 5, 4, 5), 0.3, "60% teto 5");
 check(eventRatingDelta(2, 0, 5, 4, 5), -0.3, "40% teto 5");
@@ -60,7 +94,8 @@ check(eventRatingDelta(4, 2, 6, 4, 5), 0.7, "4V 2E teto 5");
 check(eventRatingDelta(2, 1, 4, 4, 5), 0.2, "2V 1E 1D teto 5");
 
 check(applyEventRatingDelta(99.5, 1.3), PLAYER_RATING.max, "clamp 100");
-check(applyEventRatingDelta(0.2, -0.4), PLAYER_RATING.min, "clamp 0");
+check(applyEventRatingDelta(0.2, -0.4), PLAYER_RATING.floor, "clamp piso 0.1");
+check(applyEventRatingDelta(PLAYER_RATING.default, 0), 0, "sentinela fica 0");
 check(
 	eventRatingDelta(4, 0, 6, 40, 150),
 	eventRatingDelta(4, 0, 6, 40, PLAYER_RATING.max),
@@ -73,8 +108,8 @@ check(
 );
 check(
 	applyEventRatingDelta(0.3, eventRatingDelta(1, 0, 3, 0.3, 75)),
-	PLAYER_RATING.min,
-	"nota nova nao fica negativa",
+	PLAYER_RATING.floor,
+	"nota nova nao fica abaixo do piso",
 );
 check(
 	eventRatingDelta(1, 0, 3, 4, -10),
@@ -225,6 +260,33 @@ check(draftPreview[0]?.playerId, 5, "rascunho primeiro");
 check(draftPreview[0]?.to, 3, "rascunho sem stats nao muda");
 check(draftPreview[1]?.to, 4.4, "rascunho joao sobe");
 
+const seedPreview = eventRatingPreview({
+	attendance: [
+		{
+			player_id: 1,
+			display_name: "Novo",
+			wins: 4,
+			draws: 0,
+			matches: 6,
+		},
+	],
+	players: [
+		{
+			id: 1,
+			rating: PLAYER_RATING.default,
+			nickname: null,
+			display_name: "Novo",
+		},
+	],
+	presentPlayerIds: null,
+});
+check(seedPreview[0]?.from, 0, "preview sentinela from");
+check(
+	seedPreview[0]?.to,
+	EVENT_RATING_INITIAL.high,
+	"preview sentinela to 3.5",
+);
+
 check(
 	recomputePlayerEventRating(40, 0, 4, 0, 6, 75),
 	46.3,
@@ -289,6 +351,65 @@ check(
 	}),
 	46.3,
 	"delta gravado mesmos stats",
+);
+check(
+	playerEventRatingAfterSave({
+		rating: PLAYER_RATING.default,
+		storedDelta: 0,
+		oldWins: 0,
+		oldDraws: 0,
+		oldMatches: 0,
+		wins: 4,
+		draws: 0,
+		matches: 6,
+		ceiling: 5,
+	}),
+	EVENT_RATING_INITIAL.high,
+	"sentinela afterSave aplica semente",
+);
+check(
+	playerEventRatingAfterSave({
+		rating: PLAYER_RATING.default,
+		storedDelta: 0,
+		oldWins: 4,
+		oldDraws: 0,
+		oldMatches: 6,
+		wins: 1,
+		draws: 0,
+		matches: 3,
+		ceiling: 5,
+	}),
+	EVENT_RATING_INITIAL.low,
+	"sentinela afterSave nao congela",
+);
+check(
+	playerEventRatingAfterSave({
+		rating: EVENT_RATING_INITIAL.high,
+		storedDelta: EVENT_RATING_INITIAL.high,
+		oldWins: 4,
+		oldDraws: 0,
+		oldMatches: 6,
+		wins: 1,
+		draws: 0,
+		matches: 3,
+		ceiling: 5,
+		snapshotRating: PLAYER_RATING.default,
+	}),
+	EVENT_RATING_INITIAL.low,
+	"sentinela afterSave usa snapshot",
+);
+check(
+	recomputePlayerEventRating(
+		EVENT_RATING_INITIAL.high,
+		EVENT_RATING_INITIAL.high,
+		1,
+		0,
+		3,
+		5,
+		PLAYER_RATING.default,
+	),
+	EVENT_RATING_INITIAL.low,
+	"sentinela recompute troca faixa",
 );
 
 console.log("event-rating-adjustment ok");

@@ -5,15 +5,24 @@ alwaysApply: true
 
 # Rating ajusta pelo aproveitamento
 
-O `championship_players.rating` não é Elo. Depois da rodada, a nota muda pelo aproveitamento de pontos daquele evento: vitória 3, empate 1, derrota 0. A nota também equilibra times; mudar a fórmula muda o sorteio.
+O `championship_players.rating` não é Elo. Depois da rodada, a nota muda pelo aproveitamento de pontos daquele evento: vitória 3, empate 1, derrota 0. A nota também equilibra times; mudar a fórmula muda o sorteio. No sorteio, `rating === 0` é a média dos presentes com nota (`eventDrawRatings`); a nota gravada continua 0.
 
-Fonte única no app: `src/const/event-rating-adjustment.ts` (`EVENT_RATING_ADJUSTMENT`, `eventRatingDelta`). No banco: `public.championship_event_rating_delta`. SQL e TS precisam ficar iguais. Preview da UI usa `eventRatingPreview`. Persistência: `adjust_championship_player_ratings_for_event`.
+Fonte única no app: `src/const/event-rating-adjustment.ts` (`EVENT_RATING_ADJUSTMENT`, `EVENT_RATING_INITIAL`, `eventRatingDelta`, `applyEventRatingDelta`). No banco: `public.championship_event_rating_delta` e `public.championship_player_rating_apply`. SQL e TS precisam ficar iguais. Preview da UI usa `eventRatingPreview`. Persistência: `adjust_championship_player_ratings_for_event`.
 
 ## Quando a nota NÃO muda
 
-- `rating === 0` (sentinela, `PLAYER_RATING.default`)
 - `matches < 3`
-- aproveitamento na zona morta: 45% a 55% inclusive (`upThreshold` 0.55, `downThreshold` 0.45)
+- jogador já ranqueado (`rating !== 0`) com aproveitamento na zona morta: 45% a 55% inclusive (`upThreshold` 0.55, `downThreshold` 0.45)
+
+## Nota inicial (sentinela `rating === 0`)
+
+Primeira rodada com 3+ jogos: a nota **passa a ser** a semente, não um delta. Pontuação do jogador na presença, `(3 * wins + draws) / (3 * matches)`:
+
+- abaixo de 45% → `EVENT_RATING_INITIAL.low` (2.7)
+- 45% a 55% inclusive → `EVENT_RATING_INITIAL.mid` (3)
+- acima de 55% → `EVENT_RATING_INITIAL.high` (3.5)
+
+Valores absolutos, sem escalar pelo teto. `rating_delta` guarda a semente. Snapshot 0 com nota manual já preenchida e `rating_delta = 0` não aplica semente.
 
 ## Fórmula
 
@@ -24,8 +33,8 @@ Fonte única no app: `src/const/event-rating-adjustment.ts` (`EVENT_RATING_ADJUS
 Sem empates (`draws = 0`) o rate vira `wins / matches` e o delta antigo se mantém.
 
 - `ceiling` = `max(maior rating do campeonato, 5)`, clamp 0–100
-- resultado clamp 0–100 (`PLAYER_RATING.min` / `max`)
+- resultado ranqueado clamp 0.1–100 (`PLAYER_RATING.floor` / `max`); `rating === 0` continua sentinela
 - MVP soma `+0.1` em cima do delta (`EVENT_MVP.starBonus`)
-- `championship_event_attendance.rating_delta` guarda o delta aplicado; recompute faz `rating - old_delta + new_delta`
+- `championship_event_attendance.rating_delta` guarda o delta (ou a semente) aplicado; recompute faz `rating - old_delta + new_delta` com o snapshot da presença, não a nota atual, na fórmula
 
 Não inventar Elo, K-factor, ajuste por gols ou por adversário. Reusar `eventRatingDelta`. Ao alterar a regra, atualizar SQL + TS + `event-rating-adjustment.check.ts`.

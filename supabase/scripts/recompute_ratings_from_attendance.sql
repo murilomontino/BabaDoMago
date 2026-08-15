@@ -107,13 +107,7 @@ join event_ceiling c
 	on c.event_id = a.event_id;
 
 update public.championship_players p
-set rating = least(
-	100,
-	greatest(
-		0,
-		round((p.rating + f.rating_fix)::numeric, 1)
-	)
-)
+set rating = public.championship_player_rating_apply(p.rating, f.rating_fix)
 from (
 	select
 		player_id,

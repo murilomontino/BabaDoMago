@@ -28,6 +28,7 @@ import {
 	EVENT_TEAM_POSITION_LABEL,
 	type EventTeamDraft,
 	emptyTeamSlots,
+	eventDrawRatings,
 	eventTeamByPlayerId,
 	eventTeamCount,
 	eventTeamPlayerIds,
@@ -63,6 +64,7 @@ import {
 	validateTeamsInAttendance,
 } from "./championship-event.ts";
 import { EVENT_TEAM_COLOR, type EventTeamColor } from "./event-team-color.ts";
+import { PLAYER_RATING } from "./player-rating.ts";
 
 function check(actual: unknown, expected: unknown): void {
 	if (actual !== expected) {
@@ -563,6 +565,57 @@ check(
 			? team.goalkeeperId === 8
 			: team.goalkeeperId === team.playerIds[0],
 	),
+	true,
+);
+
+check(
+	eventDrawRatings([
+		{ id: 1, rating: 10 },
+		{ id: 2, rating: PLAYER_RATING.default },
+		{ id: 3, rating: 8 },
+	])
+		.map((player) => player.rating)
+		.join(","),
+	"10,9,8",
+);
+const allUnset = [
+	{ id: 1, rating: PLAYER_RATING.default },
+	{ id: 2, rating: PLAYER_RATING.default },
+	{ id: 3, rating: PLAYER_RATING.default },
+	{ id: 4, rating: PLAYER_RATING.default },
+] as const;
+check(
+	eventDrawRatings(allUnset)
+		.map((player) => player.rating)
+		.join(","),
+	"0,0,0,0",
+);
+const drawnAllUnset = drawBalancedEventTeams(allUnset, 3, () => 0.999);
+check(drawnAllUnset.length, 2);
+check(
+	drawnAllUnset
+		.flatMap((team) => team.playerIds)
+		.sort((left, right) => left - right)
+		.join(","),
+	"1,2,3,4",
+);
+const drawnUnset = drawBalancedEventTeams(
+	[
+		{ id: 1, rating: 10 },
+		{ id: 2, rating: 8 },
+		{ id: 3, rating: 6 },
+		{ id: 4, rating: 4 },
+		{ id: 5, rating: 2 },
+		{ id: 6, rating: PLAYER_RATING.default },
+	],
+	3,
+	() => 0.999,
+);
+check(
+	drawnUnset.some((team) => {
+		const ids = team.playerIds;
+		return ids.includes(6) && ids.includes(1);
+	}),
 	true,
 );
 

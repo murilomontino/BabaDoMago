@@ -46,6 +46,7 @@ check(parsePlayerRatingInput(" 46.3 ") === 46.3, "trim decimal");
 check(parsePlayerRatingInput("101") === null, "over max");
 check(parsePlayerRatingInput("-1") === null, "below min");
 check(parsePlayerRatingInput("") === null, "empty");
+check(PLAYER_RATING.floor === 0.1, "rated floor");
 check(parsePlayerRatingInput("0") === 0, "zero ok");
 check(parsePlayerRatingInput("100") === 100, "max ok");
 
