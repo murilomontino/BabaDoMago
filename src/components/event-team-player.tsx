@@ -212,16 +212,20 @@ export function EventTeamPlayerRow({
 
 type EventTeamRatingAverageProps = {
 	ratings: readonly number[];
+	presentRatings?: readonly number[];
 };
 
 export function EventTeamRatingAverage({
 	ratings,
+	presentRatings = ratings,
 }: EventTeamRatingAverageProps) {
 	if (ratings.length === 0) {
 		return null;
 	}
 
-	const average = formatEventTeamRatingAverage(eventTeamRatingAverage(ratings));
+	const average = formatEventTeamRatingAverage(
+		eventTeamRatingAverage(ratings, presentRatings),
+	);
 
 	return (
 		<p className="mt-1 text-right text-xs font-medium tabular-nums">

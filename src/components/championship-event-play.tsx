@@ -178,6 +178,7 @@ function TeamPick({
 	pickOrder,
 	rosterById,
 	ceiling,
+	presentRatings,
 	onSelect,
 	onLongPress,
 }: {
@@ -186,6 +187,7 @@ function TeamPick({
 	pickOrder: number | null;
 	rosterById: Map<number, ChampionshipPlayer>;
 	ceiling: number;
+	presentRatings: readonly number[];
 	onSelect: () => void;
 	onLongPress: () => void;
 }) {
@@ -356,6 +358,7 @@ function TeamPick({
 				<div className="ml-auto [&>p]:mt-0">
 					<EventTeamRatingAverage
 						ratings={teamRoster.map(({ player }) => player.rating)}
+						presentRatings={presentRatings}
 					/>
 				</div>
 			</div>
@@ -651,6 +654,9 @@ export function ChampionshipEventPlay({
 	const ceiling = championshipRatingCeiling(
 		players.map((player) => player.rating),
 	);
+	const presentRatings = event.attendance.map(
+		(row) => rosterById.get(row.player_id)?.rating ?? row.rating,
+	);
 	const [selected, setSelected] = useState<number[]>([]);
 	const [slotTarget, setSlotTarget] = useState<SlotTarget | null>(null);
 	const [pendingSwap, setPendingSwap] = useState<PendingSwap | null>(null);
@@ -681,6 +687,7 @@ export function ChampionshipEventPlay({
 									pickOrder={pickOrder}
 									rosterById={rosterById}
 									ceiling={ceiling}
+									presentRatings={presentRatings}
 									onSelect={() => {
 										if (starting) {
 											return;

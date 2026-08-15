@@ -383,6 +383,7 @@ export function ChampionshipEventDetail({
 	);
 	const volunteerGoalkeeperIds = attendanceGoalkeeperIds(event.attendance);
 	const teamPlayerIds = eventTeamPlayerIds(event.teams);
+	const presentRatings = presentPlayers.map((player) => player.rating);
 	const ceiling = championshipRatingCeiling([
 		...players.map((player) => player.rating),
 		...event.attendance.map((row) => row.rating),
@@ -761,6 +762,7 @@ export function ChampionshipEventDetail({
 									</ul>
 									<EventTeamRatingAverage
 										ratings={teamRoster.map(({ player }) => player.rating)}
+										presentRatings={presentRatings}
 									/>
 								</li>
 							);

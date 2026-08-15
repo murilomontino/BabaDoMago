@@ -493,12 +493,38 @@ export function eventTeamCount(
 	);
 }
 
-export function eventTeamRatingAverage(ratings: readonly number[]): number {
+export function eventRatedAverage(ratings: readonly number[]): number {
+	const rated = ratings.filter((rating) => rating !== PLAYER_RATING.default);
+	if (rated.length === 0) {
+		return PLAYER_RATING.default;
+	}
+
+	return rated.reduce((sum, rating) => sum + rating, 0) / rated.length;
+}
+
+export function eventDrawRating(rating: number, ratedAverage: number): number {
+	if (rating !== PLAYER_RATING.default) {
+		return rating;
+	}
+
+	return ratedAverage;
+}
+
+export function eventTeamRatingAverage(
+	ratings: readonly number[],
+	presentRatings: readonly number[] = ratings,
+): number {
 	if (ratings.length === 0) {
 		return 0;
 	}
 
-	return ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length;
+	const ratedAverage = eventRatedAverage(presentRatings);
+	return (
+		ratings.reduce(
+			(sum, rating) => sum + eventDrawRating(rating, ratedAverage),
+			0,
+		) / ratings.length
+	);
 }
 
 export function formatEventTeamRatingAverage(average: number): string {
@@ -701,18 +727,18 @@ export function pickTeamGoalkeeper(
 export function eventDrawRatings(
 	players: readonly { id: number; rating: number }[],
 ): readonly { id: number; rating: number }[] {
-	const rated = players.filter(
-		(player) => player.rating !== PLAYER_RATING.default,
-	);
-	if (rated.length === 0 || rated.length === players.length) {
+	const ratings = players.map((player) => player.rating);
+	const ratedAverage = eventRatedAverage(ratings);
+	if (
+		ratedAverage === PLAYER_RATING.default ||
+		ratings.every((rating) => rating !== PLAYER_RATING.default)
+	) {
 		return players;
 	}
 
-	const average =
-		rated.reduce((sum, player) => sum + player.rating, 0) / rated.length;
 	return players.map((player) => ({
 		id: player.id,
-		rating: player.rating === PLAYER_RATING.default ? average : player.rating,
+		rating: eventDrawRating(player.rating, ratedAverage),
 	}));
 }
 
