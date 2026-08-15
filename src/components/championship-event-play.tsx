@@ -1018,12 +1018,9 @@ export function ChampionshipEventPlay({
 						match.players,
 						goalTarget.teamId,
 						goalTarget.player.player_id,
-					).map((row) => ({
-						playerId: row.player_id,
-						name: playerVisibleName(
-							resolvePlayer(row.player_id, row.display_name, rosterById),
-						),
-					}))}
+					).map((row) =>
+						resolvePlayer(row.player_id, row.display_name, rosterById),
+					)}
 					isPending={savingGoal}
 					errorMessage={goalError}
 					onCancel={() => {

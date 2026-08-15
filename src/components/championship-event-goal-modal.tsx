@@ -1,22 +1,20 @@
-import { User, X } from "lucide-react";
+import { X } from "lucide-react";
 import { AppDialog } from "@/components/atoms/app-dialog";
 import { Button } from "@/components/button";
+import { EventTeamPlayerAvatar } from "@/components/event-team-player";
 import {
 	EVENT_GOAL_KIND,
 	EVENT_GOAL_LABEL,
 	type EventGoalKind,
 	eventGoalScorerHint,
 } from "@/const/championship-event-match";
+import { playerVisibleName } from "@/const/player-name";
 import { BUTTON_VARIANT, ERROR_CLASS, MODAL_CLASS } from "@/const/ui";
-
-type GoalCandidate = {
-	playerId: number;
-	name: string;
-};
+import type { ChampionshipPlayer } from "@/types/championship";
 
 type ChampionshipEventGoalModalProps = {
 	scorerName: string;
-	candidates: readonly GoalCandidate[];
+	candidates: readonly ChampionshipPlayer[];
 	isPending: boolean;
 	errorMessage: string | null;
 	onCancel: () => void;
@@ -45,7 +43,7 @@ export function ChampionshipEventGoalModal({
 				</p>
 				<ul className="space-y-1">
 					{candidates.map((candidate) => (
-						<li key={candidate.playerId}>
+						<li key={candidate.id}>
 							<Button
 								variant={BUTTON_VARIANT.secondary}
 								className="w-full justify-start"
@@ -53,12 +51,12 @@ export function ChampionshipEventGoalModal({
 								onClick={() => {
 									void onConfirm({
 										kind: EVENT_GOAL_KIND.assist,
-										assistPlayerId: candidate.playerId,
+										assistPlayerId: candidate.id,
 									});
 								}}
 							>
-								<User className="size-4 shrink-0" size={16} />
-								{candidate.name}
+								<EventTeamPlayerAvatar player={candidate} />
+								{playerVisibleName(candidate)}
 							</Button>
 						</li>
 					))}
