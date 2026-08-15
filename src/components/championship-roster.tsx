@@ -32,6 +32,7 @@ import {
 	ROSTER_COLUMN,
 	ROSTER_COLUMN_ABBR,
 	ROSTER_COLUMN_LABEL,
+	ROSTER_DEFAULT_COLUMN_VISIBILITY,
 	ROSTER_LEGEND_ITEMS,
 	ROSTER_STAT_COLUMN_OPTIONS,
 	type RosterRow,
@@ -62,6 +63,8 @@ type ChampionshipRosterProps = {
 	deactivatingPlayerId?: number | null;
 	onReactivate?: (playerId: number) => void;
 	reactivatingPlayerId?: number | null;
+	onRemove?: (playerId: number) => void;
+	removingPlayerId?: number | null;
 	emptyTitle?: string;
 	withStats?: boolean;
 };
@@ -107,6 +110,8 @@ export function ChampionshipRoster({
 	deactivatingPlayerId,
 	onReactivate,
 	reactivatingPlayerId,
+	onRemove,
+	removingPlayerId,
 	emptyTitle = "Nenhum jogador ainda",
 	withStats = true,
 }: ChampionshipRosterProps) {
@@ -167,6 +172,8 @@ export function ChampionshipRoster({
 			deactivatingPlayerId,
 			onReactivate,
 			reactivatingPlayerId,
+			onRemove,
+			removingPlayerId,
 		}),
 		[
 			createdBy,
@@ -187,6 +194,8 @@ export function ChampionshipRoster({
 			deactivatingPlayerId,
 			onReactivate,
 			reactivatingPlayerId,
+			onRemove,
+			removingPlayerId,
 		],
 	);
 
@@ -244,6 +253,19 @@ export function ChampionshipRoster({
 						</span>
 					),
 				}),
+				rosterColumnHelper.accessor("assisted_goals", {
+					id: ROSTER_COLUMN.assisted_goals,
+					header: ROSTER_COLUMN_ABBR.assisted_goals,
+					meta: {
+						align: "right",
+						title: ROSTER_COLUMN_LABEL.assisted_goals,
+					},
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatRosterCount(getValue())}
+						</span>
+					),
+				}),
 				rosterColumnHelper.accessor("own_goals", {
 					id: ROSTER_COLUMN.own_goals,
 					header: ROSTER_COLUMN_ABBR.own_goals,
@@ -271,6 +293,26 @@ export function ChampionshipRoster({
 					id: ROSTER_COLUMN.wins,
 					header: ROSTER_COLUMN_ABBR.wins,
 					meta: { align: "right", title: ROSTER_COLUMN_LABEL.wins },
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatRosterCount(getValue())}
+						</span>
+					),
+				}),
+				rosterColumnHelper.accessor("losses", {
+					id: ROSTER_COLUMN.losses,
+					header: ROSTER_COLUMN_ABBR.losses,
+					meta: { align: "right", title: ROSTER_COLUMN_LABEL.losses },
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatRosterCount(getValue())}
+						</span>
+					),
+				}),
+				rosterColumnHelper.accessor("draws", {
+					id: ROSTER_COLUMN.draws,
+					header: ROSTER_COLUMN_ABBR.draws,
+					meta: { align: "right", title: ROSTER_COLUMN_LABEL.draws },
 					cell: ({ getValue }) => (
 						<span className="tabular-nums">
 							{formatRosterCount(getValue())}
@@ -384,19 +426,19 @@ export function ChampionshipRoster({
 					{visiblePlayers.map((player) => (
 						<li
 							key={player.id}
-							className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+							className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 md:flex-row md:items-center md:justify-between"
 						>
-							<RosterPlayerCell
-								{...rosterPlayerCellProps(player, playerCellShared)}
-							/>
-							<div className="flex items-center gap-1">
+							<div className="flex min-w-0 flex-1 items-center justify-between gap-3">
+								<RosterPlayerCell
+									{...rosterPlayerCellProps(player, playerCellShared)}
+								/>
 								<RosterPlayerRating
 									{...rosterPlayerRatingProps(player, playerRatingShared)}
 								/>
-								<RosterPlayerActions
-									{...rosterPlayerActionsProps(player, playerActionsShared)}
-								/>
 							</div>
+							<RosterPlayerActions
+								{...rosterPlayerActionsProps(player, playerActionsShared)}
+							/>
 						</li>
 					))}
 				</ul>
@@ -407,6 +449,7 @@ export function ChampionshipRoster({
 					columns={columns}
 					getRowId={(row) => String(row.id)}
 					hideableColumns={ROSTER_STAT_COLUMN_OPTIONS}
+					initialColumnVisibility={ROSTER_DEFAULT_COLUMN_VISIBILITY}
 					legendItems={ROSTER_LEGEND_ITEMS}
 				/>
 			)}

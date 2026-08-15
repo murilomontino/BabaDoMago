@@ -5,9 +5,12 @@ export const ROSTER_COLUMN = {
 	rating: "rating",
 	goals: "goals",
 	assists: "assists",
+	assisted_goals: "assisted_goals",
 	own_goals: "own_goals",
 	goalInvolvement: "goalInvolvement",
 	wins: "wins",
+	losses: "losses",
+	draws: "draws",
 	mvps: "mvps",
 	matches: "matches",
 	goalsAverage: "goalsAverage",
@@ -23,9 +26,12 @@ export const ROSTER_COLUMN_ABBR = {
 	rating: "Rat",
 	goals: "G",
 	assists: "A",
+	assisted_goals: "GS",
 	own_goals: "GC",
 	goalInvolvement: "PG",
 	wins: "V",
+	losses: "D",
+	draws: "E",
 	mvps: "MVP",
 	matches: "J",
 	goalsAverage: "MG",
@@ -39,10 +45,13 @@ export const ROSTER_COLUMN_LABEL = {
 	rating: "Rating",
 	goals: "Gols",
 	assists: "Assistências",
+	assisted_goals: "Gols servidos",
 	own_goals: "Gols contra",
 	goalInvolvement: "Participação em Gols",
 	wins: "Vitórias",
-	mvps: "MVPs",
+	losses: "Derrotas",
+	draws: "Empates",
+	mvps: "Destaque da rodada",
 	matches: "Jogos",
 	goalsAverage: "Média de Gols",
 	assistsAverage: "Média de Assistências",
@@ -53,9 +62,12 @@ export const ROSTER_COLUMN_LABEL = {
 export const ROSTER_STAT_COLUMNS = [
 	ROSTER_COLUMN.goals,
 	ROSTER_COLUMN.assists,
+	ROSTER_COLUMN.assisted_goals,
 	ROSTER_COLUMN.own_goals,
 	ROSTER_COLUMN.goalInvolvement,
 	ROSTER_COLUMN.wins,
+	ROSTER_COLUMN.losses,
+	ROSTER_COLUMN.draws,
 	ROSTER_COLUMN.mvps,
 	ROSTER_COLUMN.matches,
 	ROSTER_COLUMN.goalsAverage,
@@ -64,6 +76,35 @@ export const ROSTER_STAT_COLUMNS = [
 ] as const;
 
 export type RosterStatColumnId = (typeof ROSTER_STAT_COLUMNS)[number];
+
+export const ROSTER_OPTIONAL_COLUMNS = [
+	ROSTER_COLUMN.assisted_goals,
+	ROSTER_COLUMN.losses,
+	ROSTER_COLUMN.draws,
+] as const;
+
+export type RosterOptionalColumnId = (typeof ROSTER_OPTIONAL_COLUMNS)[number];
+
+export const ROSTER_DEFAULT_COLUMN_VISIBILITY = {
+	[ROSTER_COLUMN.assisted_goals]: false,
+	[ROSTER_COLUMN.losses]: false,
+	[ROSTER_COLUMN.draws]: false,
+} as const;
+
+export const ROSTER_OPTIONAL_COLUMN_OPTIONS = ROSTER_OPTIONAL_COLUMNS.map(
+	(id) => ({
+		id,
+		label: ROSTER_COLUMN_LABEL[id],
+	}),
+);
+
+const ROSTER_OPTIONAL_COLUMN_IDS = new Set<string>(ROSTER_OPTIONAL_COLUMNS);
+
+export function isRosterOptionalColumn(
+	column: string,
+): column is RosterOptionalColumnId {
+	return ROSTER_OPTIONAL_COLUMN_IDS.has(column);
+}
 
 export type RosterRow = ChampionshipPlayer & {
 	goalInvolvement: number;
@@ -106,16 +147,22 @@ export function rosterWinRate(wins: number, matches: number): number {
 export function toRosterRow(player: ChampionshipPlayer): RosterRow {
 	const goals = rosterSafeCount(player.goals);
 	const assists = rosterSafeCount(player.assists);
+	const assistedGoals = rosterSafeCount(player.assisted_goals);
 	const ownGoals = rosterSafeCount(player.own_goals);
 	const wins = rosterSafeCount(player.wins);
+	const losses = rosterSafeCount(player.losses);
+	const draws = rosterSafeCount(player.draws);
 	const matches = rosterSafeCount(player.matches);
 
 	return {
 		...player,
 		goals,
 		assists,
+		assisted_goals: assistedGoals,
 		own_goals: ownGoals,
 		wins,
+		losses,
+		draws,
 		matches,
 		goalInvolvement: rosterGoalInvolvement(goals, assists),
 		goalsAverage: rosterAverage(goals, matches),
@@ -143,9 +190,12 @@ export function formatRosterStat(
 	switch (column) {
 		case ROSTER_COLUMN.goals:
 		case ROSTER_COLUMN.assists:
+		case ROSTER_COLUMN.assisted_goals:
 		case ROSTER_COLUMN.own_goals:
 		case ROSTER_COLUMN.goalInvolvement:
 		case ROSTER_COLUMN.wins:
+		case ROSTER_COLUMN.losses:
+		case ROSTER_COLUMN.draws:
 		case ROSTER_COLUMN.mvps:
 		case ROSTER_COLUMN.matches:
 			return formatRosterCount(value);

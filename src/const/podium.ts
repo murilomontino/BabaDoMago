@@ -5,9 +5,9 @@ import { playerVisibleName } from "./player-name.ts";
 import {
 	formatRosterCount,
 	formatRosterStat,
+	formatRosterWinRate,
 	ROSTER_COLUMN,
 	ROSTER_COLUMN_LABEL,
-	ROSTER_STAT_COLUMNS,
 	type RosterRow,
 } from "./roster-stats.ts";
 
@@ -34,6 +34,7 @@ export const PODIUM_DISPLAY_ORDER = [
 export const PODIUM_LABEL = {
 	tab: "Pódio",
 	metric: "Métrica",
+	synergy: "Sinergia",
 	emptyPlayers: "Nenhum jogador ainda",
 	emptyStats: "Nenhuma estatística ainda",
 } as const;
@@ -82,16 +83,56 @@ export const PODIUM_MONTH_LABEL = {
 
 export const PODIUM_DEFAULT_METRIC = ROSTER_COLUMN.goals;
 
-export const PODIUM_METRICS = [
+export const PODIUM_METRIC = {
+	synergy: "synergy",
+} as const;
+
+export const PODIUM_PLAYER_METRICS = [
 	ROSTER_COLUMN.rating,
-	...ROSTER_STAT_COLUMNS,
+	ROSTER_COLUMN.goals,
+	ROSTER_COLUMN.assists,
+	ROSTER_COLUMN.assisted_goals,
+	ROSTER_COLUMN.own_goals,
+	ROSTER_COLUMN.goalInvolvement,
+	ROSTER_COLUMN.wins,
+	ROSTER_COLUMN.mvps,
+	ROSTER_COLUMN.matches,
+	ROSTER_COLUMN.goalsAverage,
+	ROSTER_COLUMN.assistsAverage,
+	ROSTER_COLUMN.winRate,
+] as const;
+
+export type PodiumPlayerMetricId = (typeof PODIUM_PLAYER_METRICS)[number];
+
+export const PODIUM_METRICS = [
+	...PODIUM_PLAYER_METRICS,
+	PODIUM_METRIC.synergy,
 ] as const;
 
 export type PodiumMetricId = (typeof PODIUM_METRICS)[number];
 
+export function isPodiumPlayerMetric(
+	metric: PodiumMetricId,
+): metric is PodiumPlayerMetricId {
+	return metric !== PODIUM_METRIC.synergy;
+}
+
+export function podiumMetricLabel(metric: PodiumMetricId): string {
+	if (metric === PODIUM_METRIC.synergy) {
+		return PODIUM_LABEL.synergy;
+	}
+
+	return ROSTER_COLUMN_LABEL[metric];
+}
+
 export const PODIUM_METRIC_OPTIONS = PODIUM_METRICS.map((id) => ({
 	id,
-	label: ROSTER_COLUMN_LABEL[id],
+	label: podiumMetricLabel(id),
+}));
+
+export const PODIUM_PLAYER_METRIC_OPTIONS = PODIUM_PLAYER_METRICS.map((id) => ({
+	id,
+	label: podiumMetricLabel(id),
 }));
 
 export const PODIUM_STAND_HEIGHT = {
@@ -132,6 +173,10 @@ export function formatPodiumMetric(
 	column: PodiumMetricId,
 	value: number,
 ): string {
+	if (column === PODIUM_METRIC.synergy) {
+		return formatRosterWinRate(value);
+	}
+
 	if (column === ROSTER_COLUMN.rating) {
 		return formatRosterCount(value);
 	}
@@ -141,7 +186,7 @@ export function formatPodiumMetric(
 
 export function rankPodiumRows(
 	rows: readonly RosterRow[],
-	metric: PodiumMetricId,
+	metric: PodiumPlayerMetricId,
 ): RosterRow[] {
 	return [...rows].sort((left, right) => {
 		const metricDiff = right[metric] - left[metric];
@@ -163,7 +208,7 @@ export function rankPodiumRows(
 
 export function podiumStandings(
 	ranked: readonly RosterRow[],
-	metric: PodiumMetricId,
+	metric: PodiumPlayerMetricId,
 ): PodiumStanding[] {
 	const scored = ranked.filter((row) => row[metric] > 0);
 	const distinct = [...new Set(scored.map((row) => row[metric]))].slice(
@@ -325,8 +370,11 @@ export function togglePodiumSemester(
 type PodiumStatAcc = {
 	goals: number;
 	assists: number;
+	assisted_goals: number;
 	own_goals: number;
 	wins: number;
+	losses: number;
+	draws: number;
 	matches: number;
 	mvps: number;
 };
@@ -335,8 +383,11 @@ function emptyPodiumStatAcc(): PodiumStatAcc {
 	return {
 		goals: 0,
 		assists: 0,
+		assisted_goals: 0,
 		own_goals: 0,
 		wins: 0,
+		losses: 0,
+		draws: 0,
 		matches: 0,
 		mvps: 0,
 	};
@@ -360,8 +411,11 @@ export function aggregatePodiumPlayersFromEvents(
 			const acc = byPlayerId.get(row.player_id) ?? emptyPodiumStatAcc();
 			acc.goals += row.goals;
 			acc.assists += row.assists;
+			acc.assisted_goals += row.assisted_goals;
 			acc.own_goals += row.own_goals;
 			acc.wins += row.wins;
+			acc.losses += row.losses;
+			acc.draws += row.draws;
 			acc.matches += row.matches;
 			acc.mvps += row.is_mvp ? 1 : 0;
 			byPlayerId.set(row.player_id, acc);
@@ -379,8 +433,11 @@ export function aggregatePodiumPlayersFromEvents(
 				...player,
 				goals: acc.goals,
 				assists: acc.assists,
+				assisted_goals: acc.assisted_goals,
 				own_goals: acc.own_goals,
 				wins: acc.wins,
+				losses: acc.losses,
+				draws: acc.draws,
 				matches: acc.matches,
 				mvps: acc.mvps,
 			},

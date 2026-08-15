@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import type {
 	EventAttendanceStatsDraft,
 	PlayerEventStatsDraft,
 } from "@/const/championship-event";
 import type { EventTeamColor } from "@/const/event-team-color";
+import { supabase } from "@/lib/supabase";
 import {
 	addChampionshipEventGoal,
 	addChampionshipEventTeam,
@@ -15,7 +17,9 @@ import {
 	endChampionshipEventMatch,
 	getChampionshipEventById,
 	listChampionshipEvents,
+	pauseChampionshipEventMatch,
 	reopenChampionshipEventMatch,
+	resumeChampionshipEventMatch,
 	saveChampionshipEventAttendance,
 	saveChampionshipEventAttendanceStats,
 	saveChampionshipEventTeams,
@@ -23,6 +27,7 @@ import {
 	setChampionshipEventMatchGoalkeeper,
 	setChampionshipEventMatchPlayer,
 	setChampionshipEventMvps,
+	startChampionshipEventClock,
 	startChampionshipEventMatch,
 	undoChampionshipEventGoal,
 	updateChampionshipEventTeam,
@@ -344,6 +349,39 @@ export function useUndoChampionshipEventGoal(_championshipId: number) {
 	});
 }
 
+export function useStartChampionshipEventClock(_championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (matchId: number) => startChampionshipEventClock(matchId),
+		onSuccess: async () => {
+			await invalidateChampionshipEventQueries(queryClient);
+		},
+	});
+}
+
+export function usePauseChampionshipEventMatch(_championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (matchId: number) => pauseChampionshipEventMatch(matchId),
+		onSuccess: async () => {
+			await invalidateChampionshipEventQueries(queryClient);
+		},
+	});
+}
+
+export function useResumeChampionshipEventMatch(_championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (matchId: number) => resumeChampionshipEventMatch(matchId),
+		onSuccess: async () => {
+			await invalidateChampionshipEventQueries(queryClient);
+		},
+	});
+}
+
 export function useEndChampionshipEventMatch(_championshipId: number) {
 	const queryClient = useQueryClient();
 
@@ -437,4 +475,73 @@ export function useDeleteChampionshipEvent(_championshipId: number) {
 			await invalidateChampionshipEventQueries(queryClient);
 		},
 	});
+}
+
+const EVENT_MATCH_REALTIME_DEBOUNCE_MS = 50;
+
+export function useChampionshipEventRealtime(
+	_championshipId: number,
+	eventId: number,
+) {
+	const queryClient = useQueryClient();
+
+	useEffect(() => {
+		if (!Number.isFinite(eventId)) {
+			return;
+		}
+
+		let timeout: ReturnType<typeof setTimeout> | null = null;
+		function invalidate() {
+			if (timeout) {
+				clearTimeout(timeout);
+			}
+
+			timeout = setTimeout(() => {
+				void invalidateChampionshipEventQueries(queryClient);
+			}, EVENT_MATCH_REALTIME_DEBOUNCE_MS);
+		}
+
+		const filter = `event_id=eq.${eventId}`;
+		const channel = supabase
+			.channel(`event-match:${eventId}`)
+			.on(
+				"postgres_changes",
+				{
+					event: "*",
+					schema: "public",
+					table: "championship_event_matches",
+					filter,
+				},
+				invalidate,
+			)
+			.on(
+				"postgres_changes",
+				{
+					event: "*",
+					schema: "public",
+					table: "championship_event_match_players",
+					filter,
+				},
+				invalidate,
+			)
+			.on(
+				"postgres_changes",
+				{
+					event: "*",
+					schema: "public",
+					table: "championship_event_goals",
+					filter,
+				},
+				invalidate,
+			)
+			.subscribe();
+
+		return () => {
+			if (timeout) {
+				clearTimeout(timeout);
+			}
+
+			void supabase.removeChannel(channel);
+		};
+	}, [eventId, queryClient]);
 }

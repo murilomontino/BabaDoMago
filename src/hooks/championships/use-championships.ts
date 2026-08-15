@@ -12,6 +12,7 @@ import {
 	listChampionships,
 	mergeChampionshipPlayers,
 	reactivatePlayer,
+	removePlayer,
 	renameChampionship,
 	setPlayerRole,
 	transferChampionshipOwner,
@@ -279,6 +280,17 @@ export function useReactivatePlayer() {
 
 	return useMutation({
 		mutationFn: (playerId: number) => reactivatePlayer(playerId),
+		onSuccess: async () => {
+			await invalidateChampionshipQueries(queryClient);
+		},
+	});
+}
+
+export function useRemovePlayer() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (playerId: number) => removePlayer(playerId),
 		onSuccess: async () => {
 			await invalidateChampionshipQueries(queryClient);
 		},

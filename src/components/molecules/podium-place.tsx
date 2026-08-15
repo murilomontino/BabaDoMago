@@ -10,19 +10,19 @@ import {
 	PODIUM_ANIMATION_DELAY,
 	PODIUM_PLACE,
 	PODIUM_STAND_HEIGHT,
-	type PodiumMetricId,
 	type PodiumPlace,
+	type PodiumPlayerMetricId,
 } from "@/const/podium";
 import type { RosterRow } from "@/const/roster-stats";
 
 type PodiumPlaceCardProps = {
 	place: PodiumPlace;
 	row: RosterRow;
-	metric: PodiumMetricId;
+	metric: PodiumPlayerMetricId;
 	ceiling: number;
 };
 
-function PodiumMedal({ place }: { place: PodiumPlace }) {
+export function PodiumMedal({ place }: { place: PodiumPlace }) {
 	switch (place) {
 		case PODIUM_PLACE.first:
 			return <Trophy className="size-5 text-amber-400" />;

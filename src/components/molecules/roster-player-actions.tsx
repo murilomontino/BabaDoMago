@@ -1,6 +1,7 @@
 import {
 	ChartColumn,
 	Merge,
+	Trash2,
 	Unlink,
 	UserCheck,
 	UserPen,
@@ -26,9 +27,8 @@ const ROSTER_ACTION_LABEL = {
 	merge: "Unir",
 	deactivate: "Desativar",
 	activate: "Ativar",
+	remove: "Excluir",
 } as const;
-
-const ROSTER_ACTIONS_PER_ROW = 3 as const;
 
 export type RosterPlayerActionsProps = {
 	player: ChampionshipPlayer;
@@ -49,6 +49,8 @@ export type RosterPlayerActionsProps = {
 	deactivatingPlayerId?: number | null;
 	onReactivate?: (playerId: number) => void;
 	reactivatingPlayerId?: number | null;
+	onRemove?: (playerId: number) => void;
+	removingPlayerId?: number | null;
 };
 
 export function RosterPlayerActions({
@@ -70,6 +72,8 @@ export function RosterPlayerActions({
 	deactivatingPlayerId,
 	onReactivate,
 	reactivatingPlayerId,
+	onRemove,
+	removingPlayerId,
 }: RosterPlayerActionsProps) {
 	const displayRole = resolveChampionshipRole(
 		createdBy,
@@ -90,6 +94,7 @@ export function RosterPlayerActions({
 		onDeactivate && !isChampionshipOwner && !player.deleted_at,
 	);
 	const canReactivate = Boolean(onReactivate && player.deleted_at);
+	const canRemove = Boolean(onRemove && player.deleted_at && !player.user_id);
 	const canEditNickname = Boolean(
 		onEditNickname &&
 			!player.deleted_at &&
@@ -106,20 +111,17 @@ export function RosterPlayerActions({
 		!canUnlink &&
 		!canMerge &&
 		!canDeactivate &&
-		!canReactivate
+		!canReactivate &&
+		!canRemove
 	) {
 		return null;
 	}
 
 	return (
-		<div
-			className="mx-auto inline-grid w-max justify-items-center"
-			style={{
-				gridTemplateColumns: `repeat(${ROSTER_ACTIONS_PER_ROW}, min-content)`,
-			}}
-		>
+		<div className="grid w-full grid-cols-2 gap-1 md:mx-auto md:inline-grid md:w-max md:grid-cols-3 md:justify-items-center">
 			{canEditNickname && onEditNickname && (
 				<IconTooltipButton
+					expandOnMobile
 					label={PLAYER_LABEL.nickname}
 					icon={<UserPen className="size-4" />}
 					onClick={() => onEditNickname(player.id)}
@@ -128,6 +130,7 @@ export function RosterPlayerActions({
 			)}
 			{canEditEventStats && onEditEventStats && (
 				<IconTooltipButton
+					expandOnMobile
 					label={EVENT_ACTION.editPlayerEventStats}
 					icon={<ChartColumn className="size-4" />}
 					onClick={() => onEditEventStats(player.id)}
@@ -136,6 +139,7 @@ export function RosterPlayerActions({
 			)}
 			{canClaim && onClaim && (
 				<IconTooltipButton
+					expandOnMobile
 					label={ROSTER_ACTION_LABEL.connect}
 					icon={<UserPlus className="size-4" />}
 					onClick={() => onClaim(player.id)}
@@ -144,6 +148,7 @@ export function RosterPlayerActions({
 			)}
 			{canUnlink && onUnlink && (
 				<IconTooltipButton
+					expandOnMobile
 					label={ROSTER_ACTION_LABEL.disconnect}
 					icon={<Unlink className="size-4" />}
 					onClick={() => onUnlink(player.id)}
@@ -152,6 +157,7 @@ export function RosterPlayerActions({
 			)}
 			{canMerge && onMerge && (
 				<IconTooltipButton
+					expandOnMobile
 					label={ROSTER_ACTION_LABEL.merge}
 					icon={<Merge className="size-4" />}
 					onClick={() => onMerge(player.id)}
@@ -159,6 +165,7 @@ export function RosterPlayerActions({
 			)}
 			{canDeactivate && onDeactivate && (
 				<IconTooltipButton
+					expandOnMobile
 					label={ROSTER_ACTION_LABEL.deactivate}
 					icon={<UserX className="size-4" />}
 					variant={BUTTON_VARIANT.danger}
@@ -168,11 +175,22 @@ export function RosterPlayerActions({
 			)}
 			{canReactivate && onReactivate && (
 				<IconTooltipButton
+					expandOnMobile
 					label={ROSTER_ACTION_LABEL.activate}
 					icon={<UserCheck className="size-4" />}
 					variant={BUTTON_VARIANT.primary}
 					onClick={() => onReactivate(player.id)}
 					disabled={reactivatingPlayerId === player.id}
+				/>
+			)}
+			{canRemove && onRemove && (
+				<IconTooltipButton
+					expandOnMobile
+					label={ROSTER_ACTION_LABEL.remove}
+					icon={<Trash2 className="size-4" />}
+					variant={BUTTON_VARIANT.danger}
+					onClick={() => onRemove(player.id)}
+					disabled={removingPlayerId === player.id}
 				/>
 			)}
 		</div>

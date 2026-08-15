@@ -6,14 +6,17 @@ import {
 	formatPodiumMetric,
 	isPodiumAllMonthsSelected,
 	isPodiumCurrentMonthSelected,
+	isPodiumPlayerMetric,
 	PODIUM_DEFAULT_METRIC,
 	PODIUM_DISPLAY_ORDER,
 	PODIUM_FILTER_LABEL,
 	PODIUM_LABEL,
+	PODIUM_METRIC,
 	PODIUM_METRICS,
 	PODIUM_MONTHS,
 	PODIUM_PLACE,
 	PODIUM_PLACES,
+	PODIUM_PLAYER_METRIC_OPTIONS,
 	PODIUM_SEASON_YEAR,
 	PODIUM_SEMESTER,
 	parsePodiumMetric,
@@ -43,11 +46,27 @@ check(PODIUM_DEFAULT_METRIC === ROSTER_COLUMN.goals, "default goals");
 check(PODIUM_LABEL.tab === "Pódio", "tab label");
 check(parsePodiumMetric("goals") === ROSTER_COLUMN.goals, "parse goals");
 check(parsePodiumMetric("assists") === ROSTER_COLUMN.assists, "parse assists");
+check(
+	parsePodiumMetric("assisted_goals") === ROSTER_COLUMN.assisted_goals,
+	"parse assisted goals",
+);
 check(parsePodiumMetric("rating") === ROSTER_COLUMN.rating, "parse rating");
+check(parsePodiumMetric("synergy") === PODIUM_METRIC.synergy, "parse synergy");
 check(parsePodiumMetric("nope") === PODIUM_DEFAULT_METRIC, "parse fallback");
 check(PODIUM_METRICS[0] === ROSTER_COLUMN.rating, "rating first in select");
+check(PODIUM_METRICS.length === 13, "podium metrics frozen");
+check(
+	PODIUM_PLAYER_METRIC_OPTIONS.length === PODIUM_METRICS.length - 1,
+	"event podium skips synergy",
+);
+check(isPodiumPlayerMetric(ROSTER_COLUMN.goals), "goals is player metric");
+check(!isPodiumPlayerMetric(PODIUM_METRIC.synergy), "synergy is not player");
 check(formatPodiumMetric(ROSTER_COLUMN.rating, 8) === "8", "format rating");
 check(formatPodiumMetric(ROSTER_COLUMN.goals, 4) === "4", "format goals");
+check(
+	formatPodiumMetric(PODIUM_METRIC.synergy, 0.5) === "50%",
+	"format synergy",
+);
 
 function player(
 	id: number,
@@ -66,8 +85,11 @@ function player(
 		deleted_at: null,
 		goals: 0,
 		assists: 0,
+		assisted_goals: 0,
 		own_goals: 0,
 		wins: 0,
+		losses: 0,
+		draws: 0,
 		matches: 0,
 		mvps: 0,
 		...stats,
@@ -298,8 +320,11 @@ function attendanceRow(
 	stats: {
 		goals: number;
 		assists: number;
+		assisted_goals?: number;
 		own_goals: number;
 		wins: number;
+		losses?: number;
+		draws?: number;
 		matches: number;
 		rating: number;
 		is_mvp?: boolean;
@@ -314,6 +339,9 @@ function attendanceRow(
 		event_date: "2026-03-15",
 		rating_delta: 0,
 		...stats,
+		losses: stats.losses ?? 0,
+		draws: stats.draws ?? 0,
+		assisted_goals: stats.assisted_goals ?? 0,
 		is_mvp: stats.is_mvp === true,
 		mvp_overridden: false,
 	};
@@ -329,6 +357,7 @@ function eventAt(
 		championship_id: 1,
 		starts_at: startsAt,
 		players_per_team: 5,
+		skip_guest_goalkeeper_matches: true,
 		ended_at: null,
 		attendance,
 		teams: [],
@@ -345,6 +374,7 @@ const aggregated = aggregatePodiumPlayersFromEvents(
 			attendanceRow(1, {
 				goals: 2,
 				assists: 1,
+				assisted_goals: 1,
 				own_goals: 0,
 				wins: 1,
 				matches: 2,
@@ -356,6 +386,7 @@ const aggregated = aggregatePodiumPlayersFromEvents(
 			attendanceRow(1, {
 				goals: 3,
 				assists: 0,
+				assisted_goals: 2,
 				own_goals: 1,
 				wins: 2,
 				matches: 3,
@@ -389,6 +420,7 @@ const anaAgg = aggregated.find((row) => row.id === 1);
 const brunoAgg = aggregated.find((row) => row.id === 2);
 check(anaAgg?.goals === 5, "ana goals summed");
 check(anaAgg?.assists === 1, "ana assists summed");
+check(anaAgg?.assisted_goals === 3, "ana assisted goals summed");
 check(anaAgg?.own_goals === 1, "ana own goals summed");
 check(anaAgg?.wins === 3, "ana wins summed");
 check(anaAgg?.mvps === 1, "ana mvps summed");
@@ -405,6 +437,7 @@ const h1Only = aggregatePodiumPlayersFromEvents(
 			attendanceRow(1, {
 				goals: 2,
 				assists: 1,
+				assisted_goals: 1,
 				own_goals: 0,
 				wins: 1,
 				matches: 2,
@@ -436,6 +469,7 @@ const julyOnly = aggregatePodiumPlayersFromEvents(
 			attendanceRow(1, {
 				goals: 2,
 				assists: 1,
+				assisted_goals: 1,
 				own_goals: 0,
 				wins: 1,
 				matches: 2,

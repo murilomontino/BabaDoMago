@@ -1,4 +1,4 @@
-import { Link, Outlet, useNavigate } from "@tanstack/react-router";
+import { Link, Outlet, useMatch, useNavigate } from "@tanstack/react-router";
 import { House, LogOut, Trophy } from "lucide-react";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
@@ -14,10 +14,18 @@ export function AuthenticatedLayout() {
 	const navigate = useNavigate();
 	const avatarUrl = getUserAvatarUrl(user);
 	const initial = getUserInitial(user);
+	const playRoute = useMatch({
+		from: "/_authenticated/championships/$championshipId/events/$eventId/play",
+		shouldThrow: false,
+	});
 
 	async function handleSignOut() {
 		await signOut();
 		await navigate({ to: ROUTES.login });
+	}
+
+	if (playRoute) {
+		return <Outlet />;
 	}
 
 	if (isLoading) {

@@ -1,5 +1,6 @@
 import type { ChampionshipPlayer } from "../types/championship.ts";
 import {
+	PODIUM_METRIC,
 	PODIUM_PLACE,
 	PODIUM_SEMESTER,
 	podiumStandings,
@@ -43,8 +44,11 @@ function player(
 		deleted_at: null,
 		goals: 0,
 		assists: 0,
+		assisted_goals: 0,
 		own_goals: 0,
 		wins: 0,
+		losses: 0,
+		draws: 0,
 		matches: 0,
 		mvps: 0,
 		...stats,
@@ -52,6 +56,7 @@ function player(
 }
 
 check(podiumShareHeading(ROSTER_COLUMN.goals), "Pódio · Gols");
+check(podiumShareHeading(PODIUM_METRIC.synergy), "Pódio · Sinergia");
 check(podiumSharePeriodSlug(null, []), "Temporada 2026");
 check(podiumSharePeriodSlug(PODIUM_SEMESTER.first, []), "Primeiro Semestre");
 check(podiumSharePeriodSlug(null, [8]), "Agosto");
@@ -66,6 +71,10 @@ const shareParts = {
 check(
 	podiumShareFileName(ROSTER_COLUMN.goals, shareParts),
 	"podio-baba-do-mago-gols-temporada-2026-14-08-2026.png",
+);
+check(
+	podiumShareFileName(PODIUM_METRIC.synergy, shareParts),
+	"podio-baba-do-mago-sinergia-temporada-2026-14-08-2026.png",
 );
 check(
 	podiumShareFileName(ROSTER_COLUMN.own_goals, shareParts),
@@ -152,8 +161,18 @@ check(
 	true,
 );
 check(
+	cards.some((item) => item.metric === ROSTER_COLUMN.assisted_goals),
+	false,
+);
+check(
 	cards.some((item) => item.metric === ROSTER_COLUMN.own_goals),
 	false,
+);
+check(
+	podiumShareCardsFromPlayers([player(1, "Ana", { assisted_goals: 2 })]).some(
+		(item) => item.metric === ROSTER_COLUMN.assisted_goals,
+	),
+	true,
 );
 check(
 	podiumShareAllText(

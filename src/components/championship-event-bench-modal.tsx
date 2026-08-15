@@ -1,8 +1,17 @@
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppDialog } from "@/components/atoms/app-dialog";
 import { Button } from "@/components/button";
 import { playerVisibleName } from "@/const/player-name";
-import { BUTTON_VARIANT, ERROR_CLASS, MODAL_CLASS } from "@/const/ui";
+import { filterPlayersBySearch, PLAYER_SEARCH } from "@/const/player-search";
+import {
+	BUTTON_VARIANT,
+	ERROR_CLASS,
+	FIELD_CLASS,
+	MODAL_CLASS,
+} from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
+
+const BENCH_SEARCH_ID = "event-bench-player-search";
 
 type ChampionshipEventBenchModalProps = {
 	title: string;
@@ -23,6 +32,17 @@ export function ChampionshipEventBenchModal({
 	onCancel,
 	onSelect,
 }: ChampionshipEventBenchModalProps) {
+	const [query, setQuery] = useState("");
+	const searchRef = useRef<HTMLInputElement>(null);
+	const visiblePlayers = useMemo(
+		() => filterPlayersBySearch(players, query),
+		[players, query],
+	);
+
+	useEffect(() => {
+		searchRef.current?.focus();
+	}, []);
+
 	return (
 		<AppDialog onClose={onCancel}>
 			<div className={MODAL_CLASS}>
@@ -33,22 +53,47 @@ export function ChampionshipEventBenchModal({
 					<p className="text-sm text-fg-muted">{emptyMessage}</p>
 				)}
 				{players.length > 0 && (
-					<ul className="max-h-72 space-y-1 overflow-y-auto">
-						{players.map((player) => (
-							<li key={player.id}>
-								<Button
-									variant={BUTTON_VARIANT.secondary}
-									className="w-full justify-start"
-									disabled={isPending}
-									onClick={() => {
-										void onSelect(player.id);
-									}}
-								>
-									{playerVisibleName(player)}
-								</Button>
-							</li>
-						))}
-					</ul>
+					<div className="space-y-3">
+						<label
+							htmlFor={BENCH_SEARCH_ID}
+							className="block text-sm text-fg-muted"
+						>
+							{PLAYER_SEARCH.label}
+							<input
+								id={BENCH_SEARCH_ID}
+								ref={searchRef}
+								type="search"
+								value={query}
+								placeholder={PLAYER_SEARCH.placeholder}
+								autoComplete="off"
+								className={`mt-1 ${FIELD_CLASS}`}
+								onChange={(event) => {
+									setQuery(event.target.value);
+								}}
+							/>
+						</label>
+						{visiblePlayers.length === 0 && (
+							<p className="text-sm text-fg-muted">{PLAYER_SEARCH.empty}</p>
+						)}
+						{visiblePlayers.length > 0 && (
+							<ul className="max-h-72 space-y-1 overflow-y-auto">
+								{visiblePlayers.map((player) => (
+									<li key={player.id}>
+										<Button
+											variant={BUTTON_VARIANT.secondary}
+											className="w-full justify-start"
+											disabled={isPending}
+											onClick={() => {
+												void onSelect(player.id);
+											}}
+										>
+											{playerVisibleName(player)}
+										</Button>
+									</li>
+								))}
+							</ul>
+						)}
+					</div>
 				)}
 				{errorMessage && (
 					<p className={`mt-2 ${ERROR_CLASS}`}>{errorMessage}</p>

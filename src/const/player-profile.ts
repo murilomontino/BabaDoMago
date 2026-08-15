@@ -11,6 +11,7 @@ export const PLAYER_PROFILE_LABEL = {
 	noAccount: "Sem conta",
 	delta: "Delta",
 	rating: "Nota",
+	viewPhoto: "Ver foto de perfil",
 } as const;
 
 export const PLAYER_RATING_HISTORY_CHART = {
@@ -23,8 +24,11 @@ export const PLAYER_PROFILE_HISTORY_COLUMN = {
 	date: "date",
 	goals: "goals",
 	assists: "assists",
+	assisted_goals: "assisted_goals",
 	own_goals: "own_goals",
 	wins: "wins",
+	losses: "losses",
+	draws: "draws",
 	mvps: "mvps",
 	matches: "matches",
 	delta: "delta",
@@ -37,8 +41,11 @@ export const PLAYER_PROFILE_HISTORY_COLUMNS = [
 	PLAYER_PROFILE_HISTORY_COLUMN.date,
 	PLAYER_PROFILE_HISTORY_COLUMN.goals,
 	PLAYER_PROFILE_HISTORY_COLUMN.assists,
+	PLAYER_PROFILE_HISTORY_COLUMN.assisted_goals,
 	PLAYER_PROFILE_HISTORY_COLUMN.own_goals,
 	PLAYER_PROFILE_HISTORY_COLUMN.wins,
+	PLAYER_PROFILE_HISTORY_COLUMN.losses,
+	PLAYER_PROFILE_HISTORY_COLUMN.draws,
 	PLAYER_PROFILE_HISTORY_COLUMN.mvps,
 	PLAYER_PROFILE_HISTORY_COLUMN.matches,
 	PLAYER_PROFILE_HISTORY_COLUMN.delta,
@@ -48,8 +55,11 @@ export const PLAYER_PROFILE_HISTORY_ABBR = {
 	date: "Data",
 	goals: "G",
 	assists: "A",
+	assisted_goals: "GS",
 	own_goals: "GC",
 	wins: "V",
+	losses: "D",
+	draws: "E",
 	mvps: "MVP",
 	matches: "J",
 	delta: "Δ",
@@ -59,8 +69,11 @@ export const PLAYER_PROFILE_HISTORY_COLUMN_LABEL = {
 	date: "Data",
 	goals: "Gols",
 	assists: "Assistências",
+	assisted_goals: "Gols servidos",
 	own_goals: "Gols contra",
 	wins: "Vitórias",
+	losses: "Derrotas",
+	draws: "Empates",
 	mvps: "MVP",
 	matches: "Jogos",
 	delta: PLAYER_PROFILE_LABEL.delta,
@@ -83,8 +96,11 @@ export type PlayerProfileEventInput = {
 		player_id: number;
 		goals: number;
 		assists: number;
+		assisted_goals: number;
 		own_goals: number;
 		wins: number;
+		losses: number;
+		draws: number;
 		matches: number;
 		rating: number;
 		rating_delta: number;
@@ -98,8 +114,11 @@ export type PlayerProfileHistoryRow = {
 	startsAt: string;
 	goals: number;
 	assists: number;
+	assistedGoals: number;
 	ownGoals: number;
 	wins: number;
+	losses: number;
+	draws: number;
 	mvps: number;
 	matches: number;
 	ratingFrom: number;
@@ -162,8 +181,11 @@ export function playerProfileHistory(
 					startsAt: event.starts_at,
 					goals: rosterSafeCount(attendance.goals),
 					assists: rosterSafeCount(attendance.assists),
+					assistedGoals: rosterSafeCount(attendance.assisted_goals),
 					ownGoals: rosterSafeCount(attendance.own_goals),
 					wins: rosterSafeCount(attendance.wins),
+					losses: rosterSafeCount(attendance.losses),
+					draws: rosterSafeCount(attendance.draws),
 					mvps: attendance.is_mvp === true ? 1 : 0,
 					matches: rosterSafeCount(attendance.matches),
 					ratingFrom,

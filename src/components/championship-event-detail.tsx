@@ -137,6 +137,11 @@ function AttendanceStatLine({
 			value: row.assists,
 		},
 		{
+			abbr: EVENT_ATTENDANCE_STAT_ABBR.assistedGoals,
+			label: EVENT_ATTENDANCE_COLUMN_LABEL.assistedGoals,
+			value: row.assisted_goals,
+		},
+		{
 			abbr: EVENT_ATTENDANCE_STAT_ABBR.ownGoals,
 			label: EVENT_ATTENDANCE_COLUMN_LABEL.ownGoals,
 			value: row.own_goals,
@@ -145,6 +150,16 @@ function AttendanceStatLine({
 			abbr: EVENT_ATTENDANCE_STAT_ABBR.wins,
 			label: EVENT_ATTENDANCE_COLUMN_LABEL.wins,
 			value: row.wins,
+		},
+		{
+			abbr: EVENT_ATTENDANCE_STAT_ABBR.losses,
+			label: EVENT_ATTENDANCE_COLUMN_LABEL.losses,
+			value: row.losses,
+		},
+		{
+			abbr: EVENT_ATTENDANCE_STAT_ABBR.draws,
+			label: EVENT_ATTENDANCE_COLUMN_LABEL.draws,
+			value: row.draws,
 		},
 		{
 			abbr: EVENT_ATTENDANCE_STAT_ABBR.matches,
@@ -264,8 +279,11 @@ function fallbackRosterPlayer(
 		deleted_at: null,
 		goals: 0,
 		assists: 0,
+		assisted_goals: 0,
 		own_goals: 0,
 		wins: 0,
+		losses: 0,
+		draws: 0,
 		matches: 0,
 		mvps: 0,
 	};
@@ -296,8 +314,11 @@ function playersFromEventAttendance(
 		...resolveRosterPlayer(row.player_id, row.display_name, byId),
 		goals: row.goals,
 		assists: row.assists,
+		assisted_goals: row.assisted_goals,
 		own_goals: row.own_goals,
 		wins: row.wins,
+		losses: row.losses,
+		draws: row.draws,
 		matches: row.matches,
 		mvps: row.is_mvp ? 1 : 0,
 		rating: row.rating,
@@ -489,20 +510,7 @@ export function ChampionshipEventDetail({
 		<article className="space-y-6">
 			{(showStartMatch || canManage) && (
 				<div className="flex flex-wrap items-center gap-2">
-					{showStartMatch && (
-						<Link
-							to={ROUTES.championshipEventPlay}
-							params={{
-								championshipId: String(event.championship_id),
-								eventId: String(event.id),
-							}}
-							className="inline-flex items-center justify-center gap-2 rounded-lg bg-pitch px-4 py-2 text-sm font-medium text-white hover:bg-pitch-dark"
-						>
-							<Play className="size-4" />
-							{openMatch ? EVENT_ACTION.continueMatch : EVENT_ACTION.startMatch}
-						</Link>
-					)}
-					<div className="ml-auto flex items-center gap-1">
+					<div className="flex items-center gap-1">
 						{showStartMatch && (
 							<IconTooltipButton
 								showLabel
@@ -537,6 +545,19 @@ export function ChampionshipEventDetail({
 							/>
 						)}
 					</div>
+					{showStartMatch && (
+						<Link
+							to={ROUTES.championshipEventPlay}
+							params={{
+								championshipId: String(event.championship_id),
+								eventId: String(event.id),
+							}}
+							className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-pitch px-4 py-2 text-sm font-medium text-white hover:bg-pitch-dark md:ml-auto md:w-auto"
+						>
+							<Play className="size-4" />
+							{openMatch ? EVENT_ACTION.continueMatch : EVENT_ACTION.startMatch}
+						</Link>
+					)}
 				</div>
 			)}
 			{showEventTabs && (
@@ -860,6 +881,7 @@ export function ChampionshipEventDetail({
 			{isAttendanceStatsOpen && (
 				<EditEventAttendanceStatsModal
 					attendance={event.attendance}
+					teams={event.teams}
 					players={players}
 					isPending={savingAttendanceStats}
 					errorMessage={saveAttendanceStatsError}

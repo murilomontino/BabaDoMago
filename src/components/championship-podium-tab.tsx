@@ -4,16 +4,22 @@ import { Button } from "@/components/button";
 import { ChampionshipPodium } from "@/components/championship-podium";
 import { SectionCard } from "@/components/section-card";
 import { championshipRatingCeiling } from "@/const/player-rating";
+import { championshipSynergyRanking } from "@/const/player-synergy";
 import {
 	aggregatePodiumPlayersFromEvents,
+	eventMatchesPodiumPeriod,
 	isPodiumAllMonthsSelected,
 	isPodiumCurrentMonthSelected,
+	isPodiumPlayerMetric,
 	PODIUM_DEFAULT_METRIC,
 	PODIUM_FILTER_LABEL,
 	PODIUM_LABEL,
+	PODIUM_METRIC,
 	PODIUM_METRIC_OPTIONS,
 	PODIUM_MONTH_LABEL,
 	PODIUM_MONTHS,
+	PODIUM_PLAYER_METRIC_OPTIONS,
+	PODIUM_PLAYER_METRICS,
 	PODIUM_SEASON_YEAR,
 	PODIUM_SEMESTER,
 	type PodiumMetricId,
@@ -28,6 +34,7 @@ import {
 } from "@/const/podium";
 import {
 	PODIUM_SHARE_LABEL,
+	podiumShareCardFromSynergyPairs,
 	podiumShareCardsFromPlayers,
 	podiumSharePeriodSlug,
 } from "@/const/podium-share";
@@ -69,8 +76,31 @@ export function ChampionshipPodiumTab({
 	const [isSharing, setIsSharing] = useState<"one" | "all" | null>(null);
 	const [shareError, setShareError] = useState<string | null>(null);
 	const currentMonth = podiumCurrentMonth();
-	const podiumPlayers = useMemo(() => {
+	const includeSynergy = !eventStartsAt;
+	const metricOptions = includeSynergy
+		? PODIUM_METRIC_OPTIONS
+		: PODIUM_PLAYER_METRIC_OPTIONS;
+	const showPeriodFilters = Boolean(events) && includeSynergy;
+	const periodEvents = useMemo(() => {
 		if (!events) {
+			return [];
+		}
+
+		if (eventStartsAt) {
+			return [...events];
+		}
+
+		return events.filter((event) =>
+			eventMatchesPodiumPeriod(
+				event.starts_at,
+				PODIUM_SEASON_YEAR,
+				semester,
+				months,
+			),
+		);
+	}, [eventStartsAt, events, months, semester]);
+	const podiumPlayers = useMemo(() => {
+		if (!events || eventStartsAt) {
 			return players;
 		}
 
@@ -81,18 +111,43 @@ export function ChampionshipPodiumTab({
 			semester,
 			months,
 		);
-	}, [events, months, players, semester]);
+	}, [eventStartsAt, events, months, players, semester]);
+	const synergyPairs = useMemo(() => {
+		if (!includeSynergy) {
+			return [];
+		}
+
+		return championshipSynergyRanking(periodEvents, players);
+	}, [includeSynergy, periodEvents, players]);
 	const ceiling = championshipRatingCeiling(
 		podiumPlayers.map((player) => player.rating),
 	);
-	const currentCards = useMemo(
-		() => podiumShareCardsFromPlayers(podiumPlayers, [metric]),
-		[metric, podiumPlayers],
+	const synergyCard = useMemo(
+		() => podiumShareCardFromSynergyPairs(synergyPairs),
+		[synergyPairs],
 	);
-	const allCards = useMemo(
-		() => podiumShareCardsFromPlayers(podiumPlayers),
-		[podiumPlayers],
-	);
+	const currentCards = useMemo(() => {
+		if (metric === PODIUM_METRIC.synergy) {
+			return synergyCard ? [synergyCard] : [];
+		}
+
+		if (!isPodiumPlayerMetric(metric)) {
+			return [];
+		}
+
+		return podiumShareCardsFromPlayers(podiumPlayers, [metric]);
+	}, [metric, podiumPlayers, synergyCard]);
+	const allCards = useMemo(() => {
+		const playerCards = podiumShareCardsFromPlayers(
+			podiumPlayers,
+			PODIUM_PLAYER_METRICS,
+		);
+		if (!synergyCard) {
+			return playerCards;
+		}
+
+		return [...playerCards, synergyCard];
+	}, [podiumPlayers, synergyCard]);
 
 	async function handleShare(cards: typeof currentCards, mode: "one" | "all") {
 		setIsSharing(mode);
@@ -117,7 +172,7 @@ export function ChampionshipPodiumTab({
 			title={PODIUM_LABEL.tab}
 			icon={<Trophy className="size-4 text-pitch-fg" />}
 		>
-			{events && (
+			{showPeriodFilters && (
 				<div className="mb-4 space-y-2">
 					<div className="flex flex-wrap gap-2">
 						<button
@@ -206,7 +261,7 @@ export function ChampionshipPodiumTab({
 							setMetric(parsePodiumMetric(event.target.value));
 						}}
 					>
-						{PODIUM_METRIC_OPTIONS.map((option) => (
+						{metricOptions.map((option) => (
 							<option key={option.id} value={option.id}>
 								{option.label}
 							</option>
@@ -251,7 +306,11 @@ export function ChampionshipPodiumTab({
 				)}
 			</div>
 			{shareError && <p className={`mb-4 ${ERROR_CLASS}`}>{shareError}</p>}
-			<ChampionshipPodium players={podiumPlayers} metric={metric} />
+			<ChampionshipPodium
+				players={podiumPlayers}
+				metric={metric}
+				synergyPairs={synergyPairs}
+			/>
 		</SectionCard>
 	);
 }

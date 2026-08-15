@@ -98,6 +98,7 @@ export const EVENT_ERROR_MESSAGE = {
 	"goal not found": "Gol não encontrado",
 	"invalid attendance stats": "Números inválidos",
 	"wins exceed matches": "Vitórias acima dos jogos",
+	"result stats mismatch": "Resultado acima dos jogos",
 	"invalid rating": "Nota inválida",
 	"event still open": "Rodada ainda aberta",
 } as const;
@@ -109,7 +110,7 @@ export const EVENT_ACTION = {
 	newEvent: "Nova rodada",
 	addAttendance: "Adicionar presença",
 	addMatch: "Adicionar partida",
-	startMatch: "Iniciar partida",
+	startMatch: "Ir para partida",
 	continueMatch: "Continuar partida",
 	nextMatch: "Próxima partida",
 	endMatch: "Encerrar",
@@ -122,6 +123,7 @@ export const EVENT_ACTION = {
 	setGoalkeeper: "Goleiro",
 	addTeam: "Adicionar time",
 	editTeam: "Editar time",
+	editTeamColor: "Cor do time",
 	saveTeam: "Salvar time",
 	saveAttendance: "Salvar presença",
 	markAttendanceStats: "Marcar stats",
@@ -193,6 +195,7 @@ export const EVENT_ATTENDANCE_MESSAGE = {
 	duplicate: "Jogador repetido na presença",
 	invalidStats: "Números inválidos",
 	winsExceedMatches: "Vitórias acima dos jogos",
+	resultStatsMismatch: "Resultado acima dos jogos",
 } as const;
 
 export const EVENT_ATTENDANCE_COLUMN = {
@@ -204,8 +207,11 @@ export const EVENT_ATTENDANCE_COLUMN = {
 	eventDate: "eventDate",
 	goals: "goals",
 	assists: "assists",
+	assistedGoals: "assistedGoals",
 	ownGoals: "ownGoals",
 	wins: "wins",
+	losses: "losses",
+	draws: "draws",
 	matches: "matches",
 } as const;
 
@@ -218,8 +224,11 @@ export const EVENT_ATTENDANCE_COLUMN_LABEL = {
 	eventDate: "Data",
 	goals: "Gols",
 	assists: "Assistências",
+	assistedGoals: "Gols servidos",
 	ownGoals: "Gols contra",
 	wins: "Vitórias",
+	losses: "Derrotas",
+	draws: "Empates",
 	mvp: "MVP",
 	matches: "Jogos",
 } as const;
@@ -227,8 +236,11 @@ export const EVENT_ATTENDANCE_COLUMN_LABEL = {
 export const EVENT_ATTENDANCE_STAT_ABBR = {
 	goals: "G",
 	assists: "A",
+	assistedGoals: "GS",
 	ownGoals: "GC",
 	wins: "V",
+	losses: "D",
+	draws: "E",
 	matches: "J",
 } as const;
 
@@ -237,6 +249,8 @@ export const ATTENDANCE_STAT = {
 	assists: "assists",
 	ownGoals: "own_goals",
 	wins: "wins",
+	losses: "losses",
+	draws: "draws",
 	matches: "matches",
 } as const;
 
@@ -265,6 +279,16 @@ export const ATTENDANCE_STAT_META = [
 		label: EVENT_ATTENDANCE_COLUMN_LABEL.wins,
 	},
 	{
+		id: ATTENDANCE_STAT.losses,
+		abbr: EVENT_ATTENDANCE_STAT_ABBR.losses,
+		label: EVENT_ATTENDANCE_COLUMN_LABEL.losses,
+	},
+	{
+		id: ATTENDANCE_STAT.draws,
+		abbr: EVENT_ATTENDANCE_STAT_ABBR.draws,
+		label: EVENT_ATTENDANCE_COLUMN_LABEL.draws,
+	},
+	{
 		id: ATTENDANCE_STAT.matches,
 		abbr: EVENT_ATTENDANCE_STAT_ABBR.matches,
 		label: EVENT_ATTENDANCE_COLUMN_LABEL.matches,
@@ -288,6 +312,16 @@ export const PLAYER_EVENT_STAT_META = [
 		label: EVENT_ATTENDANCE_COLUMN_LABEL.wins,
 	},
 	{
+		id: ATTENDANCE_STAT.losses,
+		abbr: EVENT_ATTENDANCE_STAT_ABBR.losses,
+		label: EVENT_ATTENDANCE_COLUMN_LABEL.losses,
+	},
+	{
+		id: ATTENDANCE_STAT.draws,
+		abbr: EVENT_ATTENDANCE_STAT_ABBR.draws,
+		label: EVENT_ATTENDANCE_COLUMN_LABEL.draws,
+	},
+	{
 		id: ATTENDANCE_STAT.matches,
 		abbr: EVENT_ATTENDANCE_STAT_ABBR.matches,
 		label: EVENT_ATTENDANCE_COLUMN_LABEL.matches,
@@ -301,6 +335,8 @@ export type PlayerEventStatsDraft = {
 	goals: number;
 	assists: number;
 	wins: number;
+	losses: number;
+	draws: number;
 	matches: number;
 };
 
@@ -318,8 +354,25 @@ export type EventAttendanceStatsDraft = {
 	assists: number;
 	own_goals: number;
 	wins: number;
+	losses: number;
+	draws: number;
 	matches: number;
 };
+
+export const ATTENDANCE_STATS_TEAM_FILTER = {
+	all: "all",
+	none: "none",
+} as const;
+
+export type AttendanceStatsTeamFilter =
+	| (typeof ATTENDANCE_STATS_TEAM_FILTER)[keyof typeof ATTENDANCE_STATS_TEAM_FILTER]
+	| number;
+
+export const ATTENDANCE_STATS_TEAM_FILTER_LABEL = {
+	group: "Time",
+	all: "Todos",
+	none: "Sem time",
+} as const;
 
 export const EVENT_ATTENDANCE_ACTION = {
 	selectAll: "Selecionar todos",
@@ -1158,6 +1211,23 @@ export function isAttendanceStatCount(value: unknown): value is number {
 	return typeof value === "number" && Number.isInteger(value) && value >= 0;
 }
 
+function attendanceResultError(row: {
+	wins: number;
+	losses: number;
+	draws: number;
+	matches: number;
+}): string | null {
+	if (row.wins > row.matches) {
+		return EVENT_ATTENDANCE_MESSAGE.winsExceedMatches;
+	}
+
+	if (row.wins + row.losses + row.draws > row.matches) {
+		return EVENT_ATTENDANCE_MESSAGE.resultStatsMismatch;
+	}
+
+	return null;
+}
+
 export function attendanceStatsFromRows(
 	rows: readonly EventAttendanceStatsDraft[],
 ): EventAttendanceStatsDraft[] {
@@ -1167,8 +1237,81 @@ export function attendanceStatsFromRows(
 		assists: row.assists,
 		own_goals: row.own_goals,
 		wins: row.wins,
+		losses: row.losses,
+		draws: row.draws,
 		matches: row.matches,
 	}));
+}
+
+const UNASSIGNED_ATTENDANCE_TEAM_ORDER = Number.MAX_SAFE_INTEGER;
+
+export type EventPlayerTeam = {
+	team_id: number;
+	color: string | null;
+	sort_order: number;
+	slot: number;
+};
+
+export function eventTeamByPlayerId(
+	teams: readonly {
+		id: number;
+		color: string | null;
+		sort_order: number;
+		players: readonly { player_id: number }[];
+	}[],
+): ReadonlyMap<number, EventPlayerTeam> {
+	return new Map(
+		teams.flatMap((team) =>
+			team.players.map(
+				(player, slot) =>
+					[
+						player.player_id,
+						{
+							team_id: team.id,
+							color: team.color,
+							sort_order: team.sort_order,
+							slot,
+						},
+					] as const,
+			),
+		),
+	);
+}
+
+export function sortAttendanceByTeam<T extends { player_id: number }>(
+	rows: readonly T[],
+	teamByPlayerId: ReadonlyMap<number, EventPlayerTeam>,
+): T[] {
+	return [...rows].sort((left, right) => {
+		const leftTeam = teamByPlayerId.get(left.player_id);
+		const rightTeam = teamByPlayerId.get(right.player_id);
+		const leftOrder = leftTeam?.sort_order ?? UNASSIGNED_ATTENDANCE_TEAM_ORDER;
+		const rightOrder =
+			rightTeam?.sort_order ?? UNASSIGNED_ATTENDANCE_TEAM_ORDER;
+		if (leftOrder !== rightOrder) {
+			return leftOrder - rightOrder;
+		}
+
+		return (leftTeam?.slot ?? 0) - (rightTeam?.slot ?? 0);
+	});
+}
+
+export function filterAttendanceByTeam<T extends { player_id: number }>(
+	rows: readonly T[],
+	teamByPlayerId: ReadonlyMap<number, EventPlayerTeam>,
+	filter: AttendanceStatsTeamFilter,
+): T[] {
+	if (filter === ATTENDANCE_STATS_TEAM_FILTER.all) {
+		return [...rows];
+	}
+
+	if (filter === ATTENDANCE_STATS_TEAM_FILTER.none) {
+		return rows.filter((row) => !teamByPlayerId.has(row.player_id));
+	}
+
+	return rows.filter(
+		(row) => teamByPlayerId.get(row.player_id)?.team_id === filter,
+	);
 }
 
 export function parseAttendanceStatInput(value: string): number | null {
@@ -1216,11 +1359,19 @@ function isAttendanceStatRow(row: EventAttendanceStatsDraft): boolean {
 		return false;
 	}
 
+	if (!isAttendanceStatCount(row.losses)) {
+		return false;
+	}
+
+	if (!isAttendanceStatCount(row.draws)) {
+		return false;
+	}
+
 	if (!isAttendanceStatCount(row.matches)) {
 		return false;
 	}
 
-	return row.wins <= row.matches;
+	return attendanceResultError(row) === null;
 }
 
 export function playerEventStatsFromAttendance(
@@ -1228,6 +1379,8 @@ export function playerEventStatsFromAttendance(
 		goals: number;
 		assists: number;
 		wins: number;
+		losses: number;
+		draws: number;
 		matches: number;
 	} | null,
 ): PlayerEventStatsDraft {
@@ -1235,6 +1388,8 @@ export function playerEventStatsFromAttendance(
 		goals: row?.goals ?? 0,
 		assists: row?.assists ?? 0,
 		wins: row?.wins ?? 0,
+		losses: row?.losses ?? 0,
+		draws: row?.draws ?? 0,
 		matches: row?.matches ?? 0,
 	};
 }
@@ -1262,15 +1417,19 @@ export function validatePlayerEventStats(
 		return EVENT_ATTENDANCE_MESSAGE.invalidStats;
 	}
 
+	if (!isAttendanceStatCount(draft.losses)) {
+		return EVENT_ATTENDANCE_MESSAGE.invalidStats;
+	}
+
+	if (!isAttendanceStatCount(draft.draws)) {
+		return EVENT_ATTENDANCE_MESSAGE.invalidStats;
+	}
+
 	if (!isAttendanceStatCount(draft.matches)) {
 		return EVENT_ATTENDANCE_MESSAGE.invalidStats;
 	}
 
-	if (draft.wins > draft.matches) {
-		return EVENT_ATTENDANCE_MESSAGE.winsExceedMatches;
-	}
-
-	return null;
+	return attendanceResultError(draft);
 }
 
 export function validateEventAttendanceStats(
@@ -1299,10 +1458,14 @@ export function validateEventAttendanceStats(
 	if (invalid) {
 		if (
 			isAttendanceStatCount(invalid.wins) &&
-			isAttendanceStatCount(invalid.matches) &&
-			invalid.wins > invalid.matches
+			isAttendanceStatCount(invalid.losses) &&
+			isAttendanceStatCount(invalid.draws) &&
+			isAttendanceStatCount(invalid.matches)
 		) {
-			return EVENT_ATTENDANCE_MESSAGE.winsExceedMatches;
+			const resultError = attendanceResultError(invalid);
+			if (resultError) {
+				return resultError;
+			}
 		}
 
 		return EVENT_ATTENDANCE_MESSAGE.invalidStats;

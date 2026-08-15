@@ -8,6 +8,7 @@ export type Json =
 
 type ChampionshipPlayersRow = {
 	assists: number;
+	assisted_goals: number;
 	avatar_url: string | null;
 	championship_id: number;
 	created_at: string;
@@ -19,9 +20,12 @@ type ChampionshipPlayersRow = {
 	own_goals: number;
 	nickname: string | null;
 	rating: number;
+	removed_at: string | null;
 	role: string;
 	user_id: string | null;
 	wins: number;
+	losses: number;
+	draws: number;
 	mvps: number;
 };
 
@@ -31,6 +35,7 @@ export type Database = {
 			championship_event_attendance: {
 				Row: {
 					assists: number;
+					assisted_goals: number;
 					display_name: string;
 					event_date: string;
 					event_id: number;
@@ -43,11 +48,14 @@ export type Database = {
 					rating: number;
 					rating_delta: number;
 					wins: number;
+					losses: number;
+					draws: number;
 					is_mvp: boolean;
 					mvp_overridden: boolean;
 				};
 				Insert: {
 					assists?: number;
+					assisted_goals?: number;
 					display_name: string;
 					event_date?: string;
 					event_id: number;
@@ -60,11 +68,14 @@ export type Database = {
 					rating?: number;
 					rating_delta?: number;
 					wins?: number;
+					losses?: number;
+					draws?: number;
 					is_mvp?: boolean;
 					mvp_overridden?: boolean;
 				};
 				Update: {
 					assists?: number;
+					assisted_goals?: number;
 					display_name?: string;
 					event_date?: string;
 					is_goalkeeper?: boolean;
@@ -77,6 +88,8 @@ export type Database = {
 					rating?: number;
 					rating_delta?: number;
 					wins?: number;
+					losses?: number;
+					draws?: number;
 					is_mvp?: boolean;
 					mvp_overridden?: boolean;
 				};
@@ -100,27 +113,39 @@ export type Database = {
 			championship_event_matches: {
 				Row: {
 					created_at: string;
+					duration_seconds: number;
 					ended_at: string | null;
 					event_id: number;
 					id: number;
+					pause_accumulated_seconds: number;
+					paused_at: string | null;
+					started_at: string | null;
 					team_a_id: number;
 					team_b_id: number;
 					winner_team_id: number | null;
 				};
 				Insert: {
 					created_at?: string;
+					duration_seconds: number;
 					ended_at?: string | null;
 					event_id: number;
 					id?: number;
+					pause_accumulated_seconds?: number;
+					paused_at?: string | null;
+					started_at?: string | null;
 					team_a_id: number;
 					team_b_id: number;
 					winner_team_id?: number | null;
 				};
 				Update: {
 					created_at?: string;
+					duration_seconds?: number;
 					ended_at?: string | null;
 					event_id?: number;
 					id?: number;
+					pause_accumulated_seconds?: number;
+					paused_at?: string | null;
+					started_at?: string | null;
 					team_a_id?: number;
 					team_b_id?: number;
 					winner_team_id?: number | null;
@@ -346,6 +371,7 @@ export type Database = {
 				Row: ChampionshipPlayersRow;
 				Insert: {
 					assists?: number;
+					assisted_goals?: number;
 					avatar_url?: string | null;
 					championship_id: number;
 					created_at?: string;
@@ -357,13 +383,17 @@ export type Database = {
 					nickname?: string | null;
 					own_goals?: number;
 					rating?: number;
+					removed_at?: string | null;
 					role?: string;
 					user_id?: string | null;
 					wins?: number;
+					losses?: number;
+					draws?: number;
 					mvps?: number;
 				};
 				Update: {
 					assists?: number;
+					assisted_goals?: number;
 					avatar_url?: string | null;
 					championship_id?: number;
 					created_at?: string;
@@ -375,9 +405,12 @@ export type Database = {
 					nickname?: string | null;
 					own_goals?: number;
 					rating?: number;
+					removed_at?: string | null;
 					role?: string;
 					user_id?: string | null;
 					wins?: number;
+					losses?: number;
+					draws?: number;
 					mvps?: number;
 				};
 				Relationships: [
@@ -473,14 +506,24 @@ export type Database = {
 				};
 				Returns: Json;
 			};
-			add_championship_event_match: {
-				Args: {
-					event_id: number;
-					team_a_id: number;
-					team_b_id: number;
-				};
-				Returns: Json;
-			};
+			add_championship_event_match:
+				| {
+						Args: {
+							event_id: number;
+							team_a_id: number;
+							team_b_id: number;
+						};
+						Returns: Json;
+				  }
+				| {
+						Args: {
+							event_id: number;
+							team_a_id: number;
+							team_b_id: number;
+							duration_seconds: number;
+						};
+						Returns: Json;
+				  };
 			add_championship_event_goal: {
 				Args: {
 					match_id: number;
@@ -550,6 +593,10 @@ export type Database = {
 				Args: { player_id: number };
 				Returns: Json;
 			};
+			remove_player: {
+				Args: { player_id: number };
+				Returns: undefined;
+			};
 			set_championship_event_mvps: {
 				Args: { event_id: number; player_ids: Json };
 				Returns: Json;
@@ -600,12 +647,34 @@ export type Database = {
 				};
 				Returns: Json;
 			};
-			start_championship_event_match: {
-				Args: {
-					event_id: number;
-					team_a_id: number;
-					team_b_id: number;
-				};
+			start_championship_event_match:
+				| {
+						Args: {
+							event_id: number;
+							team_a_id: number;
+							team_b_id: number;
+						};
+						Returns: Json;
+				  }
+				| {
+						Args: {
+							event_id: number;
+							team_a_id: number;
+							team_b_id: number;
+							duration_seconds: number;
+						};
+						Returns: Json;
+				  };
+			start_championship_event_clock: {
+				Args: { match_id: number };
+				Returns: Json;
+			};
+			pause_championship_event_match: {
+				Args: { match_id: number };
+				Returns: Json;
+			};
+			resume_championship_event_match: {
+				Args: { match_id: number };
 				Returns: Json;
 			};
 			save_championship_event_attendance: {
@@ -630,6 +699,8 @@ export type Database = {
 					goals: number;
 					assists: number;
 					wins: number;
+					losses: number;
+					draws: number;
 					matches: number;
 				};
 				Returns: Json;

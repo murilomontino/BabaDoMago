@@ -129,21 +129,23 @@ export function ChampionshipRosterTab({
 					}}
 				>
 					<Form className="mb-4 space-y-2">
-						<div className="flex flex-wrap items-start gap-2">
+						<div className="flex flex-col items-stretch gap-2 md:flex-row md:flex-wrap md:items-start">
 							<Field
 								as="textarea"
 								name="name"
 								rows={4}
 								placeholder={PLAYER_NAME_LIST.placeholder}
-								className={`min-h-20 min-w-0 flex-1 resize-y !h-auto ${FIELD_CLASS}`}
+								className={`min-h-20 w-full min-w-0 flex-1 resize-y !h-auto ${FIELD_CLASS}`}
 							/>
-							<PlayerRatingField ceiling={rosterCeiling} />
+							<div className="hidden md:block">
+								<PlayerRatingField ceiling={rosterCeiling} />
+							</div>
 							<Button
 								type="submit"
 								variant={BUTTON_VARIANT.ghost}
 								disabled={isAddingPlayer}
 								aria-label="Adicionar jogador"
-								className="px-2 !text-pitch-fg hover:!bg-pitch-soft"
+								className="w-full px-2 !text-pitch-fg hover:!bg-pitch-soft md:w-auto"
 							>
 								<Plus className="size-4" />
 								add

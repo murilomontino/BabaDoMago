@@ -26,8 +26,11 @@ const player: ChampionshipPlayer = {
 	deleted_at: null,
 	goals: 4,
 	assists: 2,
+	assisted_goals: 3,
 	own_goals: 1,
 	wins: 3,
+	losses: 2,
+	draws: 1,
 	matches: 6,
 	mvps: 1,
 };
@@ -49,8 +52,11 @@ const history: readonly PlayerProfileHistoryRow[] = [
 		startsAt: "2026-08-07T22:00:00.000Z",
 		goals: 1,
 		assists: 0,
+		assistedGoals: 1,
 		ownGoals: 0,
 		wins: 1,
+		losses: 0,
+		draws: 0,
 		mvps: 1,
 		matches: 1,
 		ratingFrom: 7,
@@ -76,6 +82,8 @@ check(card.rating, 8);
 check(card.avatarUrl, player.avatar_url);
 check(card.stats[0]?.abbr, "G");
 check(card.stats[0]?.value, "4");
+check(card.stats[2]?.abbr, "GS");
+check(card.stats[2]?.value, "3");
 check(card.chart.length, 2);
 check(card.chart[0]?.startsAt, history[0]?.startsAt);
 check(card.chart[0]?.rating, 8);

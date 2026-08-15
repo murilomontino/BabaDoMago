@@ -15,7 +15,10 @@ export function Tabs<Id extends string>({
 	onChange,
 }: TabsProps<Id>) {
 	return (
-		<div role="tablist" className="flex gap-1 border-b border-line">
+		<div
+			role="tablist"
+			className="flex gap-1 overflow-x-auto border-b border-line"
+		>
 			{items.map((item) => {
 				const isActive = item.id === value;
 
@@ -28,8 +31,8 @@ export function Tabs<Id extends string>({
 						onClick={() => onChange(item.id)}
 						className={
 							isActive
-								? "border-b-2 border-pitch-fg px-3 py-2 text-sm font-semibold tracking-tight text-pitch-fg"
-								: "border-b-2 border-transparent px-3 py-2 text-sm font-medium text-fg-muted hover:text-fg"
+								? "shrink-0 border-b-2 border-pitch-fg px-3 py-2 text-sm font-semibold tracking-tight text-pitch-fg"
+								: "shrink-0 border-b-2 border-transparent px-3 py-2 text-sm font-medium text-fg-muted hover:text-fg"
 						}
 					>
 						{item.label}
