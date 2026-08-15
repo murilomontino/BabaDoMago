@@ -277,7 +277,7 @@ function TeamPick({
 					event.preventDefault();
 					openColor();
 				}}
-				className="w-full select-none p-2 text-left touch-manipulation"
+				className="w-full select-none px-2 pt-2 text-left touch-manipulation"
 			>
 				<div className="mb-1 flex items-center gap-1 pr-5">
 					<p className="min-w-0 flex-1 text-xs font-medium">
@@ -333,28 +333,32 @@ function TeamPick({
 						</ul>
 					</div>
 				)}
-				<EventTeamRatingAverage
-					ratings={teamRoster.map(({ player }) => player.rating)}
-				/>
 			</button>
-			{canExpand && (
-				<button
-					type="button"
-					aria-expanded={expanded}
-					className="flex w-full items-center justify-center gap-1 px-2 pb-2 text-xs font-medium text-fg-muted"
-					onClick={() => {
-						setExpanded((open) => !open);
-					}}
-				>
-					{expanded && EVENT_MATCH_LABEL.showLess}
-					{!expanded && EVENT_MATCH_LABEL.showMore}
-					<ChevronDown
-						className={`size-3.5 shrink-0 transition-transform ${TEAM_PICK_EXPAND_TRANSITION} ${
-							expanded ? "rotate-180" : ""
-						}`}
+			<div className="flex items-center justify-between gap-1 px-2 pb-2 pt-1">
+				{canExpand && (
+					<button
+						type="button"
+						aria-expanded={expanded}
+						className="inline-flex items-center gap-1 text-xs font-medium text-fg-muted"
+						onClick={() => {
+							setExpanded((open) => !open);
+						}}
+					>
+						{expanded && EVENT_MATCH_LABEL.showLess}
+						{!expanded && EVENT_MATCH_LABEL.showMore}
+						<ChevronDown
+							className={`size-3.5 shrink-0 transition-transform ${TEAM_PICK_EXPAND_TRANSITION} ${
+								expanded ? "rotate-180" : ""
+							}`}
+						/>
+					</button>
+				)}
+				<div className="ml-auto [&>p]:mt-0">
+					<EventTeamRatingAverage
+						ratings={teamRoster.map(({ player }) => player.rating)}
 					/>
-				</button>
-			)}
+				</div>
+			</div>
 		</div>
 	);
 }
