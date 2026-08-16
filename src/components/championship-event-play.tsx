@@ -674,6 +674,9 @@ export function ChampionshipEventPlay({
 	if (!match) {
 		return (
 			<div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+				<p className="mb-2 shrink-0 text-sm font-medium text-fg">
+					{EVENT_MATCH_LABEL.selectTeams}
+				</p>
 				<ul className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
 					{event.teams.map((team) => {
 						const pickIndex = selected.indexOf(team.id);

@@ -438,6 +438,11 @@ check(EVENT_MATCH_REOPEN_LABEL.hint.includes("edição"), true, "reopen hint");
 check(EVENT_MATCH_TEAM_PREVIEW.players, 2, "team preview");
 check(EVENT_MATCH_LABEL.showMore, "Ver mais", "show more");
 check(EVENT_MATCH_LABEL.showLess, "Ver menos", "show less");
+check(
+	EVENT_MATCH_LABEL.selectTeams,
+	"Selecione dois times para o confronto",
+	"select teams",
+);
 
 const clockBase = {
 	duration_seconds: 420,

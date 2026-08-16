@@ -25,7 +25,7 @@ export const EVENT_MATCH_LABEL = {
 	winner: "Vencedor",
 	draw: "Empate",
 	open: "Em andamento",
-	selectTeams: "Selecione dois times",
+	selectTeams: "Selecione dois times para o confronto",
 	emptySlot: "Vago",
 	emptyTeam: "Ninguém no time.",
 	copied: "Link copiado.",

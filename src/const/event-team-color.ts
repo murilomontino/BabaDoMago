@@ -64,7 +64,7 @@ export function eventTeamName(color: string | null, sortOrder: number): string {
 		return `Time ${sortOrder + 1}`;
 	}
 
-	return EVENT_TEAM_COLOR_LABEL[color] ?? color;
+	return EVENT_TEAM_COLOR_LABEL[color] ?? `Time ${sortOrder + 1}`;
 }
 
 export function isEventTeamColor(value: string): value is EventTeamColor {

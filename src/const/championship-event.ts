@@ -110,7 +110,7 @@ export const EVENT_ACTION = {
 	newEvent: "Nova rodada",
 	addAttendance: "Adicionar presença",
 	addMatch: "Adicionar partida",
-	startMatch: "Ir para Nova Rodada",
+	startMatch: "Ir para nova partida",
 	continueMatch: "Continuar partida",
 	nextMatch: "Próxima partida",
 	endMatch: "Encerrar",
@@ -140,7 +140,7 @@ export const EVENT_ACTION = {
 } as const;
 
 export const EVENT_SECTION_LABEL = {
-	matches: "Partidas",
+	matches: "Histórico da partida",
 	attendance: "Presentes",
 } as const;
 

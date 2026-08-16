@@ -26,6 +26,7 @@ check(normalizeEventTeamColor("#ABC123"), "#abc123");
 check(normalizeEventTeamColor(EVENT_TEAM_COLOR_NONE), EVENT_TEAM_COLOR_NONE);
 check(eventTeamName(EVENT_TEAM_COLOR_NONE, 0), "Time 1");
 check(eventTeamName(EVENT_TEAM_COLOR.red, 0), "Vermelho");
+check(eventTeamName("#7c3aed", 2), "Time 3");
 check(EVENT_TEAM_FG.hover, "#e7e5e4");
 check(eventTeamColorFg("#ffffff"), EVENT_TEAM_FG.dark);
 check(eventTeamColorFg("#1c1917"), EVENT_TEAM_FG.light);

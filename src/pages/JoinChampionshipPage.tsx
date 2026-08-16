@@ -1,5 +1,5 @@
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { Trophy, UserPlus, Users } from "lucide-react";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { House, Trophy, UserPlus, Users } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
@@ -34,6 +34,7 @@ const JOIN_PAGE = {
 	hint: "Encontre seu nome e toque em Conectar. Isso vincula sua conta a esse jogador: você entra nas rodadas e nas estatísticas. Se não estiver na lista, use o botão abaixo.",
 	notInList: "Não estou na lista",
 	loginToConnect: "Entrar para conectar",
+	home: "Início",
 } as const;
 
 export function JoinChampionshipPage() {
@@ -145,7 +146,14 @@ export function JoinChampionshipPage() {
 
 	return (
 		<main className={`${PAGE_SHELL_CLASS} space-y-6`}>
-			<div className="flex justify-end">
+			<div className="flex items-center justify-between gap-3">
+				<Link
+					to={ROUTES.home}
+					className="inline-flex items-center gap-1.5 text-sm font-medium text-fg-muted hover:text-pitch-fg"
+				>
+					<House className="size-4" />
+					{JOIN_PAGE.home}
+				</Link>
 				<ThemeToggle />
 			</div>
 			<section className={CARD_CLASS}>
@@ -216,7 +224,14 @@ function JoinChampionshipPageSkeleton() {
 	return (
 		<main className={`${PAGE_SHELL_CLASS} space-y-6`}>
 			<SkeletonRegion label={SKELETON_LABEL.championship} className="space-y-6">
-				<div className="flex justify-end">
+				<div className="flex items-center justify-between gap-3">
+					<Link
+						to={ROUTES.home}
+						className="inline-flex items-center gap-1.5 text-sm font-medium text-fg-muted hover:text-pitch-fg"
+					>
+						<House className="size-4" />
+						{JOIN_PAGE.home}
+					</Link>
 					<ThemeToggle />
 				</div>
 				<section className={CARD_CLASS}>
