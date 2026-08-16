@@ -13,7 +13,9 @@ import {
 	type DataTableFeatures,
 } from "@/components/organisms/data-table";
 import { PlayerRating } from "@/components/player-rating";
+import { PlayerRatingSim } from "@/components/player-rating-sim";
 import { SectionCard } from "@/components/section-card";
+import { Tabs } from "@/components/tabs";
 import { formatEventStartsAt } from "@/const/championship-event";
 import {
 	CHAMPIONSHIP_ROLE_LABEL,
@@ -36,6 +38,11 @@ import {
 	PLAYER_PROFILE_SHARE_LABEL,
 	playerProfileShareCard,
 } from "@/const/player-profile-share";
+import {
+	PLAYER_PROFILE_TAB,
+	PLAYER_PROFILE_TABS,
+} from "@/const/player-profile-tab";
+import { PLAYER_RATING_SIM_LABEL } from "@/const/player-rating-sim";
 import {
 	formatSynergyStat,
 	SYNERGY_COLUMN,
@@ -62,6 +69,7 @@ import {
 	CHIP_CLASS,
 	ERROR_CLASS,
 } from "@/const/ui";
+import { usePlayerProfileTab } from "@/hooks/use-player-profile-tab";
 import { sharePlayerProfileImage } from "@/lib/share-player-profile-image";
 import { enlargeAvatarUrl } from "@/lib/user-profile";
 import type { ChampionshipPlayer } from "@/types/championship";
@@ -490,6 +498,9 @@ export function ChampionshipPlayerDetail({
 	partners,
 	onOpenEvent,
 }: ChampionshipPlayerDetailProps) {
+	const [tab, setTab] = usePlayerProfileTab();
+	const selectedTab = tab ?? PLAYER_PROFILE_TAB.profile;
+
 	return (
 		<div className="space-y-4">
 			<section className={CARD_CLASS}>
@@ -503,51 +514,72 @@ export function ChampionshipPlayerDetail({
 					history={history}
 				/>
 			</section>
-			<SectionCard title={PLAYER_PROFILE_LABEL.career}>
-				<PlayerCareerStats career={career} />
-			</SectionCard>
-			<SectionCard title={SYNERGY_LABEL.partners}>
-				{historyPending && (
-					<DataTableSkeleton
-						headers={SYNERGY_PARTNER_LEGEND.map((item) => item.abbr)}
-						legendItems={SYNERGY_PARTNER_LEGEND}
-						withPlayerColumn={false}
-					/>
-				)}
-				{historyError && <p className={ERROR_CLASS}>{historyError}</p>}
-				{!historyPending && !historyError && partners.length === 0 && (
-					<EmptyState
-						icon={<Handshake className="size-10" />}
-						title={SYNERGY_LABEL.emptyPartners}
-					/>
-				)}
-				{!historyPending && !historyError && partners.length > 0 && (
-					<PlayerPartnersTable partners={partners} />
-				)}
-			</SectionCard>
-			<SectionCard title={PLAYER_PROFILE_LABEL.history}>
-				{historyPending && <PlayerHistorySkeleton />}
-				{historyError && <p className={ERROR_CLASS}>{historyError}</p>}
-				{!historyPending && !historyError && history.length === 0 && (
-					<EmptyState
-						icon={<CalendarDays className="size-10" />}
-						title={PLAYER_PROFILE_LABEL.emptyHistory}
-					/>
-				)}
-				{!historyPending && !historyError && history.length > 0 && (
-					<div className="space-y-4">
-						<PlayerRatingHistoryChart
-							points={playerRatingHistoryChartSeries(
-								history,
-								player.rating,
-								new Date().toISOString(),
-							)}
-							ceiling={ceiling}
-						/>
-						<PlayerHistoryTable history={history} onOpenEvent={onOpenEvent} />
-					</div>
-				)}
-			</SectionCard>
+			<Tabs
+				value={selectedTab}
+				items={PLAYER_PROFILE_TABS}
+				onChange={(id) => {
+					if (id === PLAYER_PROFILE_TAB.profile) {
+						void setTab(null);
+						return;
+					}
+
+					void setTab(id);
+				}}
+			/>
+			{selectedTab === PLAYER_PROFILE_TAB.sim && (
+				<SectionCard title={PLAYER_RATING_SIM_LABEL.title}>
+					<PlayerRatingSim rating={player.rating} ceiling={ceiling} />
+				</SectionCard>
+			)}
+			{selectedTab === PLAYER_PROFILE_TAB.profile && (
+				<>
+					<SectionCard title={PLAYER_PROFILE_LABEL.career}>
+						<PlayerCareerStats career={career} />
+					</SectionCard>
+					<SectionCard title={SYNERGY_LABEL.partners}>
+						{historyPending && (
+							<DataTableSkeleton
+								headers={SYNERGY_PARTNER_LEGEND.map((item) => item.abbr)}
+								legendItems={SYNERGY_PARTNER_LEGEND}
+								withPlayerColumn={false}
+							/>
+						)}
+						{historyError && <p className={ERROR_CLASS}>{historyError}</p>}
+						{!historyPending && !historyError && partners.length === 0 && (
+							<EmptyState
+								icon={<Handshake className="size-10" />}
+								title={SYNERGY_LABEL.emptyPartners}
+							/>
+						)}
+						{!historyPending && !historyError && partners.length > 0 && (
+							<PlayerPartnersTable partners={partners} />
+						)}
+					</SectionCard>
+					<SectionCard title={PLAYER_PROFILE_LABEL.history}>
+						{historyPending && <PlayerHistorySkeleton />}
+						{historyError && <p className={ERROR_CLASS}>{historyError}</p>}
+						{!historyPending && !historyError && history.length === 0 && (
+							<EmptyState
+								icon={<CalendarDays className="size-10" />}
+								title={PLAYER_PROFILE_LABEL.emptyHistory}
+							/>
+						)}
+						{!historyPending && !historyError && history.length > 0 && (
+							<div className="space-y-4">
+								<PlayerRatingHistoryChart
+									points={playerRatingHistoryChartSeries(
+										history,
+										player.rating,
+										new Date().toISOString(),
+									)}
+									ceiling={ceiling}
+								/>
+								<PlayerHistoryTable history={history} onOpenEvent={onOpenEvent} />
+							</div>
+						)}
+					</SectionCard>
+				</>
+			)}
 		</div>
 	);
 }
