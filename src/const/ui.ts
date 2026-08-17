@@ -12,8 +12,7 @@ export const BUTTON_ICON_CLASS = "[&_svg]:size-5";
 
 export const ICON_BUTTON_SIZE_CLASS = {
 	iconOnly: "size-10 p-0",
-	withLabel:
-		"h-11 w-auto gap-1.5 px-2.5 text-xs font-medium sm:h-9",
+	withLabel: "h-11 w-auto gap-1.5 px-2.5 text-xs font-medium sm:h-9",
 	expandOnMobile:
 		"h-11 w-full min-w-0 justify-center gap-1.5 px-2 text-xs font-medium md:size-10 md:gap-0 md:p-0",
 } as const;
@@ -57,4 +56,14 @@ export function buttonClassName(
 	}
 
 	return `${BUTTON_CLASS[variant]} ${className}`;
+}
+
+export function ariaHiddenWhenUnlabelled(
+	ariaLabel: string | undefined,
+): true | undefined {
+	if (ariaLabel) {
+		return undefined;
+	}
+
+	return true;
 }

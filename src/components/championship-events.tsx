@@ -41,7 +41,10 @@ import {
 } from "@/const/championship-event-match";
 import { CHAMPIONSHIP_TAB_LABEL } from "@/const/championship-tab";
 import { eventMvpCandidates, toggleEventMvpPlayerId } from "@/const/event-mvp";
-import { eventRatingPreview } from "@/const/event-rating-adjustment";
+import {
+	eventRatingPreview,
+	previewRatingTos,
+} from "@/const/event-rating-adjustment";
 import { startEventFormSchema } from "@/const/form-schema";
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
@@ -164,7 +167,7 @@ export function ChampionshipEvents({
 		});
 	const previewCeiling = championshipRatingCeiling([
 		...players.map((player) => player.rating),
-		...(ratingPreview ? ratingPreview.map((row) => row.to) : []),
+		...previewRatingTos(ratingPreview),
 	]);
 	const actionsFlags =
 		flowEvent &&

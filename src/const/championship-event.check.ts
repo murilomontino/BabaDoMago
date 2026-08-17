@@ -75,6 +75,7 @@ import {
 	parseEventWeekday,
 	pickTeamGoalkeeper,
 	playerEventStatsFromAttendance,
+	replaceSlotAt,
 	resizeBuilderTeams,
 	rsvpGoingPlayerIds,
 	seedPresentIdsFromHistory,
@@ -356,6 +357,8 @@ check(
 );
 
 check(emptyTeamSlots(3).join(","), ",,");
+check(replaceSlotAt(["1", "2", "3"], 1, "").join("|"), "1||3");
+check(replaceSlotAt(["1", "", "3"], 1, "9").join("|"), "1|9|3");
 check(builderTeamsHavePlayers(initialBuilderTeams(5, 2)), false);
 check(
 	builderTeamsHavePlayers([

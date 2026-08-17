@@ -1,3 +1,5 @@
+import { ariaHiddenWhenUnlabelled } from "@/const/ui";
+
 type GoalkeeperGlovesIconProps = {
 	className?: string;
 	"aria-label"?: string;
@@ -16,7 +18,7 @@ export function GoalkeeperGlovesIcon({
 			strokeWidth={2}
 			strokeLinecap="round"
 			strokeLinejoin="round"
-			aria-hidden={ariaLabel ? undefined : true}
+			aria-hidden={ariaHiddenWhenUnlabelled(ariaLabel)}
 			aria-label={ariaLabel}
 			focusable="false"
 		>

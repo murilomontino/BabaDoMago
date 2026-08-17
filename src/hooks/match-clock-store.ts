@@ -2,12 +2,11 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import {
 	applyMatchClockAction,
-	hasMatchClockLocal,
+	keepLocalMatchClock,
 	MATCH_CLOCK_STORAGE_KEY,
 	type MatchClockAction,
 	type MatchClockFields,
 	type MatchClockSnapshot,
-	matchClockSnapshotFromFields,
 	shiftMatchClockPending,
 } from "@/const/championship-event-match";
 
@@ -45,9 +44,7 @@ export const useMatchClockStore = create<MatchClockStore>()(
 			apply: (matchId, action, nowMs, seed) => {
 				const key = clockKey(matchId);
 				const existing = get().clocks[key];
-				const base = hasMatchClockLocal(existing)
-					? existing
-					: matchClockSnapshotFromFields(seed);
+				const base = keepLocalMatchClock(existing, seed);
 				const next = applyMatchClockAction(base, action, nowMs);
 				set({
 					clocks: {

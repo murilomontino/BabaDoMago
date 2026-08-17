@@ -27,6 +27,18 @@ export function mutationErrorMessage(
 	return result.error.message;
 }
 
+export function prefixedErrorMessage(
+	result: MutationErrorResult,
+	prefix: string,
+): string | null {
+	const message = mutationErrorMessage(result);
+	if (!message) {
+		return null;
+	}
+
+	return `${prefix}: ${message}`;
+}
+
 export function caughtErrorMessage(error: unknown, fallback: string): string {
 	if (error instanceof Error) {
 		return error.message;

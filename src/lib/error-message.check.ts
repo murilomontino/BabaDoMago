@@ -2,6 +2,7 @@ import {
 	caughtErrorMessage,
 	mutationErrorMessage,
 	pendingMutationId,
+	prefixedErrorMessage,
 } from "./error-message.ts";
 
 function check(condition: boolean, message: string) {
@@ -27,6 +28,18 @@ check(
 	mutationErrorMessage({ isError: true, error: { message: "x" } }, true) ===
 		null,
 	"hidden while another ui shows it",
+);
+check(
+	prefixedErrorMessage(
+		{ isError: true, error: { message: "falhou" } },
+		"Erro",
+	) === "Erro: falhou",
+	"prefixes query error",
+);
+check(
+	prefixedErrorMessage({ isError: false, error: { message: "x" } }, "Erro") ===
+		null,
+	"idle query has no prefix",
 );
 check(caughtErrorMessage(new Error("boom"), "fallback") === "boom", "Error");
 check(caughtErrorMessage("nope", "fallback") === "fallback", "unknown catch");

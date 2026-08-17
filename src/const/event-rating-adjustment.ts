@@ -27,6 +27,16 @@ export type EventRatingPreviewRow = {
 	isMvp: boolean;
 };
 
+export function previewRatingTos(
+	preview: readonly EventRatingPreviewRow[] | false | null | undefined,
+): number[] {
+	if (!preview) {
+		return [];
+	}
+
+	return preview.map((row) => row.to);
+}
+
 function signedUnit(value: number): number {
 	if (value < 0) {
 		return -1;

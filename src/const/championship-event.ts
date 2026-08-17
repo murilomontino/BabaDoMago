@@ -1167,6 +1167,20 @@ export function emptyTeamSlots(count: number): string[] {
 	return Array.from({ length: count }, () => "");
 }
 
+export function replaceSlotAt(
+	slots: readonly string[],
+	slot: number,
+	value: string,
+): string[] {
+	return slots.map((item, index) => {
+		if (index !== slot) {
+			return item;
+		}
+
+		return value;
+	});
+}
+
 export function keepPresentSlots(
 	slots: readonly string[],
 	present: ReadonlySet<number>,

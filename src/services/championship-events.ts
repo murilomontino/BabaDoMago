@@ -16,7 +16,11 @@ import {
 	normalizeEventTeamColor,
 } from "@/const/event-team-color";
 import { supabase } from "@/lib/supabase";
-import { optionalNumber, optionalString } from "@/lib/unknown-value";
+import {
+	mapUnknownRows,
+	optionalNumber,
+	optionalString,
+} from "@/lib/unknown-value";
 import type {
 	ChampionshipEvent,
 	ChampionshipEventAttendance,
@@ -189,7 +193,7 @@ function asTeam(value: unknown): ChampionshipEventTeam {
 	}
 
 	const nested = row.championship_event_team_players;
-	const players = Array.isArray(nested) ? nested.map(asTeamPlayer) : [];
+	const players = mapUnknownRows(nested, asTeamPlayer);
 	const teamColor = eventTeamColorOrNone(color);
 
 	return {
@@ -286,12 +290,11 @@ function asMatch(value: unknown): ChampionshipEventMatch {
 		throw new Error("event match: invalid payload");
 	}
 
-	const players = Array.isArray(row.championship_event_match_players)
-		? row.championship_event_match_players.map(asMatchPlayer)
-		: [];
-	const goals = Array.isArray(row.championship_event_goals)
-		? row.championship_event_goals.map(asGoal)
-		: [];
+	const players = mapUnknownRows(
+		row.championship_event_match_players,
+		asMatchPlayer,
+	);
+	const goals = mapUnknownRows(row.championship_event_goals, asGoal);
 
 	return {
 		id: row.id,
@@ -328,18 +331,13 @@ function asEvent(value: unknown): ChampionshipEvent {
 		throw new Error("event: invalid payload");
 	}
 
-	const attendance = Array.isArray(row.championship_event_attendance)
-		? row.championship_event_attendance.map(asAttendance)
-		: [];
-	const rsvps = Array.isArray(row.championship_event_rsvp)
-		? row.championship_event_rsvp.map(asRsvp)
-		: [];
-	const teams = Array.isArray(row.championship_event_teams)
-		? row.championship_event_teams.map(asTeam)
-		: [];
-	const matches = Array.isArray(row.championship_event_matches)
-		? row.championship_event_matches.map(asMatch)
-		: [];
+	const attendance = mapUnknownRows(
+		row.championship_event_attendance,
+		asAttendance,
+	);
+	const rsvps = mapUnknownRows(row.championship_event_rsvp, asRsvp);
+	const teams = mapUnknownRows(row.championship_event_teams, asTeam);
+	const matches = mapUnknownRows(row.championship_event_matches, asMatch);
 
 	return {
 		id: row.id,

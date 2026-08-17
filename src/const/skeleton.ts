@@ -25,6 +25,22 @@ export const SKELETON_LIST_ROWS = [0, 1, 2, 3] as const;
 
 export const SKELETON_TABLE_ROWS = [0, 1, 2, 3, 4, 5] as const;
 
+const SKELETON_LEADING_COLUMNS = {
+	withPlayer: 2,
+	withoutPlayer: 1,
+} as const;
+
+export function skeletonStatHeaders(
+	headers: readonly string[],
+	withPlayerColumn: boolean,
+): string[] {
+	if (withPlayerColumn) {
+		return [...headers.slice(SKELETON_LEADING_COLUMNS.withPlayer)];
+	}
+
+	return [...headers.slice(SKELETON_LEADING_COLUMNS.withoutPlayer)];
+}
+
 export const SKELETON_TEAM_CARDS = [0, 1, 2] as const;
 
 export const SKELETON_TEAM_SLOTS = [0, 1, 2, 3, 4] as const;

@@ -8,7 +8,7 @@ import {
 	ROSTER_COLUMN_IDS,
 	ROSTER_LEGEND_ITEMS,
 } from "@/const/roster-stats";
-import { SKELETON_TABLE_ROWS } from "@/const/skeleton";
+import { SKELETON_TABLE_ROWS, skeletonStatHeaders } from "@/const/skeleton";
 import { CHIP_CLASS, FIELD_CLASS, PLAYER_AVATAR_CLASS } from "@/const/ui";
 
 const ROSTER_HEADERS = ROSTER_COLUMN_IDS.map((id) => ROSTER_COLUMN_ABBR[id]);
@@ -35,7 +35,7 @@ export function DataTableSkeleton({
 	withColumns = false,
 	withPlayerColumn = true,
 }: DataTableSkeletonProps) {
-	const statHeaders = withPlayerColumn ? headers.slice(2) : headers.slice(1);
+	const statHeaders = skeletonStatHeaders(headers, withPlayerColumn);
 
 	return (
 		<div>

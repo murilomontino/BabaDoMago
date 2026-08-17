@@ -4,7 +4,11 @@ import {
 	nextAuditCursor,
 } from "@/const/championship-audit";
 import { supabase } from "@/lib/supabase";
-import { optionalNumber, optionalRecord } from "@/lib/unknown-value";
+import {
+	mapUnknownRows,
+	optionalNumber,
+	optionalRecord,
+} from "@/lib/unknown-value";
 import type { ChampionshipAuditLog } from "@/types/championship-audit";
 
 export type ChampionshipAuditPage = {
@@ -51,7 +55,7 @@ export async function listChampionshipAuditLogs(
 		throw error;
 	}
 
-	const rows = Array.isArray(data) ? data.map(asAuditLog) : [];
+	const rows = mapUnknownRows(data, asAuditLog);
 	const nextCursor = nextAuditCursor(rows);
 
 	return { rows, nextCursor };

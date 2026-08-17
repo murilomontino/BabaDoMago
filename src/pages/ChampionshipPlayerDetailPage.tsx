@@ -40,6 +40,7 @@ import { BUTTON_VARIANT, CARD_CLASS, ERROR_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
 import { useChampionshipEvents } from "@/hooks/championships/use-championship-events";
 import { useChampionship } from "@/hooks/championships/use-championships";
+import { prefixedErrorMessage } from "@/lib/error-message";
 
 export function ChampionshipPlayerDetailPage() {
 	const { championshipId: championshipIdParam, playerId: playerIdParam } =
@@ -143,11 +144,10 @@ export function ChampionshipPlayerDetailPage() {
 				career={toRosterRow(player)}
 				history={history}
 				historyPending={eventsQuery.isPending}
-				historyError={
-					eventsQuery.isError
-						? `${PLAYER_PROFILE_LABEL.eventsError}: ${eventsQuery.error.message}`
-						: null
-				}
+				historyError={prefixedErrorMessage(
+					eventsQuery,
+					PLAYER_PROFILE_LABEL.eventsError,
+				)}
 				partners={partners}
 				goalkeeper={goalkeeper}
 				onOpenEvent={(eventId) => {

@@ -118,6 +118,20 @@ export function hasMatchClockLocal(
 	);
 }
 
+export function keepLocalMatchClock(
+	existing: MatchClockSnapshot | undefined,
+	seed: Pick<
+		MatchClockFields,
+		"started_at" | "paused_at" | "pause_accumulated_seconds"
+	>,
+): MatchClockSnapshot {
+	if (hasMatchClockLocal(existing)) {
+		return existing;
+	}
+
+	return matchClockSnapshotFromFields(seed);
+}
+
 export function applyMatchClockAction(
 	snapshot: MatchClockSnapshot,
 	action: MatchClockAction,

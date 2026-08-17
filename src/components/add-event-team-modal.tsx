@@ -16,6 +16,7 @@ import {
 	emptyTeamSlots,
 	eventTeamPlayerOptionLabel,
 	eventTeamSlotPosition,
+	replaceSlotAt,
 	teamPlayerSlots,
 	teamSlotsToPlayerIds,
 	validateEventTeam,
@@ -201,9 +202,7 @@ export function AddEventTeamModal({
 												}
 												onRemove={() => {
 													setSlots((current) =>
-														current.map((value, index) =>
-															index === slot ? "" : value,
-														),
+														replaceSlotAt(current, slot, ""),
 													);
 													setLocalError(null);
 												}}
@@ -217,9 +216,7 @@ export function AddEventTeamModal({
 												onChange={(event) => {
 													const value = event.target.value;
 													setSlots((current) =>
-														current.map((item, index) =>
-															index === slot ? value : item,
-														),
+														replaceSlotAt(current, slot, value),
 													);
 													setLocalError(null);
 												}}

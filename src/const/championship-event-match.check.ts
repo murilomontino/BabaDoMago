@@ -31,6 +31,7 @@ import {
 	formatMatchScore,
 	isMatchSlotGoalkeeper,
 	isOpenMatch,
+	keepLocalMatchClock,
 	lastMatchGoal,
 	MATCH_CLOCK_ACTION,
 	MATCH_CLOCK_DEBUG_LABEL,
@@ -645,6 +646,20 @@ check(
 );
 
 const seeded = matchClockSnapshotFromFields(clockBase);
+check(
+	keepLocalMatchClock(undefined, clockBase).started_at,
+	clockBase.started_at,
+	"seed when store empty",
+);
+check(
+	keepLocalMatchClock(seeded, {
+		started_at: null,
+		paused_at: null,
+		pause_accumulated_seconds: 0,
+	}).started_at,
+	seeded.started_at,
+	"keep local clock",
+);
 const pausedLocal = applyMatchClockAction(
 	seeded,
 	MATCH_CLOCK_ACTION.pause,

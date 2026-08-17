@@ -21,3 +21,14 @@ export function optionalRecord(value: unknown): Record<string, unknown> | null {
 
 	return value as Record<string, unknown>;
 }
+
+export function mapUnknownRows<T>(
+	value: unknown,
+	mapRow: (item: unknown) => T,
+): T[] {
+	if (!Array.isArray(value)) {
+		return [];
+	}
+
+	return value.map(mapRow);
+}
