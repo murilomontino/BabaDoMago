@@ -1,4 +1,8 @@
-import { AUDIT_PAGE_SIZE, type AuditAction } from "@/const/championship-audit";
+import {
+	AUDIT_PAGE_SIZE,
+	type AuditAction,
+	nextAuditCursor,
+} from "@/const/championship-audit";
 import { supabase } from "@/lib/supabase";
 import { optionalNumber, optionalRecord } from "@/lib/unknown-value";
 import type { ChampionshipAuditLog } from "@/types/championship-audit";
@@ -48,8 +52,7 @@ export async function listChampionshipAuditLogs(
 	}
 
 	const rows = Array.isArray(data) ? data.map(asAuditLog) : [];
-	const last = rows[rows.length - 1];
-	const nextCursor = rows.length === AUDIT_PAGE_SIZE && last ? last.id : null;
+	const nextCursor = nextAuditCursor(rows);
 
 	return { rows, nextCursor };
 }

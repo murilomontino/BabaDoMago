@@ -20,6 +20,7 @@ import {
 	PLAYER_PROFILE_LABEL,
 	PLAYER_RATING_HISTORY_CHART,
 	playerProfileHistory,
+	ratingsForProfileCeiling,
 } from "@/const/player-profile";
 import { PLAYER_PROFILE_SHARE_LABEL } from "@/const/player-profile-share";
 import { championshipRatingCeiling, PLAYER_STARS } from "@/const/player-rating";
@@ -80,9 +81,7 @@ export function ChampionshipPlayerDetailPage() {
 		[eventsQuery.data, playerId],
 	);
 	const ceiling = championshipRatingCeiling(
-		(championship?.players ?? []).flatMap((item) =>
-			!item.deleted_at || item.id === playerId ? [item.rating] : [],
-		),
+		ratingsForProfileCeiling(championship?.players ?? [], playerId),
 	);
 
 	if (championshipQuery.isPending) {

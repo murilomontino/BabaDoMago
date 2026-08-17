@@ -101,6 +101,14 @@ function eventEndIds(event: ChampionshipEvent) {
 	return { missingMatchPlayerIds, presentPlayerIds, mvpCandidateIds };
 }
 
+function endIdsForFlowEvent(flowEvent: ChampionshipEvent | null) {
+	if (!flowEvent) {
+		return null;
+	}
+
+	return eventEndIds(flowEvent);
+}
+
 export function ChampionshipEvents({
 	championshipId,
 	eventTime,
@@ -144,7 +152,7 @@ export function ChampionshipEvents({
 			weekday,
 			eventTime,
 		});
-	const endIds = flowEvent ? eventEndIds(flowEvent) : null;
+	const endIds = endIdsForFlowEvent(flowEvent);
 	const mvpPlayerIds = endMvpPlayerIds ?? endIds?.mvpCandidateIds ?? [];
 	const ratingPreview =
 		flowEvent &&

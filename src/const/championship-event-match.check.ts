@@ -40,6 +40,7 @@ import {
 	matchClockElapsedSeconds,
 	matchClockIsPaused,
 	matchClockIsStarted,
+	matchClockNowMs,
 	matchClockSnapshotFromFields,
 	matchDurationSeconds,
 	matchEndWinnerLabel,
@@ -54,6 +55,7 @@ import {
 	matchTeamSlots,
 	matchTeamStarName,
 	matchWinnerColor,
+	matchWinnerTeam,
 	matchWinnerTeamId,
 	mergeMatchClock,
 	openEventMatch,
@@ -79,6 +81,13 @@ check(
 	true,
 	"starters before substitutes",
 );
+check(matchClockNowMs(true, 42), 42, "ticking uses sample");
+check(
+	matchWinnerTeam(null, new Map([[1, "a"]])),
+	null,
+	"draw has no winner team",
+);
+check(matchWinnerTeam(1, new Map([[1, "a"]])), "a", "looks up winner team");
 
 function player(
 	overrides: Partial<ChampionshipEventMatchPlayer> &

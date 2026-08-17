@@ -17,6 +17,7 @@ import {
 	isOpenMatch,
 	matchScore,
 	matchTeamPlayers,
+	matchWinnerTeam,
 } from "@/const/championship-event-match";
 import { resolveRosterPlayer } from "@/const/championship-event-roster";
 import { PLAYER_LABEL, playerVisibleName } from "@/const/player-name";
@@ -132,8 +133,7 @@ function MatchHistoryCard({
 	const playedB = matchTeamPlayers(match.players, match.team_b_id);
 	const teamAIds = new Set(playedA.map((player) => player.player_id));
 	const score = matchScore(match.goals, teamAIds);
-	const winner =
-		match.winner_team_id === null ? null : teamById.get(match.winner_team_id);
+	const winner = matchWinnerTeam(match.winner_team_id, teamById);
 	const open = isOpenMatch(match);
 	const matchPlayerById = new Map(
 		match.players.map((row) => [row.player_id, row]),

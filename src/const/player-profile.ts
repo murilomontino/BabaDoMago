@@ -229,3 +229,20 @@ export function playerRatingHistoryChartSeries(
 		},
 	];
 }
+
+export function ratingsForProfileCeiling(
+	players: readonly {
+		id: number;
+		deleted_at: string | null;
+		rating: number;
+	}[],
+	playerId: number,
+): number[] {
+	return players.flatMap((item) => {
+		if (item.deleted_at && item.id !== playerId) {
+			return [];
+		}
+
+		return [item.rating];
+	});
+}

@@ -19,6 +19,19 @@ export const FORM_MESSAGE = {
 	teamsDistinct: "Escolha dois times",
 } as const;
 
+export function blankToNull(value: unknown): string | null {
+	if (typeof value !== "string") {
+		return null;
+	}
+
+	const trimmed = value.trim();
+	if (trimmed.length === 0) {
+		return null;
+	}
+
+	return trimmed;
+}
+
 const ratingField = number()
 	.min(PLAYER_RATING.min, FORM_MESSAGE.ratingInvalid)
 	.max(PLAYER_RATING.max, FORM_MESSAGE.ratingInvalid)
@@ -87,14 +100,7 @@ export const eventConfigFormSchema = object({
 		.trim()
 		.max(CHAMPIONSHIP_EVENT.locationMaxLength, FORM_MESSAGE.locationInvalid)
 		.nullable()
-		.transform((_value, original) => {
-			if (typeof original !== "string") {
-				return null;
-			}
-
-			const trimmed = original.trim();
-			return trimmed.length > 0 ? trimmed : null;
-		}),
+		.transform((_value, original) => blankToNull(original)),
 	playersPerTeam: number()
 		.integer(FORM_MESSAGE.playersPerTeamInvalid)
 		.min(

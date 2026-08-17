@@ -3,7 +3,7 @@ import {
 	CHAMPIONSHIP_ROLE_LABEL,
 	resolveChampionshipRole,
 } from "./championship-role.ts";
-import { playerVisibleName } from "./player-name.ts";
+import { legalNameIfDifferent, playerVisibleName } from "./player-name.ts";
 import {
 	PLAYER_PROFILE_LABEL,
 	type PlayerProfileHistoryRow,
@@ -124,7 +124,7 @@ export function playerProfileShareCard(
 	return {
 		playerId: player.id,
 		name,
-		legalName: name === player.display_name ? null : player.display_name,
+		legalName: legalNameIfDifferent(name, player.display_name),
 		roleLabel,
 		championshipName,
 		rating: player.rating,

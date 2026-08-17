@@ -81,9 +81,17 @@ export const SYNERGY_PAIR_LEGEND = SYNERGY_PAIR_COLUMNS.map((id) => ({
 	label: SYNERGY_PAIR_COLUMN_LABEL[id],
 }));
 
+export function synergyPartnerColumnAbbr(id: SynergyColumnId): string {
+	if (id === SYNERGY_COLUMN.player) {
+		return "Parc";
+	}
+
+	return SYNERGY_COLUMN_ABBR[id];
+}
+
 export const SYNERGY_PARTNER_LEGEND = SYNERGY_PAIR_COLUMNS.map((id) => ({
 	id,
-	abbr: id === SYNERGY_COLUMN.player ? "Parc" : SYNERGY_COLUMN_ABBR[id],
+	abbr: synergyPartnerColumnAbbr(id),
 	label: SYNERGY_PARTNER_COLUMN_LABEL[id],
 }));
 

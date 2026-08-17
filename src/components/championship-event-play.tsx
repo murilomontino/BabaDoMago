@@ -73,7 +73,10 @@ import {
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
-import { useMatchClockStore } from "@/hooks/match-clock-store";
+import {
+	matchClockFromStore,
+	useMatchClockStore,
+} from "@/hooks/match-clock-store";
 import { useMatchClock } from "@/hooks/use-match-clock";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type {
@@ -107,6 +110,14 @@ function slotActionTitle(
 	}
 
 	return EVENT_ACTION.fillSlot;
+}
+
+function pickOrderFromIndex(pickIndex: number): number | null {
+	if (pickIndex < 0) {
+		return null;
+	}
+
+	return pickIndex + 1;
 }
 
 type PendingSwap = {
@@ -667,7 +678,7 @@ export function ChampionshipEventPlay({
 	const resumeOnCloseRef = useRef(false);
 	const goalElapsedRef = useRef(0);
 	const localClock = useMatchClockStore((state) =>
-		match === null ? undefined : state.clocks[String(match.id)],
+		matchClockFromStore(state.clocks, match?.id ?? null),
 	);
 
 	useEffect(() => {
@@ -692,8 +703,7 @@ export function ChampionshipEventPlay({
 				</p>
 				<ul className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
 					{event.teams.map((team) => {
-						const pickIndex = selected.indexOf(team.id);
-						const pickOrder = pickIndex >= 0 ? pickIndex + 1 : null;
+						const pickOrder = pickOrderFromIndex(selected.indexOf(team.id));
 
 						return (
 							<li key={team.id}>

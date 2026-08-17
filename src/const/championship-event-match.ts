@@ -602,6 +602,17 @@ export function matchClockFreezeAtMs(
 	return nowMs;
 }
 
+export function matchClockNowMs(
+	ticking: boolean,
+	sampledNowMs: number,
+): number {
+	if (ticking) {
+		return sampledNowMs;
+	}
+
+	return Date.now();
+}
+
 export function matchClockElapsedSeconds(
 	match: MatchClockFields,
 	nowMs: number,
@@ -688,6 +699,17 @@ export function matchTeamStarName(
 	return playerVisibleName(named);
 }
 
+export function matchWinnerTeam<T>(
+	winnerTeamId: number | null,
+	teamById: ReadonlyMap<number, T>,
+): T | null | undefined {
+	if (winnerTeamId === null) {
+		return null;
+	}
+
+	return teamById.get(winnerTeamId);
+}
+
 export function matchGoalForTeamA(
 	goal: ChampionshipEventGoal,
 	teamAPlayerIds: ReadonlySet<number>,
@@ -700,26 +722,35 @@ export function matchGoalForTeamA(
 	return scorerInA;
 }
 
-export function matchGoalTimeline(
-	goals: readonly ChampionshipEventGoal[],
-): ChampionshipEventGoal[] {
-	return [...goals].sort((left, right) => {
-		const leftElapsed = left.elapsed_seconds;
-		const rightElapsed = right.elapsed_seconds;
-		if (leftElapsed !== null && rightElapsed !== null) {
-			if (leftElapsed !== rightElapsed) {
-				return leftElapsed - rightElapsed;
-			}
-
-			return left.id - right.id;
-		}
-
-		if (left.created_at !== right.created_at) {
-			return left.created_at < right.created_at ? -1 : 1;
+export function compareGoalsOldestFirst(
+	left: ChampionshipEventGoal,
+	right: ChampionshipEventGoal,
+): number {
+	const leftElapsed = left.elapsed_seconds;
+	const rightElapsed = right.elapsed_seconds;
+	if (leftElapsed !== null && rightElapsed !== null) {
+		if (leftElapsed !== rightElapsed) {
+			return leftElapsed - rightElapsed;
 		}
 
 		return left.id - right.id;
-	});
+	}
+
+	if (left.created_at !== right.created_at) {
+		if (left.created_at < right.created_at) {
+			return -1;
+		}
+
+		return 1;
+	}
+
+	return left.id - right.id;
+}
+
+export function matchGoalTimeline(
+	goals: readonly ChampionshipEventGoal[],
+): ChampionshipEventGoal[] {
+	return [...goals].sort(compareGoalsOldestFirst);
 }
 
 export function lastMatchGoal(

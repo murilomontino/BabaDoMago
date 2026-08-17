@@ -777,6 +777,16 @@ export async function deleteChampionshipEventMatch(
 	}
 }
 
+function copiedIdsOrNull(
+	ids: readonly number[] | null | undefined,
+): number[] | null {
+	if (ids == null) {
+		return null;
+	}
+
+	return [...ids];
+}
+
 export async function endChampionshipEvent(
 	eventId: number,
 	presentPlayerIds: readonly number[] | null = null,
@@ -784,8 +794,8 @@ export async function endChampionshipEvent(
 ): Promise<void> {
 	const { error } = await supabase.rpc("end_championship_event", {
 		event_id: eventId,
-		present_player_ids: presentPlayerIds ? [...presentPlayerIds] : null,
-		mvp_player_ids: mvpPlayerIds == null ? null : [...mvpPlayerIds],
+		present_player_ids: copiedIdsOrNull(presentPlayerIds),
+		mvp_player_ids: copiedIdsOrNull(mvpPlayerIds),
 	});
 
 	if (error) {

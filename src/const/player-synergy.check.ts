@@ -22,6 +22,7 @@ import {
 	SYNERGY_RANKING_LIMIT,
 	synergyMeetsMinMatches,
 	synergyPairKey,
+	synergyPartnerColumnAbbr,
 	synergyPartnersOf,
 	synergyPodiumStandings,
 	topSynergyRows,
@@ -164,6 +165,14 @@ check(synergyMeetsMinMatches(3), "three matches meet floor");
 check(SYNERGY_RANKING_LIMIT === 20, "ranking limit");
 check(SYNERGY_PARTNER_LIMIT === 30, "partner limit");
 check(SYNERGY_LABEL.tab === "Sinergia", "tab label");
+check(
+	synergyPartnerColumnAbbr(SYNERGY_COLUMN.player) === "Parc",
+	"partner abbr",
+);
+check(
+	synergyPartnerColumnAbbr(SYNERGY_COLUMN.wins) === "V",
+	"partner wins abbr",
+);
 check(
 	SYNERGY_LABEL.emptyPartners === "Ainda não jogou em dupla",
 	"empty partners",

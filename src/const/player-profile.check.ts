@@ -5,6 +5,7 @@ import {
 	playerProfileDelta,
 	playerProfileHistory,
 	playerRatingHistoryChartSeries,
+	ratingsForProfileCeiling,
 } from "./player-profile.ts";
 
 function check(condition: boolean, message: string) {
@@ -14,6 +15,17 @@ function check(condition: boolean, message: string) {
 }
 
 check(PLAYER_PROFILE_LABEL.emptyHistory === "Ainda não jogou", "empty label");
+check(
+	ratingsForProfileCeiling(
+		[
+			{ id: 1, deleted_at: null, rating: 4 },
+			{ id: 2, deleted_at: "x", rating: 9 },
+			{ id: 3, deleted_at: "x", rating: 1 },
+		],
+		2,
+	).join(",") === "4,9",
+	"ceiling keeps actives and the viewed player",
+);
 check(PLAYER_PROFILE_LABEL.notFound === "Jogador não encontrado", "not found");
 check(PLAYER_PROFILE_LABEL.rating === "Nota", "rating label");
 check(

@@ -15,6 +15,17 @@ function clockKey(matchId: number): string {
 	return String(matchId);
 }
 
+export function matchClockFromStore(
+	clocks: Record<string, MatchClockSnapshot>,
+	matchId: number | null,
+): MatchClockSnapshot | undefined {
+	if (matchId === null) {
+		return undefined;
+	}
+
+	return clocks[clockKey(matchId)];
+}
+
 type MatchClockStore = {
 	clocks: Record<string, MatchClockSnapshot>;
 	apply: (

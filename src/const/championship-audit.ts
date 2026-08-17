@@ -53,6 +53,21 @@ export const AUDIT_LABEL = {
 
 export const AUDIT_PAGE_SIZE = 30 as const;
 
+export function nextAuditCursor(
+	rows: readonly { id: number }[],
+): number | null {
+	if (rows.length !== AUDIT_PAGE_SIZE) {
+		return null;
+	}
+
+	const last = rows[rows.length - 1];
+	if (!last) {
+		return null;
+	}
+
+	return last.id;
+}
+
 export const AUDIT_ACTION_OPTIONS = [
 	{ id: null, label: AUDIT_LABEL.allActions },
 	...Object.values(AUDIT_ACTION).map((id) => ({

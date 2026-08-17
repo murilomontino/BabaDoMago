@@ -803,12 +803,20 @@ type EventTeamPartition = {
 
 const EVENT_TEAM_RATING_EPSILON = 1e-9;
 
+function extraSlotForLargerTeam(index: number, largerTeams: number): number {
+	if (index < largerTeams) {
+		return 1;
+	}
+
+	return 0;
+}
+
 function eventTeamCapacities(playerCount: number, teamCount: number): number[] {
 	const minimum = Math.floor(playerCount / teamCount);
 	const largerTeams = playerCount % teamCount;
 	return Array.from(
 		{ length: teamCount },
-		(_, index) => minimum + (index < largerTeams ? 1 : 0),
+		(_, index) => minimum + extraSlotForLargerTeam(index, largerTeams),
 	);
 }
 

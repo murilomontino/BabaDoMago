@@ -19,6 +19,23 @@ type LateJoinAttendanceModalProps = {
 	onConfirm: (playerId: number) => Promise<void>;
 };
 
+function selectNumberValue(value: number | ""): string {
+	if (value === "") {
+		return "";
+	}
+
+	return String(value);
+}
+
+function parseSelectNumber(raw: string): number | "" {
+	const next = Number(raw);
+	if (!Number.isFinite(next)) {
+		return "";
+	}
+
+	return next;
+}
+
 export function LateJoinAttendanceModal({
 	players,
 	presentIds,
@@ -59,12 +76,11 @@ export function LateJoinAttendanceModal({
 				{candidates.length > 0 && (
 					<select
 						className={FIELD_CLASS}
-						value={playerId === "" ? "" : String(playerId)}
+						value={selectNumberValue(playerId)}
 						disabled={isPending}
 						onChange={(event) => {
 							setLocalError(null);
-							const next = Number(event.target.value);
-							setPlayerId(Number.isFinite(next) ? next : "");
+							setPlayerId(parseSelectNumber(event.target.value));
 						}}
 					>
 						{candidates.map((row) => (

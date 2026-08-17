@@ -47,6 +47,14 @@ export type TeamBalanceSummary = {
 	rows: TeamBalanceEvent[];
 };
 
+function teamWinCount(winnerTeamId: number | null, teamId: number): number {
+	if (winnerTeamId === teamId) {
+		return 1;
+	}
+
+	return 0;
+}
+
 function teamMatchRecord(
 	event: ChampionshipEvent,
 	teamId: number,
@@ -57,7 +65,7 @@ function teamMatchRecord(
 		.reduce(
 			(acc, match) => ({
 				matches: acc.matches + 1,
-				wins: acc.wins + (match.winner_team_id === teamId ? 1 : 0),
+				wins: acc.wins + teamWinCount(match.winner_team_id, teamId),
 			}),
 			{ matches: 0, wins: 0 },
 		);

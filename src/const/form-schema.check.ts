@@ -1,6 +1,7 @@
 import { CHAMPIONSHIP_EVENT } from "./championship-event.ts";
 import {
 	addPlayerFormSchema,
+	blankToNull,
 	deleteChampionshipSchema,
 	eventConfigFormSchema,
 	FORM_MESSAGE,
@@ -21,6 +22,9 @@ function check(condition: boolean, message: string) {
 }
 
 check(FORM_MESSAGE.nameRequired === "Informe o nome", "name required message");
+check(blankToNull("  baba  ") === "baba", "trims location");
+check(blankToNull("   ") === null, "blank location is null");
+check(blankToNull(1) === null, "non-string location is null");
 
 check(nameFormSchema.isValidSync({ name: "Baba" }), "name ok");
 check(!nameFormSchema.isValidSync({ name: "   " }), "name blank fails");

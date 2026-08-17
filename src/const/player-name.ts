@@ -51,6 +51,17 @@ export function playerVisibleName(player: {
 	return player.display_name;
 }
 
+export function legalNameIfDifferent(
+	visibleName: string,
+	displayName: string,
+): string | null {
+	if (visibleName === displayName) {
+		return null;
+	}
+
+	return displayName;
+}
+
 export function comparePlayersByVisibleName(
 	left: { nickname: string | null; display_name: string },
 	right: { nickname: string | null; display_name: string },
