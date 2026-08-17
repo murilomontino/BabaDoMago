@@ -1,3 +1,4 @@
+import { includeWhen } from "../lib/include-when.ts";
 import {
 	EVENT_TEAM_COLOR_NONE,
 	EVENT_TEAM_COLORS,
@@ -16,9 +17,45 @@ export const CHAMPIONSHIP_EVENT = {
 	minTeams: 2,
 	minAttendance: 2,
 	skipGuestGoalkeeperMatchesDefault: true,
+	locationMaxLength: 120,
 } as const;
 
+export const EVENT_WEEKDAY = {
+	monday: 1,
+	tuesday: 2,
+	wednesday: 3,
+	thursday: 4,
+	friday: 5,
+	saturday: 6,
+	sunday: 7,
+} as const;
+
+export type EventWeekday = (typeof EVENT_WEEKDAY)[keyof typeof EVENT_WEEKDAY];
+
+export const EVENT_WEEKDAY_LABEL = {
+	[EVENT_WEEKDAY.monday]: "segunda",
+	[EVENT_WEEKDAY.tuesday]: "terça",
+	[EVENT_WEEKDAY.wednesday]: "quarta",
+	[EVENT_WEEKDAY.thursday]: "quinta",
+	[EVENT_WEEKDAY.friday]: "sexta",
+	[EVENT_WEEKDAY.saturday]: "sábado",
+	[EVENT_WEEKDAY.sunday]: "domingo",
+} as const;
+
+export const EVENT_WEEKDAY_OPTIONS = [
+	{ value: EVENT_WEEKDAY.monday, label: "Segunda" },
+	{ value: EVENT_WEEKDAY.tuesday, label: "Terça" },
+	{ value: EVENT_WEEKDAY.wednesday, label: "Quarta" },
+	{ value: EVENT_WEEKDAY.thursday, label: "Quinta" },
+	{ value: EVENT_WEEKDAY.friday, label: "Sexta" },
+	{ value: EVENT_WEEKDAY.saturday, label: "Sábado" },
+	{ value: EVENT_WEEKDAY.sunday, label: "Domingo" },
+] as const;
+
 export const EVENT_CONFIG_LABEL = {
+	eventWeekday: "Dia da semana",
+	eventWeekdayNone: "Não definido",
+	location: "Local",
 	skipGuestGoalkeeperMatches: "Goleiro de outro time",
 	skipGuestGoalkeeperMatchesHint:
 		"Partida do goleiro emprestado só conta se o time vencer.",
@@ -73,6 +110,8 @@ export const EVENT_ERROR_MESSAGE = {
 	"invalid team size": "Time fora do limite",
 	"invalid event date": "Data inválida",
 	"invalid event time": "Hora inválida",
+	"invalid event weekday": "Dia da semana inválido",
+	"invalid location": "Local inválido",
 	"invalid players per team": "Limite inválido",
 	"same team": "Escolha dois times",
 	"team not in event": "Time não pertence à rodada",
@@ -101,6 +140,8 @@ export const EVENT_ERROR_MESSAGE = {
 	"result stats mismatch": "Resultado acima dos jogos",
 	"invalid rating": "Nota inválida",
 	"event still open": "Rodada ainda aberta",
+	"invalid rsvp": "Confirmação inválida",
+	"not event day": "Check-in só no dia da rodada",
 } as const;
 
 export const EVENT_ACTION = {
@@ -109,6 +150,9 @@ export const EVENT_ACTION = {
 	editTeams: "Editar times",
 	newEvent: "Nova rodada",
 	addAttendance: "Adicionar presença",
+	lateJoin: "Chegou agora",
+	checkIn: "Cheguei",
+	promoteRsvp: "Promover quem vai",
 	addMatch: "Adicionar partida",
 	startMatch: "Ir para nova partida",
 	continueMatch: "Continuar partida",
@@ -137,6 +181,15 @@ export const EVENT_ACTION = {
 	endEvent: "Encerrar Rodada",
 	setMvp: "Escolher MVP",
 	deleteEvent: "Excluir rodada",
+} as const;
+
+export const EVENT_LIST_ACTIONS_LABEL = {
+	cancel: "Cancelar",
+} as const;
+
+export const EVENT_CARD_LONG_PRESS = {
+	ms: 500,
+	movePx: 8,
 } as const;
 
 export const EVENT_SECTION_LABEL = {
@@ -204,6 +257,96 @@ export const EVENT_ATTENDANCE_MESSAGE = {
 	invalidStats: "Números inválidos",
 	winsExceedMatches: "Vitórias acima dos jogos",
 	resultStatsMismatch: "Resultado acima dos jogos",
+} as const;
+
+export const ATTENDANCE_SEED = {
+	lastEvent: "lastEvent",
+	habitual: "habitual",
+	clear: "clear",
+} as const;
+
+export type AttendanceSeedMode =
+	(typeof ATTENDANCE_SEED)[keyof typeof ATTENDANCE_SEED];
+
+export const ATTENDANCE_SEED_LABEL = {
+	[ATTENDANCE_SEED.lastEvent]: "Última rodada",
+	[ATTENDANCE_SEED.habitual]: "Habituais",
+	[ATTENDANCE_SEED.clear]: "Limpar",
+} as const;
+
+export const ATTENDANCE_SEED_HINT = {
+	[ATTENDANCE_SEED.lastEvent]:
+		"Marca quem estava presente na última rodada encerrada deste dia da semana.",
+	[ATTENDANCE_SEED.habitual]:
+		"Marca quem veio em pelo menos metade das últimas 5 rodadas deste dia da semana.",
+	[ATTENDANCE_SEED.clear]: "Remove todos os presentes marcados.",
+} as const;
+
+export const ATTENDANCE_SEED_HABITUAL = {
+	minRate: 0.5,
+	windowEvents: 5,
+} as const;
+
+export const EVENT_ATTENDANCE_DRAFT_STORAGE_KEY = "baba-event-attendance-draft";
+
+export const EVENT_LATE_JOIN_LABEL = {
+	action: "Chegou agora",
+	title: "Chegou agora",
+	hint: "Adiciona o jogador à presença da rodada.",
+	empty: "Todos do elenco já estão marcados.",
+	confirm: "Adicionar",
+	cancel: "Cancelar",
+} as const;
+
+export const EVENT_END_MISSING_ATTENDANCE_LABEL = {
+	hint: "Há jogadores em partida fora da presença. Eles serão incluídos ao encerrar.",
+} as const;
+
+export const EVENT_RSVP_STATUS = {
+	going: "going",
+	out: "out",
+} as const;
+
+export type EventRsvpStatus =
+	(typeof EVENT_RSVP_STATUS)[keyof typeof EVENT_RSVP_STATUS];
+
+export const EVENT_RSVP_STATUS_LABEL = {
+	[EVENT_RSVP_STATUS.going]: "Vou",
+	[EVENT_RSVP_STATUS.out]: "Não vou",
+} as const;
+
+export const EVENT_RSVP_CHOICES = [
+	EVENT_RSVP_STATUS.going,
+	EVENT_RSVP_STATUS.out,
+] as const;
+
+export function eventRsvpButtonVariant(
+	status: EventRsvpStatus,
+	selected: boolean,
+): "primary" | "secondary" | "danger" | "ghost" {
+	if (!selected) {
+		return "secondary";
+	}
+
+	if (status === EVENT_RSVP_STATUS.out) {
+		return "danger";
+	}
+
+	return "primary";
+}
+
+export const EVENT_RSVP_LABEL = {
+	section: "Confirmação",
+	promoteGoing: "Promover quem vai",
+	promoteHint: "Marca na presença quem respondeu Vou.",
+	none: "Nenhuma confirmação ainda.",
+} as const;
+
+export const EVENT_CHECK_IN_LABEL = {
+	action: "Cheguei",
+	hint: "Marca você na presença desta rodada.",
+	alreadyPresent: "Você já está na presença.",
+	notEventDay: "Check-in só no dia da rodada.",
 } as const;
 
 export const EVENT_ATTENDANCE_COLUMN = {
@@ -385,6 +528,9 @@ export const ATTENDANCE_STATS_TEAM_FILTER_LABEL = {
 export const EVENT_ATTENDANCE_ACTION = {
 	selectAll: "Selecionar todos",
 	deselectAll: "Desselecionar todos",
+	addPlayer: "Adicionar",
+	addPlayerPlaceholder: "Nome do jogador",
+	addPlayerAria: "Adicionar jogador",
 } as const;
 
 export function parseEventTime(value: unknown): string {
@@ -393,6 +539,118 @@ export function parseEventTime(value: unknown): string {
 	}
 
 	return value.slice(0, 5);
+}
+
+export function parseEventWeekday(value: unknown): EventWeekday | null {
+	const parsed = Number(value);
+	if (
+		!Number.isInteger(parsed) ||
+		parsed < EVENT_WEEKDAY.monday ||
+		parsed > EVENT_WEEKDAY.sunday
+	) {
+		return null;
+	}
+
+	return parsed as EventWeekday;
+}
+
+export function parseChampionshipLocation(value: unknown): string | null {
+	if (typeof value !== "string") {
+		return null;
+	}
+
+	const trimmed = value.trim();
+	if (!trimmed) {
+		return null;
+	}
+
+	return trimmed.slice(0, CHAMPIONSHIP_EVENT.locationMaxLength);
+}
+
+export function isEventWeekday(value: unknown): value is EventWeekday {
+	return parseEventWeekday(value) !== null;
+}
+
+export function jsSundayToEventWeekday(utcDay: number): EventWeekday {
+	if (utcDay === 0) {
+		return EVENT_WEEKDAY.sunday;
+	}
+
+	return utcDay as EventWeekday;
+}
+
+export function isoWeekdayFromYmd(ymd: string): EventWeekday {
+	const [year, month, day] = ymd.split("-").map(Number);
+	const utcDay = new Date(Date.UTC(year, month - 1, day, 12, 0, 0)).getUTCDay();
+	return jsSundayToEventWeekday(utcDay);
+}
+
+export function addDaysToYmd(ymd: string, days: number): string {
+	const [year, month, day] = ymd.split("-").map(Number);
+	const next = new Date(Date.UTC(year, month - 1, day + days, 12, 0, 0));
+	const y = next.getUTCFullYear();
+	const m = String(next.getUTCMonth() + 1).padStart(2, "0");
+	const d = String(next.getUTCDate()).padStart(2, "0");
+	return `${y}-${m}-${d}`;
+}
+
+export function nextEventDate(weekday: EventWeekday, fromYmd: string): string {
+	const fromWeekday = isoWeekdayFromYmd(fromYmd);
+	const delta = (weekday - fromWeekday + 7) % 7;
+	return addDaysToYmd(fromYmd, delta);
+}
+
+export function createEventDate(
+	weekday: EventWeekday | null,
+	todayYmd = championshipEventToday(),
+): string {
+	if (!weekday) {
+		return todayYmd;
+	}
+
+	return nextEventDate(weekday, todayYmd);
+}
+
+export function formatEventTimeShort(value: unknown): string {
+	const time = parseEventTime(value);
+	const [hour, minute] = time.split(":");
+	if (minute === "00") {
+		return `${Number(hour)}h`;
+	}
+
+	return `${Number(hour)}h${minute}`;
+}
+
+export function formatNextPeladaShortcut(input: {
+	weekday: EventWeekday;
+	eventTime: string;
+}): string {
+	return `Criar ${EVENT_WEEKDAY_LABEL[input.weekday]}, ${formatEventTimeShort(input.eventTime)}`;
+}
+
+export function formatChampionshipSchedule(input: {
+	weekday: EventWeekday | null;
+	eventTime: string;
+	location: string | null;
+}): string | null {
+	const parts: string[] = [];
+	if (input.weekday) {
+		const weekday = EVENT_WEEKDAY_LABEL[input.weekday];
+		parts.push(`${weekday[0]?.toUpperCase() ?? ""}${weekday.slice(1)}`);
+	}
+
+	parts.push(formatEventTimeShort(input.eventTime));
+
+	const location = parseChampionshipLocation(input.location);
+	if (location) {
+		parts.push(location);
+	}
+
+	if (!input.weekday && !location) {
+		return null;
+	}
+
+	return parts.join(" · ");
 }
 
 export function parsePlayersPerTeam(value: unknown): number {
@@ -415,6 +673,23 @@ export function championshipEventToday(): string {
 		month: "2-digit",
 		day: "2-digit",
 	}).format(new Date());
+}
+
+export function eventDateYmd(iso: string): string {
+	return new Intl.DateTimeFormat("en-CA", {
+		timeZone: CHAMPIONSHIP_EVENT.timeZone,
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+	}).format(new Date(iso));
+}
+
+export function eventIsoWeekday(iso: string): EventWeekday {
+	return isoWeekdayFromYmd(eventDateYmd(iso));
+}
+
+export function isEventDayToday(startsAt: string, todayYmd?: string): boolean {
+	return eventDateYmd(startsAt) === (todayYmd ?? championshipEventToday());
 }
 
 export function formatEventStartsAt(iso: string): {
@@ -452,13 +727,7 @@ export function openChampionshipEvents<
 >(events: readonly T[]): T[] {
 	return events
 		.filter((event) => event.ended_at === null)
-		.sort((left, right) => {
-			if (left.starts_at !== right.starts_at) {
-				return left.starts_at < right.starts_at ? -1 : 1;
-			}
-
-			return left.id - right.id;
-		});
+		.sort(compareStartsAtOldestFirst);
 }
 
 export function championshipEventErrorMessage(message: string): string {
@@ -471,6 +740,13 @@ export function championshipEventErrorMessage(message: string): string {
 	}
 
 	return known[1];
+}
+
+export function isMatchAlreadyOpenError(message: string): boolean {
+	return (
+		championshipEventErrorMessage(message) ===
+		EVENT_ERROR_MESSAGE["match already open"]
+	);
 }
 
 export function unusedEventTeamColor(
@@ -539,12 +815,20 @@ type EventTeamPartition = {
 
 const EVENT_TEAM_RATING_EPSILON = 1e-9;
 
+function extraSlotForLargerTeam(index: number, largerTeams: number): number {
+	if (index < largerTeams) {
+		return 1;
+	}
+
+	return 0;
+}
+
 function eventTeamCapacities(playerCount: number, teamCount: number): number[] {
 	const minimum = Math.floor(playerCount / teamCount);
 	const largerTeams = playerCount % teamCount;
 	return Array.from(
 		{ length: teamCount },
-		(_, index) => minimum + (index < largerTeams ? 1 : 0),
+		(_, index) => minimum + extraSlotForLargerTeam(index, largerTeams),
 	);
 }
 
@@ -895,6 +1179,20 @@ export function emptyTeamSlots(count: number): string[] {
 	return Array.from({ length: count }, () => "");
 }
 
+export function replaceSlotAt(
+	slots: readonly string[],
+	slot: number,
+	value: string,
+): string[] {
+	return slots.map((item, index) => {
+		if (index !== slot) {
+			return item;
+		}
+
+		return value;
+	});
+}
+
 export function keepPresentSlots(
 	slots: readonly string[],
 	present: ReadonlySet<number>,
@@ -1015,6 +1313,22 @@ export function teamPlayerSlots(
 	}, slots);
 }
 
+export function initialTeamSlots(
+	team:
+		| {
+				players: readonly { player_id: number; is_goalkeeper: boolean }[];
+		  }
+		| null
+		| undefined,
+	playersPerTeam: number,
+): string[] {
+	if (!team) {
+		return emptyTeamSlots(playersPerTeam);
+	}
+
+	return teamPlayerSlots(team.players, playersPerTeam);
+}
+
 export function builderTeamsFromDrafts(
 	teams: readonly EventTeamDraft[],
 	playersPerTeam: number,
@@ -1100,6 +1414,34 @@ export function canStartEventMatch(options: {
 	return !options.ended;
 }
 
+export function eventListActionFlags(input: {
+	canManage: boolean;
+	canSetMvp: boolean;
+	ended: boolean;
+	teamCount: number;
+	attendanceCount: number;
+}) {
+	const showStartMatch = canStartEventMatch({
+		ended: input.ended,
+		teamCount: input.teamCount,
+	});
+
+	return {
+		showStartMatch,
+		canEnd: input.canManage && !input.ended,
+		canSetMvp: input.canSetMvp && input.ended && input.attendanceCount > 0,
+		canDelete: input.canManage,
+	};
+}
+
+export function hasEventListActions(
+	flags: ReturnType<typeof eventListActionFlags>,
+): boolean {
+	return (
+		flags.showStartMatch || flags.canEnd || flags.canSetMvp || flags.canDelete
+	);
+}
+
 export function canAddEventMatch(options: {
 	ended: boolean;
 	teamCount: number;
@@ -1120,6 +1462,239 @@ export function draftAttendanceForEnd(
 	}
 
 	return [...presentIds];
+}
+
+export function matchPlayerIdsMissingFromAttendance(
+	matches: readonly {
+		players: readonly { player_id: number }[];
+	}[],
+	attendanceIds: readonly number[],
+): number[] {
+	const present = new Set(attendanceIds);
+	const missing = new Set<number>();
+
+	for (const match of matches) {
+		for (const row of match.players) {
+			if (!present.has(row.player_id)) {
+				missing.add(row.player_id);
+			}
+		}
+	}
+
+	return [...missing];
+}
+
+export function mergePresentIdsForEnd(
+	draftIds: number[] | null,
+	attendanceIds: readonly number[],
+	missingMatchPlayerIds: readonly number[],
+): number[] | null {
+	if (missingMatchPlayerIds.length === 0) {
+		return draftIds;
+	}
+
+	const base = draftIds ?? [...attendanceIds];
+	return [...new Set([...base, ...missingMatchPlayerIds])];
+}
+
+export function attendanceDraftStorageKey(eventId: number): string {
+	return `${EVENT_ATTENDANCE_DRAFT_STORAGE_KEY}:${eventId}`;
+}
+
+export function readAttendanceDraft(eventId: number): number[] | null {
+	if (typeof localStorage === "undefined") {
+		return null;
+	}
+
+	try {
+		const raw = localStorage.getItem(attendanceDraftStorageKey(eventId));
+		if (!raw) {
+			return null;
+		}
+
+		const parsed: unknown = JSON.parse(raw);
+		if (!Array.isArray(parsed)) {
+			return null;
+		}
+
+		const ids = parsed.filter(
+			(value): value is number =>
+				typeof value === "number" && Number.isInteger(value),
+		);
+		if (ids.length === 0) {
+			return null;
+		}
+
+		return [...new Set(ids)];
+	} catch {
+		return null;
+	}
+}
+
+export function writeAttendanceDraft(
+	eventId: number,
+	presentIds: readonly number[],
+): void {
+	if (typeof localStorage === "undefined") {
+		return;
+	}
+
+	localStorage.setItem(
+		attendanceDraftStorageKey(eventId),
+		JSON.stringify([...new Set(presentIds)]),
+	);
+}
+
+export function clearAttendanceDraft(eventId: number): void {
+	if (typeof localStorage === "undefined") {
+		return;
+	}
+
+	localStorage.removeItem(attendanceDraftStorageKey(eventId));
+}
+
+export function resolveBuilderInitialPresentIds(
+	savedAttendanceIds: readonly number[],
+	eventId: number,
+): number[] {
+	if (savedAttendanceIds.length > 0) {
+		return [...savedAttendanceIds];
+	}
+
+	return readAttendanceDraft(eventId) ?? [];
+}
+
+type AttendanceSeedEvent = {
+	id: number;
+	ended_at: string | null;
+	starts_at: string;
+	attendance: readonly { player_id: number }[];
+};
+
+function endedEventsNewestFirst(
+	events: readonly AttendanceSeedEvent[],
+	weekday: EventWeekday | null,
+): AttendanceSeedEvent[] {
+	return events
+		.filter((event) => {
+			if (event.ended_at === null) {
+				return false;
+			}
+
+			if (weekday === null) {
+				return true;
+			}
+
+			return eventIsoWeekday(event.starts_at) === weekday;
+		})
+		.sort(compareStartsAtNewestFirst);
+}
+
+export function seedPresentIdsFromLastEvent(
+	events: readonly AttendanceSeedEvent[],
+	rosterIds: readonly number[],
+	options: { weekday?: EventWeekday | null } = {},
+): number[] {
+	const roster = new Set(rosterIds);
+	const weekday = options.weekday ?? null;
+	const last = endedEventsNewestFirst(events, weekday)[0];
+	if (!last) {
+		return [];
+	}
+
+	return last.attendance.flatMap((row) =>
+		includeWhen(roster.has(row.player_id), row.player_id),
+	);
+}
+
+export function seedPresentIdsFromHabitual(
+	events: readonly AttendanceSeedEvent[],
+	rosterIds: readonly number[],
+	options: {
+		weekday?: EventWeekday | null;
+		minRate?: number;
+		windowEvents?: number;
+	} = {},
+): number[] {
+	const weekday = options.weekday ?? null;
+	const minRate = options.minRate ?? ATTENDANCE_SEED_HABITUAL.minRate;
+	const windowEvents =
+		options.windowEvents ?? ATTENDANCE_SEED_HABITUAL.windowEvents;
+	const window = endedEventsNewestFirst(events, weekday).slice(0, windowEvents);
+	if (window.length === 0) {
+		return [];
+	}
+
+	const roster = new Set(rosterIds);
+	return rosterIds.flatMap((playerId) => {
+		if (!roster.has(playerId)) {
+			return [];
+		}
+
+		const presentCount = window.filter((event) =>
+			event.attendance.some((row) => row.player_id === playerId),
+		).length;
+		const rate = presentCount / window.length;
+		if (rate < minRate) {
+			return [];
+		}
+
+		return [playerId];
+	});
+}
+
+export function seedPresentIdsFromHistory(
+	mode: AttendanceSeedMode,
+	events: readonly AttendanceSeedEvent[],
+	rosterIds: readonly number[],
+	options: { weekday?: EventWeekday | null } = {},
+): number[] {
+	switch (mode) {
+		case ATTENDANCE_SEED.lastEvent:
+			return seedPresentIdsFromLastEvent(events, rosterIds, options);
+		case ATTENDANCE_SEED.habitual:
+			return seedPresentIdsFromHabitual(events, rosterIds, options);
+		case ATTENDANCE_SEED.clear:
+			return [];
+		default: {
+			const _never: never = mode;
+			return _never;
+		}
+	}
+}
+
+export function isEventRsvpStatus(value: unknown): value is EventRsvpStatus {
+	return Object.values(EVENT_RSVP_STATUS).includes(value as EventRsvpStatus);
+}
+
+export function rsvpGoingPlayerIds(
+	rsvps: readonly { player_id: number; status: string }[],
+): number[] {
+	return rsvps.flatMap((row) =>
+		includeWhen(row.status === EVENT_RSVP_STATUS.going, row.player_id),
+	);
+}
+
+export function canSelfCheckIn(options: {
+	endedAt: string | null;
+	startsAt: string;
+	playerId: number | null;
+	attendanceIds: readonly number[];
+	todayYmd?: string;
+}): boolean {
+	if (options.endedAt !== null) {
+		return false;
+	}
+
+	if (options.playerId === null) {
+		return false;
+	}
+
+	if (options.attendanceIds.includes(options.playerId)) {
+		return false;
+	}
+
+	return isEventDayToday(options.startsAt, options.todayYmd);
 }
 
 export function teamSlotsToPlayerIds(slots: readonly string[]): number[] {
@@ -1577,6 +2152,36 @@ export function countPlayerAttendance(
 	return counts;
 }
 
+export function compareStartsAtOldestFirst(
+	left: { starts_at: string; id: number },
+	right: { starts_at: string; id: number },
+): number {
+	if (left.starts_at !== right.starts_at) {
+		if (left.starts_at < right.starts_at) {
+			return -1;
+		}
+
+		return 1;
+	}
+
+	return left.id - right.id;
+}
+
+export function compareStartsAtNewestFirst(
+	left: { starts_at: string; id: number },
+	right: { starts_at: string; id: number },
+): number {
+	if (left.starts_at !== right.starts_at) {
+		if (left.starts_at < right.starts_at) {
+			return 1;
+		}
+
+		return -1;
+	}
+
+	return right.id - left.id;
+}
+
 export function compareByAttendanceCount(
 	a: { attendanceCount: number; display_name: string },
 	b: { attendanceCount: number; display_name: string },
@@ -1612,7 +2217,9 @@ export function keepGoalkeepersPresent(
 export function defaultGoalkeeperIds(
 	players: readonly { id: number; is_goalkeeper: boolean }[],
 ): number[] {
-	return players.flatMap((player) => (player.is_goalkeeper ? [player.id] : []));
+	return players.flatMap((player) =>
+		includeWhen(player.is_goalkeeper, player.id),
+	);
 }
 
 export function eventGoalkeeperIds(
@@ -1639,7 +2246,7 @@ export function attendanceGoalkeeperIds(
 	attendance: readonly { player_id: number; is_goalkeeper: boolean }[],
 ): number[] {
 	return attendance.flatMap((row) =>
-		row.is_goalkeeper ? [row.player_id] : [],
+		includeWhen(row.is_goalkeeper, row.player_id),
 	);
 }
 

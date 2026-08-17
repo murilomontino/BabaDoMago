@@ -3,9 +3,9 @@ import type {
 	ChampionshipEventMatch,
 	ChampionshipEventMatchPlayer,
 } from "../types/championship-event.ts";
-import { CHAMPIONSHIP_EVENT } from "./championship-event.ts";
+import { CHAMPIONSHIP_EVENT, EVENT_ACTION } from "./championship-event.ts";
 import type { EventTeamColor } from "./event-team-color.ts";
-import { playerVisibleName } from "./player-name.ts";
+import { PLAYER_LABEL, playerVisibleName } from "./player-name.ts";
 
 type MatchStarRosterPlayer = {
 	nickname: string | null;
@@ -36,6 +36,14 @@ export const EVENT_MATCH_LABEL = {
 	showLess: "Ver menos",
 } as const;
 
+export function copyMatchLinkLabel(copied: boolean): string {
+	if (copied) {
+		return EVENT_MATCH_LABEL.copied;
+	}
+
+	return EVENT_ACTION.copyMatchLink;
+}
+
 export const EVENT_MATCH_TEAM_PREVIEW = {
 	players: 2,
 } as const;
@@ -63,6 +71,162 @@ export type MatchClockFields = {
 	pause_accumulated_seconds: number;
 	ended_at: string | null;
 };
+
+export const MATCH_CLOCK_ACTION = {
+	start: "start",
+	pause: "pause",
+	resume: "resume",
+} as const;
+
+export type MatchClockAction =
+	(typeof MATCH_CLOCK_ACTION)[keyof typeof MATCH_CLOCK_ACTION];
+
+export const MATCH_CLOCK_STORAGE_KEY = "babaDoMago-match-clock" as const;
+
+export const MATCH_CLOCK_DEBUG_ENV = {
+	key: "VITE_MATCH_CLOCK_DEBUG",
+	on: "true",
+} as const;
+
+export const MATCH_CLOCK_DEBUG_LABEL = {
+	open: "Fila do cronômetro",
+	title: "Fila do cronômetro",
+	empty: "Fila vazia.",
+	hold: "Segurar sync",
+	release: "Liberar sync",
+	pending: "Pending",
+	startedAt: "started_at",
+	pausedAt: "paused_at",
+	accumulated: "pause_accumulated_seconds",
+	close: "Fechar",
+} as const;
+
+export type MatchClockSnapshot = {
+	started_at: string | null;
+	paused_at: string | null;
+	pause_accumulated_seconds: number;
+	pending: MatchClockAction[];
+};
+
+export function matchClockSnapshotFromFields(
+	fields: Pick<
+		MatchClockFields,
+		"started_at" | "paused_at" | "pause_accumulated_seconds"
+	>,
+): MatchClockSnapshot {
+	return {
+		started_at: fields.started_at,
+		paused_at: fields.paused_at,
+		pause_accumulated_seconds: fields.pause_accumulated_seconds,
+		pending: [],
+	};
+}
+
+export function hasMatchClockLocal(
+	local: MatchClockSnapshot | undefined,
+): local is MatchClockSnapshot {
+	return (
+		local !== undefined &&
+		(local.started_at !== null || local.pending.length > 0)
+	);
+}
+
+export function keepLocalMatchClock(
+	existing: MatchClockSnapshot | undefined,
+	seed: Pick<
+		MatchClockFields,
+		"started_at" | "paused_at" | "pause_accumulated_seconds"
+	>,
+): MatchClockSnapshot {
+	if (hasMatchClockLocal(existing)) {
+		return existing;
+	}
+
+	return matchClockSnapshotFromFields(seed);
+}
+
+function pauseElapsedSeconds(pausedAtIso: string, nowMs: number): number {
+	const pausedAt = Date.parse(pausedAtIso);
+	if (!Number.isFinite(pausedAt)) {
+		return 0;
+	}
+
+	return Math.max(0, Math.floor((nowMs - pausedAt) / 1000));
+}
+
+export function applyMatchClockAction(
+	snapshot: MatchClockSnapshot,
+	action: MatchClockAction,
+	nowMs: number,
+): MatchClockSnapshot {
+	const nowIso = new Date(nowMs).toISOString();
+	switch (action) {
+		case MATCH_CLOCK_ACTION.start: {
+			if (snapshot.started_at !== null) {
+				return snapshot;
+			}
+
+			return {
+				...snapshot,
+				started_at: nowIso,
+				pending: [...snapshot.pending, action],
+			};
+		}
+		case MATCH_CLOCK_ACTION.pause: {
+			if (snapshot.started_at === null || snapshot.paused_at !== null) {
+				return snapshot;
+			}
+
+			return {
+				...snapshot,
+				paused_at: nowIso,
+				pending: [...snapshot.pending, action],
+			};
+		}
+		case MATCH_CLOCK_ACTION.resume: {
+			if (snapshot.paused_at === null) {
+				return snapshot;
+			}
+
+			const extra = pauseElapsedSeconds(snapshot.paused_at, nowMs);
+			return {
+				...snapshot,
+				paused_at: null,
+				pause_accumulated_seconds: snapshot.pause_accumulated_seconds + extra,
+				pending: [...snapshot.pending, action],
+			};
+		}
+		default: {
+			const _exhaustive: never = action;
+			return _exhaustive;
+		}
+	}
+}
+
+export function shiftMatchClockPending(
+	snapshot: MatchClockSnapshot,
+): MatchClockSnapshot {
+	return {
+		...snapshot,
+		pending: snapshot.pending.slice(1),
+	};
+}
+
+export function mergeMatchClock<T extends MatchClockFields>(
+	server: T,
+	local: MatchClockSnapshot | undefined,
+): T {
+	if (server.ended_at !== null || !hasMatchClockLocal(local)) {
+		return server;
+	}
+
+	return {
+		...server,
+		started_at: local.started_at,
+		paused_at: local.paused_at,
+		pause_accumulated_seconds: local.pause_accumulated_seconds,
+	};
+}
 
 export const EVENT_MATCH_END_INTENT = {
 	end: "end",
@@ -117,6 +281,23 @@ export const EVENT_GOAL_LABEL = {
 	ownGoalShort: "Contra",
 } as const;
 
+export const EVENT_MATCH_ICON = {
+	goalkeeper: "goalkeeper",
+	goal: "goal",
+	assist: "assist",
+	ownGoal: "ownGoal",
+} as const;
+
+export type EventMatchIcon =
+	(typeof EVENT_MATCH_ICON)[keyof typeof EVENT_MATCH_ICON];
+
+export const EVENT_MATCH_ICON_LEGEND = [
+	{ id: EVENT_MATCH_ICON.goalkeeper, label: PLAYER_LABEL.goalkeeper },
+	{ id: EVENT_MATCH_ICON.goal, label: EVENT_GOAL_LABEL.goal },
+	{ id: EVENT_MATCH_ICON.assist, label: EVENT_GOAL_LABEL.assist },
+	{ id: EVENT_MATCH_ICON.ownGoal, label: EVENT_GOAL_LABEL.ownGoal },
+] as const;
+
 export function eventGoalScorerHint(scorerName: string): string {
 	return `Gol de ${scorerName}`;
 }
@@ -140,10 +321,31 @@ export function openEventMatch<T extends { ended_at: string | null }>(
 	return matches.find((match) => match.ended_at === null) ?? null;
 }
 
+export function shouldStartEventMatch<T extends { ended_at: string | null }>(
+	matches: readonly T[],
+): boolean {
+	return openEventMatch(matches) === null;
+}
+
 export function matchPlayerIds(
 	players: readonly { player_id: number }[],
 ): number[] {
 	return players.map((player) => player.player_id);
+}
+
+export function compareStartersBeforeSubstitutes(
+	left: { is_substituted: boolean; slot: number | null },
+	right: { is_substituted: boolean; slot: number | null },
+): number {
+	if (left.is_substituted !== right.is_substituted) {
+		if (left.is_substituted) {
+			return 1;
+		}
+
+		return -1;
+	}
+
+	return (left.slot ?? 11) - (right.slot ?? 11);
 }
 
 export function matchTeamPlayers(
@@ -152,13 +354,7 @@ export function matchTeamPlayers(
 ): ChampionshipEventMatchPlayer[] {
 	return [...players]
 		.filter((player) => player.team_id === teamId)
-		.sort((left, right) => {
-			if (left.is_substituted !== right.is_substituted) {
-				return left.is_substituted ? 1 : -1;
-			}
-
-			return (left.slot ?? 11) - (right.slot ?? 11);
-		});
+		.sort(compareStartersBeforeSubstitutes);
 }
 
 export function matchActiveTeamPlayers(
@@ -439,6 +635,17 @@ export function matchClockFreezeAtMs(
 	return nowMs;
 }
 
+export function matchClockNowMs(
+	ticking: boolean,
+	sampledNowMs: number,
+): number {
+	if (ticking) {
+		return sampledNowMs;
+	}
+
+	return Date.now();
+}
+
 export function matchClockElapsedSeconds(
 	match: MatchClockFields,
 	nowMs: number,
@@ -466,31 +673,51 @@ export function formatMatchClock(totalSeconds: number): string {
 	return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
+function pickTeamStarPlayer(
+	players: readonly ChampionshipEventMatchPlayer[],
+	roster: ReadonlyMap<number, MatchStarRosterPlayer>,
+): ChampionshipEventMatchPlayer | null {
+	return players.reduce<ChampionshipEventMatchPlayer | null>((best, player) => {
+		if (!best) {
+			return player;
+		}
+
+		const playerRating = roster.get(player.player_id)?.rating ?? 0;
+		const bestRating = roster.get(best.player_id)?.rating ?? 0;
+		if (playerRating !== bestRating) {
+			if (playerRating > bestRating) {
+				return player;
+			}
+
+			return best;
+		}
+
+		const playerSlot = player.slot ?? 11;
+		const bestSlot = best.slot ?? 11;
+		if (playerSlot !== bestSlot) {
+			if (playerSlot < bestSlot) {
+				return player;
+			}
+
+			return best;
+		}
+
+		if (player.player_id < best.player_id) {
+			return player;
+		}
+
+		return best;
+	}, null);
+}
+
 export function matchTeamStarName(
 	players: readonly ChampionshipEventMatchPlayer[],
 	teamId: number,
 	roster: ReadonlyMap<number, MatchStarRosterPlayer>,
 ): string | null {
-	const team = matchActiveTeamPlayers(players, teamId);
-	const star = team.reduce<ChampionshipEventMatchPlayer | null>(
-		(best, player) => {
-			if (!best) {
-				return player;
-			}
-
-			const playerRating = roster.get(player.player_id)?.rating ?? 0;
-			const bestRating = roster.get(best.player_id)?.rating ?? 0;
-			if (playerRating !== bestRating) {
-				return playerRating > bestRating ? player : best;
-			}
-
-			if ((player.slot ?? 11) !== (best.slot ?? 11)) {
-				return (player.slot ?? 11) < (best.slot ?? 11) ? player : best;
-			}
-
-			return player.player_id < best.player_id ? player : best;
-		},
-		null,
+	const star = pickTeamStarPlayer(
+		matchActiveTeamPlayers(players, teamId),
+		roster,
 	);
 
 	if (!star) {
@@ -505,6 +732,17 @@ export function matchTeamStarName(
 	return playerVisibleName(named);
 }
 
+export function matchWinnerTeam<T>(
+	winnerTeamId: number | null,
+	teamById: ReadonlyMap<number, T>,
+): T | null | undefined {
+	if (winnerTeamId === null) {
+		return null;
+	}
+
+	return teamById.get(winnerTeamId);
+}
+
 export function matchGoalForTeamA(
 	goal: ChampionshipEventGoal,
 	teamAPlayerIds: ReadonlySet<number>,
@@ -517,16 +755,35 @@ export function matchGoalForTeamA(
 	return scorerInA;
 }
 
-export function matchGoalTimeline(
-	goals: readonly ChampionshipEventGoal[],
-): ChampionshipEventGoal[] {
-	return [...goals].sort((left, right) => {
-		if (left.created_at !== right.created_at) {
-			return left.created_at < right.created_at ? -1 : 1;
+export function compareGoalsOldestFirst(
+	left: ChampionshipEventGoal,
+	right: ChampionshipEventGoal,
+): number {
+	const leftElapsed = left.elapsed_seconds;
+	const rightElapsed = right.elapsed_seconds;
+	if (leftElapsed !== null && rightElapsed !== null) {
+		if (leftElapsed !== rightElapsed) {
+			return leftElapsed - rightElapsed;
 		}
 
 		return left.id - right.id;
-	});
+	}
+
+	if (left.created_at !== right.created_at) {
+		if (left.created_at < right.created_at) {
+			return -1;
+		}
+
+		return 1;
+	}
+
+	return left.id - right.id;
+}
+
+export function matchGoalTimeline(
+	goals: readonly ChampionshipEventGoal[],
+): ChampionshipEventGoal[] {
+	return [...goals].sort(compareGoalsOldestFirst);
 }
 
 export function lastMatchGoal(

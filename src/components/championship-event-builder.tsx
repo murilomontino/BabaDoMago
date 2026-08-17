@@ -15,6 +15,7 @@ import {
 } from "@/components/event-team-player";
 import { Tabs } from "@/components/tabs";
 import {
+	type AttendanceSeedMode,
 	applyVisibleAttendance,
 	builderTeamsFromDrafts,
 	builderTeamsHavePlayers,
@@ -28,14 +29,17 @@ import {
 	type EventBuilderStep,
 	type EventTeamBuilderTeam,
 	type EventTeamDraft,
+	type EventWeekday,
 	emptyTeamSlots,
 	eventGoalkeeperIds,
+	eventIsoWeekday,
 	eventTeamCount,
 	eventTeamPlayerOptionLabel,
 	eventTeamSlotPosition,
 	initialBuilderTeams,
 	keepGoalkeepersPresent,
 	resizeBuilderTeams,
+	seedPresentIdsFromHistory,
 	setGoalkeeperSelection,
 	teamSlotsToPlayerIds,
 	validateEventAttendance,
@@ -49,8 +53,10 @@ import {
 	EVENT_TEAM_COLOR_NONE,
 	EVENT_TEAM_COLORS,
 	eventTeamColorStyle,
+	eventTeamCustomColorPreview,
 	isEventTeamColor,
 	normalizeEventTeamColor,
+	usedEventTeamColors,
 } from "@/const/event-team-color";
 import {
 	EVENT_TEAM_SHARE_LABEL,
@@ -64,6 +70,7 @@ import {
 	FIELD_CLASS,
 	MODAL_CLASS,
 } from "@/const/ui";
+import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
 import { shareEventTeamsImage } from "@/lib/share-event-teams-image";
 import type { ChampionshipPlayer } from "@/types/championship";
 
@@ -80,6 +87,12 @@ type ChampionshipEventBuilderProps = {
 	playersPerTeam: number;
 	players: ChampionshipPlayer[];
 	attendanceCounts: ReadonlyMap<number, number>;
+	seedEvents?: readonly {
+		id: number;
+		ended_at: string | null;
+		starts_at: string;
+		attendance: readonly { player_id: number }[];
+	}[];
 	step: EventBuilderStep;
 	startsAt: string;
 	championshipName: string;
@@ -91,6 +104,13 @@ type ChampionshipEventBuilderProps = {
 	onStepChange: (step: EventBuilderStep) => void;
 	onCancel?: () => void;
 	onPresentIdsChange?: (playerIds: readonly number[]) => void;
+	onAddPlayer?: (values: {
+		displayNames: string[];
+		rating: number;
+		isGoalkeeper: boolean;
+	}) => Promise<ChampionshipPlayer[]>;
+	isAddingPlayer?: boolean;
+	addPlayerError?: string | null;
 	onSubmit: (
 		values: {
 			presentPlayerIds: number[];
@@ -105,6 +125,7 @@ export function ChampionshipEventBuilder({
 	playersPerTeam,
 	players,
 	attendanceCounts,
+	seedEvents = [],
 	step,
 	startsAt,
 	championshipName,
@@ -116,6 +137,9 @@ export function ChampionshipEventBuilder({
 	onStepChange,
 	onCancel,
 	onPresentIdsChange,
+	onAddPlayer,
+	isAddingPlayer = false,
+	addPlayerError = null,
 	onSubmit,
 }: ChampionshipEventBuilderProps) {
 	const [presentIds, setPresentIds] = useState<number[]>([
@@ -134,6 +158,7 @@ export function ChampionshipEventBuilder({
 	>(null);
 	const drawWorkerRef = useRef<Worker | null>(null);
 	const rosterIds = players.map((player) => player.id);
+	const seedWeekday: EventWeekday = eventIsoWeekday(startsAt);
 	const ceiling = championshipRatingCeiling(
 		players.map((player) => player.rating),
 	);
@@ -166,6 +191,15 @@ export function ChampionshipEventBuilder({
 		setAttendanceError(null);
 	}
 
+	function handleSeedAttendance(mode: AttendanceSeedMode) {
+		const nextPresent = seedPresentIdsFromHistory(mode, seedEvents, rosterIds, {
+			weekday: seedWeekday,
+		});
+		setPresentIds(nextPresent);
+		onPresentIdsChange?.(nextPresent);
+		setAttendanceError(null);
+	}
+
 	function handleSetGoalkeeper(
 		playerIds: readonly number[],
 		asGoalkeeper: boolean,
@@ -174,6 +208,27 @@ export function ChampionshipEventBuilder({
 			setGoalkeeperSelection(current, playerIds, asGoalkeeper),
 		);
 		setAttendanceError(null);
+	}
+
+	async function handleAddPlayer(values: {
+		displayNames: string[];
+		rating: number;
+		isGoalkeeper: boolean;
+	}): Promise<ChampionshipPlayer[]> {
+		if (!onAddPlayer) {
+			return [];
+		}
+
+		const created = await onAddPlayer(values);
+		if (created.length === 0) {
+			return created;
+		}
+
+		handleSetPresent(
+			created.map((player) => player.id),
+			true,
+		);
+		return created;
 	}
 
 	function handleBackToAttendance() {
@@ -392,7 +447,7 @@ export function ChampionshipEventBuilder({
 			>
 				{({ values, setFieldValue }) => {
 					const usedColors = values.teams.flatMap((team) =>
-						team.color === null ? [] : [team.color],
+						usedEventTeamColors(team.color),
 					);
 					const assignedIds = new Set(
 						values.teams.flatMap((team) => teamSlotsToPlayerIds(team.slots)),
@@ -460,6 +515,16 @@ export function ChampionshipEventBuilder({
 										goalkeeperIds={goalkeeperIds}
 										onSetPresent={handleSetPresent}
 										onSetGoalkeeper={handleSetGoalkeeper}
+										onSeedAttendance={handlerWhenAllowed(
+											seedEvents.length > 0,
+											handleSeedAttendance,
+										)}
+										isAddingPlayer={isAddingPlayer}
+										addPlayerError={addPlayerError}
+										onAddPlayer={handlerWhenAllowed(
+											onAddPlayer,
+											handleAddPlayer,
+										)}
 									/>
 									{attendanceError && (
 										<p className={ERROR_CLASS}>{attendanceError}</p>
@@ -555,14 +620,10 @@ export function ChampionshipEventBuilder({
 																		<span
 																			aria-hidden
 																			className={`block size-5 rounded-md border-2 ${isCustom ? "border-current" : "border-black/20"}`}
-																			style={{
-																				backgroundColor: isCustom
-																					? (team.color ?? undefined)
-																					: "transparent",
-																				backgroundImage: isCustom
-																					? undefined
-																					: "conic-gradient(#dc2626, #facc15, #166534, #2563eb, #ec4899, #dc2626)",
-																			}}
+																			style={eventTeamCustomColorPreview(
+																				isCustom,
+																				team.color,
+																			)}
 																		/>
 																	</label>
 																</div>

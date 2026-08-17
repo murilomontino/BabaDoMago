@@ -13,10 +13,10 @@ import {
 	EVENT_ACTION,
 	EVENT_TEAM_MESSAGE,
 	EVENT_TEAM_POSITION_LABEL,
-	emptyTeamSlots,
 	eventTeamPlayerOptionLabel,
 	eventTeamSlotPosition,
-	teamPlayerSlots,
+	initialTeamSlots,
+	replaceSlotAt,
 	teamSlotsToPlayerIds,
 	validateEventTeam,
 } from "@/const/championship-event";
@@ -28,6 +28,7 @@ import {
 	EVENT_TEAM_COLORS,
 	type EventTeamColor,
 	eventTeamColorStyle,
+	eventTeamCustomColorPreview,
 	isEventTeamColor,
 	normalizeEventTeamColor,
 } from "@/const/event-team-color";
@@ -82,9 +83,7 @@ export function AddEventTeamModal({
 		() => initialTeam?.color ?? EVENT_TEAM_COLOR_NONE,
 	);
 	const [slots, setSlots] = useState(() =>
-		initialTeam
-			? teamPlayerSlots(initialTeam.players, playersPerTeam)
-			: emptyTeamSlots(playersPerTeam),
+		initialTeamSlots(initialTeam, playersPerTeam),
 	);
 	const [localError, setLocalError] = useState<string | null>(null);
 	const assignedIds = new Set(teamSlotsToPlayerIds(slots));
@@ -170,12 +169,7 @@ export function AddEventTeamModal({
 								<span
 									aria-hidden
 									className={`block size-5 rounded-md border-2 ${isCustom ? "border-current" : "border-black/20"}`}
-									style={{
-										backgroundColor: isCustom ? color : "transparent",
-										backgroundImage: isCustom
-											? undefined
-											: "conic-gradient(#dc2626, #facc15, #166534, #2563eb, #ec4899, #dc2626)",
-									}}
+									style={eventTeamCustomColorPreview(isCustom, color)}
 								/>
 							</label>
 						</div>
@@ -205,9 +199,7 @@ export function AddEventTeamModal({
 												}
 												onRemove={() => {
 													setSlots((current) =>
-														current.map((value, index) =>
-															index === slot ? "" : value,
-														),
+														replaceSlotAt(current, slot, ""),
 													);
 													setLocalError(null);
 												}}
@@ -221,9 +213,7 @@ export function AddEventTeamModal({
 												onChange={(event) => {
 													const value = event.target.value;
 													setSlots((current) =>
-														current.map((item, index) =>
-															index === slot ? value : item,
-														),
+														replaceSlotAt(current, slot, value),
 													);
 													setLocalError(null);
 												}}

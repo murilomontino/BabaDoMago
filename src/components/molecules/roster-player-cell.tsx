@@ -9,11 +9,11 @@ import {
 	resolveChampionshipRole,
 } from "@/const/championship-role";
 import {
+	isGoalkeeperKind,
 	PLAYER_KIND,
 	PLAYER_KIND_LABEL,
 	PLAYER_KIND_OPTIONS,
 	PLAYER_LABEL,
-	isGoalkeeperKind,
 	playerKindFromGoalkeeper,
 } from "@/const/player-name";
 import { PLAYER_PROFILE_LABEL } from "@/const/player-profile";
@@ -97,18 +97,14 @@ export function RosterPlayerCell({
 										: KIND_SELECT_OFF_CLASS
 								}
 								onChange={(event) => {
-									const nextKind =
-										event.target.value === PLAYER_KIND.goalkeeper
-											? PLAYER_KIND.goalkeeper
-											: PLAYER_KIND.player;
+									const nextKind = playerKindFromGoalkeeper(
+										event.target.value === PLAYER_KIND.goalkeeper,
+									);
 									if (nextKind === selectedKind) {
 										return;
 									}
 
-									onChangeGoalkeeper(
-										player.id,
-										isGoalkeeperKind(nextKind),
-									);
+									onChangeGoalkeeper(player.id, isGoalkeeperKind(nextKind));
 								}}
 							>
 								{PLAYER_KIND_OPTIONS.map((option) => (

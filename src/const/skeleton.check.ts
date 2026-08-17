@@ -7,6 +7,7 @@ import {
 	SKELETON_TEAM_CARDS,
 	SKELETON_TEAM_SLOTS,
 	skeletonClassName,
+	skeletonStatHeaders,
 } from "./skeleton.ts";
 
 function check(condition: boolean, message: string) {
@@ -34,7 +35,18 @@ check(SKELETON_LABEL.events === "Carregando rodadas", "events label");
 check(SKELETON_LABEL.event === "Carregando rodada", "event label");
 check(SKELETON_LABEL.match === "Carregando partida", "match label");
 check(SKELETON_LABEL.player === "Carregando perfil", "player label");
+check(SKELETON_LABEL.chart === "Carregando gráfico", "chart label");
+check(SKELETON_LABEL.podium === "Carregando pódio", "podium label");
+check(SKELETON_LABEL.logoCrop === "Carregando recorte", "logo crop label");
 check(skeletonClassName().includes("animate-pulse"), "pulse class");
 check(skeletonClassName("h-8").includes("h-8"), "merges class");
+check(
+	skeletonStatHeaders(["a", "b", "c", "d"], true).join(",") === "c,d",
+	"skip player columns",
+);
+check(
+	skeletonStatHeaders(["a", "b", "c"], false).join(",") === "b,c",
+	"skip name column",
+);
 
 console.log("skeleton ok");

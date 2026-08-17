@@ -1,4 +1,5 @@
 import {
+	ATTENDANCE_SEED,
 	ATTENDANCE_STATS_TEAM_FILTER,
 	ATTENDANCE_STATS_TEAM_FILTER_LABEL,
 	applyVisibleAttendance,
@@ -11,26 +12,37 @@ import {
 	canAddEventMatch,
 	canEditEventTeams,
 	canRemoveEventAttendance,
+	canSelfCheckIn,
 	canStartEventMatch,
 	championshipEventErrorMessage,
 	compareByAttendanceCount,
+	compareStartsAtNewestFirst,
+	compareStartsAtOldestFirst,
 	countPlayerAttendance,
+	createEventDate,
 	defaultGoalkeeperIds,
 	draftAttendanceForEnd,
 	drawBalancedEventTeams,
+	EVENT_ATTENDANCE_ACTION,
 	EVENT_ATTENDANCE_MESSAGE,
 	EVENT_ATTENDANCE_STAT_ABBR,
 	EVENT_BUILDER_STEP,
 	EVENT_CONFIG_LABEL,
 	EVENT_CREATE_OPEN_LABEL,
 	EVENT_ERROR_MESSAGE,
+	EVENT_RSVP_STATUS,
 	EVENT_TEAM_MESSAGE,
 	EVENT_TEAM_POSITION,
 	EVENT_TEAM_POSITION_LABEL,
+	EVENT_WEEKDAY,
+	EVENT_WEEKDAY_LABEL,
 	type EventTeamDraft,
 	emptyTeamSlots,
+	eventDateYmd,
 	eventDrawRatings,
 	eventGoalkeeperIds,
+	eventIsoWeekday,
+	eventListActionFlags,
 	eventTeamByPlayerId,
 	eventTeamCount,
 	eventTeamPlayerIds,
@@ -39,19 +51,36 @@ import {
 	eventTeamRatingAverage,
 	eventTeamSlotPosition,
 	filterAttendanceByTeam,
+	formatChampionshipSchedule,
 	formatEventTeamRatingAverage,
+	formatEventTimeShort,
+	formatNextPeladaShortcut,
+	hasEventListActions,
 	initialBuilderTeams,
+	initialTeamSlots,
 	isEventBuilderStep,
+	isEventRsvpStatus,
+	isMatchAlreadyOpenError,
+	isoWeekdayFromYmd,
+	jsSundayToEventWeekday,
 	keepGoalkeepersPresent,
 	keepPresentSlots,
 	keepTeamPlayersPresent,
+	matchPlayerIdsMissingFromAttendance,
+	mergePresentIdsForEnd,
+	nextEventDate,
 	nextEventTeamColor,
 	openChampionshipEvents,
 	PLAYER_EVENT_STAT_META,
 	parseAttendanceStatInput,
+	parseChampionshipLocation,
+	parseEventWeekday,
 	pickTeamGoalkeeper,
 	playerEventStatsFromAttendance,
+	replaceSlotAt,
 	resizeBuilderTeams,
+	rsvpGoingPlayerIds,
+	seedPresentIdsFromHistory,
 	setAttendanceStat,
 	setGoalkeeperSelection,
 	setPlayerEventStat,
@@ -76,7 +105,43 @@ function check(actual: unknown, expected: unknown): void {
 }
 
 check(EVENT_CONFIG_LABEL.skipGuestGoalkeeperMatches, "Goleiro de outro time");
+check(EVENT_CONFIG_LABEL.eventWeekday, "Dia da semana");
+check(EVENT_CONFIG_LABEL.location, "Local");
 check(CHAMPIONSHIP_EVENT.skipGuestGoalkeeperMatchesDefault, true);
+check(CHAMPIONSHIP_EVENT.locationMaxLength, 120);
+check(EVENT_WEEKDAY_LABEL[EVENT_WEEKDAY.tuesday], "terça");
+check(isoWeekdayFromYmd("2026-08-16"), EVENT_WEEKDAY.sunday);
+check(isoWeekdayFromYmd("2026-08-17"), EVENT_WEEKDAY.monday);
+check(isoWeekdayFromYmd("2026-08-18"), EVENT_WEEKDAY.tuesday);
+check(jsSundayToEventWeekday(0), EVENT_WEEKDAY.sunday);
+check(jsSundayToEventWeekday(1), EVENT_WEEKDAY.monday);
+check(nextEventDate(EVENT_WEEKDAY.tuesday, "2026-08-17"), "2026-08-18");
+check(nextEventDate(EVENT_WEEKDAY.tuesday, "2026-08-18"), "2026-08-18");
+check(nextEventDate(EVENT_WEEKDAY.monday, "2026-08-16"), "2026-08-17");
+check(nextEventDate(EVENT_WEEKDAY.sunday, "2026-08-17"), "2026-08-23");
+check(createEventDate(null, "2026-08-17"), "2026-08-17");
+check(createEventDate(EVENT_WEEKDAY.tuesday, "2026-08-17"), "2026-08-18");
+check(formatEventTimeShort("19:00:00"), "19h");
+check(formatEventTimeShort("19:30"), "19h30");
+check(
+	formatNextPeladaShortcut({
+		weekday: EVENT_WEEKDAY.tuesday,
+		eventTime: "19:00",
+	}),
+	"Criar terça, 19h",
+);
+check(
+	formatChampionshipSchedule({
+		weekday: EVENT_WEEKDAY.tuesday,
+		eventTime: "19:00",
+		location: "Society do parque",
+	}),
+	"Terça · 19h · Society do parque",
+);
+check(parseEventWeekday(2), EVENT_WEEKDAY.tuesday);
+check(parseEventWeekday(0), null);
+check(parseChampionshipLocation("  campo 2  "), "campo 2");
+check(parseChampionshipLocation("   "), null);
 check(EVENT_CREATE_OPEN_LABEL.title, "Rodadas em aberto");
 check(EVENT_CREATE_OPEN_LABEL.hint.includes("MVP automático"), true);
 check(EVENT_CREATE_OPEN_LABEL.closeAndCreate, "Encerrar e criar");
@@ -280,8 +345,29 @@ check(
 	) > 0,
 	true,
 );
+check(
+	compareStartsAtOldestFirst(
+		{ starts_at: "2026-01-01", id: 2 },
+		{ starts_at: "2026-02-01", id: 1 },
+	) < 0,
+	true,
+);
+check(
+	compareStartsAtNewestFirst(
+		{ starts_at: "2026-01-01", id: 2 },
+		{ starts_at: "2026-02-01", id: 1 },
+	) > 0,
+	true,
+);
 
 check(emptyTeamSlots(3).join(","), ",,");
+check(initialTeamSlots(null, 2).join(","), ",");
+check(
+	initialTeamSlots({ players: [{ player_id: 9, is_goalkeeper: true }] }, 2)[0],
+	"9",
+);
+check(replaceSlotAt(["1", "2", "3"], 1, "").join("|"), "1||3");
+check(replaceSlotAt(["1", "", "3"], 1, "9").join("|"), "1|9|3");
 check(builderTeamsHavePlayers(initialBuilderTeams(5, 2)), false);
 check(
 	builderTeamsHavePlayers([
@@ -497,6 +583,38 @@ check(
 check(canStartEventMatch({ ended: false, teamCount: 2 }), true);
 check(canStartEventMatch({ ended: true, teamCount: 2 }), false);
 check(
+	hasEventListActions(
+		eventListActionFlags({
+			canManage: false,
+			canSetMvp: false,
+			ended: true,
+			teamCount: 1,
+			attendanceCount: 0,
+		}),
+	),
+	false,
+);
+check(
+	eventListActionFlags({
+		canManage: true,
+		canSetMvp: false,
+		ended: false,
+		teamCount: 2,
+		attendanceCount: 4,
+	}).canEnd,
+	true,
+);
+check(
+	eventListActionFlags({
+		canManage: false,
+		canSetMvp: true,
+		ended: true,
+		teamCount: 2,
+		attendanceCount: 3,
+	}).canSetMvp,
+	true,
+);
+check(
 	canAddEventMatch({
 		ended: true,
 		teamCount: 1,
@@ -643,6 +761,9 @@ check(isEventBuilderStep(EVENT_BUILDER_STEP.attendance), true);
 check(isEventBuilderStep(EVENT_BUILDER_STEP.teams), true);
 check(isEventBuilderStep("nope"), false);
 check(isEventBuilderStep(null), false);
+check(EVENT_ATTENDANCE_ACTION.addPlayer, "Adicionar");
+check(EVENT_ATTENDANCE_ACTION.addPlayerPlaceholder, "Nome do jogador");
+check(EVENT_ATTENDANCE_ACTION.addPlayerAria, "Adicionar jogador");
 check(EVENT_ATTENDANCE_STAT_ABBR.goals, "G");
 check(EVENT_ATTENDANCE_STAT_ABBR.assistedGoals, "GS");
 check(EVENT_ATTENDANCE_STAT_ABBR.ownGoals, "GC");
@@ -797,6 +918,9 @@ check(
 	championshipEventErrorMessage("match already open"),
 	EVENT_ERROR_MESSAGE["match already open"],
 );
+check(isMatchAlreadyOpenError("match already open"), true);
+check(isMatchAlreadyOpenError(EVENT_ERROR_MESSAGE["match already open"]), true);
+check(isMatchAlreadyOpenError("match already ended"), false);
 
 const playerEventDraft = playerEventStatsFromAttendance({
 	goals: 2,
@@ -832,5 +956,82 @@ check(
 	PLAYER_EVENT_STAT_META.map((field) => field.id).join(","),
 	"goals,assists,wins,losses,draws,matches",
 );
+
+const seedEvents = [
+	{
+		id: 2,
+		ended_at: "2026-08-10T22:00:00Z",
+		starts_at: "2026-08-10T22:00:00Z",
+		attendance: [{ player_id: 1 }, { player_id: 2 }],
+	},
+	{
+		id: 1,
+		ended_at: "2026-08-03T22:00:00Z",
+		starts_at: "2026-08-03T22:00:00Z",
+		attendance: [{ player_id: 1 }, { player_id: 3 }],
+	},
+];
+check(
+	seedPresentIdsFromHistory(
+		ATTENDANCE_SEED.lastEvent,
+		seedEvents,
+		[1, 2, 3, 4],
+	).join(","),
+	"1,2",
+);
+check(
+	seedPresentIdsFromHistory(
+		ATTENDANCE_SEED.habitual,
+		seedEvents,
+		[1, 2, 3, 4],
+	).join(","),
+	"1,2,3",
+);
+check(
+	seedPresentIdsFromHistory(ATTENDANCE_SEED.clear, seedEvents, [1, 2]).join(
+		",",
+	),
+	"",
+);
+check(
+	matchPlayerIdsMissingFromAttendance(
+		[{ players: [{ player_id: 1 }, { player_id: 9 }] }],
+		[1, 2],
+	).join(","),
+	"9",
+);
+check(mergePresentIdsForEnd([1, 2], [1, 2], [9])?.join(","), "1,2,9");
+check(mergePresentIdsForEnd(null, [1, 2], [9])?.join(","), "1,2,9");
+check(mergePresentIdsForEnd([1, 2], [1, 2], [])?.join(","), "1,2");
+check(mergePresentIdsForEnd(null, [1], []), null);
+check(
+	rsvpGoingPlayerIds([{ player_id: 1, status: EVENT_RSVP_STATUS.going }]).join(
+		",",
+	),
+	"1",
+);
+check(isEventRsvpStatus(EVENT_RSVP_STATUS.out), true);
+check(isEventRsvpStatus("maybe"), false);
+check(
+	canSelfCheckIn({
+		endedAt: null,
+		startsAt: `${eventDateYmd("2026-08-17T22:00:00-03:00")}T22:00:00-03:00`,
+		playerId: 1,
+		attendanceIds: [],
+		todayYmd: eventDateYmd("2026-08-17T22:00:00-03:00"),
+	}),
+	true,
+);
+check(
+	canSelfCheckIn({
+		endedAt: null,
+		startsAt: "2026-08-17T22:00:00-03:00",
+		playerId: 1,
+		attendanceIds: [1],
+		todayYmd: eventDateYmd("2026-08-17T22:00:00-03:00"),
+	}),
+	false,
+);
+check(typeof eventIsoWeekday("2026-08-17T22:00:00-03:00"), "number");
 
 console.log("championship-event ok");

@@ -17,12 +17,18 @@ import {
 	PODIUM_PLACE,
 	PODIUM_PLACES,
 	PODIUM_PLAYER_METRIC_OPTIONS,
-	PODIUM_SEASON_YEAR,
 	PODIUM_SEMESTER,
 	parsePodiumMetric,
 	parsePodiumMonth,
+	podiumAvailableYears,
+	podiumDefaultYear,
+	podiumEnterDelay,
+	podiumEnterInitialHeight,
+	podiumMetricLabel,
+	podiumSeasonLabel,
 	podiumStandings,
 	rankPodiumRows,
+	resolvePodiumYear,
 	selectPodiumAllMonths,
 	selectPodiumCurrentMonth,
 	togglePodiumMonth,
@@ -41,9 +47,25 @@ check(PODIUM_PLACE.first === 1, "first place");
 check(PODIUM_PLACE.second === 2, "second place");
 check(PODIUM_PLACE.third === 3, "third place");
 check(PODIUM_PLACES.join(",") === "1,2,3", "places order");
+check(podiumEnterDelay(true, PODIUM_PLACE.first) === 0, "reduce motion delay");
+check(podiumEnterDelay(false, PODIUM_PLACE.first) === 0.24, "first delay");
+check(
+	podiumEnterInitialHeight(true, 80).height === 80,
+	"reduce motion starts full height",
+);
+check(
+	podiumEnterInitialHeight(false, 80).height === 0,
+	"motion starts collapsed",
+);
 check(PODIUM_DISPLAY_ORDER.join(",") === "2,1,3", "display 2-1-3");
 check(PODIUM_DEFAULT_METRIC === ROSTER_COLUMN.goals, "default goals");
 check(PODIUM_LABEL.tab === "Pódio", "tab label");
+check(
+	podiumMetricLabel(ROSTER_COLUMN.assisted_goals) ===
+		PODIUM_LABEL.assistedGoals,
+	"assisted goals podium label",
+);
+check(PODIUM_LABEL.assistedGoals === "O mais servido", "assisted goals name");
 check(parsePodiumMetric("goals") === ROSTER_COLUMN.goals, "parse goals");
 check(parsePodiumMetric("assists") === ROSTER_COLUMN.assists, "parse assists");
 check(
@@ -211,8 +233,8 @@ check(
 	"zero rating empty podium",
 );
 
-check(PODIUM_SEASON_YEAR === 2026, "season year");
-check(PODIUM_FILTER_LABEL.season === "Temporada 2026", "season label");
+check(podiumSeasonLabel(2026) === "Temporada 2026", "season label");
+check(podiumSeasonLabel(2027) === "Temporada 2027", "season label next");
 check(
 	PODIUM_FILTER_LABEL[PODIUM_SEMESTER.first] === "Primeiro Semestre",
 	"first semester label",
@@ -224,32 +246,23 @@ check(PODIUM_MONTHS.length === 12, "twelve months");
 const march = "2026-03-15T12:00:00.000Z";
 const july = "2026-07-15T12:00:00.000Z";
 const lastYear = "2025-03-15T12:00:00.000Z";
+check(eventMatchesPodiumPeriod(march, 2026, null), "march in season");
+check(eventMatchesPodiumPeriod(july, 2026, null), "july in season");
+check(!eventMatchesPodiumPeriod(lastYear, 2026, null), "last year out");
 check(
-	eventMatchesPodiumPeriod(march, PODIUM_SEASON_YEAR, null),
-	"march in season",
-);
-check(
-	eventMatchesPodiumPeriod(july, PODIUM_SEASON_YEAR, null),
-	"july in season",
-);
-check(
-	!eventMatchesPodiumPeriod(lastYear, PODIUM_SEASON_YEAR, null),
-	"last year out",
-);
-check(
-	eventMatchesPodiumPeriod(march, PODIUM_SEASON_YEAR, PODIUM_SEMESTER.first),
+	eventMatchesPodiumPeriod(march, 2026, PODIUM_SEMESTER.first),
 	"march in h1",
 );
 check(
-	!eventMatchesPodiumPeriod(july, PODIUM_SEASON_YEAR, PODIUM_SEMESTER.first),
+	!eventMatchesPodiumPeriod(july, 2026, PODIUM_SEMESTER.first),
 	"july out of h1",
 );
 check(
-	eventMatchesPodiumPeriod(july, PODIUM_SEASON_YEAR, PODIUM_SEMESTER.second),
+	eventMatchesPodiumPeriod(july, 2026, PODIUM_SEMESTER.second),
 	"july in h2",
 );
 check(
-	!eventMatchesPodiumPeriod(march, PODIUM_SEASON_YEAR, PODIUM_SEMESTER.second),
+	!eventMatchesPodiumPeriod(march, 2026, PODIUM_SEMESTER.second),
 	"march out of h2",
 );
 
@@ -298,21 +311,13 @@ check(
 );
 check(!isPodiumAllMonthsSelected([1, 2]), "partial is not all months");
 check(!isPodiumAllMonthsSelected([]), "empty is not all months");
+check(eventMatchesPodiumPeriod(march, 2026, null, [3]), "month filter march");
 check(
-	eventMatchesPodiumPeriod(march, PODIUM_SEASON_YEAR, null, [3]),
-	"month filter march",
-);
-check(
-	!eventMatchesPodiumPeriod(july, PODIUM_SEASON_YEAR, null, [3]),
+	!eventMatchesPodiumPeriod(july, 2026, null, [3]),
 	"month filter drops july",
 );
 check(
-	eventMatchesPodiumPeriod(
-		july,
-		PODIUM_SEASON_YEAR,
-		PODIUM_SEMESTER.first,
-		[7],
-	),
+	eventMatchesPodiumPeriod(july, 2026, PODIUM_SEMESTER.first, [7]),
 	"months override semester",
 );
 
@@ -361,6 +366,7 @@ function eventAt(
 		skip_guest_goalkeeper_matches: true,
 		ended_at: null,
 		attendance,
+		rsvps: [],
 		teams: [],
 		matches: [],
 	};
@@ -413,7 +419,7 @@ const aggregated = aggregatePodiumPlayersFromEvents(
 			}),
 		]),
 	],
-	PODIUM_SEASON_YEAR,
+	2026,
 	null,
 );
 check(aggregated.length === 2, "season has two players");
@@ -456,7 +462,7 @@ const h1Only = aggregatePodiumPlayersFromEvents(
 			}),
 		]),
 	],
-	PODIUM_SEASON_YEAR,
+	2026,
 	PODIUM_SEMESTER.first,
 );
 check(h1Only.length === 1, "h1 drops bruno");
@@ -488,11 +494,52 @@ const julyOnly = aggregatePodiumPlayersFromEvents(
 			}),
 		]),
 	],
-	PODIUM_SEASON_YEAR,
+	2026,
 	null,
 	[7],
 );
 check(julyOnly.length === 1, "july month drops ana");
 check(julyOnly[0]?.id === 2, "july month keeps bruno");
+
+check(
+	podiumAvailableYears([
+		eventAt(1, march, []),
+		eventAt(2, lastYear, []),
+		eventAt(3, "not-a-date", []),
+	]).join(",") === "2026,2025",
+	"available years desc skips invalid",
+);
+check(podiumAvailableYears([]).length === 0, "empty years");
+check(
+	podiumDefaultYear(
+		[eventAt(1, lastYear, []), eventAt(2, march, [])],
+		new Date("2027-01-01T12:00:00.000Z"),
+	) === 2026,
+	"default is latest event year",
+);
+check(
+	podiumDefaultYear([], new Date("2027-08-17T15:00:00.000Z")) === 2027,
+	"empty uses current year",
+);
+check(
+	resolvePodiumYear(
+		[eventAt(1, march, [])],
+		2025,
+		new Date("2027-01-01T12:00:00.000Z"),
+	) === 2026,
+	"invalid requested year falls back",
+);
+check(
+	resolvePodiumYear(
+		[eventAt(1, lastYear, []), eventAt(2, march, [])],
+		2025,
+		new Date("2027-01-01T12:00:00.000Z"),
+	) === 2025,
+	"keeps requested available year",
+);
+check(
+	resolvePodiumYear([], null, new Date("2027-08-17T15:00:00.000Z")) === 2027,
+	"empty requested uses now",
+);
 
 console.log("podium ok");

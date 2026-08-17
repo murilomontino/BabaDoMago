@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { requireGuest } from "@/lib/auth-route-guards";
+import { optionalString } from "@/lib/unknown-value";
 import { LoginPage } from "@/pages/LoginPage";
 
 export type LoginSearch = {
@@ -8,7 +9,7 @@ export type LoginSearch = {
 
 export const Route = createFileRoute("/login")({
 	validateSearch: (search: Record<string, unknown>): LoginSearch => ({
-		redirect: typeof search.redirect === "string" ? search.redirect : undefined,
+		redirect: optionalString(search.redirect) ?? undefined,
 	}),
 	beforeLoad: ({ search }) => requireGuest(search.redirect),
 	component: LoginPage,

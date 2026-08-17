@@ -1,10 +1,13 @@
 import { LoaderCircle, Share2, Trophy } from "lucide-react";
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
+import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
-import { ChampionshipPodium } from "@/components/championship-podium";
 import { SectionCard } from "@/components/section-card";
 import { championshipRatingCeiling } from "@/const/player-rating";
-import { championshipSynergyRanking } from "@/const/player-synergy";
+import {
+	championshipSynergyRanking,
+	championshipSynergyWorst,
+} from "@/const/player-synergy";
 import {
 	aggregatePodiumPlayersFromEvents,
 	eventMatchesPodiumPeriod,
@@ -15,18 +18,19 @@ import {
 	PODIUM_FILTER_LABEL,
 	PODIUM_LABEL,
 	PODIUM_METRIC,
-	PODIUM_METRIC_OPTIONS,
 	PODIUM_MONTH_LABEL,
 	PODIUM_MONTHS,
-	PODIUM_PLAYER_METRIC_OPTIONS,
 	PODIUM_PLAYER_METRICS,
-	PODIUM_SEASON_YEAR,
 	PODIUM_SEMESTER,
 	type PodiumMetricId,
 	type PodiumMonth,
 	type PodiumSemester,
 	parsePodiumMetric,
+	podiumAvailableYears,
 	podiumCurrentMonth,
+	podiumMetricOptions,
+	podiumSeasonLabel,
+	resolvePodiumYear,
 	selectPodiumAllMonths,
 	selectPodiumCurrentMonth,
 	togglePodiumMonth,
@@ -36,13 +40,27 @@ import {
 	PODIUM_SHARE_LABEL,
 	podiumShareCardFromSynergyPairs,
 	podiumShareCardsFromPlayers,
-	podiumSharePeriodSlug,
+	podiumShareContext,
 } from "@/const/podium-share";
-import { shareFileDateStamp } from "@/const/share-file-name";
+import { SKELETON_LABEL } from "@/const/skeleton";
+import {
+	championshipTeamBalance,
+	formatTeamBalanceSpread,
+	formatTeamBalanceWinRate,
+	TEAM_BALANCE_LABEL,
+} from "@/const/team-balance-stats";
 import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
+import { usePodiumYear } from "@/hooks/use-podium-year";
+import { includeDefined } from "@/lib/include-when";
 import { sharePodiumImages } from "@/lib/share-podium-image";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type { ChampionshipEvent } from "@/types/championship-event";
+
+const ChampionshipPodium = lazy(() =>
+	import("@/components/championship-podium").then((m) => ({
+		default: m.ChampionshipPodium,
+	})),
+);
 
 const FILTER_CHIP =
 	"inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium transition";
@@ -73,14 +91,18 @@ export function ChampionshipPodiumTab({
 	const [metric, setMetric] = useState<PodiumMetricId>(PODIUM_DEFAULT_METRIC);
 	const [semester, setSemester] = useState<PodiumSemester | null>(null);
 	const [months, setMonths] = useState<PodiumMonth[]>([]);
+	const [yearParam, setYearParam] = usePodiumYear();
 	const [isSharing, setIsSharing] = useState<"one" | "all" | null>(null);
 	const [shareError, setShareError] = useState<string | null>(null);
 	const currentMonth = podiumCurrentMonth();
 	const includeSynergy = !eventStartsAt;
-	const metricOptions = includeSynergy
-		? PODIUM_METRIC_OPTIONS
-		: PODIUM_PLAYER_METRIC_OPTIONS;
+	const metricOptions = podiumMetricOptions(includeSynergy);
 	const showPeriodFilters = Boolean(events) && includeSynergy;
+	const availableYears = useMemo(
+		() => podiumAvailableYears(events ?? []),
+		[events],
+	);
+	const year = resolvePodiumYear(events ?? [], yearParam);
 	const periodEvents = useMemo(() => {
 		if (!events) {
 			return [];
@@ -91,14 +113,9 @@ export function ChampionshipPodiumTab({
 		}
 
 		return events.filter((event) =>
-			eventMatchesPodiumPeriod(
-				event.starts_at,
-				PODIUM_SEASON_YEAR,
-				semester,
-				months,
-			),
+			eventMatchesPodiumPeriod(event.starts_at, year, semester, months),
 		);
-	}, [eventStartsAt, events, months, semester]);
+	}, [eventStartsAt, events, months, semester, year]);
 	const podiumPlayers = useMemo(() => {
 		if (!events || eventStartsAt) {
 			return players;
@@ -107,11 +124,11 @@ export function ChampionshipPodiumTab({
 		return aggregatePodiumPlayersFromEvents(
 			players,
 			events,
-			PODIUM_SEASON_YEAR,
+			year,
 			semester,
 			months,
 		);
-	}, [eventStartsAt, events, months, players, semester]);
+	}, [eventStartsAt, events, months, players, semester, year]);
 	const synergyPairs = useMemo(() => {
 		if (!includeSynergy) {
 			return [];
@@ -119,6 +136,20 @@ export function ChampionshipPodiumTab({
 
 		return championshipSynergyRanking(periodEvents, players);
 	}, [includeSynergy, periodEvents, players]);
+	const worstPairs = useMemo(() => {
+		if (!includeSynergy) {
+			return [];
+		}
+
+		return championshipSynergyWorst(periodEvents, players);
+	}, [includeSynergy, periodEvents, players]);
+	const teamBalance = useMemo(() => {
+		if (!includeSynergy) {
+			return null;
+		}
+
+		return championshipTeamBalance(periodEvents);
+	}, [includeSynergy, periodEvents]);
 	const ceiling = championshipRatingCeiling(
 		podiumPlayers.map((player) => player.rating),
 	);
@@ -128,7 +159,7 @@ export function ChampionshipPodiumTab({
 	);
 	const currentCards = useMemo(() => {
 		if (metric === PODIUM_METRIC.synergy) {
-			return synergyCard ? [synergyCard] : [];
+			return includeDefined(synergyCard);
 		}
 
 		if (!isPodiumPlayerMetric(metric)) {
@@ -155,9 +186,7 @@ export function ChampionshipPodiumTab({
 		try {
 			await sharePodiumImages(cards, ceiling, {
 				championshipName,
-				context: eventStartsAt
-					? shareFileDateStamp(eventStartsAt)
-					: podiumSharePeriodSlug(semester, months),
+				context: podiumShareContext(eventStartsAt, year, semester, months),
 				generatedAt: new Date().toISOString(),
 			});
 		} catch {
@@ -175,16 +204,34 @@ export function ChampionshipPodiumTab({
 			{showPeriodFilters && (
 				<div className="mb-4 space-y-2">
 					<div className="flex flex-wrap gap-2">
-						<button
-							type="button"
-							className={FILTER_CHIP_ON}
-							onClick={() => {
-								setSemester(null);
-								setMonths([]);
-							}}
-						>
-							{PODIUM_FILTER_LABEL.season}
-						</button>
+						{availableYears.map((availableYear) => (
+							<button
+								key={availableYear}
+								type="button"
+								className={filterChipClass(availableYear === year)}
+								onClick={() => {
+									void setYearParam(availableYear);
+									if (availableYear === year) {
+										setSemester(null);
+										setMonths([]);
+									}
+								}}
+							>
+								{podiumSeasonLabel(availableYear)}
+							</button>
+						))}
+						{availableYears.length === 0 && (
+							<button
+								type="button"
+								className={FILTER_CHIP_ON}
+								onClick={() => {
+									setSemester(null);
+									setMonths([]);
+								}}
+							>
+								{podiumSeasonLabel(year)}
+							</button>
+						)}
 						<button
 							type="button"
 							className={filterChipClass(semester === PODIUM_SEMESTER.first)}
@@ -306,11 +353,48 @@ export function ChampionshipPodiumTab({
 				)}
 			</div>
 			{shareError && <p className={`mb-4 ${ERROR_CLASS}`}>{shareError}</p>}
-			<ChampionshipPodium
-				players={podiumPlayers}
-				metric={metric}
-				synergyPairs={synergyPairs}
-			/>
+			<Suspense fallback={<PodiumStageSkeleton />}>
+				<ChampionshipPodium
+					players={podiumPlayers}
+					metric={metric}
+					synergyPairs={synergyPairs}
+					worstPairs={worstPairs}
+				/>
+			</Suspense>
+			{teamBalance && teamBalance.events > 0 && (
+				<div className="mt-8 space-y-3">
+					<h3 className="text-sm font-semibold text-fg">
+						{TEAM_BALANCE_LABEL.title}
+					</h3>
+					<p className="text-sm text-fg-muted">{TEAM_BALANCE_LABEL.hint}</p>
+					<div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+						<div>
+							<p className="text-xs font-medium text-fg-muted">
+								{TEAM_BALANCE_LABEL.spread}
+							</p>
+							<p className="text-lg font-semibold tabular-nums text-fg">
+								{formatTeamBalanceSpread(teamBalance.averageSpread)}
+							</p>
+						</div>
+						<div>
+							<p className="text-xs font-medium text-fg-muted">
+								{TEAM_BALANCE_LABEL.favorite}
+							</p>
+							<p className="text-lg font-semibold tabular-nums text-fg">
+								{formatTeamBalanceWinRate(teamBalance.favoriteWinRate)}
+							</p>
+						</div>
+					</div>
+				</div>
+			)}
 		</SectionCard>
+	);
+}
+
+function PodiumStageSkeleton() {
+	return (
+		<SkeletonRegion label={SKELETON_LABEL.podium}>
+			<Skeleton className="h-48 w-full" />
+		</SkeletonRegion>
 	);
 }

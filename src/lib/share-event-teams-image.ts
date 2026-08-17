@@ -29,6 +29,41 @@ const NUMBER_WIDTH = 36;
 const CORNER = 12;
 const ROW_CORNER = 8;
 
+function shareCardBackground(color: string | null): string {
+	if (!color) {
+		return EVENT_TEAM_SHARE_COLOR.surface;
+	}
+
+	return eventTeamColorPastel(color);
+}
+
+function shareCardTitleColor(color: string | null, background: string): string {
+	if (!color) {
+		return EVENT_TEAM_SHARE_COLOR.fg;
+	}
+
+	return eventTeamColorFg(background);
+}
+
+function avatarUrlsToLoad(url: string | null | undefined): string[] {
+	if (!url) {
+		return [];
+	}
+
+	return [url];
+}
+
+function avatarFromLoaded(
+	url: string | null | undefined,
+	avatars: ReadonlyMap<string, HTMLImageElement>,
+): HTMLImageElement | undefined {
+	if (!url) {
+		return undefined;
+	}
+
+	return avatars.get(url);
+}
+
 function loadAvatar(src: string): Promise<HTMLImageElement | null> {
 	return new Promise((resolve) => {
 		const image = new Image();
@@ -46,9 +81,7 @@ async function loadAvatars(
 	const urls = [
 		...new Set(
 			cards.flatMap((card) =>
-				card.players.flatMap((player) =>
-					player.avatarUrl ? [player.avatarUrl] : [],
-				),
+				card.players.flatMap((player) => avatarUrlsToLoad(player.avatarUrl)),
 			),
 		),
 	];
@@ -207,7 +240,7 @@ function drawPlayerRow(
 
 	const avatarX = contentX + NUMBER_WIDTH;
 	const avatarY = midY - EVENT_TEAM_SHARE.avatar / 2;
-	const avatar = player.avatarUrl ? avatars.get(player.avatarUrl) : undefined;
+	const avatar = avatarFromLoaded(player.avatarUrl, avatars);
 	drawAvatar(context, avatarX, avatarY, player.name, avatar);
 
 	const starsWidth = EVENT_TEAM_SHARE.star * PLAYER_RATING.starCount;
@@ -240,12 +273,8 @@ function drawCard(
 	ceiling: number,
 	avatars: ReadonlyMap<string, HTMLImageElement>,
 ) {
-	const background = card.color
-		? eventTeamColorPastel(card.color)
-		: EVENT_TEAM_SHARE_COLOR.surface;
-	const titleColor = card.color
-		? eventTeamColorFg(background)
-		: EVENT_TEAM_SHARE_COLOR.fg;
+	const background = shareCardBackground(card.color);
+	const titleColor = shareCardTitleColor(card.color, background);
 
 	context.fillStyle = background;
 	context.strokeStyle = EVENT_TEAM_SHARE_COLOR.line;

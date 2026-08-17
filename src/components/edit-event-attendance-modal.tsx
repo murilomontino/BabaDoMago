@@ -24,11 +24,46 @@ type EditEventAttendanceModalProps = {
 	isPending: boolean;
 	errorMessage: string | null;
 	onCancel: () => void;
+	onAddPlayer?: (values: {
+		displayNames: string[];
+		rating: number;
+		isGoalkeeper: boolean;
+	}) => Promise<ChampionshipPlayer[]>;
+	isAddingPlayer?: boolean;
+	addPlayerError?: string | null;
 	onSave: (
 		presentPlayerIds: number[],
 		goalkeeperPlayerIds: number[],
 	) => Promise<void>;
 };
+
+function addCreatedPlayersToPresent(
+	onAddPlayer: EditEventAttendanceModalProps["onAddPlayer"],
+	presentIds: number[],
+	setPresentIds: (ids: number[]) => void,
+	setLocalError: (error: string | null) => void,
+): EditEventAttendanceModalProps["onAddPlayer"] {
+	if (!onAddPlayer) {
+		return undefined;
+	}
+
+	return async (values) => {
+		const created = await onAddPlayer(values);
+		if (created.length === 0) {
+			return created;
+		}
+
+		setLocalError(null);
+		setPresentIds(
+			applyVisibleAttendance(
+				presentIds,
+				created.map((player) => player.id),
+				true,
+			),
+		);
+		return created;
+	};
+}
 
 export function EditEventAttendanceModal({
 	players,
@@ -39,6 +74,9 @@ export function EditEventAttendanceModal({
 	isPending,
 	errorMessage,
 	onCancel,
+	onAddPlayer,
+	isAddingPlayer = false,
+	addPlayerError = null,
 	onSave,
 }: EditEventAttendanceModalProps) {
 	const locked = new Set(teamPlayerIds);
@@ -83,6 +121,14 @@ export function EditEventAttendanceModal({
 							setGoalkeeperSelection(current, playerIds, asGoalkeeper),
 						);
 					}}
+					isAddingPlayer={isAddingPlayer}
+					addPlayerError={addPlayerError}
+					onAddPlayer={addCreatedPlayersToPresent(
+						onAddPlayer,
+						presentIds,
+						setPresentIds,
+						setLocalError,
+					)}
 				/>
 				{localError && <p className={`mt-2 ${ERROR_CLASS}`}>{localError}</p>}
 				{errorMessage && (

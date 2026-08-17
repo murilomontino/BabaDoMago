@@ -1,12 +1,13 @@
 import {
 	comparePlayersByVisibleName,
 	confirmClaimPlayerMessage,
+	isGoalkeeperKind,
+	legalNameIfDifferent,
 	PLAYER_KIND,
 	PLAYER_KIND_LABEL,
 	PLAYER_KIND_OPTIONS,
 	PLAYER_LABEL,
 	PLAYER_NICKNAME,
-	isGoalkeeperKind,
 	playerKindFromGoalkeeper,
 	playerVisibleName,
 } from "./player-name.ts";
@@ -85,5 +86,10 @@ check(
 		.join(",") === "Ana,bruno,Zeca",
 	"sorts by visible name",
 );
+check(
+	legalNameIfDifferent("Mago", "Murilo") === "Murilo",
+	"legal when nickname differs",
+);
+check(legalNameIfDifferent("Ana", "Ana") === null, "no legal when same");
 
 console.log("player-name ok");

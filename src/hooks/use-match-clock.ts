@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
 	type MatchClockFields,
 	matchClockElapsedSeconds,
+	matchClockNowMs,
 } from "@/const/championship-event-match";
 
 export function useMatchClock(match: MatchClockFields | null): number {
@@ -30,5 +31,5 @@ export function useMatchClock(match: MatchClockFields | null): number {
 		return 0;
 	}
 
-	return matchClockElapsedSeconds(match, ticking ? nowMs : Date.now());
+	return matchClockElapsedSeconds(match, matchClockNowMs(ticking, nowMs));
 }

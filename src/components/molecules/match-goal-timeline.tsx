@@ -2,6 +2,7 @@ import { X } from "lucide-react";
 import { GoalTimelineEvent } from "@/components/molecules/goal-timeline-event";
 import { EVENT_ACTION } from "@/const/championship-event";
 import {
+	formatMatchClock,
 	matchGoalForTeamA,
 	matchGoalTimeline,
 } from "@/const/championship-event-match";
@@ -9,6 +10,17 @@ import type { ChampionshipEventGoal } from "@/types/championship-event";
 
 export const MATCH_GOAL_TIMELINE_GRID_CLASS =
 	"grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-2 gap-y-0.5";
+
+function assistPlayerName(
+	assistPlayerId: number | null,
+	playerName: (playerId: number) => string,
+): string | null {
+	if (assistPlayerId === null) {
+		return null;
+	}
+
+	return playerName(assistPlayerId);
+}
 
 type MatchGoalTimelineProps = {
 	goals: readonly ChampionshipEventGoal[];
@@ -54,10 +66,7 @@ export function MatchGoalTimeline({
 		<>
 			{timeline.map((goal) => {
 				const forTeamA = matchGoalForTeamA(goal, teamAPlayerIds);
-				const assistName =
-					goal.assist_player_id === null
-						? null
-						: playerName(goal.assist_player_id);
+				const assistName = assistPlayerName(goal.assist_player_id, playerName);
 				const event = (
 					<GoalTimelineEvent
 						scorerName={playerName(goal.scorer_player_id)}
@@ -81,7 +90,10 @@ export function MatchGoalTimeline({
 							{forTeamA && undo}
 							{forTeamA && event}
 						</div>
-						<span />
+						<span className="text-center text-[10px] font-medium tabular-nums text-fg-muted">
+							{goal.elapsed_seconds !== null &&
+								formatMatchClock(goal.elapsed_seconds)}
+						</span>
 						<div className="flex min-w-0 items-center justify-start gap-0.5">
 							{!forTeamA && event}
 							{!forTeamA && undo}

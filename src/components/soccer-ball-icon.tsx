@@ -1,3 +1,5 @@
+import { ariaHiddenWhenUnlabelled } from "@/const/ui";
+
 type SoccerBallIconProps = {
 	className?: string;
 	"aria-label"?: string;
@@ -51,7 +53,7 @@ export function SoccerBallIcon({
 			strokeWidth={2}
 			strokeLinecap="round"
 			strokeLinejoin="round"
-			aria-hidden={ariaLabel ? undefined : true}
+			aria-hidden={ariaHiddenWhenUnlabelled(ariaLabel)}
 			aria-label={ariaLabel}
 			focusable="false"
 		>
@@ -73,7 +75,7 @@ export function OwnGoalIcon({
 			strokeWidth={2}
 			strokeLinecap="round"
 			strokeLinejoin="round"
-			aria-hidden={ariaLabel ? undefined : true}
+			aria-hidden={ariaHiddenWhenUnlabelled(ariaLabel)}
 			aria-label={ariaLabel}
 			focusable="false"
 		>

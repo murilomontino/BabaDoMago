@@ -1,10 +1,11 @@
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { Users } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, lazy, Suspense, useState } from "react";
+import { AppDialog } from "@/components/atoms/app-dialog";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { ChampionshipDetailHeader } from "@/components/championship-detail-header";
 import { ChampionshipEvents } from "@/components/championship-events";
-import { ChampionshipLogoCrop } from "@/components/championship-logo-crop";
+import { ChampionshipManagementTab } from "@/components/championship-management-tab";
 import { ChampionshipPodiumTab } from "@/components/championship-podium-tab";
 import { ChampionshipRosterTab } from "@/components/championship-roster-tab";
 import { ChampionshipSettingsTab } from "@/components/championship-settings-tab";
@@ -31,19 +32,22 @@ import {
 	canReactivatePlayer,
 	canRemovePlayer,
 	canRenameChampionship,
+	canSetEventMvp,
 	canSetRoles,
 	canTransferOwnership,
 	canUnlinkPlayer,
 	canUpdateEventConfig,
 	canUpdateRating,
 	canUpdateVisibility,
+	canViewManagement,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
 import {
 	CHAMPIONSHIP_TAB,
 	CHAMPIONSHIP_TAB_LABEL,
-	CHAMPIONSHIP_TABS,
 	type ChampionshipTab,
+	championshipTabs,
+	visibleChampionshipTab,
 } from "@/const/championship-tab";
 import {
 	confirmClaimPlayerMessage,
@@ -55,7 +59,7 @@ import {
 } from "@/const/player-rating";
 import { ROUTES } from "@/const/routes";
 import { SKELETON_LABEL } from "@/const/skeleton";
-import { CARD_CLASS, ERROR_CLASS } from "@/const/ui";
+import { CARD_CLASS, ERROR_CLASS, MODAL_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
 import {
 	useChampionshipEvents,
@@ -81,7 +85,20 @@ import {
 	useUpdatePlayerRating,
 	useUploadChampionshipLogo,
 } from "@/hooks/championships/use-championships";
+import { useChampionshipTab } from "@/hooks/use-championship-tab";
+import {
+	caughtErrorMessage,
+	mutationErrorMessage,
+	pendingMutationId,
+} from "@/lib/error-message";
+import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
 import type { ChampionshipPlayer } from "@/types/championship";
+
+const ChampionshipLogoCrop = lazy(() =>
+	import("@/components/championship-logo-crop").then((m) => ({
+		default: m.ChampionshipLogoCrop,
+	})),
+);
 
 export function ChampionshipDetailPage() {
 	const { championshipId: championshipIdParam } = useParams({
@@ -128,7 +145,7 @@ export function ChampionshipDetailPage() {
 		useState<ChampionshipPlayer | null>(null);
 	const [pendingMergePlayer, setPendingMergePlayer] =
 		useState<ChampionshipPlayer | null>(null);
-	const [tab, setTab] = useState<ChampionshipTab>(CHAMPIONSHIP_TAB.roster);
+	const [tab, setTab] = useChampionshipTab();
 	const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
 	const currentPlayer = data?.players.find(
@@ -155,7 +172,14 @@ export function ChampionshipDetailPage() {
 		updateVisibility: canUpdateVisibility(actorRole),
 		manageEvent: canManageEvent(actorRole),
 		overrideEnded: canOverrideEndedEvent(actorRole),
+		viewManagement: canViewManagement(actorRole),
+		setMvp: canSetEventMvp(actorRole),
 	};
+	const requestedTab = tab ?? CHAMPIONSHIP_TAB.roster;
+	const selectedTab = visibleChampionshipTab(
+		requestedTab,
+		permissions.viewManagement,
+	);
 	const activePlayers = (data?.players ?? []).filter(
 		(player) => !player.deleted_at,
 	);
@@ -174,9 +198,11 @@ export function ChampionshipDetailPage() {
 		permissions.reactivate ||
 		permissions.remove;
 
+	const tabs = championshipTabs(permissions.viewManagement);
+
 	function handleTabChange(id: ChampionshipTab) {
 		setIsSettingsOpen(false);
-		setTab(id);
+		void setTab(id);
 	}
 
 	function applyRating(playerId: number, rating: number) {
@@ -446,9 +472,7 @@ export function ChampionshipDetailPage() {
 		try {
 			assertChampionshipLogoSource(file);
 		} catch (error) {
-			setLogoSourceError(
-				error instanceof Error ? error.message : "Use PNG ou JPEG",
-			);
+			setLogoSourceError(caughtErrorMessage(error, "Use PNG ou JPEG"));
 			return;
 		}
 
@@ -493,11 +517,14 @@ export function ChampionshipDetailPage() {
 			<ChampionshipDetailHeader
 				name={data.name}
 				logoPath={data.logo_path}
+				eventWeekday={data.event_weekday}
+				eventTime={data.event_time}
+				location={data.location}
 				roleLabel={CHAMPIONSHIP_ROLE_LABEL[actorRole]}
 				isOwner={isOwner}
 				isUploading={uploadLogo.isPending}
 				logoSourceError={logoSourceError}
-				uploadError={uploadLogo.isError ? uploadLogo.error.message : null}
+				uploadError={mutationErrorMessage(uploadLogo)}
 				canOpenSettings={canOpenSettings}
 				isSettingsOpen={isSettingsOpen}
 				onLogoChange={handleLogoChange}
@@ -506,19 +533,21 @@ export function ChampionshipDetailPage() {
 				}}
 			/>
 			{logoCropSrc && (
-				<ChampionshipLogoCrop
-					imageSrc={logoCropSrc}
-					onCancel={handleLogoCropCancel}
-					onConfirm={handleLogoCropConfirm}
-				/>
+				<Suspense
+					fallback={<LogoCropSkeleton onClose={handleLogoCropCancel} />}
+				>
+					<ChampionshipLogoCrop
+						imageSrc={logoCropSrc}
+						onCancel={handleLogoCropCancel}
+						onConfirm={handleLogoCropConfirm}
+					/>
+				</Suspense>
 			)}
 			{pendingNicknamePlayer && (
 				<EditPlayerNicknameModal
 					player={pendingNicknamePlayer}
 					isPending={updateNickname.isPending}
-					errorMessage={
-						updateNickname.isError ? updateNickname.error.message : null
-					}
+					errorMessage={mutationErrorMessage(updateNickname)}
 					onCancel={handleNicknameCancel}
 					onConfirm={handleNicknameConfirm}
 				/>
@@ -529,9 +558,7 @@ export function ChampionshipDetailPage() {
 					createdBy={data.created_by}
 					starter={pendingMergePlayer}
 					isPending={mergePlayers.isPending}
-					errorMessage={
-						mergePlayers.isError ? mergePlayers.error.message : null
-					}
+					errorMessage={mutationErrorMessage(mergePlayers)}
 					onCancel={handleMergeCancel}
 					onConfirm={handleMergeConfirm}
 				/>
@@ -542,11 +569,7 @@ export function ChampionshipDetailPage() {
 					events={eventsQuery.data ?? []}
 					ceiling={rosterCeiling}
 					isPending={savePlayerEventStats.isPending}
-					errorMessage={
-						savePlayerEventStats.isError
-							? savePlayerEventStats.error.message
-							: null
-					}
+					errorMessage={mutationErrorMessage(savePlayerEventStats)}
 					onCancel={handleEventStatsCancel}
 					onSave={handleEventStatsSave}
 				/>
@@ -559,9 +582,7 @@ export function ChampionshipDetailPage() {
 					to={pendingRatingChange.to}
 					ceiling={rosterCeiling}
 					isPending={updateRating.isPending}
-					errorMessage={
-						updateRating.isError ? updateRating.error.message : null
-					}
+					errorMessage={mutationErrorMessage(updateRating)}
 					onCancel={handleRatingCancel}
 					onConfirm={handleRatingConfirm}
 				/>
@@ -570,9 +591,7 @@ export function ChampionshipDetailPage() {
 				<DeleteChampionshipModal
 					championshipName={data.name}
 					isPending={deleteChampionship.isPending}
-					errorMessage={
-						deleteChampionship.isError ? deleteChampionship.error.message : null
-					}
+					errorMessage={mutationErrorMessage(deleteChampionship)}
 					onCancel={handleDeleteCancel}
 					onConfirm={() => {
 						void handleDeleteConfirm();
@@ -580,13 +599,9 @@ export function ChampionshipDetailPage() {
 				/>
 			)}
 			{!isSettingsOpen && (
-				<Tabs
-					value={tab}
-					items={CHAMPIONSHIP_TABS}
-					onChange={handleTabChange}
-				/>
+				<Tabs value={selectedTab} items={tabs} onChange={handleTabChange} />
 			)}
-			{!isSettingsOpen && tab === CHAMPIONSHIP_TAB.roster && (
+			{!isSettingsOpen && selectedTab === CHAMPIONSHIP_TAB.roster && (
 				<ChampionshipRosterTab
 					players={activePlayers}
 					createdBy={data.created_by}
@@ -599,49 +614,30 @@ export function ChampionshipDetailPage() {
 					canUnlink={permissions.unlink}
 					canDeactivate={permissions.deactivate}
 					isAddingPlayer={addPlayer.isPending}
-					addPlayerError={addPlayer.isError ? addPlayer.error.message : null}
+					addPlayerError={mutationErrorMessage(addPlayer)}
 					claimingPlayerId={claimPlayer.variables ?? null}
-					claimError={claimPlayer.isError ? claimPlayer.error.message : null}
-					ratingPlayerId={
-						updateRating.isPending
-							? (updateRating.variables?.playerId ?? null)
-							: null
-					}
-					ratingError={
-						updateRating.isError && !pendingRatingChange
-							? updateRating.error.message
-							: null
-					}
+					claimError={mutationErrorMessage(claimPlayer)}
+					ratingPlayerId={pendingMutationId(updateRating)?.playerId ?? null}
+					ratingError={mutationErrorMessage(
+						updateRating,
+						Boolean(pendingRatingChange),
+					)}
 					nicknamePlayerId={
 						pendingNicknamePlayer?.id ??
-						(updateNickname.isPending
-							? (updateNickname.variables?.playerId ?? null)
-							: null)
+						pendingMutationId(updateNickname)?.playerId ??
+						null
 					}
-					roleError={setPlayerRole.isError ? setPlayerRole.error.message : null}
-					goalkeeperError={
-						setPlayerIsGoalkeeper.isError
-							? setPlayerIsGoalkeeper.error.message
-							: null
-					}
-					unlinkingPlayerId={
-						unlinkPlayer.isPending ? (unlinkPlayer.variables ?? null) : null
-					}
-					unlinkError={unlinkPlayer.isError ? unlinkPlayer.error.message : null}
+					roleError={mutationErrorMessage(setPlayerRole)}
+					goalkeeperError={mutationErrorMessage(setPlayerIsGoalkeeper)}
+					unlinkingPlayerId={pendingMutationId(unlinkPlayer)}
+					unlinkError={mutationErrorMessage(unlinkPlayer)}
 					canMerge={permissions.merge}
-					mergeError={
-						mergePlayers.isError && !pendingMergePlayer
-							? mergePlayers.error.message
-							: null
-					}
-					deactivatingPlayerId={
-						deactivatePlayer.isPending
-							? (deactivatePlayer.variables ?? null)
-							: null
-					}
-					deactivateError={
-						deactivatePlayer.isError ? deactivatePlayer.error.message : null
-					}
+					mergeError={mutationErrorMessage(
+						mergePlayers,
+						Boolean(pendingMergePlayer),
+					)}
+					deactivatingPlayerId={pendingMutationId(deactivatePlayer)}
+					deactivateError={mutationErrorMessage(deactivatePlayer)}
 					onCopyLink={() => {
 						void handleCopyLink();
 					}}
@@ -651,14 +647,14 @@ export function ChampionshipDetailPage() {
 					onClaim={handleClaim}
 					onChangeRating={handleChangeRating}
 					onEditNickname={handleEditNickname}
-					onEditEventStats={
-						permissions.overrideEnded ? handleEditEventStats : undefined
-					}
+					onEditEventStats={handlerWhenAllowed(
+						permissions.overrideEnded,
+						handleEditEventStats,
+					)}
 					eventStatsPlayerId={
 						pendingEventStatsPlayer?.id ??
-						(savePlayerEventStats.isPending
-							? (savePlayerEventStats.variables?.playerId ?? null)
-							: null)
+						pendingMutationId(savePlayerEventStats)?.playerId ??
+						null
 					}
 					onChangeRole={(playerId, role: AssignableChampionshipRole) =>
 						setPlayerRole.mutate({ playerId, role })
@@ -671,25 +667,42 @@ export function ChampionshipDetailPage() {
 					onDeactivate={handleDeactivate}
 				/>
 			)}
-			{!isSettingsOpen && tab === CHAMPIONSHIP_TAB.events && (
+			{!isSettingsOpen && selectedTab === CHAMPIONSHIP_TAB.events && (
 				<ChampionshipEvents
 					championshipId={championshipId}
 					eventTime={data.event_time}
+					eventWeekday={data.event_weekday}
+					location={data.location}
+					players={activePlayers}
 					canManage={permissions.manageEvent}
+					canSetMvp={permissions.setMvp}
 				/>
 			)}
-			{!isSettingsOpen && tab === CHAMPIONSHIP_TAB.podium && (
+			{!isSettingsOpen && selectedTab === CHAMPIONSHIP_TAB.podium && (
 				<ChampionshipPodiumTab
 					players={activePlayers}
 					championshipName={data.name}
 					events={eventsQuery.data ?? []}
 				/>
 			)}
+			{!isSettingsOpen &&
+				selectedTab === CHAMPIONSHIP_TAB.management &&
+				permissions.viewManagement && (
+					<ChampionshipManagementTab
+						championshipId={championshipId}
+						players={activePlayers}
+						events={eventsQuery.data ?? []}
+						eventsPending={eventsQuery.isPending}
+						eventsError={mutationErrorMessage(eventsQuery)}
+					/>
+				)}
 			{isSettingsOpen && (
 				<ChampionshipSettingsTab
 					name={data.name}
 					createdBy={data.created_by}
 					eventTime={data.event_time}
+					eventWeekday={data.event_weekday}
+					location={data.location}
 					playersPerTeam={data.players_per_team}
 					skipGuestGoalkeeperMatches={data.skip_guest_goalkeeper_matches}
 					isVisible={data.is_visible}
@@ -703,34 +716,18 @@ export function ChampionshipDetailPage() {
 					canRemove={permissions.remove}
 					deactivatedPlayers={deactivatedPlayers}
 					currentUserId={user?.id ?? null}
-					reactivatingPlayerId={
-						reactivatePlayer.isPending
-							? (reactivatePlayer.variables ?? null)
-							: null
-					}
-					reactivateError={
-						reactivatePlayer.isError ? reactivatePlayer.error.message : null
-					}
-					removingPlayerId={
-						removePlayer.isPending ? (removePlayer.variables ?? null) : null
-					}
-					removeError={removePlayer.isError ? removePlayer.error.message : null}
+					reactivatingPlayerId={pendingMutationId(reactivatePlayer)}
+					reactivateError={mutationErrorMessage(reactivatePlayer)}
+					removingPlayerId={pendingMutationId(removePlayer)}
+					removeError={mutationErrorMessage(removePlayer)}
 					isRenaming={renameChampionship.isPending}
-					renameError={
-						renameChampionship.isError ? renameChampionship.error.message : null
-					}
+					renameError={mutationErrorMessage(renameChampionship)}
 					isUpdatingEventConfig={updateEventConfig.isPending}
-					eventConfigError={
-						updateEventConfig.isError ? updateEventConfig.error.message : null
-					}
+					eventConfigError={mutationErrorMessage(updateEventConfig)}
 					isUpdatingVisibility={updateVisibility.isPending}
-					visibilityError={
-						updateVisibility.isError ? updateVisibility.error.message : null
-					}
+					visibilityError={mutationErrorMessage(updateVisibility)}
 					isTransferring={transferOwner.isPending}
-					transferError={
-						transferOwner.isError ? transferOwner.error.message : null
-					}
+					transferError={mutationErrorMessage(transferOwner)}
 					onRename={async (name) => {
 						await renameChampionship.mutateAsync(name);
 					}}
@@ -769,7 +766,7 @@ function ChampionshipDetailPageSkeleton() {
 				</section>
 				<Tabs
 					value={CHAMPIONSHIP_TAB.roster}
-					items={CHAMPIONSHIP_TABS}
+					items={championshipTabs(false)}
 					onChange={ignoreTabChange}
 				/>
 				<SectionCard
@@ -785,4 +782,15 @@ function ChampionshipDetailPageSkeleton() {
 
 function ignoreTabChange() {
 	return;
+}
+
+function LogoCropSkeleton({ onClose }: { onClose: () => void }) {
+	return (
+		<AppDialog onClose={onClose}>
+			<SkeletonRegion label={SKELETON_LABEL.logoCrop} className={MODAL_CLASS}>
+				<Skeleton className="mb-3 h-5 w-32" />
+				<Skeleton className="h-72 w-full" />
+			</SkeletonRegion>
+		</AppDialog>
+	);
 }

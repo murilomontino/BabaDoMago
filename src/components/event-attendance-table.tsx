@@ -2,12 +2,17 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 import { Switch } from "@/components/atoms/switch";
 import { Button } from "@/components/button";
+import { EventAttendanceAddPlayer } from "@/components/event-attendance-add-player";
 import {
 	DataTable,
 	type DataTableFeatures,
 } from "@/components/organisms/data-table";
 import { PlayerRating } from "@/components/player-rating";
 import {
+	ATTENDANCE_SEED,
+	ATTENDANCE_SEED_HINT,
+	ATTENDANCE_SEED_LABEL,
+	type AttendanceSeedMode,
 	areAllVisiblePresent,
 	compareByAttendanceCount,
 	EVENT_ATTENDANCE_ACTION,
@@ -48,6 +53,14 @@ type EventAttendanceTableProps = {
 		playerIds: readonly number[],
 		asGoalkeeper: boolean,
 	) => void;
+	onSeedAttendance?: (mode: AttendanceSeedMode) => void;
+	isAddingPlayer?: boolean;
+	addPlayerError?: string | null;
+	onAddPlayer?: (values: {
+		displayNames: string[];
+		rating: number;
+		isGoalkeeper: boolean;
+	}) => Promise<ChampionshipPlayer[]>;
 };
 
 const attendanceColumnHelper = createColumnHelper<
@@ -57,6 +70,31 @@ const attendanceColumnHelper = createColumnHelper<
 
 function stopAttendanceSwitchClick(event: { stopPropagation: () => void }) {
 	event.stopPropagation();
+}
+
+function attendanceFlagHandler(
+	onSet: ((playerIds: readonly number[], checked: boolean) => void) | undefined,
+	playerId: number,
+): ((checked: boolean) => void) | undefined {
+	if (!onSet) {
+		return undefined;
+	}
+
+	return (checked) => {
+		onSet([playerId], checked);
+	};
+}
+
+function attendanceRowToggleHandler(
+	onSet: ((playerIds: readonly number[], present: boolean) => void) | undefined,
+): ((row: AttendanceRow) => void) | undefined {
+	if (!onSet) {
+		return undefined;
+	}
+
+	return (row) => {
+		onSet([row.id], !row.present);
+	};
 }
 
 function AttendanceRowSwitch({
@@ -89,11 +127,7 @@ function AttendanceRowSwitch({
 	);
 }
 
-function AttendancePresentCell({
-	row,
-}: {
-	row: { original: AttendanceRow };
-}) {
+function AttendancePresentCell({ row }: { row: { original: AttendanceRow } }) {
 	const player = row.original;
 
 	return (
@@ -154,9 +188,14 @@ export function EventAttendanceTable({
 	goalkeeperIds = [],
 	onSetPresent,
 	onSetGoalkeeper,
+	onSeedAttendance,
+	isAddingPlayer = false,
+	addPlayerError = null,
+	onAddPlayer,
 }: EventAttendanceTableProps) {
 	const [query, setQuery] = useState("");
 	const selectable = Boolean(onSetPresent);
+	const showSeedActions = Boolean(onSeedAttendance);
 	const ceiling = championshipRatingCeiling(
 		players.map((player) => player.rating),
 	);
@@ -173,16 +212,8 @@ export function EventAttendanceTable({
 			attendanceCount: attendanceCounts.get(player.id) ?? 0,
 			present: presentIds.includes(player.id),
 			goalkeeper: goalkeeperIds.includes(player.id),
-			onTogglePresent: onSetPresent
-				? (checked: boolean) => {
-						onSetPresent([player.id], checked);
-					}
-				: undefined,
-			onToggleGoalkeeper: onSetGoalkeeper
-				? (checked: boolean) => {
-						onSetGoalkeeper([player.id], checked);
-					}
-				: undefined,
+			onTogglePresent: attendanceFlagHandler(onSetPresent, player.id),
+			onToggleGoalkeeper: attendanceFlagHandler(onSetGoalkeeper, player.id),
 		}));
 
 		return [...list].sort(compareByAttendanceCount);
@@ -293,17 +324,87 @@ export function EventAttendanceTable({
 					}}
 				/>
 			</label>
-			{selectable && rows.length > 0 && onSetPresent && (
-				<Button
-					variant={BUTTON_VARIANT.secondary}
-					onClick={() => {
-						onSetPresent(visibleIds, !allVisiblePresent);
+			{onAddPlayer && (
+				<EventAttendanceAddPlayer
+					ceiling={ceiling}
+					isAddingPlayer={isAddingPlayer}
+					addPlayerError={addPlayerError}
+					onAddPlayer={async (values) => {
+						const created = await onAddPlayer(values);
+						setQuery("");
+						return created;
 					}}
-				>
-					{allVisiblePresent
-						? EVENT_ATTENDANCE_ACTION.deselectAll
-						: EVENT_ATTENDANCE_ACTION.selectAll}
-				</Button>
+				/>
+			)}
+			{(selectable || showSeedActions) && (
+				<div className="space-y-2">
+					<div className="flex flex-wrap items-center gap-2">
+						{selectable && rows.length > 0 && onSetPresent && (
+							<Button
+								variant={BUTTON_VARIANT.secondary}
+								onClick={() => {
+									onSetPresent(visibleIds, !allVisiblePresent);
+								}}
+							>
+								{allVisiblePresent
+									? EVENT_ATTENDANCE_ACTION.deselectAll
+									: EVENT_ATTENDANCE_ACTION.selectAll}
+							</Button>
+						)}
+						{showSeedActions && onSeedAttendance && (
+							<>
+								<Button
+									type="button"
+									variant={BUTTON_VARIANT.secondary}
+									title={ATTENDANCE_SEED_HINT[ATTENDANCE_SEED.lastEvent]}
+									onClick={() => {
+										onSeedAttendance(ATTENDANCE_SEED.lastEvent);
+									}}
+								>
+									{ATTENDANCE_SEED_LABEL[ATTENDANCE_SEED.lastEvent]}
+								</Button>
+								<Button
+									type="button"
+									variant={BUTTON_VARIANT.secondary}
+									title={ATTENDANCE_SEED_HINT[ATTENDANCE_SEED.habitual]}
+									onClick={() => {
+										onSeedAttendance(ATTENDANCE_SEED.habitual);
+									}}
+								>
+									{ATTENDANCE_SEED_LABEL[ATTENDANCE_SEED.habitual]}
+								</Button>
+								{presentIds.length > 0 && (
+									<Button
+										type="button"
+										variant={BUTTON_VARIANT.secondary}
+										title={ATTENDANCE_SEED_HINT[ATTENDANCE_SEED.clear]}
+										onClick={() => {
+											onSeedAttendance(ATTENDANCE_SEED.clear);
+										}}
+									>
+										{ATTENDANCE_SEED_LABEL[ATTENDANCE_SEED.clear]}
+									</Button>
+								)}
+							</>
+						)}
+					</div>
+					{showSeedActions && (
+						<ul className="space-y-0.5 text-xs text-fg-muted">
+							<li>
+								{ATTENDANCE_SEED_LABEL[ATTENDANCE_SEED.lastEvent]}:{" "}
+								{ATTENDANCE_SEED_HINT[ATTENDANCE_SEED.lastEvent]}
+							</li>
+							<li>
+								{ATTENDANCE_SEED_LABEL[ATTENDANCE_SEED.habitual]}:{" "}
+								{ATTENDANCE_SEED_HINT[ATTENDANCE_SEED.habitual]}
+							</li>
+							<li>
+								{ATTENDANCE_SEED_LABEL[ATTENDANCE_SEED.clear]}:{" "}
+								{ATTENDANCE_SEED_HINT[ATTENDANCE_SEED.clear]}
+							</li>
+						</ul>
+					)}
+				</div>
 			)}
 			{rows.length === 0 && (
 				<p className="text-sm text-fg-muted">{PLAYER_SEARCH.empty}</p>
@@ -313,13 +414,7 @@ export function EventAttendanceTable({
 					data={rows}
 					columns={columns}
 					getRowId={(row) => String(row.id)}
-					onRowClick={
-						onSetPresent
-							? (row) => {
-									onSetPresent([row.id], !row.present);
-								}
-							: undefined
-					}
+					onRowClick={attendanceRowToggleHandler(onSetPresent)}
 					getRowClassName={(row) =>
 						`transition-colors duration-200 ease-in-out motion-reduce:transition-none ${
 							row.present ? "bg-pitch-soft" : "even:bg-surface-muted"

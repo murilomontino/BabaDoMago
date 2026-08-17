@@ -1,5 +1,5 @@
 import { ArrowLeftRight, ChevronDown, Pause, Play } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/button";
 import { ChampionshipEventBenchModal } from "@/components/championship-event-bench-modal";
 import { ChampionshipEventGoalModal } from "@/components/championship-event-goal-modal";
@@ -16,6 +16,11 @@ import {
 	EventTeamPlayerRow,
 	EventTeamRatingAverage,
 } from "@/components/event-team-player";
+import { GoalkeeperGlovesIcon } from "@/components/goalkeeper-gloves-icon";
+import {
+	isMatchClockDebugVisible,
+	MatchClockDebug,
+} from "@/components/match-clock-debug";
 import {
 	MATCH_GOAL_TIMELINE_GRID_CLASS,
 	MatchGoalTimeline,
@@ -43,9 +48,12 @@ import {
 	type EventMatchEndIntent,
 	formatMatchClock,
 	formatMatchScore,
+	MATCH_CLOCK_ACTION,
+	type MatchClockAction,
 	matchActiveTeamPlayers,
 	matchAssistCandidates,
 	matchBenchPlayerIds,
+	matchClockElapsedSeconds,
 	matchClockIsPaused,
 	matchClockIsStarted,
 	matchEndWinnerLabel,
@@ -54,6 +62,7 @@ import {
 	matchTeamSlots,
 	matchTeamStarName,
 	matchWinnerTeamId,
+	mergeMatchClock,
 	sortBenchForSlot,
 	toggleMatchTeamSelection,
 } from "@/const/championship-event-match";
@@ -62,10 +71,15 @@ import {
 	type EventTeamColor,
 	eventTeamColorStyle,
 	eventTeamName,
+	usedEventTeamColors,
 } from "@/const/event-team-color";
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
+import {
+	matchClockFromStore,
+	useMatchClockStore,
+} from "@/hooks/match-clock-store";
 import { useMatchClock } from "@/hooks/use-match-clock";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type {
@@ -79,6 +93,35 @@ type SlotTarget = {
 	teamId: number;
 	slot: number;
 };
+
+function slotActionTitle(
+	match: ChampionshipEventMatch,
+	slotTarget: SlotTarget | null,
+	playersPerTeam: number,
+): string {
+	if (!slotTarget) {
+		return EVENT_ACTION.fillSlot;
+	}
+
+	const occupied = matchTeamSlots(
+		match.players,
+		slotTarget.teamId,
+		playersPerTeam,
+	)[slotTarget.slot];
+	if (occupied) {
+		return EVENT_ACTION.swapPlayer;
+	}
+
+	return EVENT_ACTION.fillSlot;
+}
+
+function pickOrderFromIndex(pickIndex: number): number | null {
+	if (pickIndex < 0) {
+		return null;
+	}
+
+	return pickIndex + 1;
+}
 
 type PendingSwap = {
 	teamId: number;
@@ -127,6 +170,42 @@ function resolvePlayer(
 	return byId.get(playerId) ?? fallbackPlayer(playerId, displayName);
 }
 
+function matchSlotPlayer(
+	row: ChampionshipEventMatchPlayer | null,
+	rosterById: Map<number, ChampionshipPlayer>,
+): ChampionshipPlayer | null {
+	if (row === null) {
+		return null;
+	}
+
+	return resolvePlayer(row.player_id, row.display_name, rosterById);
+}
+
+function matchSlotPosition(
+	row: ChampionshipEventMatchPlayer | null,
+	slot: number,
+) {
+	if (row === null) {
+		return eventTeamSlotPosition(slot);
+	}
+
+	return eventTeamPlayerPosition(row.is_goalkeeper);
+}
+
+function ownGoalTeamPlayers(
+	ownGoalTeamId: number | null | undefined,
+	matchPlayers: ChampionshipEventMatch["players"],
+	rosterById: Map<number, ChampionshipPlayer>,
+): ChampionshipPlayer[] {
+	if (!ownGoalTeamId) {
+		return [];
+	}
+
+	return matchActiveTeamPlayers(matchPlayers, ownGoalTeamId).map((row) =>
+		resolvePlayer(row.player_id, row.display_name, rosterById),
+	);
+}
+
 type ChampionshipEventPlayProps = {
 	event: ChampionshipEvent;
 	match: ChampionshipEventMatch | null;
@@ -142,7 +221,6 @@ type ChampionshipEventPlayProps = {
 	ending: boolean;
 	endError: string | null;
 	clockError: string | null;
-	pausing: boolean;
 	onStart: (teamAId: number, teamBId: number) => Promise<void>;
 	onSetPlayer: (
 		teamId: number,
@@ -155,13 +233,14 @@ type ChampionshipEventPlayProps = {
 		scorerPlayerId: number;
 		assistPlayerId: number | null;
 		isOwnGoal: boolean;
+		elapsedSeconds: number | null;
 	}) => Promise<void>;
 	onUndoGoal: (goalId: number) => Promise<void>;
 	onEnd: () => Promise<void>;
 	onNext: () => Promise<void>;
-	onStartClock: () => Promise<void>;
-	onPause: () => Promise<void>;
-	onResume: () => Promise<void>;
+	onStartClock: () => void;
+	onPause: () => void;
+	onResume: () => void;
 	onChangeTeamColor: (
 		teamId: number,
 		color: EventTeamColor | null,
@@ -407,12 +486,8 @@ function MatchTeamBlock({
 					(slot) => {
 						const row = slots[slot] ?? null;
 						const occupied = row !== null;
-						const player = occupied
-							? resolvePlayer(row.player_id, row.display_name, rosterById)
-							: null;
-						const position = occupied
-							? eventTeamPlayerPosition(row.is_goalkeeper)
-							: eventTeamSlotPosition(slot);
+						const player = matchSlotPlayer(row, rosterById);
+						const position = matchSlotPosition(row, slot);
 
 						return (
 							<li key={`slot-${slot}`} className={MATCH_PLAY_SLOT_CLASS}>
@@ -482,28 +557,6 @@ function MatchTeamBlock({
 	);
 }
 
-function GoalkeeperGlovesIcon({ className }: { className?: string }) {
-	return (
-		<svg
-			className={className}
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			strokeWidth={2}
-			strokeLinecap="round"
-			strokeLinejoin="round"
-			aria-hidden="true"
-			focusable="false"
-		>
-			<path d="M8 21h8v-4H8z" />
-			<path d="M9 17V9a1.5 1.5 0 0 1 3 0v8" />
-			<path d="M12 17V7.5a1.5 1.5 0 0 1 3 0V17" />
-			<path d="M15 17v-7a1.5 1.5 0 0 1 3 0v7" />
-			<path d="M8.5 16c-2.2-1-3.2-3.2-2-5.2 1.8.2 2.8 2.2 2.5 4.2" />
-		</svg>
-	);
-}
-
 function OwnGoalButton({
 	disabled,
 	labelPosition,
@@ -537,16 +590,10 @@ function OwnGoalButton({
 	);
 }
 
-const MATCH_CLOCK_ACTION = {
-	start: "start",
-	pause: "pause",
-	resume: "resume",
-} as const;
-
-type MatchClockAction =
-	(typeof MATCH_CLOCK_ACTION)[keyof typeof MATCH_CLOCK_ACTION];
-
-function matchClockAction(started: boolean, paused: boolean): MatchClockAction {
+function matchClockBarAction(
+	started: boolean,
+	paused: boolean,
+): MatchClockAction {
 	if (!started) {
 		return MATCH_CLOCK_ACTION.start;
 	}
@@ -559,23 +606,22 @@ function matchClockAction(started: boolean, paused: boolean): MatchClockAction {
 }
 
 function MatchClockBar({
-	elapsedSeconds,
-	started,
-	paused,
+	match,
 	busy,
 	onStartClock,
 	onPause,
 	onResume,
 }: {
-	elapsedSeconds: number;
-	started: boolean;
-	paused: boolean;
+	match: ChampionshipEventMatch;
 	busy: boolean;
 	onStartClock: () => void;
 	onPause: () => void;
 	onResume: () => void;
 }) {
-	const action = matchClockAction(started, paused);
+	const elapsedSeconds = useMatchClock(match);
+	const started = matchClockIsStarted(match);
+	const paused = matchClockIsPaused(match);
+	const action = matchClockBarAction(started, paused);
 	const playing = action !== MATCH_CLOCK_ACTION.pause;
 
 	function handleClick() {
@@ -637,7 +683,6 @@ export function ChampionshipEventPlay({
 	ending,
 	endError,
 	clockError,
-	pausing,
 	onStart,
 	onSetPlayer,
 	onSetGoalkeeper,
@@ -665,13 +710,24 @@ export function ChampionshipEventPlay({
 	const [pendingSwap, setPendingSwap] = useState<PendingSwap | null>(null);
 	const [goalTarget, setGoalTarget] = useState<GoalTarget | null>(null);
 	const [ownGoalTeamId, setOwnGoalTeamId] = useState<number | null>(null);
+	const resumeOnCloseRef = useRef(false);
+	const goalElapsedRef = useRef(0);
+	const localClock = useMatchClockStore((state) =>
+		matchClockFromStore(state.clocks, match?.id ?? null),
+	);
+
+	useEffect(() => {
+		if (!match?.ended_at) {
+			return;
+		}
+
+		useMatchClockStore.getState().clear(match.id);
+	}, [match?.ended_at, match?.id]);
 	const [endIntent, setEndIntent] = useState<EventMatchEndIntent | null>(null);
 	const [colorTeam, setColorTeam] = useState<ChampionshipEventTeam | null>(
 		null,
 	);
-	const busy =
-		starting || savingPlayer || savingGoal || undoing || ending || pausing;
-	const elapsedSeconds = useMatchClock(match);
+	const busy = starting || savingPlayer || savingGoal || undoing || ending;
 	const canStartSelected = canConfirmMatchTeams(selected);
 
 	if (!match) {
@@ -682,8 +738,7 @@ export function ChampionshipEventPlay({
 				</p>
 				<ul className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
 					{event.teams.map((team) => {
-						const pickIndex = selected.indexOf(team.id);
-						const pickOrder = pickIndex >= 0 ? pickIndex + 1 : null;
+						const pickOrder = pickOrderFromIndex(selected.indexOf(team.id));
 
 						return (
 							<li key={team.id}>
@@ -738,7 +793,7 @@ export function ChampionshipEventPlay({
 						color={colorTeam.color}
 						usedColors={event.teams
 							.filter((team) => team.id !== colorTeam.id)
-							.flatMap((team) => (team.color === null ? [] : [team.color]))}
+							.flatMap((team) => usedEventTeamColors(team.color))}
 						isPending={savingColor}
 						errorMessage={colorError}
 						onCancel={() => {
@@ -796,11 +851,11 @@ export function ChampionshipEventPlay({
 		starA,
 		starB,
 	);
-	const ownGoalPlayers = ownGoalTeamId
-		? matchActiveTeamPlayers(match.players, ownGoalTeamId).map((row) =>
-				resolvePlayer(row.player_id, row.display_name, rosterById),
-			)
-		: [];
+	const ownGoalPlayers = ownGoalTeamPlayers(
+		ownGoalTeamId,
+		match.players,
+		rosterById,
+	);
 	const matchPlayerById = new Map(
 		match.players.map((row) => [row.player_id, row]),
 	);
@@ -815,13 +870,30 @@ export function ChampionshipEventPlay({
 	const volunteerGoalkeeperIds = new Set(
 		attendanceGoalkeeperIds(event.attendance),
 	);
-	const slotTitle = slotTarget
-		? matchTeamSlots(match.players, slotTarget.teamId, event.players_per_team)[
-				slotTarget.slot
-			]
-			? EVENT_ACTION.swapPlayer
-			: EVENT_ACTION.fillSlot
-		: EVENT_ACTION.fillSlot;
+	const slotTitle = slotActionTitle(match, slotTarget, event.players_per_team);
+	const clockMatch = mergeMatchClock(match, localClock);
+	const goalModalOpen = goalTarget !== null || ownGoalTeamId !== null;
+
+	function beginGoalClockHold() {
+		const running =
+			matchClockIsStarted(clockMatch) && !matchClockIsPaused(clockMatch);
+		goalElapsedRef.current = matchClockElapsedSeconds(clockMatch, Date.now());
+		resumeOnCloseRef.current = running;
+		if (!running) {
+			return;
+		}
+
+		void onPause();
+	}
+
+	function endGoalClockHold() {
+		if (!resumeOnCloseRef.current) {
+			return;
+		}
+
+		resumeOnCloseRef.current = false;
+		void onResume();
+	}
 
 	return (
 		<div className="flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden">
@@ -840,6 +912,7 @@ export function ChampionshipEventPlay({
 						return;
 					}
 
+					beginGoalClockHold();
 					setGoalTarget({ teamId: match.team_a_id, player });
 				}}
 				onSetGoalkeeper={(player) => {
@@ -868,6 +941,7 @@ export function ChampionshipEventPlay({
 									return;
 								}
 
+								beginGoalClockHold();
 								setOwnGoalTeamId(match.team_a_id);
 							}}
 						/>
@@ -900,32 +974,31 @@ export function ChampionshipEventPlay({
 									return;
 								}
 
+								beginGoalClockHold();
 								setOwnGoalTeamId(match.team_b_id);
 							}}
 						/>
 					</div>
 				</div>
 				<MatchClockBar
-					elapsedSeconds={elapsedSeconds}
-					started={matchClockIsStarted(match)}
-					paused={matchClockIsPaused(match)}
-					busy={busy}
+					match={clockMatch}
+					busy={busy || goalModalOpen}
 					onStartClock={() => {
-						if (busy) {
+						if (busy || goalModalOpen) {
 							return;
 						}
 
 						void onStartClock();
 					}}
 					onPause={() => {
-						if (busy) {
+						if (busy || goalModalOpen) {
 							return;
 						}
 
 						void onPause();
 					}}
 					onResume={() => {
-						if (busy) {
+						if (busy || goalModalOpen) {
 							return;
 						}
 
@@ -970,6 +1043,7 @@ export function ChampionshipEventPlay({
 						return;
 					}
 
+					beginGoalClockHold();
 					setGoalTarget({ teamId: match.team_b_id, player });
 				}}
 				onSetGoalkeeper={(player) => {
@@ -1045,6 +1119,7 @@ export function ChampionshipEventPlay({
 						}
 
 						setGoalTarget(null);
+						void endGoalClockHold();
 					}}
 					onConfirm={async (values) => {
 						const payload = matchGoalPayload({
@@ -1052,8 +1127,12 @@ export function ChampionshipEventPlay({
 							kind: values.kind,
 							assistPlayerId: values.assistPlayerId,
 						});
-						await onAddGoal(payload);
+						await onAddGoal({
+							...payload,
+							elapsedSeconds: goalElapsedRef.current,
+						});
 						setGoalTarget(null);
+						endGoalClockHold();
 					}}
 				/>
 			)}
@@ -1071,14 +1150,17 @@ export function ChampionshipEventPlay({
 						}
 
 						setOwnGoalTeamId(null);
+						void endGoalClockHold();
 					}}
 					onSelect={async (playerId) => {
 						await onAddGoal({
 							scorerPlayerId: playerId,
 							assistPlayerId: null,
 							isOwnGoal: true,
+							elapsedSeconds: goalElapsedRef.current,
 						});
 						setOwnGoalTeamId(null);
+						endGoalClockHold();
 					}}
 				/>
 			)}
@@ -1178,9 +1260,11 @@ export function ChampionshipEventPlay({
 							try {
 								switch (endIntent) {
 									case EVENT_MATCH_END_INTENT.end:
+										useMatchClockStore.getState().clear(match.id);
 										await onEnd();
 										break;
 									case EVENT_MATCH_END_INTENT.next:
+										useMatchClockStore.getState().clear(match.id);
 										await onNext();
 										break;
 									default: {
@@ -1196,6 +1280,7 @@ export function ChampionshipEventPlay({
 					}}
 				/>
 			)}
+			{isMatchClockDebugVisible() && <MatchClockDebug matchId={match.id} />}
 		</div>
 	);
 }

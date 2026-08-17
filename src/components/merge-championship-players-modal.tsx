@@ -32,6 +32,23 @@ type MergeChampionshipPlayersModalProps = {
 	onConfirm: (keepPlayerId: number, absorbPlayerId: number) => void;
 };
 
+function mergeKeepAbsorbIds(starter: ChampionshipPlayer): {
+	keepPlayerId: string;
+	absorbPlayerId: string;
+} {
+	if (starter.user_id) {
+		return {
+			keepPlayerId: "",
+			absorbPlayerId: String(starter.id),
+		};
+	}
+
+	return {
+		keepPlayerId: String(starter.id),
+		absorbPlayerId: "",
+	};
+}
+
 export function MergeChampionshipPlayersModal({
 	players,
 	createdBy,
@@ -52,10 +69,7 @@ export function MergeChampionshipPlayersModal({
 	return (
 		<AppDialog onClose={onCancel}>
 			<Formik
-				initialValues={{
-					keepPlayerId: starter.user_id ? "" : String(starter.id),
-					absorbPlayerId: starter.user_id ? String(starter.id) : "",
-				}}
+				initialValues={mergeKeepAbsorbIds(starter)}
 				enableReinitialize
 				validationSchema={mergePlayersSchema}
 				onSubmit={(values) => {

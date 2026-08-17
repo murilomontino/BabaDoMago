@@ -44,7 +44,22 @@ export function playerVisibleName(player: {
 	display_name: string;
 }): string {
 	const nickname = player.nickname?.trim();
-	return nickname ? nickname : player.display_name;
+	if (nickname) {
+		return nickname;
+	}
+
+	return player.display_name;
+}
+
+export function legalNameIfDifferent(
+	visibleName: string,
+	displayName: string,
+): string | null {
+	if (visibleName === displayName) {
+		return null;
+	}
+
+	return displayName;
 }
 
 export function comparePlayersByVisibleName(

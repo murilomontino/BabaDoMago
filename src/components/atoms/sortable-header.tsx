@@ -28,6 +28,16 @@ type SortableHeaderProps = {
 	title?: string;
 };
 
+function ariaSortValue(
+	sorted: false | "asc" | "desc",
+): (typeof ARIA_SORT)[keyof typeof ARIA_SORT] {
+	if (!sorted) {
+		return ARIA_SORT.none;
+	}
+
+	return ARIA_SORT[sorted];
+}
+
 export function SortableHeader({
 	children,
 	canSort,
@@ -37,7 +47,7 @@ export function SortableHeader({
 	title,
 }: SortableHeaderProps) {
 	const alignClass = HEADER_ALIGN_CLASS[align];
-	const ariaSort = sorted ? ARIA_SORT[sorted] : ARIA_SORT.none;
+	const ariaSort = ariaSortValue(sorted);
 
 	if (!canSort) {
 		return (

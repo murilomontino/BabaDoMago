@@ -7,6 +7,7 @@ import {
 	eventRatingPreview,
 	formatEventRating,
 	playerEventRatingAfterSave,
+	previewRatingTos,
 	recomputePlayerEventRating,
 } from "./event-rating-adjustment.ts";
 import { PLAYER_RATING } from "./player-rating.ts";
@@ -436,6 +437,21 @@ check(
 	),
 	EVENT_RATING_INITIAL.low,
 	"sentinela recompute troca faixa",
+);
+check(previewRatingTos(null).join(","), "", "null preview");
+check(previewRatingTos(false).join(","), "", "no flow event");
+check(
+	previewRatingTos([
+		{
+			playerId: 1,
+			name: "a",
+			from: 3,
+			to: 3.2,
+			isMvp: false,
+		},
+	]).join(","),
+	"3.2",
+	"preview tos",
 );
 
 console.log("event-rating-adjustment ok");

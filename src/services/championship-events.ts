@@ -5,21 +5,29 @@ import {
 	parsePlayersPerTeam,
 } from "@/const/championship-event";
 import {
+	compareStartersBeforeSubstitutes,
 	EVENT_MATCH_DURATION,
 	matchDurationSeconds,
 } from "@/const/championship-event-match";
 import {
 	type EventTeamColor,
+	eventTeamColorOrNone,
 	isEventTeamColor,
 	normalizeEventTeamColor,
 } from "@/const/event-team-color";
 import { supabase } from "@/lib/supabase";
+import {
+	mapUnknownRows,
+	optionalNumber,
+	optionalString,
+} from "@/lib/unknown-value";
 import type {
 	ChampionshipEvent,
 	ChampionshipEventAttendance,
 	ChampionshipEventGoal,
 	ChampionshipEventMatch,
 	ChampionshipEventMatchPlayer,
+	ChampionshipEventRsvp,
 	ChampionshipEventTeam,
 	ChampionshipEventTeamPlayer,
 } from "@/types/championship-event";
@@ -65,6 +73,13 @@ const EVENT_COLUMNS = `
 		is_mvp,
 		mvp_overridden
 	),
+	championship_event_rsvp (
+		id,
+		event_id,
+		player_id,
+		status,
+		updated_at
+	),
 	championship_event_matches (
 		id,
 		event_id,
@@ -96,6 +111,7 @@ const EVENT_COLUMNS = `
 			scorer_player_id,
 			assist_player_id,
 			is_own_goal,
+			elapsed_seconds,
 			created_at
 		)
 	)
@@ -171,16 +187,14 @@ function asTeam(value: unknown): ChampionshipEventTeam {
 		throw new Error("event team: invalid payload");
 	}
 
-	const color = normalizeEventTeamColor(
-		typeof row.color === "string" ? row.color : null,
-	);
+	const color = normalizeEventTeamColor(optionalString(row.color));
 	if (color !== null && !isEventTeamColor(color)) {
 		throw new Error("event team: invalid payload");
 	}
 
 	const nested = row.championship_event_team_players;
-	const players = Array.isArray(nested) ? nested.map(asTeamPlayer) : [];
-	const teamColor = color !== null && isEventTeamColor(color) ? color : null;
+	const players = mapUnknownRows(nested, asTeamPlayer);
+	const teamColor = eventTeamColorOrNone(color);
 
 	return {
 		id: row.id,
@@ -219,7 +233,7 @@ function asMatchPlayer(value: unknown): ChampionshipEventMatchPlayer {
 		player_id: Number(row.player_id),
 		display_name: row.display_name,
 		is_goalkeeper: row.is_goalkeeper === true,
-		slot: typeof row.slot === "number" ? row.slot : null,
+		slot: optionalNumber(row.slot),
 		is_substituted: row.is_substituted === true,
 		include_stats: row.include_stats !== false,
 	};
@@ -240,10 +254,29 @@ function asGoal(value: unknown): ChampionshipEventGoal {
 		match_id: Number(row.match_id),
 		event_id: Number(row.event_id),
 		scorer_player_id: Number(row.scorer_player_id),
-		assist_player_id:
-			typeof row.assist_player_id === "number" ? row.assist_player_id : null,
+		assist_player_id: optionalNumber(row.assist_player_id),
 		is_own_goal: row.is_own_goal === true,
+		elapsed_seconds: optionalNumber(row.elapsed_seconds),
 		created_at: String(row.created_at),
+	};
+}
+
+function asRsvp(value: unknown): ChampionshipEventRsvp {
+	if (!value || typeof value !== "object") {
+		throw new Error("event rsvp: invalid payload");
+	}
+
+	const row = value as Record<string, unknown>;
+	if (typeof row.id !== "number" || typeof row.status !== "string") {
+		throw new Error("event rsvp: invalid payload");
+	}
+
+	return {
+		id: row.id,
+		event_id: Number(row.event_id),
+		player_id: Number(row.player_id),
+		status: row.status,
+		updated_at: String(row.updated_at),
 	};
 }
 
@@ -257,12 +290,11 @@ function asMatch(value: unknown): ChampionshipEventMatch {
 		throw new Error("event match: invalid payload");
 	}
 
-	const players = Array.isArray(row.championship_event_match_players)
-		? row.championship_event_match_players.map(asMatchPlayer)
-		: [];
-	const goals = Array.isArray(row.championship_event_goals)
-		? row.championship_event_goals.map(asGoal)
-		: [];
+	const players = mapUnknownRows(
+		row.championship_event_match_players,
+		asMatchPlayer,
+	);
+	const goals = mapUnknownRows(row.championship_event_goals, asGoal);
 
 	return {
 		id: row.id,
@@ -270,23 +302,18 @@ function asMatch(value: unknown): ChampionshipEventMatch {
 		team_a_id: Number(row.team_a_id),
 		team_b_id: Number(row.team_b_id),
 		created_at: String(row.created_at),
-		ended_at: typeof row.ended_at === "string" ? row.ended_at : null,
-		winner_team_id:
-			typeof row.winner_team_id === "number" ? row.winner_team_id : null,
+		ended_at: optionalString(row.ended_at),
+		winner_team_id: optionalNumber(row.winner_team_id),
 		duration_seconds: Number(row.duration_seconds ?? 420),
-		started_at: typeof row.started_at === "string" ? row.started_at : null,
-		paused_at: typeof row.paused_at === "string" ? row.paused_at : null,
+		started_at: optionalString(row.started_at),
+		paused_at: optionalString(row.paused_at),
 		pause_accumulated_seconds: Number(row.pause_accumulated_seconds ?? 0),
 		players: [...players].sort((left, right) => {
 			if (left.team_id !== right.team_id) {
 				return left.team_id - right.team_id;
 			}
 
-			if (left.is_substituted !== right.is_substituted) {
-				return left.is_substituted ? 1 : -1;
-			}
-
-			return (left.slot ?? 11) - (right.slot ?? 11);
+			return compareStartersBeforeSubstitutes(left, right);
 		}),
 		goals: [...goals].sort((left, right) =>
 			left.created_at.localeCompare(right.created_at),
@@ -304,15 +331,13 @@ function asEvent(value: unknown): ChampionshipEvent {
 		throw new Error("event: invalid payload");
 	}
 
-	const attendance = Array.isArray(row.championship_event_attendance)
-		? row.championship_event_attendance.map(asAttendance)
-		: [];
-	const teams = Array.isArray(row.championship_event_teams)
-		? row.championship_event_teams.map(asTeam)
-		: [];
-	const matches = Array.isArray(row.championship_event_matches)
-		? row.championship_event_matches.map(asMatch)
-		: [];
+	const attendance = mapUnknownRows(
+		row.championship_event_attendance,
+		asAttendance,
+	);
+	const rsvps = mapUnknownRows(row.championship_event_rsvp, asRsvp);
+	const teams = mapUnknownRows(row.championship_event_teams, asTeam);
+	const matches = mapUnknownRows(row.championship_event_matches, asMatch);
 
 	return {
 		id: row.id,
@@ -320,8 +345,9 @@ function asEvent(value: unknown): ChampionshipEvent {
 		starts_at: row.starts_at,
 		players_per_team: parsePlayersPerTeam(row.players_per_team),
 		skip_guest_goalkeeper_matches: row.skip_guest_goalkeeper_matches !== false,
-		ended_at: typeof row.ended_at === "string" ? row.ended_at : null,
+		ended_at: optionalString(row.ended_at),
 		attendance: [...attendance].sort((a, b) => a.id - b.id),
+		rsvps: [...rsvps].sort((a, b) => a.player_id - b.player_id),
 		teams: [...teams].sort((a, b) => a.sort_order - b.sort_order),
 		matches: [...matches].sort((a, b) =>
 			a.created_at.localeCompare(b.created_at),
@@ -437,6 +463,52 @@ export async function saveChampionshipEventAttendance(
 		present_player_ids: [...presentPlayerIds],
 		goalkeeper_player_ids: [...goalkeeperPlayerIds],
 	});
+
+	if (error) {
+		throwEventError(error);
+	}
+}
+
+export async function ensureChampionshipEventAttendancePlayer(
+	eventId: number,
+	playerId: number,
+): Promise<void> {
+	const { error } = await supabase.rpc(
+		"ensure_championship_event_attendance_player",
+		{
+			event_id: eventId,
+			player_id: playerId,
+		},
+	);
+
+	if (error) {
+		throwEventError(error);
+	}
+}
+
+export async function upsertChampionshipEventRsvp(
+	eventId: number,
+	status: string,
+): Promise<void> {
+	const { error } = await supabase.rpc("upsert_championship_event_rsvp", {
+		p_event_id: eventId,
+		p_status: status,
+	});
+
+	if (error) {
+		throwEventError(error);
+	}
+}
+
+export async function promoteChampionshipEventRsvpGoing(
+	eventId: number,
+): Promise<void> {
+	const { error } = await supabase.rpc(
+		"promote_championship_event_rsvp_going",
+		{
+			event_id: eventId,
+		},
+	);
 
 	if (error) {
 		throwEventError(error);
@@ -638,12 +710,14 @@ export async function addChampionshipEventGoal(
 	scorerPlayerId: number,
 	assistPlayerId: number | null,
 	isOwnGoal: boolean,
+	elapsedSeconds: number | null,
 ): Promise<void> {
 	const { error } = await supabase.rpc("add_championship_event_goal", {
 		match_id: matchId,
 		scorer_player_id: scorerPlayerId,
 		assist_player_id: assistPlayerId,
 		is_own_goal: isOwnGoal,
+		elapsed_seconds: elapsedSeconds,
 	});
 
 	if (error) {
@@ -701,6 +775,16 @@ export async function deleteChampionshipEventMatch(
 	}
 }
 
+function copiedIdsOrNull(
+	ids: readonly number[] | null | undefined,
+): number[] | null {
+	if (ids == null) {
+		return null;
+	}
+
+	return [...ids];
+}
+
 export async function endChampionshipEvent(
 	eventId: number,
 	presentPlayerIds: readonly number[] | null = null,
@@ -708,8 +792,8 @@ export async function endChampionshipEvent(
 ): Promise<void> {
 	const { error } = await supabase.rpc("end_championship_event", {
 		event_id: eventId,
-		present_player_ids: presentPlayerIds ? [...presentPlayerIds] : null,
-		mvp_player_ids: mvpPlayerIds == null ? null : [...mvpPlayerIds],
+		present_player_ids: copiedIdsOrNull(presentPlayerIds),
+		mvp_player_ids: copiedIdsOrNull(mvpPlayerIds),
 	});
 
 	if (error) {

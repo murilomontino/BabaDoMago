@@ -1,14 +1,18 @@
 import {
 	EVENT_TEAM_COLOR,
 	EVENT_TEAM_COLOR_NONE,
+	EVENT_TEAM_COLOR_RAINBOW_GRADIENT,
 	EVENT_TEAM_FG,
 	EVENT_TEAM_PASTEL,
 	eventTeamColorFg,
+	eventTeamColorOrNone,
 	eventTeamColorPastel,
 	eventTeamColorStyle,
+	eventTeamCustomColorPreview,
 	eventTeamName,
 	isEventTeamColor,
 	normalizeEventTeamColor,
+	usedEventTeamColors,
 } from "./event-team-color.ts";
 
 function check(actual: unknown, expected: unknown): void {
@@ -50,3 +54,25 @@ check(
 	eventTeamColorPastel(EVENT_TEAM_COLOR.red),
 );
 check(eventTeamColorStyle(EVENT_TEAM_COLOR.red).color, EVENT_TEAM_FG.dark);
+check(eventTeamColorOrNone(null), null);
+check(eventTeamColorOrNone(EVENT_TEAM_COLOR.red), EVENT_TEAM_COLOR.red);
+check(eventTeamColorOrNone("nope"), null);
+check(usedEventTeamColors(null).join(","), "");
+check(
+	usedEventTeamColors(EVENT_TEAM_COLOR.red).join(","),
+	EVENT_TEAM_COLOR.red,
+);
+check(
+	eventTeamCustomColorPreview(false, null).backgroundImage,
+	EVENT_TEAM_COLOR_RAINBOW_GRADIENT,
+);
+check(
+	eventTeamCustomColorPreview(true, EVENT_TEAM_COLOR.red).backgroundColor,
+	EVENT_TEAM_COLOR.red,
+);
+check(
+	eventTeamCustomColorPreview(true, EVENT_TEAM_COLOR.red).backgroundImage,
+	undefined,
+);
+
+console.log("event-team-color ok");

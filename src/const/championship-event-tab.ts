@@ -35,3 +35,14 @@ export function showEventDetailTabs(input: {
 }): boolean {
 	return !input.showTeamBuilder && input.attendanceCount > 0;
 }
+
+export function eventDetailSelectedTab(
+	showEventTabs: boolean,
+	tab: EventTab | null,
+): EventTab {
+	if (showEventTabs && tab === EVENT_TAB.podium) {
+		return EVENT_TAB.podium;
+	}
+
+	return EVENT_TAB.event;
+}

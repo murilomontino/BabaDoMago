@@ -14,8 +14,8 @@ import {
 	rosterWinRate,
 } from "./roster-stats.ts";
 
-// ponytail: no sample floor; 1/1 outranks 19/20. Upgrade: raise SYNERGY_MIN_MATCHES.
-export const SYNERGY_MIN_MATCHES = 0 as const;
+// ponytail: 3-match floor hides 1/1 noise. Upgrade: raise with more history.
+export const SYNERGY_MIN_MATCHES = 3 as const;
 export const SYNERGY_RANKING_LIMIT = 20 as const;
 export const SYNERGY_PARTNER_LIMIT = 30 as const;
 
@@ -24,8 +24,11 @@ export const SYNERGY_LABEL = {
 	partners: "Parceiros",
 	pair: "Dupla",
 	partner: "Parceiro",
+	best: "Melhores duplas",
+	worst: "Piores duplas",
 	empty: "Nenhuma dupla ainda",
 	emptyPartners: "Ainda não jogou em dupla",
+	emptyQualified: "Poucos jogos em dupla",
 } as const;
 
 export const SYNERGY_COLUMN = {
@@ -78,9 +81,17 @@ export const SYNERGY_PAIR_LEGEND = SYNERGY_PAIR_COLUMNS.map((id) => ({
 	label: SYNERGY_PAIR_COLUMN_LABEL[id],
 }));
 
+export function synergyPartnerColumnAbbr(id: SynergyColumnId): string {
+	if (id === SYNERGY_COLUMN.player) {
+		return "Parc";
+	}
+
+	return SYNERGY_COLUMN_ABBR[id];
+}
+
 export const SYNERGY_PARTNER_LEGEND = SYNERGY_PAIR_COLUMNS.map((id) => ({
 	id,
-	abbr: id === SYNERGY_COLUMN.player ? "Parc" : SYNERGY_COLUMN_ABBR[id],
+	abbr: synergyPartnerColumnAbbr(id),
 	label: SYNERGY_PARTNER_COLUMN_LABEL[id],
 }));
 
@@ -390,6 +401,42 @@ export function synergyPartnersOf(
 	});
 }
 
+function compareSynergyWorst(
+	left: { winRate: number; matches: number; name: string },
+	right: { winRate: number; matches: number; name: string },
+): number {
+	const winRateDiff = left.winRate - right.winRate;
+	if (winRateDiff !== 0) {
+		return winRateDiff;
+	}
+
+	const matchesDiff = right.matches - left.matches;
+	if (matchesDiff !== 0) {
+		return matchesDiff;
+	}
+
+	return left.name.localeCompare(right.name, "pt");
+}
+
+export function rankSynergyPairRowsWorst(
+	rows: readonly SynergyPairRow[],
+): SynergyPairRow[] {
+	return [...rows].sort((left, right) =>
+		compareSynergyWorst(
+			{
+				winRate: left.winRate,
+				matches: left.matches,
+				name: `${playerVisibleName(left.left)} ${playerVisibleName(left.right)}`,
+			},
+			{
+				winRate: right.winRate,
+				matches: right.matches,
+				name: `${playerVisibleName(right.left)} ${playerVisibleName(right.right)}`,
+			},
+		),
+	);
+}
+
 export function rankSynergyPairRows(
 	rows: readonly SynergyPairRow[],
 ): SynergyPairRow[] {
@@ -442,6 +489,16 @@ export function championshipSynergyRanking(
 ): SynergyPairRow[] {
 	return topSynergyRows(
 		rankSynergyPairRows(aggregateSynergyPairs(events, players)),
+		SYNERGY_RANKING_LIMIT,
+	);
+}
+
+export function championshipSynergyWorst(
+	events: readonly ChampionshipEvent[],
+	players: readonly ChampionshipPlayer[],
+): SynergyPairRow[] {
+	return topSynergyRows(
+		rankSynergyPairRowsWorst(aggregateSynergyPairs(events, players)),
 		SYNERGY_RANKING_LIMIT,
 	);
 }

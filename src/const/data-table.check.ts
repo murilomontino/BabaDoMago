@@ -2,6 +2,9 @@ import {
 	DATA_TABLE_MOBILE_PRIMARY,
 	DATA_TABLE_SORT,
 	dataTableDefaultDesc,
+	dataTableRowClickHandler,
+	dataTableRowKeyDownHandler,
+	dataTableSortDirectionLabel,
 	mobileTableCellAbbr,
 	splitMobileTableCells,
 } from "./data-table.ts";
@@ -69,3 +72,25 @@ check(
 	dataTableDefaultDesc(DATA_TABLE_MOBILE_PRIMARY.rating) === true,
 	"rating sorts descending",
 );
+
+const clicked: string[] = [];
+const click = dataTableRowClickHandler((row: string) => {
+	clicked.push(row);
+}, "a");
+check(dataTableRowClickHandler(undefined, "a") === undefined, "no row handler");
+click?.();
+check(clicked.join(",") === "a", "row click fires");
+
+const keys: string[] = [];
+const keyDown = dataTableRowKeyDownHandler((row: string) => {
+	keys.push(row);
+}, "b");
+keyDown?.({ key: "Tab", preventDefault: () => undefined });
+check(keys.length === 0, "ignores other keys");
+keyDown?.({ key: "Enter", preventDefault: () => undefined });
+check(keys.join(",") === "b", "enter activates row");
+
+check(dataTableSortDirectionLabel(true) === DATA_TABLE_SORT.desc, "desc label");
+check(dataTableSortDirectionLabel(false) === DATA_TABLE_SORT.asc, "asc label");
+
+console.log("data-table ok");

@@ -8,8 +8,7 @@ import {
 	useMemo,
 	useState,
 } from "react";
-import { ROUTES } from "@/const/routes";
-import { isSafeInternalPath } from "@/lib/safe-path";
+import { safeInternalPathOrHome } from "@/lib/safe-path";
 import { supabase } from "@/lib/supabase";
 import { ensureCurrentUser } from "@/services/users";
 
@@ -77,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	}, []);
 
 	const signInWithGoogle = useCallback(async (nextPath?: string) => {
-		const path = isSafeInternalPath(nextPath) ? nextPath : ROUTES.home;
+		const path = safeInternalPathOrHome(nextPath);
 		const { error } = await supabase.auth.signInWithOAuth({
 			provider: "google",
 			options: {

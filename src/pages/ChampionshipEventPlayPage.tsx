@@ -4,8 +4,15 @@ import { Button } from "@/components/button";
 import { ChampionshipEventPlay } from "@/components/championship-event-play";
 import { MATCH_GOAL_TIMELINE_GRID_CLASS } from "@/components/molecules/match-goal-timeline";
 import { TeamCardSkeleton } from "@/components/molecules/team-card-skeleton";
-import { canStartEventMatch, EVENT_ACTION } from "@/const/championship-event";
-import { openEventMatch } from "@/const/championship-event-match";
+import {
+	canStartEventMatch,
+	EVENT_ACTION,
+	isMatchAlreadyOpenError,
+} from "@/const/championship-event";
+import {
+	openEventMatch,
+	shouldStartEventMatch,
+} from "@/const/championship-event-match";
 import { ROUTES } from "@/const/routes";
 import { SKELETON_LABEL } from "@/const/skeleton";
 import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
@@ -24,8 +31,26 @@ import {
 	useUpdateChampionshipEventTeam,
 } from "@/hooks/championships/use-championship-events";
 import { useChampionship } from "@/hooks/championships/use-championships";
+import { useFlushMatchClock } from "@/hooks/match-clock-sync";
+import { mutationErrorMessage } from "@/lib/error-message";
 
 const PLAY_SHELL_CLASS = "flex h-dvh flex-col overflow-hidden p-2";
+
+function startMatchErrorMessage(startMatch: {
+	isError: boolean;
+	error: { message: string } | null;
+}): string | null {
+	const message = mutationErrorMessage(startMatch);
+	if (!message) {
+		return null;
+	}
+
+	if (isMatchAlreadyOpenError(message)) {
+		return null;
+	}
+
+	return message;
+}
 
 export function ChampionshipEventPlayPage() {
 	const { championshipId: championshipIdParam, eventId: eventIdParam } =
@@ -48,6 +73,9 @@ export function ChampionshipEventPlayPage() {
 	const resumeMatch = useResumeChampionshipEventMatch(championshipId);
 	const endMatch = useEndChampionshipEventMatch(championshipId);
 	useChampionshipEventRealtime(championshipId, eventId);
+	const openMatchId =
+		openEventMatch(eventQuery.data?.matches ?? [])?.id ?? null;
+	useFlushMatchClock(openMatchId);
 
 	if (championshipQuery.isPending || eventQuery.isPending) {
 		return <ChampionshipEventPlayPageSkeleton />;
@@ -107,36 +135,47 @@ export function ChampionshipEventPlayPage() {
 						match={openMatch}
 						players={activePlayers}
 						starting={startMatch.isPending}
-						startError={startMatch.isError ? startMatch.error.message : null}
+						startError={startMatchErrorMessage(startMatch)}
 						savingPlayer={setPlayer.isPending || setGoalkeeper.isPending}
 						playerError={
-							(setPlayer.isError && setPlayer.error.message) ||
-							(setGoalkeeper.isError && setGoalkeeper.error.message) ||
-							null
+							mutationErrorMessage(setPlayer) ??
+							mutationErrorMessage(setGoalkeeper)
 						}
 						savingGoal={addGoal.isPending}
-						goalError={addGoal.isError ? addGoal.error.message : null}
+						goalError={mutationErrorMessage(addGoal)}
 						undoing={undoGoal.isPending}
-						undoError={undoGoal.isError ? undoGoal.error.message : null}
+						undoError={mutationErrorMessage(undoGoal)}
 						ending={endMatch.isPending}
-						endError={endMatch.isError ? endMatch.error.message : null}
+						endError={mutationErrorMessage(endMatch)}
 						clockError={
-							(startClock.isError && startClock.error.message) ||
-							(pauseMatch.isError && pauseMatch.error.message) ||
-							(resumeMatch.isError && resumeMatch.error.message) ||
-							null
-						}
-						pausing={
-							startClock.isPending ||
-							pauseMatch.isPending ||
-							resumeMatch.isPending
+							mutationErrorMessage(startClock) ??
+							mutationErrorMessage(pauseMatch) ??
+							mutationErrorMessage(resumeMatch)
 						}
 						onStart={async (teamAId, teamBId) => {
-							await startMatch.mutateAsync({
-								eventId: event.id,
-								teamAId,
-								teamBId,
-							});
+							const { data } = await eventQuery.refetch();
+							const matches = data?.matches ?? event.matches;
+							if (!shouldStartEventMatch(matches)) {
+								return;
+							}
+
+							try {
+								await startMatch.mutateAsync({
+									eventId: event.id,
+									teamAId,
+									teamBId,
+								});
+							} catch (error) {
+								if (
+									!(error instanceof Error) ||
+									!isMatchAlreadyOpenError(error.message)
+								) {
+									throw error;
+								}
+
+								startMatch.reset();
+								await eventQuery.refetch();
+							}
 						}}
 						savingColor={updateTeam.isPending}
 						colorError={
@@ -216,26 +255,35 @@ export function ChampionshipEventPlayPage() {
 
 							await endMatch.mutateAsync(openMatch.id);
 						}}
-						onStartClock={async () => {
+						onStartClock={() => {
 							if (!openMatch) {
 								return;
 							}
 
-							await startClock.mutateAsync(openMatch.id);
+							void startClock.mutate({
+								matchId: openMatch.id,
+								seed: openMatch,
+							});
 						}}
-						onPause={async () => {
+						onPause={() => {
 							if (!openMatch) {
 								return;
 							}
 
-							await pauseMatch.mutateAsync(openMatch.id);
+							void pauseMatch.mutate({
+								matchId: openMatch.id,
+								seed: openMatch,
+							});
 						}}
-						onResume={async () => {
+						onResume={() => {
 							if (!openMatch) {
 								return;
 							}
 
-							await resumeMatch.mutateAsync(openMatch.id);
+							void resumeMatch.mutate({
+								matchId: openMatch.id,
+								seed: openMatch,
+							});
 						}}
 					/>
 				</div>

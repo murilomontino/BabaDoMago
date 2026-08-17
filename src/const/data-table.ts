@@ -69,3 +69,49 @@ export function mobileTableCellAbbr(
 
 	return title ?? "";
 }
+
+export function dataTableSortDirectionLabel(
+	descending: boolean | undefined,
+): string {
+	if (descending) {
+		return DATA_TABLE_SORT.desc;
+	}
+
+	return DATA_TABLE_SORT.asc;
+}
+
+export function dataTableRowClickHandler<T>(
+	onRowClick: ((row: T) => void) | undefined,
+	row: T,
+): (() => void) | undefined {
+	if (!onRowClick) {
+		return undefined;
+	}
+
+	return () => {
+		onRowClick(row);
+	};
+}
+
+type RowActivateKeyEvent = {
+	key: string;
+	preventDefault: () => void;
+};
+
+export function dataTableRowKeyDownHandler<T>(
+	onRowClick: ((row: T) => void) | undefined,
+	row: T,
+): ((event: RowActivateKeyEvent) => void) | undefined {
+	if (!onRowClick) {
+		return undefined;
+	}
+
+	return (event) => {
+		if (event.key !== "Enter" && event.key !== " ") {
+			return;
+		}
+
+		event.preventDefault();
+		onRowClick(row);
+	};
+}

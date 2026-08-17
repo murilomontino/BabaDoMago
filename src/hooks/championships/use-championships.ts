@@ -169,16 +169,22 @@ export function useUpdateChampionshipEventConfig(championshipId: number) {
 			eventTime,
 			playersPerTeam,
 			skipGuestGoalkeeperMatches,
+			eventWeekday,
+			location,
 		}: {
 			eventTime: string;
 			playersPerTeam: number;
 			skipGuestGoalkeeperMatches: boolean;
+			eventWeekday: number | null;
+			location: string | null;
 		}) =>
 			updateChampionshipEventConfig(
 				championshipId,
 				eventTime,
 				playersPerTeam,
 				skipGuestGoalkeeperMatches,
+				eventWeekday,
+				location,
 			),
 		onSuccess: async () => {
 			await invalidateChampionshipQueries(queryClient);
@@ -235,11 +241,7 @@ export function useSetPlayerIsGoalkeeper() {
 						return data;
 					}
 
-					return withChampionshipPlayerGoalkeeper(
-						data,
-						playerId,
-						isGoalkeeper,
-					);
+					return withChampionshipPlayerGoalkeeper(data, playerId, isGoalkeeper);
 				},
 			);
 			return { previous };

@@ -1,16 +1,26 @@
+import { parseAsStringEnum } from "nuqs";
+
 export const CHAMPIONSHIP_TAB = {
 	roster: "roster",
 	events: "events",
 	podium: "podium",
+	management: "management",
 } as const;
 
 export type ChampionshipTab =
 	(typeof CHAMPIONSHIP_TAB)[keyof typeof CHAMPIONSHIP_TAB];
 
+export const CHAMPIONSHIP_TAB_SEARCH_KEY = "tab" as const;
+
+export const CHAMPIONSHIP_TAB_SEARCH = {
+	tab: parseAsStringEnum<ChampionshipTab>(Object.values(CHAMPIONSHIP_TAB)),
+};
+
 export const CHAMPIONSHIP_TAB_LABEL = {
 	roster: "Elenco",
 	events: "Rodadas",
 	podium: "Pódio",
+	management: "Gestão",
 	deactivated: "Desativados",
 	settings: "Configuração",
 } as const;
@@ -29,3 +39,28 @@ export const CHAMPIONSHIP_TABS = [
 		label: CHAMPIONSHIP_TAB_LABEL.podium,
 	},
 ] as const;
+
+export function championshipTabs(includeManagement: boolean) {
+	if (!includeManagement) {
+		return CHAMPIONSHIP_TABS;
+	}
+
+	return [
+		...CHAMPIONSHIP_TABS,
+		{
+			id: CHAMPIONSHIP_TAB.management,
+			label: CHAMPIONSHIP_TAB_LABEL.management,
+		},
+	];
+}
+
+export function visibleChampionshipTab(
+	requestedTab: ChampionshipTab,
+	canViewManagement: boolean,
+): ChampionshipTab {
+	if (requestedTab === CHAMPIONSHIP_TAB.management && !canViewManagement) {
+		return CHAMPIONSHIP_TAB.roster;
+	}
+
+	return requestedTab;
+}

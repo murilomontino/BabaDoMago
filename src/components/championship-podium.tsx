@@ -31,7 +31,6 @@ import {
 } from "@/const/player-synergy";
 import {
 	formatPodiumMetric,
-	PODIUM_ANIMATION_DELAY,
 	PODIUM_CONFETTI,
 	PODIUM_DISPLAY_ORDER,
 	PODIUM_LABEL,
@@ -40,6 +39,8 @@ import {
 	type PodiumMetricId,
 	type PodiumPlace,
 	type PodiumPlayerMetricId,
+	podiumEnterDelay,
+	podiumEnterInitialHeight,
 	podiumStandings,
 	rankPodiumRows,
 } from "@/const/podium";
@@ -70,6 +71,7 @@ type ChampionshipPodiumProps = {
 	players: ChampionshipPlayer[];
 	metric: PodiumMetricId;
 	synergyPairs?: readonly SynergyPairRow[];
+	worstPairs?: readonly SynergyPairRow[];
 };
 
 function PodiumTablePlayer({ row }: { row: RosterRow }) {
@@ -261,13 +263,13 @@ function PodiumPairPlace({
 			</div>
 			<motion.div
 				className="flex w-full items-start justify-center overflow-hidden rounded-t-xl border border-line bg-pitch-soft"
-				initial={reduceMotion ? { height } : { height: 0 }}
+				initial={podiumEnterInitialHeight(reduceMotion, height)}
 				animate={{ height }}
 				transition={{
 					type: "spring",
 					stiffness: 120,
 					damping: 18,
-					delay: reduceMotion ? 0 : PODIUM_ANIMATION_DELAY[place],
+					delay: podiumEnterDelay(reduceMotion, place),
 				}}
 			>
 				<span className="pt-2 text-lg font-bold text-pitch-fg">{place}</span>
@@ -276,7 +278,13 @@ function PodiumPairPlace({
 	);
 }
 
-function SynergyPodium({ pairs }: { pairs: readonly SynergyPairRow[] }) {
+function SynergyPodium({
+	pairs,
+	worstPairs,
+}: {
+	pairs: readonly SynergyPairRow[];
+	worstPairs: readonly SynergyPairRow[];
+}) {
 	const standings = useMemo(() => synergyPodiumStandings(pairs), [pairs]);
 
 	useEffect(() => {
@@ -292,7 +300,7 @@ function SynergyPodium({ pairs }: { pairs: readonly SynergyPairRow[] }) {
 		return (
 			<EmptyState
 				icon={<Trophy className="size-10" />}
-				title={SYNERGY_LABEL.empty}
+				title={SYNERGY_LABEL.emptyQualified}
 			/>
 		);
 	}
@@ -323,7 +331,16 @@ function SynergyPodium({ pairs }: { pairs: readonly SynergyPairRow[] }) {
 					})}
 				</div>
 			)}
+			<h3 className="text-sm font-semibold text-fg">{SYNERGY_LABEL.best}</h3>
 			<SynergyPairsTable rows={[...pairs]} />
+			{worstPairs.length > 0 && (
+				<div className="space-y-4">
+					<h3 className="text-sm font-semibold text-fg">
+						{SYNERGY_LABEL.worst}
+					</h3>
+					<SynergyPairsTable rows={[...worstPairs]} />
+				</div>
+			)}
 		</div>
 	);
 }
@@ -332,9 +349,10 @@ export function ChampionshipPodium({
 	players,
 	metric,
 	synergyPairs = [],
+	worstPairs = [],
 }: ChampionshipPodiumProps) {
 	if (metric === PODIUM_METRIC.synergy) {
-		return <SynergyPodium pairs={synergyPairs} />;
+		return <SynergyPodium pairs={synergyPairs} worstPairs={worstPairs} />;
 	}
 
 	return <PlayerPodium players={players} metric={metric} />;

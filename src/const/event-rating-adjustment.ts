@@ -1,4 +1,4 @@
-import { eventMvpStarDelta } from "./event-mvp.ts";
+import { eventMvpBonus } from "./event-mvp.ts";
 import { playerVisibleName } from "./player-name.ts";
 import { championshipRatingCeiling, PLAYER_RATING } from "./player-rating.ts";
 
@@ -27,13 +27,30 @@ export type EventRatingPreviewRow = {
 	isMvp: boolean;
 };
 
+export function previewRatingTos(
+	preview: readonly EventRatingPreviewRow[] | false | null | undefined,
+): number[] {
+	if (!preview) {
+		return [];
+	}
+
+	return preview.map((row) => row.to);
+}
+
+function signedUnit(value: number): number {
+	if (value < 0) {
+		return -1;
+	}
+
+	return 1;
+}
+
 function roundAwayFromZero1(value: number): number {
 	if (!Number.isFinite(value)) {
 		return 0;
 	}
 
-	const sign = value < 0 ? -1 : 1;
-	return (sign * Math.round(Math.abs(value) * 10)) / 10;
+	return (signedUnit(value) * Math.round(Math.abs(value) * 10)) / 10;
 }
 
 function roundRatioToTenths(numerator: number, denominator: number): number {
@@ -41,10 +58,13 @@ function roundRatioToTenths(numerator: number, denominator: number): number {
 		return 0;
 	}
 
-	const sign = numerator * denominator < 0 ? -1 : 1;
 	const absN = Math.abs(numerator);
 	const absD = Math.abs(denominator);
-	return (sign * Math.floor((absN + absD / 2) / absD)) / 10;
+	return (
+		(signedUnit(numerator * denominator) *
+			Math.floor((absN + absD / 2) / absD)) /
+		10
+	);
 }
 
 export function eventRatingDrawPoints(draws: number, losses: number): number {
@@ -227,7 +247,6 @@ export function eventRatingPreview({
 	const ceiling = championshipRatingCeiling(
 		players.map((player) => player.rating),
 	);
-	const mvpBonus = eventMvpStarDelta();
 	const ids = presentPlayerIds ?? attendance.map((row) => row.player_id);
 
 	return ids.map((playerId) => {
@@ -244,7 +263,7 @@ export function eventRatingPreview({
 				stats?.matches ?? 0,
 				from,
 				ceiling,
-			) + (isMvp ? mvpBonus : 0),
+			) + eventMvpBonus(isMvp),
 		);
 
 		return {

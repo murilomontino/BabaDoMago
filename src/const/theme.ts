@@ -57,6 +57,16 @@ export function nextThemeMode(mode: ThemeMode): ThemeMode {
 	}
 }
 
+export function appearanceFromPreference(
+	prefersDark: boolean,
+): ThemeAppearance {
+	if (prefersDark) {
+		return THEME_APPEARANCE.dark;
+	}
+
+	return THEME_APPEARANCE.light;
+}
+
 export function resolveTheme(
 	mode: ThemeMode,
 	prefersDark: boolean,
@@ -67,7 +77,7 @@ export function resolveTheme(
 		case THEME_MODE.dark:
 			return THEME_APPEARANCE.dark;
 		case THEME_MODE.system:
-			return prefersDark ? THEME_APPEARANCE.dark : THEME_APPEARANCE.light;
+			return appearanceFromPreference(prefersDark);
 		default: {
 			const exhaustive: never = mode;
 			throw new Error(`Unhandled theme mode: ${exhaustive}`);

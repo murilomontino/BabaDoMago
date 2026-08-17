@@ -4,14 +4,18 @@ import type {
 } from "../types/championship-event.ts";
 import { CHAMPIONSHIP_EVENT } from "./championship-event.ts";
 import {
+	applyMatchClockAction,
 	canConfirmMatchTeams,
 	clampMatchDurationMinutes,
+	compareStartersBeforeSubstitutes,
 	EVENT_GOAL_KIND,
 	EVENT_GOAL_LABEL,
 	EVENT_MATCH_CLOCK_LABEL,
 	EVENT_MATCH_DURATION,
 	EVENT_MATCH_END_INTENT,
 	EVENT_MATCH_END_LABEL,
+	EVENT_MATCH_ICON,
+	EVENT_MATCH_ICON_LEGEND,
 	EVENT_MATCH_LABEL,
 	EVENT_MATCH_REOPEN_LABEL,
 	EVENT_MATCH_STATUS,
@@ -27,12 +31,19 @@ import {
 	formatMatchScore,
 	isMatchSlotGoalkeeper,
 	isOpenMatch,
+	keepLocalMatchClock,
 	lastMatchGoal,
+	MATCH_CLOCK_ACTION,
+	MATCH_CLOCK_DEBUG_ENV,
+	MATCH_CLOCK_DEBUG_LABEL,
+	MATCH_CLOCK_STORAGE_KEY,
 	matchAssistCandidates,
 	matchBenchPlayerIds,
 	matchClockElapsedSeconds,
 	matchClockIsPaused,
 	matchClockIsStarted,
+	matchClockNowMs,
+	matchClockSnapshotFromFields,
 	matchDurationSeconds,
 	matchEndWinnerLabel,
 	matchGoalForTeamA,
@@ -46,8 +57,11 @@ import {
 	matchTeamSlots,
 	matchTeamStarName,
 	matchWinnerColor,
+	matchWinnerTeam,
 	matchWinnerTeamId,
+	mergeMatchClock,
 	openEventMatch,
+	shouldStartEventMatch,
 	sortBenchForSlot,
 	toggleMatchTeamSelection,
 } from "./championship-event-match.ts";
@@ -60,6 +74,22 @@ function check(actual: unknown, expected: unknown, message: string): void {
 		);
 	}
 }
+
+check(
+	compareStartersBeforeSubstitutes(
+		{ is_substituted: false, slot: 2 },
+		{ is_substituted: true, slot: 1 },
+	) < 0,
+	true,
+	"starters before substitutes",
+);
+check(matchClockNowMs(true, 42), 42, "ticking uses sample");
+check(
+	matchWinnerTeam(null, new Map([[1, "a"]])),
+	null,
+	"draw has no winner team",
+);
+check(matchWinnerTeam(1, new Map([[1, "a"]])), "a", "looks up winner team");
 
 function player(
 	overrides: Partial<ChampionshipEventMatchPlayer> &
@@ -88,6 +118,7 @@ function goal(
 		match_id: 1,
 		event_id: 1,
 		assist_player_id: overrides.assist_player_id ?? null,
+		elapsed_seconds: null,
 		created_at: "2026-08-13T00:00:00Z",
 		...overrides,
 	};
@@ -106,6 +137,9 @@ const open = { id: 2, ended_at: null };
 const ended = { id: 1, ended_at: "x" };
 check(openEventMatch([ended, open])?.id, 2, "finds open");
 check(openEventMatch([ended]), null, "no open");
+check(shouldStartEventMatch([ended, open]), false, "open skips create");
+check(shouldStartEventMatch([ended]), true, "ended starts new");
+check(shouldStartEventMatch([]), true, "empty starts new");
 
 const slots = matchTeamSlots(
 	[
@@ -379,6 +413,27 @@ const timeline = matchGoalTimeline([
 	}),
 ]);
 check(timeline.map((item) => item.id).join(","), "1,3,2", "timeline order");
+const elapsedTimeline = matchGoalTimeline([
+	goal({
+		id: 2,
+		scorer_player_id: 2,
+		is_own_goal: false,
+		elapsed_seconds: 90,
+		created_at: "2026-08-13T00:00:01Z",
+	}),
+	goal({
+		id: 1,
+		scorer_player_id: 1,
+		is_own_goal: false,
+		elapsed_seconds: 30,
+		created_at: "2026-08-13T00:00:02Z",
+	}),
+]);
+check(
+	elapsedTimeline.map((item) => item.id).join(","),
+	"1,2",
+	"timeline elapsed order",
+);
 check(
 	matchGoalForTeamA(goal({ scorer_player_id: 1, is_own_goal: false }), teamA),
 	true,
@@ -427,6 +482,26 @@ check(
 	"timeline own goal",
 );
 check(EVENT_GOAL_LABEL.ownGoalShort, "Contra", "own goal short");
+check(
+	EVENT_MATCH_ICON_LEGEND[0]?.id,
+	EVENT_MATCH_ICON.goalkeeper,
+	"legend gk id",
+);
+check(EVENT_MATCH_ICON_LEGEND[0]?.label, "Goleiro", "legend gk");
+check(EVENT_MATCH_ICON_LEGEND[1]?.id, EVENT_MATCH_ICON.goal, "legend goal id");
+check(EVENT_MATCH_ICON_LEGEND[1]?.label, "Gol", "legend goal");
+check(
+	EVENT_MATCH_ICON_LEGEND[2]?.id,
+	EVENT_MATCH_ICON.assist,
+	"legend assist id",
+);
+check(EVENT_MATCH_ICON_LEGEND[2]?.label, "Assistência", "legend assist");
+check(
+	EVENT_MATCH_ICON_LEGEND[3]?.id,
+	EVENT_MATCH_ICON.ownGoal,
+	"legend own id",
+);
+check(EVENT_MATCH_ICON_LEGEND[3]?.label, "Gol contra", "legend own");
 check(lastMatchGoal(timeline)?.id, 2, "last goal");
 check(lastMatchGoal([]), null, "empty last goal");
 check(matchEndWinnerLabel(10, 10, "A", "B"), "A", "end winner a");
@@ -502,6 +577,10 @@ check(formatMatchClock(65), "01:05", "clock 65");
 check(formatMatchClock(420), "07:00", "clock 7min");
 check(EVENT_MATCH_CLOCK_LABEL.start, "Iniciar", "start label");
 check(EVENT_MATCH_CLOCK_LABEL.pause, "Pausar", "pause label");
+check(MATCH_CLOCK_STORAGE_KEY, "babaDoMago-match-clock", "clock storage key");
+check(MATCH_CLOCK_DEBUG_ENV.key, "VITE_MATCH_CLOCK_DEBUG", "clock debug env");
+check(MATCH_CLOCK_DEBUG_ENV.on, "true", "clock debug on");
+check(MATCH_CLOCK_DEBUG_LABEL.empty, "Fila vazia.", "clock debug empty");
 check(matchClockElapsedSeconds(clockBase, startMs), 0, "elapsed at start");
 check(
 	matchClockElapsedSeconds(clockBase, startMs + 10_000),
@@ -567,6 +646,83 @@ check(
 	}),
 	true,
 	"is started",
+);
+
+const seeded = matchClockSnapshotFromFields(clockBase);
+check(
+	keepLocalMatchClock(undefined, clockBase).started_at,
+	clockBase.started_at,
+	"seed when store empty",
+);
+check(
+	keepLocalMatchClock(seeded, {
+		started_at: null,
+		paused_at: null,
+		pause_accumulated_seconds: 0,
+	}).started_at,
+	seeded.started_at,
+	"keep local clock",
+);
+const pausedLocal = applyMatchClockAction(
+	seeded,
+	MATCH_CLOCK_ACTION.pause,
+	startMs + 10_000,
+);
+check(pausedLocal.pending.join(","), MATCH_CLOCK_ACTION.pause, "pause pending");
+check(
+	matchClockElapsedSeconds(
+		mergeMatchClock(clockBase, pausedLocal),
+		startMs + 60_000,
+	),
+	10,
+	"local pause freezes elapsed",
+);
+const resumedLocal = applyMatchClockAction(
+	pausedLocal,
+	MATCH_CLOCK_ACTION.resume,
+	startMs + 25_000,
+);
+check(resumedLocal.paused_at, null, "resume clears pause");
+check(resumedLocal.pause_accumulated_seconds, 15, "resume accumulates pause");
+check(
+	matchClockElapsedSeconds(
+		mergeMatchClock(clockBase, resumedLocal),
+		startMs + 40_000,
+	),
+	25,
+	"resume excludes paused time",
+);
+check(
+	applyMatchClockAction(pausedLocal, MATCH_CLOCK_ACTION.pause, startMs + 20_000)
+		.pending.length,
+	1,
+	"pause noop skips pending",
+);
+const startedLocal = applyMatchClockAction(
+	matchClockSnapshotFromFields({
+		started_at: null,
+		paused_at: null,
+		pause_accumulated_seconds: 0,
+	}),
+	MATCH_CLOCK_ACTION.start,
+	startMs,
+);
+check(startedLocal.started_at, clockBase.started_at, "start stamps now");
+check(
+	mergeMatchClock(
+		{ ...clockBase, started_at: "2026-08-14T12:00:05.000Z" },
+		startedLocal,
+	).started_at,
+	clockBase.started_at,
+	"merge prefers local",
+);
+check(
+	mergeMatchClock(
+		{ ...clockBase, ended_at: "2026-08-14T12:01:00.000Z" },
+		pausedLocal,
+	).paused_at,
+	null,
+	"ended ignores local",
 );
 
 console.log("championship-event-match ok");

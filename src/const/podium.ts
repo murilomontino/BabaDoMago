@@ -1,6 +1,7 @@
 import type { ChampionshipPlayer } from "../types/championship.ts";
 import type { ChampionshipEvent } from "../types/championship-event.ts";
 import { CHAMPIONSHIP_EVENT } from "./championship-event.ts";
+import { mvpCount } from "./event-mvp.ts";
 import { playerVisibleName } from "./player-name.ts";
 import {
 	formatRosterCount,
@@ -35,11 +36,10 @@ export const PODIUM_LABEL = {
 	tab: "Pódio",
 	metric: "Métrica",
 	synergy: "Sinergia",
+	assistedGoals: "O mais servido",
 	emptyPlayers: "Nenhum jogador ainda",
 	emptyStats: "Nenhuma estatística ainda",
 } as const;
-
-export const PODIUM_SEASON_YEAR = 2026;
 
 export const PODIUM_SEMESTER = {
 	first: "first",
@@ -55,7 +55,7 @@ export const PODIUM_SEMESTER_MONTHS = {
 } as const;
 
 export const PODIUM_FILTER_LABEL = {
-	season: `Temporada ${PODIUM_SEASON_YEAR}`,
+	seasonPrefix: "Temporada",
 	[PODIUM_SEMESTER.first]: "Primeiro Semestre",
 	[PODIUM_SEMESTER.second]: "Segundo Semestre",
 	currentMonth: "Mês atual",
@@ -122,6 +122,10 @@ export function podiumMetricLabel(metric: PodiumMetricId): string {
 		return PODIUM_LABEL.synergy;
 	}
 
+	if (metric === ROSTER_COLUMN.assisted_goals) {
+		return PODIUM_LABEL.assistedGoals;
+	}
+
 	return ROSTER_COLUMN_LABEL[metric];
 }
 
@@ -135,6 +139,14 @@ export const PODIUM_PLAYER_METRIC_OPTIONS = PODIUM_PLAYER_METRICS.map((id) => ({
 	label: podiumMetricLabel(id),
 }));
 
+export function podiumMetricOptions(includeSynergy: boolean) {
+	if (includeSynergy) {
+		return PODIUM_METRIC_OPTIONS;
+	}
+
+	return PODIUM_PLAYER_METRIC_OPTIONS;
+}
+
 export const PODIUM_STAND_HEIGHT = {
 	[PODIUM_PLACE.first]: 148,
 	[PODIUM_PLACE.second]: 108,
@@ -146,6 +158,28 @@ export const PODIUM_ANIMATION_DELAY = {
 	[PODIUM_PLACE.second]: 0.12,
 	[PODIUM_PLACE.third]: 0,
 } as const;
+
+export function podiumEnterDelay(
+	reduceMotion: boolean | null,
+	place: PodiumPlace,
+): number {
+	if (reduceMotion) {
+		return 0;
+	}
+
+	return PODIUM_ANIMATION_DELAY[place];
+}
+
+export function podiumEnterInitialHeight(
+	reduceMotion: boolean | null,
+	height: number,
+): { height: number } {
+	if (reduceMotion) {
+		return { height };
+	}
+
+	return { height: 0 };
+}
 
 export const PODIUM_CONFETTI = {
 	particleCount: 80,
@@ -255,6 +289,80 @@ function eventLocalYearMonth(startsAt: string): EventLocalYearMonth | null {
 	}
 
 	return { year, month };
+}
+
+export function podiumSeasonLabel(year: number): string {
+	return `${PODIUM_FILTER_LABEL.seasonPrefix} ${year}`;
+}
+
+export function podiumEventYear(startsAt: string): number | null {
+	return eventLocalYearMonth(startsAt)?.year ?? null;
+}
+
+export function podiumAvailableYears(
+	events: readonly { starts_at: string }[],
+): number[] {
+	const years = new Set(
+		events.flatMap((event) => {
+			const year = podiumEventYear(event.starts_at);
+			if (year === null) {
+				return [];
+			}
+
+			return [year];
+		}),
+	);
+
+	return [...years].sort((left, right) => right - left);
+}
+
+export function podiumDefaultYear(
+	events: readonly { starts_at: string }[],
+	now = new Date(),
+): number {
+	const latest = podiumAvailableYears(events)[0];
+	if (latest !== undefined) {
+		return latest;
+	}
+
+	return podiumEventYear(now.toISOString()) ?? 0;
+}
+
+export function parsePodiumYear(
+	value: number,
+	availableYears: readonly number[],
+): number | null {
+	if (!Number.isInteger(value)) {
+		return null;
+	}
+
+	if (!availableYears.includes(value)) {
+		return null;
+	}
+
+	return value;
+}
+
+export function resolvePodiumYear(
+	events: readonly { starts_at: string }[],
+	requestedYear: number | null,
+	now = new Date(),
+): number {
+	const available = podiumAvailableYears(events);
+	const fallback = podiumDefaultYear(events, now);
+	if (requestedYear === null) {
+		return fallback;
+	}
+
+	if (available.length === 0) {
+		if (requestedYear === fallback) {
+			return requestedYear;
+		}
+
+		return fallback;
+	}
+
+	return parsePodiumYear(requestedYear, available) ?? fallback;
 }
 
 export function eventMatchesPodiumPeriod(
@@ -417,7 +525,7 @@ export function aggregatePodiumPlayersFromEvents(
 			acc.losses += row.losses;
 			acc.draws += row.draws;
 			acc.matches += row.matches;
-			acc.mvps += row.is_mvp ? 1 : 0;
+			acc.mvps += mvpCount(row.is_mvp);
 			byPlayerId.set(row.player_id, acc);
 		}
 	}

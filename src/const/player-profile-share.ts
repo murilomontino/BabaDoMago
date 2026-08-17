@@ -3,7 +3,7 @@ import {
 	CHAMPIONSHIP_ROLE_LABEL,
 	resolveChampionshipRole,
 } from "./championship-role.ts";
-import { playerVisibleName } from "./player-name.ts";
+import { legalNameIfDifferent, playerVisibleName } from "./player-name.ts";
 import {
 	PLAYER_PROFILE_LABEL,
 	type PlayerProfileHistoryRow,
@@ -106,6 +106,16 @@ export function playerProfileShareText(card: PlayerProfileShareCard): string {
 	return lines.join("\n");
 }
 
+function shareRoleLabel(player: ChampionshipPlayer, createdBy: string): string {
+	if (!player.user_id) {
+		return PLAYER_PROFILE_LABEL.noAccount;
+	}
+
+	return CHAMPIONSHIP_ROLE_LABEL[
+		resolveChampionshipRole(createdBy, player.user_id, player.role)
+	];
+}
+
 export function playerProfileShareCard(
 	player: ChampionshipPlayer,
 	career: RosterRow,
@@ -115,16 +125,12 @@ export function playerProfileShareCard(
 	nowIso: string,
 ): PlayerProfileShareCard {
 	const name = playerVisibleName(player);
-	const roleLabel = player.user_id
-		? CHAMPIONSHIP_ROLE_LABEL[
-				resolveChampionshipRole(createdBy, player.user_id, player.role)
-			]
-		: PLAYER_PROFILE_LABEL.noAccount;
+	const roleLabel = shareRoleLabel(player, createdBy);
 
 	return {
 		playerId: player.id,
 		name,
-		legalName: name === player.display_name ? null : player.display_name,
+		legalName: legalNameIfDifferent(name, player.display_name),
 		roleLabel,
 		championshipName,
 		rating: player.rating,

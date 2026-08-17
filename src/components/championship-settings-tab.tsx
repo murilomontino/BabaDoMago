@@ -10,7 +10,10 @@ import { SectionCard } from "@/components/section-card";
 import {
 	CHAMPIONSHIP_EVENT,
 	EVENT_CONFIG_LABEL,
+	EVENT_WEEKDAY_OPTIONS,
+	parseChampionshipLocation,
 	parseEventTime,
+	parseEventWeekday,
 } from "@/const/championship-event";
 import {
 	CHAMPIONSHIP_VISIBILITY,
@@ -29,6 +32,7 @@ import {
 	ERROR_CLASS,
 	FIELD_CLASS,
 } from "@/const/ui";
+import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 const DANGER_ROW_CLASS =
@@ -38,6 +42,8 @@ type ChampionshipSettingsTabProps = {
 	name: string;
 	createdBy: string;
 	eventTime: string;
+	eventWeekday: number | null;
+	location: string | null;
 	playersPerTeam: number;
 	skipGuestGoalkeeperMatches: boolean;
 	isVisible: boolean;
@@ -66,6 +72,8 @@ type ChampionshipSettingsTabProps = {
 	onRename: (name: string) => Promise<void>;
 	onUpdateEventConfig: (values: {
 		eventTime: string;
+		eventWeekday: number | null;
+		location: string | null;
 		playersPerTeam: number;
 		skipGuestGoalkeeperMatches: boolean;
 	}) => Promise<void>;
@@ -80,6 +88,8 @@ export function ChampionshipSettingsTab({
 	name,
 	createdBy,
 	eventTime,
+	eventWeekday,
+	location,
 	playersPerTeam,
 	skipGuestGoalkeeperMatches,
 	isVisible,
@@ -189,6 +199,8 @@ export function ChampionshipSettingsTab({
 							<Formik
 								initialValues={{
 									eventTime,
+									eventWeekday: eventWeekday ?? "",
+									location: location ?? "",
 									playersPerTeam,
 									skipGuestGoalkeeperMatches,
 								}}
@@ -197,6 +209,8 @@ export function ChampionshipSettingsTab({
 								onSubmit={async (values) => {
 									await onUpdateEventConfig({
 										eventTime: parseEventTime(values.eventTime),
+										eventWeekday: parseEventWeekday(values.eventWeekday),
+										location: parseChampionshipLocation(values.location),
 										playersPerTeam: Number(values.playersPerTeam),
 										skipGuestGoalkeeperMatches:
 											values.skipGuestGoalkeeperMatches,
@@ -204,6 +218,28 @@ export function ChampionshipSettingsTab({
 								}}
 							>
 								<Form className="space-y-3">
+									<label
+										htmlFor="championship-event-weekday"
+										className="block text-sm font-medium text-fg-muted"
+									>
+										{EVENT_CONFIG_LABEL.eventWeekday}
+										<Field
+											id="championship-event-weekday"
+											as="select"
+											name="eventWeekday"
+											className={`mt-1 ${FIELD_CLASS}`}
+										>
+											<option value="">
+												{EVENT_CONFIG_LABEL.eventWeekdayNone}
+											</option>
+											{EVENT_WEEKDAY_OPTIONS.map((option) => (
+												<option key={option.value} value={option.value}>
+													{option.label}
+												</option>
+											))}
+										</Field>
+									</label>
+									<FormError name="eventWeekday" />
 									<label
 										htmlFor="championship-event-time"
 										className="block text-sm font-medium text-fg-muted"
@@ -217,6 +253,21 @@ export function ChampionshipSettingsTab({
 										/>
 									</label>
 									<FormError name="eventTime" />
+									<label
+										htmlFor="championship-location"
+										className="block text-sm font-medium text-fg-muted"
+									>
+										{EVENT_CONFIG_LABEL.location}
+										<Field
+											id="championship-location"
+											name="location"
+											type="text"
+											maxLength={CHAMPIONSHIP_EVENT.locationMaxLength}
+											placeholder="Society do parque, campo 2"
+											className={`mt-1 ${FIELD_CLASS}`}
+										/>
+									</label>
+									<FormError name="location" />
 									<label
 										htmlFor="championship-players-per-team"
 										className="block text-sm font-medium text-fg-muted"
@@ -290,7 +341,7 @@ export function ChampionshipSettingsTab({
 					onReactivate={onReactivate}
 					removingPlayerId={removingPlayerId}
 					removeError={removeError}
-					onRemove={canRemove ? onRemove : undefined}
+					onRemove={handlerWhenAllowed(canRemove, onRemove)}
 				/>
 			)}
 			{showDangerZone && (

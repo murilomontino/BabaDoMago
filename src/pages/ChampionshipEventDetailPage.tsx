@@ -14,11 +14,13 @@ import {
 } from "@/const/championship-event";
 import {
 	CHAMPIONSHIP_ROLE,
+	canInvite,
 	canManageEvent,
 	canOverrideEndedEvent,
 	canSetEventMvp,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
+import { CHAMPIONSHIP_TAB } from "@/const/championship-tab";
 import { ROUTES } from "@/const/routes";
 import { SKELETON_LABEL, SKELETON_TEAM_CARDS } from "@/const/skeleton";
 import { ERROR_CLASS } from "@/const/ui";
@@ -26,19 +28,28 @@ import { useAuth } from "@/contexts/auth";
 import {
 	useAddChampionshipEventTeam,
 	useChampionshipEvent,
+	useChampionshipEventRealtime,
 	useChampionshipEvents,
 	useDeleteChampionshipEvent,
 	useDeleteChampionshipEventMatch,
 	useDeleteChampionshipEventTeam,
 	useEndChampionshipEvent,
+	useEnsureChampionshipEventAttendancePlayer,
+	usePromoteChampionshipEventRsvpGoing,
 	useReopenChampionshipEventMatch,
 	useSaveChampionshipEventAttendance,
 	useSaveChampionshipEventAttendanceStats,
 	useSaveChampionshipEventTeams,
 	useSetChampionshipEventMvps,
 	useUpdateChampionshipEventTeam,
+	useUpsertChampionshipEventRsvp,
 } from "@/hooks/championships/use-championship-events";
-import { useChampionship } from "@/hooks/championships/use-championships";
+import {
+	useAddManualPlayer,
+	useChampionship,
+} from "@/hooks/championships/use-championships";
+import { mutationErrorMessage } from "@/lib/error-message";
+import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
 
 export function ChampionshipEventDetailPage() {
 	const { championshipId: championshipIdParam, eventId: eventIdParam } =
@@ -54,6 +65,10 @@ export function ChampionshipEventDetailPage() {
 	const eventsQuery = useChampionshipEvents(championshipId);
 	const saveTeams = useSaveChampionshipEventTeams(championshipId);
 	const saveAttendance = useSaveChampionshipEventAttendance(championshipId);
+	const ensureAttendance =
+		useEnsureChampionshipEventAttendancePlayer(championshipId);
+	const upsertRsvp = useUpsertChampionshipEventRsvp(championshipId);
+	const promoteRsvp = usePromoteChampionshipEventRsvpGoing(championshipId);
 	const saveAttendanceStats =
 		useSaveChampionshipEventAttendanceStats(championshipId);
 	const addTeam = useAddChampionshipEventTeam(championshipId);
@@ -64,6 +79,8 @@ export function ChampionshipEventDetailPage() {
 	const endEvent = useEndChampionshipEvent(championshipId);
 	const setMvps = useSetChampionshipEventMvps(championshipId);
 	const deleteEvent = useDeleteChampionshipEvent(championshipId);
+	const addPlayer = useAddManualPlayer(championshipId);
+	useChampionshipEventRealtime(championshipId, eventId);
 	const attendanceCounts = useMemo(
 		() => countPlayerAttendance(eventsQuery.data ?? []),
 		[eventsQuery.data],
@@ -132,37 +149,44 @@ export function ChampionshipEventDetailPage() {
 				championshipName={championship?.name ?? ""}
 				players={activePlayers}
 				attendanceCounts={attendanceCounts}
+				seedEvents={eventsQuery.data ?? []}
+				currentPlayerId={currentPlayer?.id ?? null}
 				canManage={canManage}
 				canOverrideEnded={canOverrideEnded}
 				canSetMvp={canSetMvp}
 				savingTeams={saveTeams.isPending}
-				saveTeamsError={saveTeams.isError ? saveTeams.error.message : null}
+				saveTeamsError={mutationErrorMessage(saveTeams)}
 				savingAttendance={saveAttendance.isPending}
-				saveAttendanceError={
-					saveAttendance.isError ? saveAttendance.error.message : null
-				}
+				saveAttendanceError={mutationErrorMessage(saveAttendance)}
+				ensuringAttendance={ensureAttendance.isPending}
+				ensureAttendanceError={mutationErrorMessage(ensureAttendance)}
+				savingRsvp={upsertRsvp.isPending}
+				rsvpError={mutationErrorMessage(upsertRsvp)}
+				promotingRsvp={promoteRsvp.isPending}
+				promoteRsvpError={mutationErrorMessage(promoteRsvp)}
 				savingAttendanceStats={saveAttendanceStats.isPending}
-				saveAttendanceStatsError={
-					saveAttendanceStats.isError ? saveAttendanceStats.error.message : null
-				}
+				saveAttendanceStatsError={mutationErrorMessage(saveAttendanceStats)}
 				addingTeam={addTeam.isPending}
-				addTeamError={addTeam.isError ? addTeam.error.message : null}
+				addTeamError={mutationErrorMessage(addTeam)}
 				updatingTeam={updateTeam.isPending}
-				updateTeamError={updateTeam.isError ? updateTeam.error.message : null}
+				updateTeamError={mutationErrorMessage(updateTeam)}
 				deletingTeam={deleteTeam.isPending}
-				deleteTeamError={deleteTeam.isError ? deleteTeam.error.message : null}
+				deleteTeamError={mutationErrorMessage(deleteTeam)}
 				deletingMatch={deleteMatch.isPending}
-				deleteMatchError={
-					deleteMatch.isError ? deleteMatch.error.message : null
-				}
+				deleteMatchError={mutationErrorMessage(deleteMatch)}
 				openingMatch={reopenMatch.isPending}
-				openMatchError={reopenMatch.isError ? reopenMatch.error.message : null}
+				openMatchError={mutationErrorMessage(reopenMatch)}
 				ending={endEvent.isPending}
-				endError={endEvent.isError ? endEvent.error.message : null}
+				endError={mutationErrorMessage(endEvent)}
 				settingMvp={setMvps.isPending}
-				setMvpError={setMvps.isError ? setMvps.error.message : null}
+				setMvpError={mutationErrorMessage(setMvps)}
 				deleting={deleteEvent.isPending}
-				deleteError={deleteEvent.isError ? deleteEvent.error.message : null}
+				deleteError={mutationErrorMessage(deleteEvent)}
+				isAddingPlayer={addPlayer.isPending}
+				addPlayerError={mutationErrorMessage(addPlayer)}
+				onAddPlayer={handlerWhenAllowed(canInvite(actorRole), async (values) =>
+					addPlayer.mutateAsync(values),
+				)}
 				onSaveTeams={async ({
 					presentPlayerIds,
 					teams,
@@ -181,6 +205,21 @@ export function ChampionshipEventDetailPage() {
 						presentPlayerIds,
 						goalkeeperPlayerIds,
 					});
+				}}
+				onEnsureAttendance={async (playerId) => {
+					await ensureAttendance.mutateAsync({
+						eventId: event.id,
+						playerId,
+					});
+				}}
+				onUpsertRsvp={async (status) => {
+					await upsertRsvp.mutateAsync({
+						eventId: event.id,
+						status,
+					});
+				}}
+				onPromoteRsvpGoing={async () => {
+					await promoteRsvp.mutateAsync(event.id);
 				}}
 				onSaveAttendanceStats={async (stats) => {
 					await saveAttendanceStats.mutateAsync({
@@ -241,6 +280,7 @@ export function ChampionshipEventDetailPage() {
 					await navigate({
 						to: ROUTES.championship,
 						params: { championshipId: String(championshipId) },
+						search: { tab: CHAMPIONSHIP_TAB.events },
 					});
 				}}
 			/>

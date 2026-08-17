@@ -33,6 +33,53 @@ type ChampionshipPlayersRow = {
 export type Database = {
 	public: {
 		Tables: {
+			championship_audit_logs: {
+				Row: {
+					action: string;
+					actor_display_name: string;
+					actor_user_id: string | null;
+					after_data: Json | null;
+					before_data: Json | null;
+					championship_id: number;
+					created_at: string;
+					entity_id: number | null;
+					entity_type: string;
+					id: number;
+				};
+				Insert: {
+					action: string;
+					actor_display_name: string;
+					actor_user_id?: string | null;
+					after_data?: Json | null;
+					before_data?: Json | null;
+					championship_id: number;
+					created_at?: string;
+					entity_id?: number | null;
+					entity_type: string;
+					id?: number;
+				};
+				Update: {
+					action?: string;
+					actor_display_name?: string;
+					actor_user_id?: string | null;
+					after_data?: Json | null;
+					before_data?: Json | null;
+					championship_id?: number;
+					created_at?: string;
+					entity_id?: number | null;
+					entity_type?: string;
+					id?: number;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "championship_audit_logs_championship_id_fkey";
+						columns: ["championship_id"];
+						isOneToOne: false;
+						referencedRelation: "championships";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			championship_event_attendance: {
 				Row: {
 					assists: number;
@@ -104,6 +151,45 @@ export type Database = {
 					},
 					{
 						foreignKeyName: "championship_event_attendance_player_id_fkey";
+						columns: ["player_id"];
+						isOneToOne: false;
+						referencedRelation: "championship_players";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			championship_event_rsvp: {
+				Row: {
+					event_id: number;
+					id: number;
+					player_id: number;
+					status: string;
+					updated_at: string;
+				};
+				Insert: {
+					event_id: number;
+					id?: number;
+					player_id: number;
+					status: string;
+					updated_at?: string;
+				};
+				Update: {
+					event_id?: number;
+					id?: number;
+					player_id?: number;
+					status?: string;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "championship_event_rsvp_event_id_fkey";
+						columns: ["event_id"];
+						isOneToOne: false;
+						referencedRelation: "championship_events";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "championship_event_rsvp_player_id_fkey";
 						columns: ["player_id"];
 						isOneToOne: false;
 						referencedRelation: "championship_players";
@@ -219,6 +305,7 @@ export type Database = {
 				Row: {
 					assist_player_id: number | null;
 					created_at: string;
+					elapsed_seconds: number | null;
 					event_id: number;
 					id: number;
 					is_own_goal: boolean;
@@ -228,6 +315,7 @@ export type Database = {
 				Insert: {
 					assist_player_id?: number | null;
 					created_at?: string;
+					elapsed_seconds?: number | null;
 					event_id: number;
 					id?: number;
 					is_own_goal?: boolean;
@@ -237,6 +325,7 @@ export type Database = {
 				Update: {
 					assist_player_id?: number | null;
 					created_at?: string;
+					elapsed_seconds?: number | null;
 					event_id?: number;
 					id?: number;
 					is_own_goal?: boolean;
@@ -432,9 +521,11 @@ export type Database = {
 					created_by: string;
 					deleted_at: string | null;
 					event_time: string;
+					event_weekday: number | null;
 					id: number;
 					invite_code: string;
 					is_visible: boolean;
+					location: string | null;
 					logo_path: string | null;
 					name: string;
 					players_per_team: number;
@@ -445,9 +536,11 @@ export type Database = {
 					created_by?: string;
 					deleted_at?: string | null;
 					event_time?: string;
+					event_weekday?: number | null;
 					id?: number;
 					invite_code?: string;
 					is_visible?: boolean;
+					location?: string | null;
 					logo_path?: string | null;
 					name: string;
 					players_per_team?: number;
@@ -458,9 +551,11 @@ export type Database = {
 					created_by?: string;
 					deleted_at?: string | null;
 					event_time?: string;
+					event_weekday?: number | null;
 					id?: number;
 					invite_code?: string;
 					is_visible?: boolean;
+					location?: string | null;
 					logo_path?: string | null;
 					name?: string;
 					players_per_team?: number;
@@ -533,6 +628,7 @@ export type Database = {
 					scorer_player_id: number;
 					assist_player_id: number | null;
 					is_own_goal: boolean;
+					elapsed_seconds?: number | null;
 				};
 				Returns: Json;
 			};
@@ -583,6 +679,26 @@ export type Database = {
 			join_championship: {
 				Args: { invite_code: string };
 				Returns: Json;
+			};
+			list_championship_audit_logs: {
+				Args: {
+					p_championship_id: number;
+					p_action?: string | null;
+					p_before_id?: number | null;
+					p_page_size?: number;
+				};
+				Returns: {
+					action: string;
+					actor_display_name: string;
+					actor_user_id: string | null;
+					after_data: Json | null;
+					before_data: Json | null;
+					championship_id: number;
+					created_at: string;
+					entity_id: number | null;
+					entity_type: string;
+					id: number;
+				}[];
 			};
 			merge_championship_players: {
 				Args: { keep_player_id: number; absorb_player_id: number };
@@ -692,6 +808,26 @@ export type Database = {
 				};
 				Returns: Json;
 			};
+			ensure_championship_event_attendance_player: {
+				Args: {
+					event_id: number;
+					player_id: number;
+				};
+				Returns: Json;
+			};
+			upsert_championship_event_rsvp: {
+				Args: {
+					p_event_id: number;
+					p_status: string;
+				};
+				Returns: Json;
+			};
+			promote_championship_event_rsvp_going: {
+				Args: {
+					event_id: number;
+				};
+				Returns: Json;
+			};
 			save_championship_event_attendance_stats: {
 				Args: {
 					event_id: number;
@@ -751,7 +887,9 @@ export type Database = {
 					championship_id: number;
 					event_time: string;
 					players_per_team: number;
-					skip_guest_goalkeeper_matches: boolean;
+					skip_guest_goalkeeper_matches?: boolean;
+					event_weekday?: number | null;
+					location?: string | null;
 				};
 				Returns: Json;
 			};

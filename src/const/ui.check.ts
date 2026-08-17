@@ -1,4 +1,5 @@
 import {
+	ariaHiddenWhenUnlabelled,
 	BUTTON_CLASS,
 	BUTTON_ICON_CLASS,
 	BUTTON_VARIANT,
@@ -23,5 +24,7 @@ check(
 	buttonClassName(BUTTON_VARIANT.primary).includes(BUTTON_ICON_CLASS),
 	"button uses icon size",
 );
+check(ariaHiddenWhenUnlabelled(undefined) === true, "hidden without label");
+check(ariaHiddenWhenUnlabelled("Gol") === undefined, "labelled stays visible");
 
 console.log("ui ok");

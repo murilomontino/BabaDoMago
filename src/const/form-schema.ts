@@ -11,11 +11,26 @@ export const FORM_MESSAGE = {
 	ratingInvalid: "Nota inválida",
 	nicknameInvalid: "Apelido inválido",
 	eventTimeInvalid: "Hora inválida",
+	eventWeekdayInvalid: "Dia inválido",
+	locationInvalid: "Local inválido",
 	playersPerTeamInvalid: "Limite inválido",
 	eventDateRequired: "Informe a data",
 	teamRequired: "Selecione o time",
 	teamsDistinct: "Escolha dois times",
 } as const;
+
+export function blankToNull(value: unknown): string | null {
+	if (typeof value !== "string") {
+		return null;
+	}
+
+	const trimmed = value.trim();
+	if (trimmed.length === 0) {
+		return null;
+	}
+
+	return trimmed;
+}
 
 const ratingField = number()
 	.min(PLAYER_RATING.min, FORM_MESSAGE.ratingInvalid)
@@ -65,6 +80,27 @@ export const transferOwnerSchema = object({
 
 export const eventConfigFormSchema = object({
 	eventTime: eventTimeField,
+	eventWeekday: number()
+		.nullable()
+		.transform((_value, original) => {
+			if (original === "" || original === null || original === undefined) {
+				return null;
+			}
+
+			return Number(original);
+		})
+		.test("event-weekday", FORM_MESSAGE.eventWeekdayInvalid, (value) => {
+			if (value === null || value === undefined) {
+				return true;
+			}
+
+			return Number.isInteger(value) && value >= 1 && value <= 7;
+		}),
+	location: string()
+		.trim()
+		.max(CHAMPIONSHIP_EVENT.locationMaxLength, FORM_MESSAGE.locationInvalid)
+		.nullable()
+		.transform((_value, original) => blankToNull(original)),
 	playersPerTeam: number()
 		.integer(FORM_MESSAGE.playersPerTeamInvalid)
 		.min(
