@@ -34,6 +34,7 @@ import {
 	keepLocalMatchClock,
 	lastMatchGoal,
 	MATCH_CLOCK_ACTION,
+	MATCH_CLOCK_DEBUG_ENV,
 	MATCH_CLOCK_DEBUG_LABEL,
 	MATCH_CLOCK_STORAGE_KEY,
 	matchAssistCandidates,
@@ -577,6 +578,8 @@ check(formatMatchClock(420), "07:00", "clock 7min");
 check(EVENT_MATCH_CLOCK_LABEL.start, "Iniciar", "start label");
 check(EVENT_MATCH_CLOCK_LABEL.pause, "Pausar", "pause label");
 check(MATCH_CLOCK_STORAGE_KEY, "babaDoMago-match-clock", "clock storage key");
+check(MATCH_CLOCK_DEBUG_ENV.key, "VITE_MATCH_CLOCK_DEBUG", "clock debug env");
+check(MATCH_CLOCK_DEBUG_ENV.on, "true", "clock debug on");
 check(MATCH_CLOCK_DEBUG_LABEL.empty, "Fila vazia.", "clock debug empty");
 check(matchClockElapsedSeconds(clockBase, startMs), 0, "elapsed at start");
 check(

@@ -83,6 +83,11 @@ export type MatchClockAction =
 
 export const MATCH_CLOCK_STORAGE_KEY = "babaDoMago-match-clock" as const;
 
+export const MATCH_CLOCK_DEBUG_ENV = {
+	key: "VITE_MATCH_CLOCK_DEBUG",
+	on: "true",
+} as const;
+
 export const MATCH_CLOCK_DEBUG_LABEL = {
 	open: "Fila do cronômetro",
 	title: "Fila do cronômetro",

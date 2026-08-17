@@ -4,6 +4,7 @@ import { AppDialog } from "@/components/atoms/app-dialog";
 import { Button } from "@/components/button";
 import {
 	EVENT_MATCH_CLOCK_LABEL,
+	MATCH_CLOCK_DEBUG_ENV,
 	MATCH_CLOCK_DEBUG_LABEL,
 } from "@/const/championship-event-match";
 import { BUTTON_VARIANT, MODAL_CLASS } from "@/const/ui";
@@ -16,6 +17,13 @@ import {
 type MatchClockDebugProps = {
 	matchId: number;
 };
+
+export function isMatchClockDebugVisible(): boolean {
+	return (
+		import.meta.env.DEV &&
+		import.meta.env.VITE_MATCH_CLOCK_DEBUG === MATCH_CLOCK_DEBUG_ENV.on
+	);
+}
 
 function clockField(value: string | number | null): string {
 	if (value === null) {

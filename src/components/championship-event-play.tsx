@@ -17,7 +17,10 @@ import {
 	EventTeamRatingAverage,
 } from "@/components/event-team-player";
 import { GoalkeeperGlovesIcon } from "@/components/goalkeeper-gloves-icon";
-import { MatchClockDebug } from "@/components/match-clock-debug";
+import {
+	isMatchClockDebugVisible,
+	MatchClockDebug,
+} from "@/components/match-clock-debug";
 import {
 	MATCH_GOAL_TIMELINE_GRID_CLASS,
 	MatchGoalTimeline,
@@ -1277,7 +1280,7 @@ export function ChampionshipEventPlay({
 					}}
 				/>
 			)}
-			{import.meta.env.DEV && <MatchClockDebug matchId={match.id} />}
+			{isMatchClockDebugVisible() && <MatchClockDebug matchId={match.id} />}
 		</div>
 	);
 }
