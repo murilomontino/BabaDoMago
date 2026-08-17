@@ -71,6 +71,7 @@ import {
 	useReactivatePlayer,
 	useRemovePlayer,
 	useRenameChampionship,
+	useSetPlayerIsGoalkeeper,
 	useSetPlayerRole,
 	useTransferChampionshipOwner,
 	useUnlinkPlayer,
@@ -106,6 +107,7 @@ export function ChampionshipDetailPage() {
 	const updateEventConfig = useUpdateChampionshipEventConfig(championshipId);
 	const updateVisibility = useUpdateChampionshipVisibility(championshipId);
 	const setPlayerRole = useSetPlayerRole();
+	const setPlayerIsGoalkeeper = useSetPlayerIsGoalkeeper();
 	const deleteChampionship = useDeleteChampionship();
 	const transferOwner = useTransferChampionshipOwner();
 	const uploadLogo = useUploadChampionshipLogo(championshipId);
@@ -617,6 +619,11 @@ export function ChampionshipDetailPage() {
 							: null)
 					}
 					roleError={setPlayerRole.isError ? setPlayerRole.error.message : null}
+					goalkeeperError={
+						setPlayerIsGoalkeeper.isError
+							? setPlayerIsGoalkeeper.error.message
+							: null
+					}
 					unlinkingPlayerId={
 						unlinkPlayer.isPending ? (unlinkPlayer.variables ?? null) : null
 					}
@@ -656,6 +663,9 @@ export function ChampionshipDetailPage() {
 					onChangeRole={(playerId, role: AssignableChampionshipRole) =>
 						setPlayerRole.mutate({ playerId, role })
 					}
+					onChangeGoalkeeper={(playerId, isGoalkeeper) => {
+						setPlayerIsGoalkeeper.mutate({ playerId, isGoalkeeper });
+					}}
 					onUnlink={handleUnlink}
 					onMerge={handleMerge}
 					onDeactivate={handleDeactivate}

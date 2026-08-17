@@ -301,6 +301,20 @@ export function isMatchSlotGoalkeeper(slot: number): boolean {
 	return slot === 0;
 }
 
+export function sortBenchForSlot<T extends { id: number }>(
+	players: readonly T[],
+	slot: number,
+	isGoalkeeper: (playerId: number) => boolean,
+): T[] {
+	if (!isMatchSlotGoalkeeper(slot)) {
+		return [...players];
+	}
+
+	const goalkeepers = players.filter((player) => isGoalkeeper(player.id));
+	const others = players.filter((player) => !isGoalkeeper(player.id));
+	return [...goalkeepers, ...others];
+}
+
 export function matchSlotCount(playersPerTeam: number): number {
 	if (playersPerTeam < CHAMPIONSHIP_EVENT.playersPerTeamMin) {
 		return CHAMPIONSHIP_EVENT.playersPerTeamMin;

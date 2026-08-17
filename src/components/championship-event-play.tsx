@@ -27,6 +27,7 @@ import {
 	SoccerBallIcon,
 } from "@/components/soccer-ball-icon";
 import {
+	attendanceGoalkeeperIds,
 	EVENT_ACTION,
 	EVENT_TEAM_POSITION_LABEL,
 	eventTeamPlayerPosition,
@@ -53,6 +54,7 @@ import {
 	matchTeamSlots,
 	matchTeamStarName,
 	matchWinnerTeamId,
+	sortBenchForSlot,
 	toggleMatchTeamSelection,
 } from "@/const/championship-event-match";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
@@ -103,6 +105,7 @@ function fallbackPlayer(
 		avatar_url: null,
 		rating: 0,
 		role: CHAMPIONSHIP_ROLE.member,
+		is_goalkeeper: false,
 		deleted_at: null,
 		goals: 0,
 		assists: 0,
@@ -809,6 +812,9 @@ export function ChampionshipEventPlay({
 		const present = event.attendance.find((row) => row.player_id === playerId);
 		return resolvePlayer(playerId, present?.display_name ?? "", rosterById);
 	});
+	const volunteerGoalkeeperIds = new Set(
+		attendanceGoalkeeperIds(event.attendance),
+	);
 	const slotTitle = slotTarget
 		? matchTeamSlots(match.players, slotTarget.teamId, event.players_per_team)[
 				slotTarget.slot
@@ -1079,7 +1085,13 @@ export function ChampionshipEventPlay({
 			{slotTarget && (
 				<ChampionshipEventBenchModal
 					title={slotTitle}
-					players={benchPlayers}
+					players={sortBenchForSlot(
+						benchPlayers,
+						slotTarget.slot,
+						(playerId) =>
+							rosterById.get(playerId)?.is_goalkeeper === true ||
+							volunteerGoalkeeperIds.has(playerId),
+					)}
 					ceiling={ceiling}
 					isPending={savingPlayer}
 					errorMessage={playerError}

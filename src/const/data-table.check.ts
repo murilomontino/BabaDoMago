@@ -1,5 +1,7 @@
 import {
 	DATA_TABLE_MOBILE_PRIMARY,
+	DATA_TABLE_SORT,
+	dataTableDefaultDesc,
 	mobileTableCellAbbr,
 	splitMobileTableCells,
 } from "./data-table.ts";
@@ -55,3 +57,15 @@ check(
 	"abbr falls back to title",
 );
 check(mobileTableCellAbbr("unknown", []) === "", "abbr empty without title");
+
+check(DATA_TABLE_SORT.label === "Ordenar", "sort label");
+check(DATA_TABLE_SORT.none === "Padrão", "sort none");
+check(
+	dataTableDefaultDesc(DATA_TABLE_MOBILE_PRIMARY.player) === false,
+	"player sorts ascending",
+);
+check(dataTableDefaultDesc("goals") === true, "stats sort descending");
+check(
+	dataTableDefaultDesc(DATA_TABLE_MOBILE_PRIMARY.rating) === true,
+	"rating sorts descending",
+);

@@ -48,6 +48,7 @@ import {
 	matchWinnerColor,
 	matchWinnerTeamId,
 	openEventMatch,
+	sortBenchForSlot,
 	toggleMatchTeamSelection,
 } from "./championship-event-match.ts";
 import { EVENT_TEAM_COLOR } from "./event-team-color.ts";
@@ -223,6 +224,28 @@ check(matchWinnerColor(null, new Map()), null, "draw color");
 check(formatMatchScore(2, 1), "2 x 1", "score label");
 check(isMatchSlotGoalkeeper(0), true, "slot 0 gk");
 check(isMatchSlotGoalkeeper(1), false, "slot 1 field");
+check(
+	sortBenchForSlot(
+		[{ id: 1 }, { id: 2 }, { id: 3 }],
+		0,
+		(playerId) => playerId === 3 || playerId === 1,
+	)
+		.map((player) => player.id)
+		.join(","),
+	"1,3,2",
+	"slot 0 gk first",
+);
+check(
+	sortBenchForSlot(
+		[{ id: 1 }, { id: 2 }, { id: 3 }],
+		1,
+		(playerId) => playerId === 3,
+	)
+		.map((player) => player.id)
+		.join(","),
+	"1,2,3",
+	"field slot keeps order",
+);
 check(matchSlotCount(5), 5, "slot count");
 check(
 	matchSlotCount(CHAMPIONSHIP_EVENT.playersPerTeamMax + 1),

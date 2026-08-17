@@ -21,7 +21,7 @@ import {
 	CHAMPIONSHIP_ROLE_LABEL,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
-import { playerVisibleName } from "@/const/player-name";
+import { PLAYER_LABEL, playerVisibleName } from "@/const/player-name";
 import {
 	formatPlayerProfileDelta,
 	PLAYER_PROFILE_HISTORY_ABBR,
@@ -203,6 +203,9 @@ function PlayerProfileHeader({
 						<span className={ROLE_TAG_CLASS}>
 							{CHAMPIONSHIP_ROLE_LABEL[displayRole]}
 						</span>
+					)}
+					{player.is_goalkeeper && (
+						<span className={ROLE_TAG_CLASS}>{PLAYER_LABEL.goalkeeper}</span>
 					)}
 				</div>
 				<div className="ml-auto flex items-center gap-2">
@@ -574,7 +577,10 @@ export function ChampionshipPlayerDetail({
 									)}
 									ceiling={ceiling}
 								/>
-								<PlayerHistoryTable history={history} onOpenEvent={onOpenEvent} />
+								<PlayerHistoryTable
+									history={history}
+									onOpenEvent={onOpenEvent}
+								/>
 							</div>
 						)}
 					</SectionCard>

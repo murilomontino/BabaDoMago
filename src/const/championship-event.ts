@@ -1609,6 +1609,32 @@ export function keepGoalkeepersPresent(
 	return [...new Set(goalkeeperIds)].filter((id) => present.has(id));
 }
 
+export function defaultGoalkeeperIds(
+	players: readonly { id: number; is_goalkeeper: boolean }[],
+): number[] {
+	return players.flatMap((player) => (player.is_goalkeeper ? [player.id] : []));
+}
+
+export function eventGoalkeeperIds(
+	defaultIds: readonly number[],
+	attendanceIds: readonly number[],
+): number[] {
+	return [...new Set([...defaultIds, ...attendanceIds])];
+}
+
+export function setGoalkeeperSelection(
+	currentIds: readonly number[],
+	playerIds: readonly number[],
+	asGoalkeeper: boolean,
+): number[] {
+	if (asGoalkeeper) {
+		return [...new Set([...currentIds, ...playerIds])];
+	}
+
+	const visible = new Set(playerIds);
+	return currentIds.filter((id) => !visible.has(id));
+}
+
 export function attendanceGoalkeeperIds(
 	attendance: readonly { player_id: number; is_goalkeeper: boolean }[],
 ): number[] {

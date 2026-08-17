@@ -1,6 +1,7 @@
 import { ChevronDown } from "lucide-react";
 import { Skeleton } from "@/components/atoms/skeleton";
 import { TableLegend } from "@/components/molecules/table-legend";
+import { DATA_TABLE_SORT } from "@/const/data-table";
 import { PLAYER_SEARCH } from "@/const/player-search";
 import {
 	ROSTER_COLUMN_ABBR,
@@ -51,9 +52,17 @@ export function DataTableSkeleton({
 				</div>
 			)}
 			{withColumns && (
-				<div className="mb-3 inline-flex items-center gap-1 text-sm font-medium text-fg-muted">
-					Colunas
-					<ChevronDown className="size-4" />
+				<div className="mb-3 flex flex-wrap items-end gap-3">
+					<div className="inline-flex items-center gap-1 text-sm font-medium text-fg-muted">
+						Colunas
+						<ChevronDown className="size-4" />
+					</div>
+					<div className="ml-auto flex items-end gap-1">
+						<div className="block w-40 text-sm text-fg-muted">
+							{DATA_TABLE_SORT.label}
+							<div className={`mt-1 ${FIELD_CLASS}`} />
+						</div>
+					</div>
 				</div>
 			)}
 			<div className="mb-3">

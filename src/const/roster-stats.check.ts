@@ -118,6 +118,7 @@ const player: ChampionshipPlayer = {
 	avatar_url: null,
 	rating: 5,
 	role: "member",
+	is_goalkeeper: false,
 	deleted_at: null,
 	goals: 4,
 	assists: 2,

@@ -8,12 +8,27 @@ import {
 	CHAMPIONSHIP_ROLE_LABEL,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
+import {
+	PLAYER_KIND,
+	PLAYER_KIND_LABEL,
+	PLAYER_KIND_OPTIONS,
+	PLAYER_LABEL,
+	isGoalkeeperKind,
+	playerKindFromGoalkeeper,
+} from "@/const/player-name";
 import { PLAYER_PROFILE_LABEL } from "@/const/player-profile";
 import { MODAL_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 const ROLE_TAG_CLASS =
 	"mt-1 inline-flex rounded-full bg-pitch-soft px-2 py-0.5 text-xs font-medium text-pitch-fg";
+
+const KIND_SELECT_CLASS =
+	"mt-1 h-6 cursor-pointer rounded-full border-0 px-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-pitch/20";
+
+const KIND_SELECT_ON_CLASS = `${KIND_SELECT_CLASS} bg-pitch-soft text-pitch-fg`;
+
+const KIND_SELECT_OFF_CLASS = `${KIND_SELECT_CLASS} bg-surface-muted text-fg-muted`;
 
 const ROLE_PICKER = {
 	title: "Permissão",
@@ -23,12 +38,14 @@ export type RosterPlayerCellProps = {
 	player: ChampionshipPlayer;
 	createdBy: string;
 	onChangeRole?: (playerId: number, role: AssignableChampionshipRole) => void;
+	onChangeGoalkeeper?: (playerId: number, isGoalkeeper: boolean) => void;
 };
 
 export function RosterPlayerCell({
 	player,
 	createdBy,
 	onChangeRole,
+	onChangeGoalkeeper,
 }: RosterPlayerCellProps) {
 	const [open, setOpen] = useState(false);
 	const displayRole = resolveChampionshipRole(
@@ -37,6 +54,8 @@ export function RosterPlayerCell({
 		player.role,
 	);
 	const isChampionshipOwner = displayRole === CHAMPIONSHIP_ROLE.owner;
+	const selectedKind = playerKindFromGoalkeeper(player.is_goalkeeper);
+	const canEditGoalkeeper = Boolean(onChangeGoalkeeper && !player.deleted_at);
 	const canEditRole = Boolean(
 		onChangeRole && player.user_id && !isChampionshipOwner,
 	);
@@ -67,6 +86,40 @@ export function RosterPlayerCell({
 							<span className={ROLE_TAG_CLASS}>
 								{CHAMPIONSHIP_ROLE_LABEL[displayRole]}
 							</span>
+						)}
+						{canEditGoalkeeper && onChangeGoalkeeper && (
+							<select
+								aria-label={PLAYER_LABEL.player}
+								value={selectedKind}
+								className={
+									selectedKind === PLAYER_KIND.goalkeeper
+										? KIND_SELECT_ON_CLASS
+										: KIND_SELECT_OFF_CLASS
+								}
+								onChange={(event) => {
+									const nextKind =
+										event.target.value === PLAYER_KIND.goalkeeper
+											? PLAYER_KIND.goalkeeper
+											: PLAYER_KIND.player;
+									if (nextKind === selectedKind) {
+										return;
+									}
+
+									onChangeGoalkeeper(
+										player.id,
+										isGoalkeeperKind(nextKind),
+									);
+								}}
+							>
+								{PLAYER_KIND_OPTIONS.map((option) => (
+									<option key={option} value={option}>
+										{PLAYER_KIND_LABEL[option]}
+									</option>
+								))}
+							</select>
+						)}
+						{!canEditGoalkeeper && player.is_goalkeeper && (
+							<span className={ROLE_TAG_CLASS}>{PLAYER_LABEL.goalkeeper}</span>
 						)}
 					</>
 				}

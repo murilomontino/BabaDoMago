@@ -41,6 +41,7 @@ export const addPlayerFormSchema = object({
 			(value) => parsePlayerNameList(value ?? "").length > 0,
 		),
 	rating: ratingField,
+	isGoalkeeper: boolean().required(),
 });
 
 export const playerRatingSchema = object({

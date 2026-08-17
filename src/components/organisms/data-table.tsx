@@ -9,15 +9,21 @@ import {
 	tableFeatures,
 	useTable,
 } from "@tanstack/react-table";
+import { ArrowDownWideNarrow, ArrowUpNarrowWide } from "lucide-react";
+import { useId } from "react";
 import { SortableHeader } from "@/components/atoms/sortable-header";
 import { ColumnVisibilityPanel } from "@/components/molecules/column-visibility-panel";
 import { TableLegend } from "@/components/molecules/table-legend";
 import {
 	DATA_TABLE_MOBILE_ACTIONS,
 	DATA_TABLE_MOBILE_PRIMARY,
+	DATA_TABLE_SORT,
+	dataTableDefaultDesc,
 	mobileTableCellAbbr,
 	splitMobileTableCells,
 } from "@/const/data-table";
+import { TOOLTIP_ID } from "@/const/tooltip";
+import { BUTTON_ICON_CLASS, FIELD_CLASS } from "@/const/ui";
 
 const TABLE_CELL_ALIGN = {
 	left: "text-left",
@@ -76,6 +82,7 @@ export function DataTable<TData extends RowData>({
 	onRowClick,
 	getRowClassName,
 }: DataTableProps<TData>) {
+	const sortSelectId = useId();
 	const table = useTable(
 		{
 			features: dataTableFeatures,
@@ -119,9 +126,79 @@ export function DataTable<TData extends RowData>({
 		return [{ abbr: item.abbr, label: item.label }];
 	});
 
+	const sortableColumns = table
+		.getAllLeafColumns()
+		.filter((column) => column.getCanSort());
+	const activeSort = table.state.sorting[0];
+	const sortDirectionLabel = activeSort?.desc
+		? DATA_TABLE_SORT.desc
+		: DATA_TABLE_SORT.asc;
+
 	return (
 		<div>
-			<ColumnVisibilityPanel items={visibilityItems} />
+			{(visibilityItems.length > 0 || sortableColumns.length > 0) && (
+				<div className="mb-3 flex flex-wrap items-end gap-3">
+					<ColumnVisibilityPanel items={visibilityItems} />
+					{sortableColumns.length > 0 && (
+						<div className="ml-auto flex items-end gap-1">
+							<label
+								htmlFor={sortSelectId}
+								className="block w-40 text-sm text-fg-muted"
+							>
+								{DATA_TABLE_SORT.label}
+								<select
+									id={sortSelectId}
+									value={activeSort?.id ?? ""}
+									className={`mt-1 ${FIELD_CLASS}`}
+									onChange={(event) => {
+										const columnId = event.target.value;
+										if (!columnId) {
+											table.setSorting([]);
+											return;
+										}
+
+										table.setSorting([
+											{
+												id: columnId,
+												desc: dataTableDefaultDesc(columnId),
+											},
+										]);
+									}}
+								>
+									<option value="">{DATA_TABLE_SORT.none}</option>
+									{sortableColumns.map((column) => (
+										<option key={column.id} value={column.id}>
+											{column.columnDef.meta?.title ?? column.id}
+										</option>
+									))}
+								</select>
+							</label>
+							{activeSort && (
+								<button
+									type="button"
+									aria-label={sortDirectionLabel}
+									data-tooltip-id={TOOLTIP_ID}
+									data-tooltip-content={sortDirectionLabel}
+									className={`inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-muted hover:text-fg ${BUTTON_ICON_CLASS}`}
+									onClick={() => {
+										table.setSorting([
+											{
+												id: activeSort.id,
+												desc: !activeSort.desc,
+											},
+										]);
+									}}
+								>
+									{activeSort.desc && (
+										<ArrowDownWideNarrow className="size-4" />
+									)}
+									{!activeSort.desc && <ArrowUpNarrowWide className="size-4" />}
+								</button>
+							)}
+						</div>
+					)}
+				</div>
+			)}
 			<div className="mb-3">
 				<TableLegend items={legend} />
 			</div>

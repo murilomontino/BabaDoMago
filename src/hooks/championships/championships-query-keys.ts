@@ -1,4 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
+import type { ChampionshipWithPlayers } from "@/types/championship";
 
 export const CHAMPIONSHIPS_QUERY_KEY = ["championships"] as const;
 
@@ -26,4 +27,21 @@ export async function invalidateChampionshipEventQueries(
 	await queryClient.invalidateQueries({
 		queryKey: CHAMPIONSHIP_EVENTS_QUERY_KEY,
 	});
+}
+
+export function withChampionshipPlayerGoalkeeper(
+	championship: ChampionshipWithPlayers,
+	playerId: number,
+	isGoalkeeper: boolean,
+): ChampionshipWithPlayers {
+	return {
+		...championship,
+		players: championship.players.map((player) => {
+			if (player.id !== playerId) {
+				return player;
+			}
+
+			return { ...player, is_goalkeeper: isGoalkeeper };
+		}),
+	};
 }

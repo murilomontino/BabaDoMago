@@ -33,6 +33,7 @@ check(
 	addPlayerFormSchema.isValidSync({
 		name: "João",
 		rating: PLAYER_RATING.default,
+		isGoalkeeper: false,
 	}),
 	"add player ok",
 );
@@ -44,6 +45,7 @@ check(
 	addPlayerFormSchema.isValidSync({
 		name: "1. Vitinho ✅\n2. Murilo ✅",
 		rating: PLAYER_RATING.default,
+		isGoalkeeper: true,
 	}),
 	"add player list ok",
 );

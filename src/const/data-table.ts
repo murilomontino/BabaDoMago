@@ -7,6 +7,17 @@ export const DATA_TABLE_MOBILE_ACTIONS = {
 	actions: "actions",
 } as const;
 
+export const DATA_TABLE_SORT = {
+	label: "Ordenar",
+	none: "Padrão",
+	asc: "Crescente",
+	desc: "Decrescente",
+} as const;
+
+export function dataTableDefaultDesc(columnId: string): boolean {
+	return columnId !== DATA_TABLE_MOBILE_PRIMARY.player;
+}
+
 const MOBILE_PRIMARY_ORDER = [
 	DATA_TABLE_MOBILE_PRIMARY.player,
 	DATA_TABLE_MOBILE_PRIMARY.rating,

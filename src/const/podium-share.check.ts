@@ -41,6 +41,7 @@ function player(
 		avatar_url: null,
 		rating: 5,
 		role: "member",
+		is_goalkeeper: false,
 		deleted_at: null,
 		goals: 0,
 		assists: 0,

@@ -23,7 +23,7 @@ import type {
 } from "@/types/championship";
 
 const PLAYER_COLUMNS =
-	"id, championship_id, user_id, display_name, nickname, avatar_url, rating, role, deleted_at, goals, assists, assisted_goals, own_goals, wins, losses, draws, matches, mvps" as const;
+	"id, championship_id, user_id, display_name, nickname, avatar_url, rating, role, is_goalkeeper, deleted_at, goals, assists, assisted_goals, own_goals, wins, losses, draws, matches, mvps" as const;
 
 const CHAMPIONSHIP_COLUMNS =
 	"id, name, invite_code, created_by, logo_path, event_time, players_per_team, skip_guest_goalkeeper_matches, is_visible" as const;
@@ -79,6 +79,7 @@ function asPlayer(value: unknown): ChampionshipPlayer {
 		avatar_url: typeof row.avatar_url === "string" ? row.avatar_url : null,
 		rating,
 		role: typeof row.role === "string" ? row.role : CHAMPIONSHIP_ROLE.member,
+		is_goalkeeper: row.is_goalkeeper === true,
 		deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
 		goals: rosterSafeCount(row.goals),
 		assists: rosterSafeCount(row.assists),
@@ -208,6 +209,7 @@ export async function addManualPlayers(
 	championshipId: number,
 	displayNames: string[],
 	rating: number = PLAYER_RATING.default,
+	isGoalkeeper = false,
 ): Promise<ChampionshipPlayer[]> {
 	if (displayNames.length === 0) {
 		return [];
@@ -220,6 +222,7 @@ export async function addManualPlayers(
 				championship_id: championshipId,
 				display_name: displayName,
 				rating,
+				is_goalkeeper: isGoalkeeper,
 			})),
 		)
 		.select(PLAYER_COLUMNS);
@@ -235,11 +238,13 @@ export async function addManualPlayer(
 	championshipId: number,
 	displayName: string,
 	rating: number = PLAYER_RATING.default,
+	isGoalkeeper = false,
 ): Promise<ChampionshipPlayer> {
 	const [player] = await addManualPlayers(
 		championshipId,
 		[displayName],
 		rating,
+		isGoalkeeper,
 	);
 	if (!player) {
 		throw new Error("player: invalid payload");
@@ -370,6 +375,22 @@ export async function setPlayerRole(
 	const { data, error } = await supabase.rpc("set_player_role", {
 		player_id: playerId,
 		role,
+	});
+
+	if (error) {
+		throw error;
+	}
+
+	return asPlayer(data);
+}
+
+export async function setPlayerIsGoalkeeper(
+	playerId: number,
+	isGoalkeeper: boolean,
+): Promise<ChampionshipPlayer> {
+	const { data, error } = await supabase.rpc("set_player_is_goalkeeper", {
+		player_id: playerId,
+		is_goalkeeper: isGoalkeeper,
 	});
 
 	if (error) {

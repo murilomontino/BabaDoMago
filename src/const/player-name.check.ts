@@ -1,8 +1,13 @@
 import {
 	comparePlayersByVisibleName,
 	confirmClaimPlayerMessage,
+	PLAYER_KIND,
+	PLAYER_KIND_LABEL,
+	PLAYER_KIND_OPTIONS,
 	PLAYER_LABEL,
 	PLAYER_NICKNAME,
+	isGoalkeeperKind,
+	playerKindFromGoalkeeper,
 	playerVisibleName,
 } from "./player-name.ts";
 
@@ -19,6 +24,27 @@ check(
 	"nickname placeholder",
 );
 check(PLAYER_LABEL.eventStats === "Stats da rodada", "event stats label");
+check(PLAYER_LABEL.player === "Jogador", "player label");
+check(PLAYER_LABEL.goalkeeper === "Goleiro", "goalkeeper label");
+check(
+	PLAYER_KIND_LABEL[PLAYER_KIND.player] === PLAYER_LABEL.player,
+	"player kind label",
+);
+check(
+	PLAYER_KIND_LABEL[PLAYER_KIND.goalkeeper] === PLAYER_LABEL.goalkeeper,
+	"goalkeeper kind label",
+);
+check(PLAYER_KIND_OPTIONS.join(",") === "player,goalkeeper", "kind options");
+check(
+	playerKindFromGoalkeeper(true) === PLAYER_KIND.goalkeeper,
+	"kind from goalkeeper",
+);
+check(
+	playerKindFromGoalkeeper(false) === PLAYER_KIND.player,
+	"kind from player",
+);
+check(isGoalkeeperKind(PLAYER_KIND.goalkeeper), "goalkeeper kind");
+check(!isGoalkeeperKind(PLAYER_KIND.player), "player kind");
 
 check(
 	playerVisibleName({ nickname: "Vitinho", display_name: "Murilo" }) ===
