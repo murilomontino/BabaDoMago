@@ -1,3 +1,5 @@
+import { parseAsStringEnum } from "nuqs";
+
 export const CHAMPIONSHIP_TAB = {
 	roster: "roster",
 	events: "events",
@@ -7,6 +9,12 @@ export const CHAMPIONSHIP_TAB = {
 
 export type ChampionshipTab =
 	(typeof CHAMPIONSHIP_TAB)[keyof typeof CHAMPIONSHIP_TAB];
+
+export const CHAMPIONSHIP_TAB_SEARCH_KEY = "tab" as const;
+
+export const CHAMPIONSHIP_TAB_SEARCH = {
+	tab: parseAsStringEnum<ChampionshipTab>(Object.values(CHAMPIONSHIP_TAB)),
+};
 
 export const CHAMPIONSHIP_TAB_LABEL = {
 	roster: "Elenco",

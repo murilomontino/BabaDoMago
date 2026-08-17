@@ -32,6 +32,7 @@ import {
 	canReactivatePlayer,
 	canRemovePlayer,
 	canRenameChampionship,
+	canSetEventMvp,
 	canSetRoles,
 	canTransferOwnership,
 	canUnlinkPlayer,
@@ -83,6 +84,7 @@ import {
 	useUpdatePlayerRating,
 	useUploadChampionshipLogo,
 } from "@/hooks/championships/use-championships";
+import { useChampionshipTab } from "@/hooks/use-championship-tab";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 export function ChampionshipDetailPage() {
@@ -130,7 +132,7 @@ export function ChampionshipDetailPage() {
 		useState<ChampionshipPlayer | null>(null);
 	const [pendingMergePlayer, setPendingMergePlayer] =
 		useState<ChampionshipPlayer | null>(null);
-	const [tab, setTab] = useState<ChampionshipTab>(CHAMPIONSHIP_TAB.roster);
+	const [tab, setTab] = useChampionshipTab();
 	const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
 	const currentPlayer = data?.players.find(
@@ -158,7 +160,13 @@ export function ChampionshipDetailPage() {
 		manageEvent: canManageEvent(actorRole),
 		overrideEnded: canOverrideEndedEvent(actorRole),
 		viewManagement: canViewManagement(actorRole),
+		setMvp: canSetEventMvp(actorRole),
 	};
+	const requestedTab = tab ?? CHAMPIONSHIP_TAB.roster;
+	const selectedTab =
+		requestedTab === CHAMPIONSHIP_TAB.management && !permissions.viewManagement
+			? CHAMPIONSHIP_TAB.roster
+			: requestedTab;
 	const activePlayers = (data?.players ?? []).filter(
 		(player) => !player.deleted_at,
 	);
@@ -181,7 +189,7 @@ export function ChampionshipDetailPage() {
 
 	function handleTabChange(id: ChampionshipTab) {
 		setIsSettingsOpen(false);
-		setTab(id);
+		void setTab(id);
 	}
 
 	function applyRating(playerId: number, rating: number) {
@@ -588,9 +596,9 @@ export function ChampionshipDetailPage() {
 				/>
 			)}
 			{!isSettingsOpen && (
-				<Tabs value={tab} items={tabs} onChange={handleTabChange} />
+				<Tabs value={selectedTab} items={tabs} onChange={handleTabChange} />
 			)}
-			{!isSettingsOpen && tab === CHAMPIONSHIP_TAB.roster && (
+			{!isSettingsOpen && selectedTab === CHAMPIONSHIP_TAB.roster && (
 				<ChampionshipRosterTab
 					players={activePlayers}
 					createdBy={data.created_by}
@@ -675,16 +683,18 @@ export function ChampionshipDetailPage() {
 					onDeactivate={handleDeactivate}
 				/>
 			)}
-			{!isSettingsOpen && tab === CHAMPIONSHIP_TAB.events && (
+			{!isSettingsOpen && selectedTab === CHAMPIONSHIP_TAB.events && (
 				<ChampionshipEvents
 					championshipId={championshipId}
 					eventTime={data.event_time}
 					eventWeekday={data.event_weekday}
 					location={data.location}
+					players={activePlayers}
 					canManage={permissions.manageEvent}
+					canSetMvp={permissions.setMvp}
 				/>
 			)}
-			{!isSettingsOpen && tab === CHAMPIONSHIP_TAB.podium && (
+			{!isSettingsOpen && selectedTab === CHAMPIONSHIP_TAB.podium && (
 				<ChampionshipPodiumTab
 					players={activePlayers}
 					championshipName={data.name}
@@ -692,7 +702,7 @@ export function ChampionshipDetailPage() {
 				/>
 			)}
 			{!isSettingsOpen &&
-				tab === CHAMPIONSHIP_TAB.management &&
+				selectedTab === CHAMPIONSHIP_TAB.management &&
 				permissions.viewManagement && (
 					<ChampionshipManagementTab
 						championshipId={championshipId}

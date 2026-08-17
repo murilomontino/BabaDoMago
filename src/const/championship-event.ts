@@ -182,6 +182,15 @@ export const EVENT_ACTION = {
 	deleteEvent: "Excluir rodada",
 } as const;
 
+export const EVENT_LIST_ACTIONS_LABEL = {
+	cancel: "Cancelar",
+} as const;
+
+export const EVENT_CARD_LONG_PRESS = {
+	ms: 500,
+	movePx: 8,
+} as const;
+
 export const EVENT_SECTION_LABEL = {
 	matches: "Histórico da partida",
 	attendance: "Presentes",
@@ -294,7 +303,6 @@ export const EVENT_END_MISSING_ATTENDANCE_LABEL = {
 
 export const EVENT_RSVP_STATUS = {
 	going: "going",
-	maybe: "maybe",
 	out: "out",
 } as const;
 
@@ -303,9 +311,28 @@ export type EventRsvpStatus =
 
 export const EVENT_RSVP_STATUS_LABEL = {
 	[EVENT_RSVP_STATUS.going]: "Vou",
-	[EVENT_RSVP_STATUS.maybe]: "Talvez",
 	[EVENT_RSVP_STATUS.out]: "Não vou",
 } as const;
+
+export const EVENT_RSVP_CHOICES = [
+	EVENT_RSVP_STATUS.going,
+	EVENT_RSVP_STATUS.out,
+] as const;
+
+export function eventRsvpButtonVariant(
+	status: EventRsvpStatus,
+	selected: boolean,
+): "primary" | "secondary" | "danger" | "ghost" {
+	if (!selected) {
+		return "secondary";
+	}
+
+	if (status === EVENT_RSVP_STATUS.out) {
+		return "danger";
+	}
+
+	return "primary";
+}
 
 export const EVENT_RSVP_LABEL = {
 	section: "Confirmação",
@@ -500,6 +527,9 @@ export const ATTENDANCE_STATS_TEAM_FILTER_LABEL = {
 export const EVENT_ATTENDANCE_ACTION = {
 	selectAll: "Selecionar todos",
 	deselectAll: "Desselecionar todos",
+	addPlayer: "Adicionar",
+	addPlayerPlaceholder: "Nome do jogador",
+	addPlayerAria: "Adicionar jogador",
 } as const;
 
 export function parseEventTime(value: unknown): string {
@@ -696,6 +726,13 @@ export function championshipEventErrorMessage(message: string): string {
 	}
 
 	return known[1];
+}
+
+export function isMatchAlreadyOpenError(message: string): boolean {
+	return (
+		championshipEventErrorMessage(message) ===
+		EVENT_ERROR_MESSAGE["match already open"]
+	);
 }
 
 export function unusedEventTeamColor(
@@ -1323,6 +1360,34 @@ export function canStartEventMatch(options: {
 	}
 
 	return !options.ended;
+}
+
+export function eventListActionFlags(input: {
+	canManage: boolean;
+	canSetMvp: boolean;
+	ended: boolean;
+	teamCount: number;
+	attendanceCount: number;
+}) {
+	const showStartMatch = canStartEventMatch({
+		ended: input.ended,
+		teamCount: input.teamCount,
+	});
+
+	return {
+		showStartMatch,
+		canEnd: input.canManage && !input.ended,
+		canSetMvp: input.canSetMvp && input.ended && input.attendanceCount > 0,
+		canDelete: input.canManage,
+	};
+}
+
+export function hasEventListActions(
+	flags: ReturnType<typeof eventListActionFlags>,
+): boolean {
+	return (
+		flags.showStartMatch || flags.canEnd || flags.canSetMvp || flags.canDelete
+	);
 }
 
 export function canAddEventMatch(options: {

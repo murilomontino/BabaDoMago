@@ -101,6 +101,13 @@ type ChampionshipEventBuilderProps = {
 	onStepChange: (step: EventBuilderStep) => void;
 	onCancel?: () => void;
 	onPresentIdsChange?: (playerIds: readonly number[]) => void;
+	onAddPlayer?: (values: {
+		displayNames: string[];
+		rating: number;
+		isGoalkeeper: boolean;
+	}) => Promise<ChampionshipPlayer[]>;
+	isAddingPlayer?: boolean;
+	addPlayerError?: string | null;
 	onSubmit: (
 		values: {
 			presentPlayerIds: number[];
@@ -127,6 +134,9 @@ export function ChampionshipEventBuilder({
 	onStepChange,
 	onCancel,
 	onPresentIdsChange,
+	onAddPlayer,
+	isAddingPlayer = false,
+	addPlayerError = null,
 	onSubmit,
 }: ChampionshipEventBuilderProps) {
 	const [presentIds, setPresentIds] = useState<number[]>([
@@ -195,6 +205,27 @@ export function ChampionshipEventBuilder({
 			setGoalkeeperSelection(current, playerIds, asGoalkeeper),
 		);
 		setAttendanceError(null);
+	}
+
+	async function handleAddPlayer(values: {
+		displayNames: string[];
+		rating: number;
+		isGoalkeeper: boolean;
+	}): Promise<ChampionshipPlayer[]> {
+		if (!onAddPlayer) {
+			return [];
+		}
+
+		const created = await onAddPlayer(values);
+		if (created.length === 0) {
+			return created;
+		}
+
+		handleSetPresent(
+			created.map((player) => player.id),
+			true,
+		);
+		return created;
 	}
 
 	function handleBackToAttendance() {
@@ -484,6 +515,9 @@ export function ChampionshipEventBuilder({
 										onSeedAttendance={
 											seedEvents.length > 0 ? handleSeedAttendance : undefined
 										}
+										isAddingPlayer={isAddingPlayer}
+										addPlayerError={addPlayerError}
+										onAddPlayer={onAddPlayer ? handleAddPlayer : undefined}
 									/>
 									{attendanceError && (
 										<p className={ERROR_CLASS}>{attendanceError}</p>

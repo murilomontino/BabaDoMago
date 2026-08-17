@@ -20,6 +20,7 @@ import {
 	defaultGoalkeeperIds,
 	draftAttendanceForEnd,
 	drawBalancedEventTeams,
+	EVENT_ATTENDANCE_ACTION,
 	EVENT_ATTENDANCE_MESSAGE,
 	EVENT_ATTENDANCE_STAT_ABBR,
 	EVENT_BUILDER_STEP,
@@ -38,6 +39,7 @@ import {
 	eventDrawRatings,
 	eventGoalkeeperIds,
 	eventIsoWeekday,
+	eventListActionFlags,
 	eventTeamByPlayerId,
 	eventTeamCount,
 	eventTeamPlayerIds,
@@ -50,9 +52,11 @@ import {
 	formatEventTeamRatingAverage,
 	formatEventTimeShort,
 	formatNextPeladaShortcut,
+	hasEventListActions,
 	initialBuilderTeams,
 	isEventBuilderStep,
 	isEventRsvpStatus,
+	isMatchAlreadyOpenError,
 	isoWeekdayFromYmd,
 	keepGoalkeepersPresent,
 	keepPresentSlots,
@@ -547,6 +551,38 @@ check(
 check(canStartEventMatch({ ended: false, teamCount: 2 }), true);
 check(canStartEventMatch({ ended: true, teamCount: 2 }), false);
 check(
+	hasEventListActions(
+		eventListActionFlags({
+			canManage: false,
+			canSetMvp: false,
+			ended: true,
+			teamCount: 1,
+			attendanceCount: 0,
+		}),
+	),
+	false,
+);
+check(
+	eventListActionFlags({
+		canManage: true,
+		canSetMvp: false,
+		ended: false,
+		teamCount: 2,
+		attendanceCount: 4,
+	}).canEnd,
+	true,
+);
+check(
+	eventListActionFlags({
+		canManage: false,
+		canSetMvp: true,
+		ended: true,
+		teamCount: 2,
+		attendanceCount: 3,
+	}).canSetMvp,
+	true,
+);
+check(
 	canAddEventMatch({
 		ended: true,
 		teamCount: 1,
@@ -693,6 +729,9 @@ check(isEventBuilderStep(EVENT_BUILDER_STEP.attendance), true);
 check(isEventBuilderStep(EVENT_BUILDER_STEP.teams), true);
 check(isEventBuilderStep("nope"), false);
 check(isEventBuilderStep(null), false);
+check(EVENT_ATTENDANCE_ACTION.addPlayer, "Adicionar");
+check(EVENT_ATTENDANCE_ACTION.addPlayerPlaceholder, "Nome do jogador");
+check(EVENT_ATTENDANCE_ACTION.addPlayerAria, "Adicionar jogador");
 check(EVENT_ATTENDANCE_STAT_ABBR.goals, "G");
 check(EVENT_ATTENDANCE_STAT_ABBR.assistedGoals, "GS");
 check(EVENT_ATTENDANCE_STAT_ABBR.ownGoals, "GC");
@@ -847,6 +886,9 @@ check(
 	championshipEventErrorMessage("match already open"),
 	EVENT_ERROR_MESSAGE["match already open"],
 );
+check(isMatchAlreadyOpenError("match already open"), true);
+check(isMatchAlreadyOpenError(EVENT_ERROR_MESSAGE["match already open"]), true);
+check(isMatchAlreadyOpenError("match already ended"), false);
 
 const playerEventDraft = playerEventStatsFromAttendance({
 	goals: 2,
@@ -936,8 +978,8 @@ check(
 	),
 	"1",
 );
-check(isEventRsvpStatus(EVENT_RSVP_STATUS.maybe), true);
-check(isEventRsvpStatus("nope"), false);
+check(isEventRsvpStatus(EVENT_RSVP_STATUS.out), true);
+check(isEventRsvpStatus("maybe"), false);
 check(
 	canSelfCheckIn({
 		endedAt: null,

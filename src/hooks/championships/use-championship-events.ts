@@ -522,8 +522,11 @@ export function useDeleteChampionshipEvent(_championshipId: number) {
 
 	return useMutation({
 		mutationFn: (eventId: number) => deleteChampionshipEvent(eventId),
-		onSuccess: async () => {
-			await invalidateChampionshipEventQueries(queryClient);
+		onSuccess: async (_void, eventId) => {
+			await queryClient.invalidateQueries({
+				queryKey: CHAMPIONSHIP_EVENTS_QUERY_KEY,
+				predicate: (query) => query.queryKey[2] !== eventId,
+			});
 		},
 	});
 }

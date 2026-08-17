@@ -813,8 +813,8 @@ export type Database = {
 			};
 			upsert_championship_event_rsvp: {
 				Args: {
-					event_id: number;
-					status: string;
+					p_event_id: number;
+					p_status: string;
 				};
 				Returns: Json;
 			};

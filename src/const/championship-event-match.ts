@@ -5,7 +5,7 @@ import type {
 } from "../types/championship-event.ts";
 import { CHAMPIONSHIP_EVENT } from "./championship-event.ts";
 import type { EventTeamColor } from "./event-team-color.ts";
-import { playerVisibleName } from "./player-name.ts";
+import { PLAYER_LABEL, playerVisibleName } from "./player-name.ts";
 
 type MatchStarRosterPlayer = {
 	nickname: string | null;
@@ -117,6 +117,23 @@ export const EVENT_GOAL_LABEL = {
 	ownGoalShort: "Contra",
 } as const;
 
+export const EVENT_MATCH_ICON = {
+	goalkeeper: "goalkeeper",
+	goal: "goal",
+	assist: "assist",
+	ownGoal: "ownGoal",
+} as const;
+
+export type EventMatchIcon =
+	(typeof EVENT_MATCH_ICON)[keyof typeof EVENT_MATCH_ICON];
+
+export const EVENT_MATCH_ICON_LEGEND = [
+	{ id: EVENT_MATCH_ICON.goalkeeper, label: PLAYER_LABEL.goalkeeper },
+	{ id: EVENT_MATCH_ICON.goal, label: EVENT_GOAL_LABEL.goal },
+	{ id: EVENT_MATCH_ICON.assist, label: EVENT_GOAL_LABEL.assist },
+	{ id: EVENT_MATCH_ICON.ownGoal, label: EVENT_GOAL_LABEL.ownGoal },
+] as const;
+
 export function eventGoalScorerHint(scorerName: string): string {
 	return `Gol de ${scorerName}`;
 }
@@ -138,6 +155,12 @@ export function openEventMatch<T extends { ended_at: string | null }>(
 	matches: readonly T[],
 ): T | null {
 	return matches.find((match) => match.ended_at === null) ?? null;
+}
+
+export function shouldStartEventMatch<T extends { ended_at: string | null }>(
+	matches: readonly T[],
+): boolean {
+	return openEventMatch(matches) === null;
 }
 
 export function matchPlayerIds(

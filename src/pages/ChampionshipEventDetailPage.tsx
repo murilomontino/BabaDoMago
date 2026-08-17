@@ -14,11 +14,13 @@ import {
 } from "@/const/championship-event";
 import {
 	CHAMPIONSHIP_ROLE,
+	canInvite,
 	canManageEvent,
 	canOverrideEndedEvent,
 	canSetEventMvp,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
+import { CHAMPIONSHIP_TAB } from "@/const/championship-tab";
 import { ROUTES } from "@/const/routes";
 import { SKELETON_LABEL, SKELETON_TEAM_CARDS } from "@/const/skeleton";
 import { ERROR_CLASS } from "@/const/ui";
@@ -26,6 +28,7 @@ import { useAuth } from "@/contexts/auth";
 import {
 	useAddChampionshipEventTeam,
 	useChampionshipEvent,
+	useChampionshipEventRealtime,
 	useChampionshipEvents,
 	useDeleteChampionshipEvent,
 	useDeleteChampionshipEventMatch,
@@ -41,7 +44,10 @@ import {
 	useUpdateChampionshipEventTeam,
 	useUpsertChampionshipEventRsvp,
 } from "@/hooks/championships/use-championship-events";
-import { useChampionship } from "@/hooks/championships/use-championships";
+import {
+	useAddManualPlayer,
+	useChampionship,
+} from "@/hooks/championships/use-championships";
 
 export function ChampionshipEventDetailPage() {
 	const { championshipId: championshipIdParam, eventId: eventIdParam } =
@@ -71,6 +77,8 @@ export function ChampionshipEventDetailPage() {
 	const endEvent = useEndChampionshipEvent(championshipId);
 	const setMvps = useSetChampionshipEventMvps(championshipId);
 	const deleteEvent = useDeleteChampionshipEvent(championshipId);
+	const addPlayer = useAddManualPlayer(championshipId);
+	useChampionshipEventRealtime(championshipId, eventId);
 	const attendanceCounts = useMemo(
 		() => countPlayerAttendance(eventsQuery.data ?? []),
 		[eventsQuery.data],
@@ -182,6 +190,13 @@ export function ChampionshipEventDetailPage() {
 				setMvpError={setMvps.isError ? setMvps.error.message : null}
 				deleting={deleteEvent.isPending}
 				deleteError={deleteEvent.isError ? deleteEvent.error.message : null}
+				isAddingPlayer={addPlayer.isPending}
+				addPlayerError={addPlayer.isError ? addPlayer.error.message : null}
+				onAddPlayer={
+					canInvite(actorRole)
+						? async (values) => addPlayer.mutateAsync(values)
+						: undefined
+				}
 				onSaveTeams={async ({
 					presentPlayerIds,
 					teams,
@@ -275,6 +290,7 @@ export function ChampionshipEventDetailPage() {
 					await navigate({
 						to: ROUTES.championship,
 						params: { championshipId: String(championshipId) },
+						search: { tab: CHAMPIONSHIP_TAB.events },
 					});
 				}}
 			/>

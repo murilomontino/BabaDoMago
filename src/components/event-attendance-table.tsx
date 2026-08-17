@@ -2,6 +2,7 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 import { Switch } from "@/components/atoms/switch";
 import { Button } from "@/components/button";
+import { EventAttendanceAddPlayer } from "@/components/event-attendance-add-player";
 import {
 	DataTable,
 	type DataTableFeatures,
@@ -53,6 +54,13 @@ type EventAttendanceTableProps = {
 		asGoalkeeper: boolean,
 	) => void;
 	onSeedAttendance?: (mode: AttendanceSeedMode) => void;
+	isAddingPlayer?: boolean;
+	addPlayerError?: string | null;
+	onAddPlayer?: (values: {
+		displayNames: string[];
+		rating: number;
+		isGoalkeeper: boolean;
+	}) => Promise<ChampionshipPlayer[]>;
 };
 
 const attendanceColumnHelper = createColumnHelper<
@@ -156,6 +164,9 @@ export function EventAttendanceTable({
 	onSetPresent,
 	onSetGoalkeeper,
 	onSeedAttendance,
+	isAddingPlayer = false,
+	addPlayerError = null,
+	onAddPlayer,
 }: EventAttendanceTableProps) {
 	const [query, setQuery] = useState("");
 	const selectable = Boolean(onSetPresent);
@@ -296,6 +307,18 @@ export function EventAttendanceTable({
 					}}
 				/>
 			</label>
+			{onAddPlayer && (
+				<EventAttendanceAddPlayer
+					ceiling={ceiling}
+					isAddingPlayer={isAddingPlayer}
+					addPlayerError={addPlayerError}
+					onAddPlayer={async (values) => {
+						const created = await onAddPlayer(values);
+						setQuery("");
+						return created;
+					}}
+				/>
+			)}
 			{(selectable || showSeedActions) && (
 				<div className="space-y-2">
 					<div className="flex flex-wrap items-center gap-2">

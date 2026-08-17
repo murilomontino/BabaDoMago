@@ -1,26 +1,25 @@
-import { X } from "lucide-react";
+import { Goal, Handshake, X } from "lucide-react";
 import { EventTeamChip } from "@/components/event-team-player";
+import { GoalkeeperGlovesIcon } from "@/components/goalkeeper-gloves-icon";
 import {
 	MATCH_GOAL_TIMELINE_GRID_CLASS,
 	MatchGoalTimeline,
 } from "@/components/molecules/match-goal-timeline";
+import { OwnGoalIcon } from "@/components/soccer-ball-icon";
+import { EVENT_ACTION, EVENT_SECTION_LABEL } from "@/const/championship-event";
 import {
-	EVENT_ACTION,
-	EVENT_SECTION_LABEL,
-	EVENT_TEAM_POSITION,
-	EVENT_TEAM_POSITION_LABEL,
-	eventTeamPlayerPosition,
-} from "@/const/championship-event";
-import {
+	EVENT_MATCH_ICON,
+	EVENT_MATCH_ICON_LEGEND,
 	EVENT_MATCH_LABEL,
 	EVENT_MATCH_SUBSTITUTION_LABEL,
+	type EventMatchIcon,
 	formatMatchScore,
 	isOpenMatch,
 	matchScore,
 	matchTeamPlayers,
 } from "@/const/championship-event-match";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
-import { playerVisibleName } from "@/const/player-name";
+import { PLAYER_LABEL, playerVisibleName } from "@/const/player-name";
 import { CARD_CLASS, CHIP_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type {
@@ -88,8 +87,6 @@ function MatchLineupPlayer({
 		row.display_name,
 		rosterById,
 	);
-	const position = eventTeamPlayerPosition(row.is_goalkeeper);
-	const isGoalkeeper = position === EVENT_TEAM_POSITION.goalkeeper;
 
 	return (
 		<li
@@ -102,13 +99,44 @@ function MatchLineupPlayer({
 					{EVENT_MATCH_SUBSTITUTION_LABEL.chip}
 				</span>
 			)}
-			{isGoalkeeper && (
-				<span className={CHIP_CLASS}>
-					{EVENT_TEAM_POSITION_LABEL[position]}
-				</span>
+			{row.is_goalkeeper && (
+				<GoalkeeperGlovesIcon
+					className="size-3 shrink-0"
+					aria-label={PLAYER_LABEL.goalkeeper}
+				/>
 			)}
 			<span className="truncate">{playerVisibleName(player)}</span>
 		</li>
+	);
+}
+
+function MatchIconGlyph({ id }: { id: EventMatchIcon }) {
+	switch (id) {
+		case EVENT_MATCH_ICON.goalkeeper:
+			return <GoalkeeperGlovesIcon className="size-3 shrink-0" />;
+		case EVENT_MATCH_ICON.goal:
+			return <Goal className="size-3 shrink-0" />;
+		case EVENT_MATCH_ICON.assist:
+			return <Handshake className="size-3 shrink-0" />;
+		case EVENT_MATCH_ICON.ownGoal:
+			return <OwnGoalIcon className="size-3 shrink-0" />;
+		default: {
+			const _exhaustive: never = id;
+			return _exhaustive;
+		}
+	}
+}
+
+function MatchIconLegend() {
+	return (
+		<ul className="mb-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-fg-muted">
+			{EVENT_MATCH_ICON_LEGEND.map((item) => (
+				<li key={item.id} className="inline-flex items-center gap-1">
+					<MatchIconGlyph id={item.id} />
+					{item.label}
+				</li>
+			))}
+		</ul>
 	);
 }
 
@@ -270,20 +298,23 @@ export function ChampionshipEventMatchHistory({
 				<p className="text-sm text-fg-muted">{EVENT_MATCH_LABEL.none}</p>
 			)}
 			{matches.length > 0 && (
-				<ul className="space-y-2">
-					{matches.map((match) => (
-						<MatchHistoryCard
-							key={match.id}
-							match={match}
-							teamById={teamById}
-							rosterById={rosterById}
-							showMatchDelete={showMatchDelete}
-							canOpenMatch={canOpenMatch}
-							onOpenMatch={onOpenMatch}
-							onRemoveMatch={onRemoveMatch}
-						/>
-					))}
-				</ul>
+				<>
+					<MatchIconLegend />
+					<ul className="space-y-2">
+						{matches.map((match) => (
+							<MatchHistoryCard
+								key={match.id}
+								match={match}
+								teamById={teamById}
+								rosterById={rosterById}
+								showMatchDelete={showMatchDelete}
+								canOpenMatch={canOpenMatch}
+								onOpenMatch={onOpenMatch}
+								onRemoveMatch={onRemoveMatch}
+							/>
+						))}
+					</ul>
+				</>
 			)}
 		</div>
 	);

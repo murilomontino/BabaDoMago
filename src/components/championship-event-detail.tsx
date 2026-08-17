@@ -58,6 +58,7 @@ import {
 	EVENT_BUILDER_STEP,
 	EVENT_BUILDER_STEP_LABEL,
 	EVENT_CHECK_IN_LABEL,
+	EVENT_RSVP_CHOICES,
 	EVENT_RSVP_LABEL,
 	EVENT_RSVP_STATUS,
 	EVENT_RSVP_STATUS_LABEL,
@@ -67,6 +68,7 @@ import {
 	type EventAttendanceStatsDraft,
 	type EventRsvpStatus,
 	type EventTeamDraft,
+	eventRsvpButtonVariant,
 	eventStatus,
 	eventTeamPlayerIds,
 	eventTeamPlayerPosition,
@@ -293,6 +295,13 @@ type ChampionshipEventDetailProps = {
 	setMvpError: string | null;
 	deleting: boolean;
 	deleteError: string | null;
+	onAddPlayer?: (values: {
+		displayNames: string[];
+		rating: number;
+		isGoalkeeper: boolean;
+	}) => Promise<ChampionshipPlayer[]>;
+	isAddingPlayer?: boolean;
+	addPlayerError?: string | null;
 };
 
 function fallbackRosterPlayer(
@@ -410,6 +419,9 @@ export function ChampionshipEventDetail({
 	setMvpError,
 	deleting,
 	deleteError,
+	onAddPlayer,
+	isAddingPlayer = false,
+	addPlayerError = null,
 }: ChampionshipEventDetailProps) {
 	const status = eventStatus(event.ended_at);
 	const ended = status === EVENT_STATUS.ended;
@@ -696,6 +708,9 @@ export function ChampionshipEventDetail({
 						draftPresentIdsRef.current = [...playerIds];
 						writeAttendanceDraft(event.id, playerIds);
 					}}
+					onAddPlayer={onAddPlayer}
+					isAddingPlayer={isAddingPlayer}
+					addPlayerError={addPlayerError}
 					onSubmit={async (values, keepOpen) => {
 						await onSaveTeams(values);
 						clearAttendanceDraft(event.id);
@@ -862,28 +877,31 @@ export function ChampionshipEventDetail({
 								{EVENT_RSVP_LABEL.section}
 							</p>
 							<div className="flex flex-wrap gap-2">
-								{(
-									[
-										EVENT_RSVP_STATUS.going,
-										EVENT_RSVP_STATUS.maybe,
-										EVENT_RSVP_STATUS.out,
-									] as const
-								).map((statusId) => (
-									<Button
-										key={statusId}
-										variant={
-											myRsvp?.status === statusId
-												? BUTTON_VARIANT.primary
-												: BUTTON_VARIANT.secondary
-										}
-										disabled={savingRsvp}
-										onClick={() => {
-											void onUpsertRsvp(statusId);
-										}}
-									>
-										{EVENT_RSVP_STATUS_LABEL[statusId]}
-									</Button>
-								))}
+								{EVENT_RSVP_CHOICES.map((statusId) => {
+									const selected = myRsvp?.status === statusId;
+									const isOut = statusId === EVENT_RSVP_STATUS.out;
+									let outClassName: string | undefined;
+									if (isOut && selected) {
+										outClassName = "bg-danger-soft";
+									}
+									if (isOut && !selected) {
+										outClassName = "text-danger-fg";
+									}
+
+									return (
+										<Button
+											key={statusId}
+											variant={eventRsvpButtonVariant(statusId, selected)}
+											className={outClassName}
+											disabled={savingRsvp}
+											onClick={() => {
+												void onUpsertRsvp(statusId);
+											}}
+										>
+											{EVENT_RSVP_STATUS_LABEL[statusId]}
+										</Button>
+									);
+								})}
 								{selfCheckIn && (
 									<Button
 										disabled={ensuringAttendance}
@@ -1042,6 +1060,9 @@ export function ChampionshipEventDetail({
 
 						setIsAttendanceOpen(false);
 					}}
+					onAddPlayer={onAddPlayer}
+					isAddingPlayer={isAddingPlayer}
+					addPlayerError={addPlayerError}
 					onSave={async (presentPlayerIds, goalkeeperPlayerIds) => {
 						await onSaveAttendance(presentPlayerIds, goalkeeperPlayerIds);
 						setIsAttendanceOpen(false);

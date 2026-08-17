@@ -24,6 +24,13 @@ type EditEventAttendanceModalProps = {
 	isPending: boolean;
 	errorMessage: string | null;
 	onCancel: () => void;
+	onAddPlayer?: (values: {
+		displayNames: string[];
+		rating: number;
+		isGoalkeeper: boolean;
+	}) => Promise<ChampionshipPlayer[]>;
+	isAddingPlayer?: boolean;
+	addPlayerError?: string | null;
 	onSave: (
 		presentPlayerIds: number[],
 		goalkeeperPlayerIds: number[],
@@ -39,6 +46,9 @@ export function EditEventAttendanceModal({
 	isPending,
 	errorMessage,
 	onCancel,
+	onAddPlayer,
+	isAddingPlayer = false,
+	addPlayerError = null,
 	onSave,
 }: EditEventAttendanceModalProps) {
 	const locked = new Set(teamPlayerIds);
@@ -83,6 +93,28 @@ export function EditEventAttendanceModal({
 							setGoalkeeperSelection(current, playerIds, asGoalkeeper),
 						);
 					}}
+					isAddingPlayer={isAddingPlayer}
+					addPlayerError={addPlayerError}
+					onAddPlayer={
+						onAddPlayer
+							? async (values) => {
+									const created = await onAddPlayer(values);
+									if (created.length === 0) {
+										return created;
+									}
+
+									setLocalError(null);
+									setPresentIds(
+										applyVisibleAttendance(
+											presentIds,
+											created.map((player) => player.id),
+											true,
+										),
+									);
+									return created;
+								}
+							: undefined
+					}
 				/>
 				{localError && <p className={`mt-2 ${ERROR_CLASS}`}>{localError}</p>}
 				{errorMessage && (

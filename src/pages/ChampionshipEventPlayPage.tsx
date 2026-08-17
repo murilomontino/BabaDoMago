@@ -4,8 +4,15 @@ import { Button } from "@/components/button";
 import { ChampionshipEventPlay } from "@/components/championship-event-play";
 import { MATCH_GOAL_TIMELINE_GRID_CLASS } from "@/components/molecules/match-goal-timeline";
 import { TeamCardSkeleton } from "@/components/molecules/team-card-skeleton";
-import { canStartEventMatch, EVENT_ACTION } from "@/const/championship-event";
-import { openEventMatch } from "@/const/championship-event-match";
+import {
+	canStartEventMatch,
+	EVENT_ACTION,
+	isMatchAlreadyOpenError,
+} from "@/const/championship-event";
+import {
+	openEventMatch,
+	shouldStartEventMatch,
+} from "@/const/championship-event-match";
 import { ROUTES } from "@/const/routes";
 import { SKELETON_LABEL } from "@/const/skeleton";
 import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
@@ -107,7 +114,12 @@ export function ChampionshipEventPlayPage() {
 						match={openMatch}
 						players={activePlayers}
 						starting={startMatch.isPending}
-						startError={startMatch.isError ? startMatch.error.message : null}
+						startError={
+							startMatch.isError &&
+							!isMatchAlreadyOpenError(startMatch.error.message)
+								? startMatch.error.message
+								: null
+						}
 						savingPlayer={setPlayer.isPending || setGoalkeeper.isPending}
 						playerError={
 							(setPlayer.isError && setPlayer.error.message) ||
@@ -132,11 +144,29 @@ export function ChampionshipEventPlayPage() {
 							resumeMatch.isPending
 						}
 						onStart={async (teamAId, teamBId) => {
-							await startMatch.mutateAsync({
-								eventId: event.id,
-								teamAId,
-								teamBId,
-							});
+							const { data } = await eventQuery.refetch();
+							const matches = data?.matches ?? event.matches;
+							if (!shouldStartEventMatch(matches)) {
+								return;
+							}
+
+							try {
+								await startMatch.mutateAsync({
+									eventId: event.id,
+									teamAId,
+									teamBId,
+								});
+							} catch (error) {
+								if (
+									!(error instanceof Error) ||
+									!isMatchAlreadyOpenError(error.message)
+								) {
+									throw error;
+								}
+
+								startMatch.reset();
+								await eventQuery.refetch();
+							}
 						}}
 						savingColor={updateTeam.isPending}
 						colorError={

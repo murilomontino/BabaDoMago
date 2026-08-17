@@ -12,6 +12,8 @@ import {
 	EVENT_MATCH_DURATION,
 	EVENT_MATCH_END_INTENT,
 	EVENT_MATCH_END_LABEL,
+	EVENT_MATCH_ICON,
+	EVENT_MATCH_ICON_LEGEND,
 	EVENT_MATCH_LABEL,
 	EVENT_MATCH_REOPEN_LABEL,
 	EVENT_MATCH_STATUS,
@@ -48,6 +50,7 @@ import {
 	matchWinnerColor,
 	matchWinnerTeamId,
 	openEventMatch,
+	shouldStartEventMatch,
 	sortBenchForSlot,
 	toggleMatchTeamSelection,
 } from "./championship-event-match.ts";
@@ -106,6 +109,9 @@ const open = { id: 2, ended_at: null };
 const ended = { id: 1, ended_at: "x" };
 check(openEventMatch([ended, open])?.id, 2, "finds open");
 check(openEventMatch([ended]), null, "no open");
+check(shouldStartEventMatch([ended, open]), false, "open skips create");
+check(shouldStartEventMatch([ended]), true, "ended starts new");
+check(shouldStartEventMatch([]), true, "empty starts new");
 
 const slots = matchTeamSlots(
 	[
@@ -427,6 +433,26 @@ check(
 	"timeline own goal",
 );
 check(EVENT_GOAL_LABEL.ownGoalShort, "Contra", "own goal short");
+check(
+	EVENT_MATCH_ICON_LEGEND[0]?.id,
+	EVENT_MATCH_ICON.goalkeeper,
+	"legend gk id",
+);
+check(EVENT_MATCH_ICON_LEGEND[0]?.label, "Goleiro", "legend gk");
+check(EVENT_MATCH_ICON_LEGEND[1]?.id, EVENT_MATCH_ICON.goal, "legend goal id");
+check(EVENT_MATCH_ICON_LEGEND[1]?.label, "Gol", "legend goal");
+check(
+	EVENT_MATCH_ICON_LEGEND[2]?.id,
+	EVENT_MATCH_ICON.assist,
+	"legend assist id",
+);
+check(EVENT_MATCH_ICON_LEGEND[2]?.label, "Assistência", "legend assist");
+check(
+	EVENT_MATCH_ICON_LEGEND[3]?.id,
+	EVENT_MATCH_ICON.ownGoal,
+	"legend own id",
+);
+check(EVENT_MATCH_ICON_LEGEND[3]?.label, "Gol contra", "legend own");
 check(lastMatchGoal(timeline)?.id, 2, "last goal");
 check(lastMatchGoal([]), null, "empty last goal");
 check(matchEndWinnerLabel(10, 10, "A", "B"), "A", "end winner a");

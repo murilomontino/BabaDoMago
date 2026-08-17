@@ -496,8 +496,8 @@ export async function upsertChampionshipEventRsvp(
 	status: string,
 ): Promise<void> {
 	const { error } = await supabase.rpc("upsert_championship_event_rsvp", {
-		event_id: eventId,
-		status,
+		p_event_id: eventId,
+		p_status: status,
 	});
 
 	if (error) {
