@@ -33,6 +33,53 @@ type ChampionshipPlayersRow = {
 export type Database = {
 	public: {
 		Tables: {
+			championship_audit_logs: {
+				Row: {
+					action: string;
+					actor_display_name: string;
+					actor_user_id: string | null;
+					after_data: Json | null;
+					before_data: Json | null;
+					championship_id: number;
+					created_at: string;
+					entity_id: number | null;
+					entity_type: string;
+					id: number;
+				};
+				Insert: {
+					action: string;
+					actor_display_name: string;
+					actor_user_id?: string | null;
+					after_data?: Json | null;
+					before_data?: Json | null;
+					championship_id: number;
+					created_at?: string;
+					entity_id?: number | null;
+					entity_type: string;
+					id?: number;
+				};
+				Update: {
+					action?: string;
+					actor_display_name?: string;
+					actor_user_id?: string | null;
+					after_data?: Json | null;
+					before_data?: Json | null;
+					championship_id?: number;
+					created_at?: string;
+					entity_id?: number | null;
+					entity_type?: string;
+					id?: number;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "championship_audit_logs_championship_id_fkey";
+						columns: ["championship_id"];
+						isOneToOne: false;
+						referencedRelation: "championships";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			championship_event_attendance: {
 				Row: {
 					assists: number;
@@ -583,6 +630,26 @@ export type Database = {
 			join_championship: {
 				Args: { invite_code: string };
 				Returns: Json;
+			};
+			list_championship_audit_logs: {
+				Args: {
+					p_championship_id: number;
+					p_action?: string | null;
+					p_before_id?: number | null;
+					p_page_size?: number;
+				};
+				Returns: {
+					action: string;
+					actor_display_name: string;
+					actor_user_id: string | null;
+					after_data: Json | null;
+					before_data: Json | null;
+					championship_id: number;
+					created_at: string;
+					entity_id: number | null;
+					entity_type: string;
+					id: number;
+				}[];
 			};
 			merge_championship_players: {
 				Args: { keep_player_id: number; absorb_player_id: number };

@@ -11,6 +11,7 @@ import {
 	CHAMPIONSHIP_ROLE,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
+import { playerGoalkeeperStats } from "@/const/goalkeeper-stats";
 import { playerVisibleName } from "@/const/player-name";
 import {
 	PLAYER_PROFILE_HISTORY_ABBR,
@@ -73,6 +74,10 @@ export function ChampionshipPlayerDetailPage() {
 				playerId,
 			),
 		[eventsQuery.data, championshipQuery.data?.players, playerId],
+	);
+	const goalkeeper = useMemo(
+		() => playerGoalkeeperStats(eventsQuery.data ?? [], playerId),
+		[eventsQuery.data, playerId],
 	);
 	const ceiling = championshipRatingCeiling(
 		(championship?.players ?? []).flatMap((item) =>
@@ -145,6 +150,7 @@ export function ChampionshipPlayerDetailPage() {
 						: null
 				}
 				partners={partners}
+				goalkeeper={goalkeeper}
 				onOpenEvent={(eventId) => {
 					void navigate({
 						to: ROUTES.championshipEvent,

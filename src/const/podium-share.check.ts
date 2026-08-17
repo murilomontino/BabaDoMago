@@ -58,15 +58,22 @@ function player(
 
 check(podiumShareHeading(ROSTER_COLUMN.goals), "Pódio · Gols");
 check(podiumShareHeading(PODIUM_METRIC.synergy), "Pódio · Sinergia");
-check(podiumSharePeriodSlug(null, []), "Temporada 2026");
-check(podiumSharePeriodSlug(PODIUM_SEMESTER.first, []), "Primeiro Semestre");
-check(podiumSharePeriodSlug(null, [8]), "Agosto");
-check(podiumSharePeriodSlug(null, [1, 3]), "Janeiro-Março");
-check(podiumSharePeriodSlug(null, selectPodiumAllMonths()), "Temporada 2026");
+check(podiumSharePeriodSlug(2026, null, []), "Temporada 2026");
+check(podiumSharePeriodSlug(2027, null, []), "Temporada 2027");
+check(
+	podiumSharePeriodSlug(2026, PODIUM_SEMESTER.first, []),
+	"Primeiro Semestre",
+);
+check(podiumSharePeriodSlug(2026, null, [8]), "Agosto");
+check(podiumSharePeriodSlug(2026, null, [1, 3]), "Janeiro-Março");
+check(
+	podiumSharePeriodSlug(2026, null, selectPodiumAllMonths()),
+	"Temporada 2026",
+);
 
 const shareParts = {
 	championshipName: "Baba do Mago",
-	context: podiumSharePeriodSlug(null, []),
+	context: podiumSharePeriodSlug(2026, null, []),
 	generatedAt: "2026-08-14T13:00:00.000Z",
 };
 check(
@@ -84,14 +91,14 @@ check(
 check(
 	podiumShareFileName(ROSTER_COLUMN.assists, {
 		...shareParts,
-		context: podiumSharePeriodSlug(PODIUM_SEMESTER.first, []),
+		context: podiumSharePeriodSlug(2026, PODIUM_SEMESTER.first, []),
 	}),
 	"podio-baba-do-mago-assistencias-primeiro-semestre-14-08-2026.png",
 );
 check(
 	podiumShareFileName(ROSTER_COLUMN.goals, {
 		...shareParts,
-		context: podiumSharePeriodSlug(null, [8]),
+		context: podiumSharePeriodSlug(2026, null, [8]),
 	}),
 	"podio-baba-do-mago-gols-agosto-14-08-2026.png",
 );

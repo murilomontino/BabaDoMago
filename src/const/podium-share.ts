@@ -20,6 +20,7 @@ import {
 	type PodiumSemester,
 	type PodiumStanding,
 	podiumMetricLabel,
+	podiumSeasonLabel,
 	podiumStandings,
 	rankPodiumRows,
 } from "./podium.ts";
@@ -91,6 +92,7 @@ export type PodiumShareFileParts = {
 };
 
 export function podiumSharePeriodSlug(
+	year: number,
 	semester: PodiumSemester | null,
 	months: readonly PodiumMonth[],
 ): string {
@@ -98,7 +100,7 @@ export function podiumSharePeriodSlug(
 		isPodiumAllMonthsSelected(months) ||
 		(semester === null && months.length === 0)
 	) {
-		return PODIUM_FILTER_LABEL.season;
+		return podiumSeasonLabel(year);
 	}
 
 	if (semester) {

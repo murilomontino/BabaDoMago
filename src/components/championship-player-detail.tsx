@@ -21,6 +21,20 @@ import {
 	CHAMPIONSHIP_ROLE_LABEL,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
+import {
+	formatGoalkeeperAverage,
+	formatGoalkeeperCount,
+	formatGoalkeeperWinRate,
+	GOALKEEPER_STATS_LABEL,
+	type GoalkeeperStats,
+} from "@/const/goalkeeper-stats";
+import {
+	formatPlayerFormDelta,
+	formatPlayerFormStreak,
+	formatPlayerFormWinRate,
+	PLAYER_FORM_LABEL,
+	playerRecentForm,
+} from "@/const/player-form";
 import { PLAYER_LABEL, playerVisibleName } from "@/const/player-name";
 import {
 	formatPlayerProfileDelta,
@@ -93,6 +107,7 @@ type ChampionshipPlayerDetailProps = {
 	historyPending: boolean;
 	historyError: string | null;
 	partners: readonly SynergyPartnerRow[];
+	goalkeeper: GoalkeeperStats | null;
 	onOpenEvent: (eventId: number) => void;
 };
 
@@ -232,6 +247,27 @@ function PlayerProfileHeader({
 				</div>
 			</div>
 			{shareError && <p className={ERROR_CLASS}>{shareError}</p>}
+		</div>
+	);
+}
+
+function PlayerStatGrid({
+	items,
+}: {
+	items: readonly { id: string; label: string; value: string }[];
+}) {
+	return (
+		<div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
+			{items.map((item) => (
+				<div key={item.id}>
+					<p className="text-xs font-medium text-fg-muted" title={item.label}>
+						{item.label}
+					</p>
+					<p className="text-lg font-semibold tabular-nums text-fg">
+						{item.value}
+					</p>
+				</div>
+			))}
 		</div>
 	);
 }
@@ -499,10 +535,12 @@ export function ChampionshipPlayerDetail({
 	historyPending,
 	historyError,
 	partners,
+	goalkeeper,
 	onOpenEvent,
 }: ChampionshipPlayerDetailProps) {
 	const [tab, setTab] = usePlayerProfileTab();
 	const selectedTab = tab ?? PLAYER_PROFILE_TAB.profile;
+	const form = playerRecentForm(history);
 
 	return (
 		<div className="space-y-4">
@@ -538,6 +576,96 @@ export function ChampionshipPlayerDetail({
 				<>
 					<SectionCard title={PLAYER_PROFILE_LABEL.career}>
 						<PlayerCareerStats career={career} />
+					</SectionCard>
+					<SectionCard title={PLAYER_FORM_LABEL.title}>
+						{!form && (
+							<EmptyState
+								icon={<CalendarDays className="size-10" />}
+								title={PLAYER_FORM_LABEL.empty}
+							/>
+						)}
+						{form && (
+							<PlayerStatGrid
+								items={[
+									{
+										id: "events",
+										label: PLAYER_FORM_LABEL.events,
+										value: String(form.events),
+									},
+									{
+										id: "winRate",
+										label: PLAYER_FORM_LABEL.winRate,
+										value: formatPlayerFormWinRate(form.winRate),
+									},
+									{
+										id: "goals",
+										label: PLAYER_FORM_LABEL.goals,
+										value: String(form.goals),
+									},
+									{
+										id: "assists",
+										label: PLAYER_FORM_LABEL.assists,
+										value: String(form.assists),
+									},
+									{
+										id: "delta",
+										label: PLAYER_FORM_LABEL.delta,
+										value: formatPlayerFormDelta(form.ratingDelta),
+									},
+									{
+										id: "streak",
+										label: PLAYER_FORM_LABEL.streak,
+										value: formatPlayerFormStreak(form),
+									},
+								]}
+							/>
+						)}
+					</SectionCard>
+					<SectionCard title={GOALKEEPER_STATS_LABEL.title}>
+						{!goalkeeper && (
+							<EmptyState
+								icon={<CalendarDays className="size-10" />}
+								title={GOALKEEPER_STATS_LABEL.empty}
+							/>
+						)}
+						{goalkeeper && (
+							<>
+								<PlayerStatGrid
+									items={[
+										{
+											id: "matches",
+											label: GOALKEEPER_STATS_LABEL.matches,
+											value: formatGoalkeeperCount(goalkeeper.matches),
+										},
+										{
+											id: "wins",
+											label: GOALKEEPER_STATS_LABEL.wins,
+											value: formatGoalkeeperCount(goalkeeper.wins),
+										},
+										{
+											id: "winRate",
+											label: GOALKEEPER_STATS_LABEL.winRate,
+											value: formatGoalkeeperWinRate(goalkeeper.winRate),
+										},
+										{
+											id: "conceded",
+											label: GOALKEEPER_STATS_LABEL.goalsConceded,
+											value: formatGoalkeeperCount(goalkeeper.goalsConceded),
+										},
+										{
+											id: "concededAvg",
+											label: GOALKEEPER_STATS_LABEL.goalsConcededAverage,
+											value: formatGoalkeeperAverage(
+												goalkeeper.goalsConcededAverage,
+											),
+										},
+									]}
+								/>
+								<p className="mt-3 text-xs text-fg-muted">
+									{GOALKEEPER_STATS_LABEL.hint}
+								</p>
+							</>
+						)}
 					</SectionCard>
 					<SectionCard title={SYNERGY_LABEL.partners}>
 						{historyPending && (

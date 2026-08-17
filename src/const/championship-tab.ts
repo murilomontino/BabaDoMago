@@ -2,6 +2,7 @@ export const CHAMPIONSHIP_TAB = {
 	roster: "roster",
 	events: "events",
 	podium: "podium",
+	management: "management",
 } as const;
 
 export type ChampionshipTab =
@@ -11,6 +12,7 @@ export const CHAMPIONSHIP_TAB_LABEL = {
 	roster: "Elenco",
 	events: "Rodadas",
 	podium: "Pódio",
+	management: "Gestão",
 	deactivated: "Desativados",
 	settings: "Configuração",
 } as const;
@@ -29,3 +31,17 @@ export const CHAMPIONSHIP_TABS = [
 		label: CHAMPIONSHIP_TAB_LABEL.podium,
 	},
 ] as const;
+
+export function championshipTabs(includeManagement: boolean) {
+	if (!includeManagement) {
+		return CHAMPIONSHIP_TABS;
+	}
+
+	return [
+		...CHAMPIONSHIP_TABS,
+		{
+			id: CHAMPIONSHIP_TAB.management,
+			label: CHAMPIONSHIP_TAB_LABEL.management,
+		},
+	];
+}

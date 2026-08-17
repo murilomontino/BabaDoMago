@@ -5,6 +5,7 @@ import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { ChampionshipDetailHeader } from "@/components/championship-detail-header";
 import { ChampionshipEvents } from "@/components/championship-events";
 import { ChampionshipLogoCrop } from "@/components/championship-logo-crop";
+import { ChampionshipManagementTab } from "@/components/championship-management-tab";
 import { ChampionshipPodiumTab } from "@/components/championship-podium-tab";
 import { ChampionshipRosterTab } from "@/components/championship-roster-tab";
 import { ChampionshipSettingsTab } from "@/components/championship-settings-tab";
@@ -37,13 +38,14 @@ import {
 	canUpdateEventConfig,
 	canUpdateRating,
 	canUpdateVisibility,
+	canViewManagement,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
 import {
 	CHAMPIONSHIP_TAB,
 	CHAMPIONSHIP_TAB_LABEL,
-	CHAMPIONSHIP_TABS,
 	type ChampionshipTab,
+	championshipTabs,
 } from "@/const/championship-tab";
 import {
 	confirmClaimPlayerMessage,
@@ -155,6 +157,7 @@ export function ChampionshipDetailPage() {
 		updateVisibility: canUpdateVisibility(actorRole),
 		manageEvent: canManageEvent(actorRole),
 		overrideEnded: canOverrideEndedEvent(actorRole),
+		viewManagement: canViewManagement(actorRole),
 	};
 	const activePlayers = (data?.players ?? []).filter(
 		(player) => !player.deleted_at,
@@ -173,6 +176,8 @@ export function ChampionshipDetailPage() {
 		permissions.deleteChampionship ||
 		permissions.reactivate ||
 		permissions.remove;
+
+	const tabs = championshipTabs(permissions.viewManagement);
 
 	function handleTabChange(id: ChampionshipTab) {
 		setIsSettingsOpen(false);
@@ -580,11 +585,7 @@ export function ChampionshipDetailPage() {
 				/>
 			)}
 			{!isSettingsOpen && (
-				<Tabs
-					value={tab}
-					items={CHAMPIONSHIP_TABS}
-					onChange={handleTabChange}
-				/>
+				<Tabs value={tab} items={tabs} onChange={handleTabChange} />
 			)}
 			{!isSettingsOpen && tab === CHAMPIONSHIP_TAB.roster && (
 				<ChampionshipRosterTab
@@ -685,6 +686,17 @@ export function ChampionshipDetailPage() {
 					events={eventsQuery.data ?? []}
 				/>
 			)}
+			{!isSettingsOpen &&
+				tab === CHAMPIONSHIP_TAB.management &&
+				permissions.viewManagement && (
+					<ChampionshipManagementTab
+						championshipId={championshipId}
+						players={activePlayers}
+						events={eventsQuery.data ?? []}
+						eventsPending={eventsQuery.isPending}
+						eventsError={eventsQuery.isError ? eventsQuery.error.message : null}
+					/>
+				)}
 			{isSettingsOpen && (
 				<ChampionshipSettingsTab
 					name={data.name}
@@ -769,7 +781,7 @@ function ChampionshipDetailPageSkeleton() {
 				</section>
 				<Tabs
 					value={CHAMPIONSHIP_TAB.roster}
-					items={CHAMPIONSHIP_TABS}
+					items={championshipTabs(false)}
 					onChange={ignoreTabChange}
 				/>
 				<SectionCard

@@ -39,8 +39,6 @@ export const PODIUM_LABEL = {
 	emptyStats: "Nenhuma estatística ainda",
 } as const;
 
-export const PODIUM_SEASON_YEAR = 2026;
-
 export const PODIUM_SEMESTER = {
 	first: "first",
 	second: "second",
@@ -55,7 +53,7 @@ export const PODIUM_SEMESTER_MONTHS = {
 } as const;
 
 export const PODIUM_FILTER_LABEL = {
-	season: `Temporada ${PODIUM_SEASON_YEAR}`,
+	seasonPrefix: "Temporada",
 	[PODIUM_SEMESTER.first]: "Primeiro Semestre",
 	[PODIUM_SEMESTER.second]: "Segundo Semestre",
 	currentMonth: "Mês atual",
@@ -255,6 +253,80 @@ function eventLocalYearMonth(startsAt: string): EventLocalYearMonth | null {
 	}
 
 	return { year, month };
+}
+
+export function podiumSeasonLabel(year: number): string {
+	return `${PODIUM_FILTER_LABEL.seasonPrefix} ${year}`;
+}
+
+export function podiumEventYear(startsAt: string): number | null {
+	return eventLocalYearMonth(startsAt)?.year ?? null;
+}
+
+export function podiumAvailableYears(
+	events: readonly { starts_at: string }[],
+): number[] {
+	const years = new Set(
+		events.flatMap((event) => {
+			const year = podiumEventYear(event.starts_at);
+			if (year === null) {
+				return [];
+			}
+
+			return [year];
+		}),
+	);
+
+	return [...years].sort((left, right) => right - left);
+}
+
+export function podiumDefaultYear(
+	events: readonly { starts_at: string }[],
+	now = new Date(),
+): number {
+	const latest = podiumAvailableYears(events)[0];
+	if (latest !== undefined) {
+		return latest;
+	}
+
+	return podiumEventYear(now.toISOString()) ?? 0;
+}
+
+export function parsePodiumYear(
+	value: number,
+	availableYears: readonly number[],
+): number | null {
+	if (!Number.isInteger(value)) {
+		return null;
+	}
+
+	if (!availableYears.includes(value)) {
+		return null;
+	}
+
+	return value;
+}
+
+export function resolvePodiumYear(
+	events: readonly { starts_at: string }[],
+	requestedYear: number | null,
+	now = new Date(),
+): number {
+	const available = podiumAvailableYears(events);
+	const fallback = podiumDefaultYear(events, now);
+	if (requestedYear === null) {
+		return fallback;
+	}
+
+	if (available.length === 0) {
+		if (requestedYear === fallback) {
+			return requestedYear;
+		}
+
+		return fallback;
+	}
+
+	return parsePodiumYear(requestedYear, available) ?? fallback;
 }
 
 export function eventMatchesPodiumPeriod(

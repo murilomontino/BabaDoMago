@@ -17,6 +17,7 @@ import {
 	canUpdateNickname,
 	canUpdateRating,
 	canUpdateVisibility,
+	canViewManagement,
 	resolveChampionshipRole,
 } from "./championship-role.ts";
 
@@ -47,6 +48,7 @@ check(canUpdateEventConfig(owner), "owner updates event config");
 check(canUpdateVisibility(owner), "owner updates visibility");
 check(canOverrideEndedEvent(owner), "owner overrides ended event");
 check(canSetEventMvp(owner), "owner sets mvp");
+check(canViewManagement(owner), "owner views management");
 
 check(!canDeleteChampionship(captain), "captain cannot delete");
 check(!canSetRoles(captain), "captain cannot set roles");
@@ -64,6 +66,7 @@ check(canUpdateEventConfig(captain), "captain updates event config");
 check(canUpdateVisibility(captain), "captain updates visibility");
 check(!canOverrideEndedEvent(captain), "captain cannot override ended event");
 check(canSetEventMvp(captain), "captain sets mvp");
+check(canViewManagement(captain), "captain views management");
 
 check(!canDeleteChampionship(admin), "admin cannot delete");
 check(!canSetRoles(admin), "admin cannot set roles");
@@ -81,6 +84,7 @@ check(!canUpdateEventConfig(admin), "admin cannot update event config");
 check(!canUpdateVisibility(admin), "admin cannot update visibility");
 check(!canOverrideEndedEvent(admin), "admin cannot override ended event");
 check(!canSetEventMvp(admin), "admin cannot set mvp");
+check(canViewManagement(admin), "admin views management");
 
 check(!canDeleteChampionship(member), "member cannot delete");
 check(!canSetRoles(member), "member cannot set roles");
@@ -98,6 +102,7 @@ check(!canUpdateEventConfig(member), "member cannot update event config");
 check(!canUpdateVisibility(member), "member cannot update visibility");
 check(!canOverrideEndedEvent(member), "member cannot override ended event");
 check(!canSetEventMvp(member), "member cannot set mvp");
+check(!canViewManagement(member), "member cannot view management");
 
 check(
 	resolveChampionshipRole("owner-id", "owner-id", member) === owner,
