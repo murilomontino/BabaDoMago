@@ -83,6 +83,14 @@ function EndEventPreviewCardBody({
 	);
 }
 
+function mvpPreviewBorderClass(isMvp: boolean): string {
+	if (isMvp) {
+		return "border-pitch";
+	}
+
+	return "border-line";
+}
+
 function EndEventPreviewCard({
 	row,
 	ceiling,
@@ -102,13 +110,11 @@ function EndEventPreviewCard({
 		return <li className="rounded-lg border border-line p-2">{body}</li>;
 	}
 
-	const borderClass = row.isMvp ? "border-pitch" : "border-line";
-
 	return (
 		<li>
 			<button
 				type="button"
-				className={`w-full rounded-lg border p-2 text-left ${borderClass}`}
+				className={`w-full rounded-lg border p-2 text-left ${mvpPreviewBorderClass(row.isMvp)}`}
 				disabled={isPending}
 				onClick={() => {
 					onToggleMvp(row.playerId);

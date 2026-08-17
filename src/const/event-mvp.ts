@@ -1,3 +1,4 @@
+import { includeDefined, includeWhen } from "../lib/include-when.ts";
 import { playerVisibleName } from "./player-name.ts";
 import { rosterGoalInvolvement } from "./roster-stats.ts";
 
@@ -91,13 +92,30 @@ export function eventMvpPickCandidates(
 			}
 
 			const row = byId.get(playerId);
-			return row ? [row] : [];
+			return includeDefined(row);
 		}),
 	];
 }
 
 export function eventMvpStarDelta(): number {
 	return EVENT_MVP.starBonus;
+}
+
+export function attendanceMvpPlayerIds(
+	attendance: readonly { player_id: number; is_mvp: boolean }[],
+): number[] {
+	return attendance.flatMap((row) => includeWhen(row.is_mvp, row.player_id));
+}
+
+export function mvpPlayerIdsWhenAllowed(
+	canSetMvp: boolean,
+	mvpPlayerIds: number[],
+): number[] | null {
+	if (!canSetMvp) {
+		return null;
+	}
+
+	return mvpPlayerIds;
 }
 
 export function mvpCount(isMvp: boolean): number {
@@ -178,7 +196,7 @@ export function eventMvpPlayerIds({
 				}
 
 				return rows.flatMap((row) =>
-					row.involvement === best ? [row.playerId] : [],
+					includeWhen(row.involvement === best, row.playerId),
 				);
 			}),
 		),

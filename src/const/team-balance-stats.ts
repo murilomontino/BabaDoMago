@@ -71,6 +71,18 @@ function teamMatchRecord(
 		);
 }
 
+function favoriteWonWhenDecided(
+	decided: boolean,
+	favoriteTeamId: number | undefined,
+	leaderTeamId: number | undefined,
+): boolean | null {
+	if (!decided) {
+		return null;
+	}
+
+	return favoriteTeamId === leaderTeamId;
+}
+
 export function eventTeamBalance(
 	event: ChampionshipEvent,
 ): TeamBalanceEvent | null {
@@ -117,9 +129,11 @@ export function eventTeamBalance(
 	});
 	const decided =
 		favorites.length === 1 && actualLeaders.length === 1 && highest !== lowest;
-	const favoriteWon = decided
-		? favorites[0]?.teamId === actualLeaders[0]?.teamId
-		: null;
+	const favoriteWon = favoriteWonWhenDecided(
+		decided,
+		favorites[0]?.teamId,
+		actualLeaders[0]?.teamId,
+	);
 
 	return {
 		eventId: event.id,

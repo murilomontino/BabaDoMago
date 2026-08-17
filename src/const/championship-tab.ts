@@ -53,3 +53,14 @@ export function championshipTabs(includeManagement: boolean) {
 		},
 	];
 }
+
+export function visibleChampionshipTab(
+	requestedTab: ChampionshipTab,
+	canViewManagement: boolean,
+): ChampionshipTab {
+	if (requestedTab === CHAMPIONSHIP_TAB.management && !canViewManagement) {
+		return CHAMPIONSHIP_TAB.roster;
+	}
+
+	return requestedTab;
+}

@@ -70,6 +70,7 @@ import {
 	FIELD_CLASS,
 	MODAL_CLASS,
 } from "@/const/ui";
+import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
 import { shareEventTeamsImage } from "@/lib/share-event-teams-image";
 import type { ChampionshipPlayer } from "@/types/championship";
 
@@ -514,12 +515,16 @@ export function ChampionshipEventBuilder({
 										goalkeeperIds={goalkeeperIds}
 										onSetPresent={handleSetPresent}
 										onSetGoalkeeper={handleSetGoalkeeper}
-										onSeedAttendance={
-											seedEvents.length > 0 ? handleSeedAttendance : undefined
-										}
+										onSeedAttendance={handlerWhenAllowed(
+											seedEvents.length > 0,
+											handleSeedAttendance,
+										)}
 										isAddingPlayer={isAddingPlayer}
 										addPlayerError={addPlayerError}
-										onAddPlayer={onAddPlayer ? handleAddPlayer : undefined}
+										onAddPlayer={handlerWhenAllowed(
+											onAddPlayer,
+											handleAddPlayer,
+										)}
 									/>
 									{attendanceError && (
 										<p className={ERROR_CLASS}>{attendanceError}</p>

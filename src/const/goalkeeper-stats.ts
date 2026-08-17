@@ -1,3 +1,4 @@
+import { includeWhen } from "../lib/include-when.ts";
 import type { ChampionshipEvent } from "../types/championship-event.ts";
 import { countsForSynergy } from "./player-synergy.ts";
 import {
@@ -45,7 +46,7 @@ function matchGoalsConceded(
 ): number {
 	const teamPlayerIds = new Set(
 		event.players.flatMap((player) =>
-			player.team_id === teamId ? [player.player_id] : [],
+			includeWhen(player.team_id === teamId, player.player_id),
 		),
 	);
 

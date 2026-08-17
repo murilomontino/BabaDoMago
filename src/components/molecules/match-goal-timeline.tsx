@@ -11,6 +11,17 @@ import type { ChampionshipEventGoal } from "@/types/championship-event";
 export const MATCH_GOAL_TIMELINE_GRID_CLASS =
 	"grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-2 gap-y-0.5";
 
+function assistPlayerName(
+	assistPlayerId: number | null,
+	playerName: (playerId: number) => string,
+): string | null {
+	if (assistPlayerId === null) {
+		return null;
+	}
+
+	return playerName(assistPlayerId);
+}
+
 type MatchGoalTimelineProps = {
 	goals: readonly ChampionshipEventGoal[];
 	teamAPlayerIds: ReadonlySet<number>;
@@ -55,10 +66,7 @@ export function MatchGoalTimeline({
 		<>
 			{timeline.map((goal) => {
 				const forTeamA = matchGoalForTeamA(goal, teamAPlayerIds);
-				const assistName =
-					goal.assist_player_id === null
-						? null
-						: playerName(goal.assist_player_id);
+				const assistName = assistPlayerName(goal.assist_player_id, playerName);
 				const event = (
 					<GoalTimelineEvent
 						scorerName={playerName(goal.scorer_player_id)}

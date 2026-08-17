@@ -16,6 +16,7 @@ import { SetEventMvpModal } from "@/components/set-event-mvp-modal";
 import {
 	championshipEventToday,
 	clearAttendanceDraft,
+	createEventDate,
 	EVENT_ACTION,
 	EVENT_BUILDER_STEP,
 	EVENT_CARD_LONG_PRESS,
@@ -35,12 +36,17 @@ import {
 	parseEventWeekday,
 } from "@/const/championship-event";
 import {
-	EVENT_MATCH_LABEL,
+	copyMatchLinkLabel,
 	matchPlayUrl,
 	openEventMatch,
 } from "@/const/championship-event-match";
 import { CHAMPIONSHIP_TAB_LABEL } from "@/const/championship-tab";
-import { eventMvpCandidates, toggleEventMvpPlayerId } from "@/const/event-mvp";
+import {
+	attendanceMvpPlayerIds,
+	eventMvpCandidates,
+	mvpPlayerIdsWhenAllowed,
+	toggleEventMvpPlayerId,
+} from "@/const/event-mvp";
 import {
 	eventRatingPreview,
 	previewRatingTos,
@@ -179,9 +185,7 @@ export function ChampionshipEvents({
 			attendanceCount: flowEvent.attendance.length,
 		});
 	const actionsWhen = flowEvent && formatEventStartsAt(flowEvent.starts_at);
-	const copyMatchLinkLabel = copied
-		? EVENT_MATCH_LABEL.copied
-		: EVENT_ACTION.copyMatchLink;
+	const copyLinkLabel = copyMatchLinkLabel(copied);
 
 	async function handleCreate(eventDate: string, eventTimeValue: string) {
 		const eventId = await createEvent.mutateAsync({
@@ -306,9 +310,7 @@ export function ChampionshipEvents({
 			{isCreating && (
 				<Formik
 					initialValues={{
-						eventDate: weekday
-							? nextEventDate(weekday, championshipEventToday())
-							: championshipEventToday(),
+						eventDate: createEventDate(weekday),
 						eventTime,
 					}}
 					validationSchema={startEventFormSchema}
@@ -448,7 +450,7 @@ export function ChampionshipEvents({
 			{flow === "actions" && flowEvent && actionsFlags && actionsWhen && (
 				<EventListActionsModal
 					title={`${actionsWhen.date} · ${actionsWhen.time}`}
-					copyMatchLinkLabel={copyMatchLinkLabel}
+					copyMatchLinkLabel={copyLinkLabel}
 					continueMatch={openEventMatch(flowEvent.matches) !== null}
 					showStartMatch={actionsFlags.showStartMatch}
 					canEnd={actionsFlags.canEnd}
@@ -533,7 +535,10 @@ export function ChampionshipEvents({
 								await endEvent.mutateAsync({
 									eventId: flowEvent.id,
 									presentPlayerIds: endIds.presentPlayerIds,
-									mvpPlayerIds: canSetMvp ? mvpPlayerIds : null,
+									mvpPlayerIds: mvpPlayerIdsWhenAllowed(
+										canSetMvp,
+										mvpPlayerIds,
+									),
 								});
 								clearAttendanceDraft(flowEvent.id);
 								resetFlow();
@@ -554,9 +559,7 @@ export function ChampionshipEvents({
 						wins: row.wins,
 						matches: row.matches,
 					}))}
-					initialPlayerIds={flowEvent.attendance.flatMap((row) =>
-						row.is_mvp ? [row.player_id] : [],
-					)}
+					initialPlayerIds={attendanceMvpPlayerIds(flowEvent.attendance)}
 					isPending={setMvps.isPending}
 					errorMessage={mutationErrorMessage(setMvps)}
 					onCancel={closeFlow}

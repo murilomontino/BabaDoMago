@@ -113,6 +113,19 @@ export function podiumSharePeriodSlug(
 		.join("-");
 }
 
+export function podiumShareContext(
+	eventStartsAt: string | undefined,
+	year: number,
+	semester: PodiumSemester | null,
+	months: readonly PodiumMonth[],
+): string | null {
+	if (eventStartsAt) {
+		return shareFileDateStamp(eventStartsAt);
+	}
+
+	return podiumSharePeriodSlug(year, semester, months);
+}
+
 export function podiumShareFileName(
 	metric: PodiumMetricId,
 	parts: PodiumShareFileParts,

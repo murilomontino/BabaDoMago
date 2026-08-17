@@ -79,14 +79,20 @@ export function eventTeamShareFileName({
 	]);
 }
 
+function eventTeamsShareHeading(startsAt: string): string {
+	const parsed = new Date(startsAt);
+	if (Number.isNaN(parsed.getTime())) {
+		return EVENT_TEAM_SHARE.title;
+	}
+
+	return `${EVENT_TEAM_SHARE.title} ${formatEventStartsAt(startsAt).date}`;
+}
+
 export function eventTeamsShareText(
 	cards: readonly EventTeamShareCard[],
 	startsAt: string,
 ): string {
-	const parsed = new Date(startsAt);
-	const heading = Number.isNaN(parsed.getTime())
-		? EVENT_TEAM_SHARE.title
-		: `${EVENT_TEAM_SHARE.title} ${formatEventStartsAt(startsAt).date}`;
+	const heading = eventTeamsShareHeading(startsAt);
 	const blocks = cards.map((card) => {
 		const lines = [
 			card.title,

@@ -13,11 +13,10 @@ import {
 	EVENT_ACTION,
 	EVENT_TEAM_MESSAGE,
 	EVENT_TEAM_POSITION_LABEL,
-	emptyTeamSlots,
 	eventTeamPlayerOptionLabel,
 	eventTeamSlotPosition,
+	initialTeamSlots,
 	replaceSlotAt,
-	teamPlayerSlots,
 	teamSlotsToPlayerIds,
 	validateEventTeam,
 } from "@/const/championship-event";
@@ -84,9 +83,7 @@ export function AddEventTeamModal({
 		() => initialTeam?.color ?? EVENT_TEAM_COLOR_NONE,
 	);
 	const [slots, setSlots] = useState(() =>
-		initialTeam
-			? teamPlayerSlots(initialTeam.players, playersPerTeam)
-			: emptyTeamSlots(playersPerTeam),
+		initialTeamSlots(initialTeam, playersPerTeam),
 	);
 	const [localError, setLocalError] = useState<string | null>(null);
 	const assignedIds = new Set(teamSlotsToPlayerIds(slots));

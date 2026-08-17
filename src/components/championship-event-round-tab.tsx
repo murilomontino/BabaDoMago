@@ -73,7 +73,11 @@ import {
 	resolveEventPlayers,
 	resolveRosterPlayer,
 } from "@/const/championship-event-roster";
-import { EVENT_MVP_LABEL, eventMvpPickCandidates } from "@/const/event-mvp";
+import {
+	attendanceMvpPlayerIds,
+	EVENT_MVP_LABEL,
+	eventMvpPickCandidates,
+} from "@/const/event-mvp";
 import {
 	type EventTeamColor,
 	eventTeamColorStyle,
@@ -87,6 +91,7 @@ import {
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import { CHIP_CLASS, ERROR_CLASS } from "@/const/ui";
+import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
 import { shareEventTeamsImage } from "@/lib/share-event-teams-image";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type {
@@ -377,9 +382,7 @@ export function ChampionshipEventRoundTab({
 	const goingNotPresentIds = goingRsvpIds.filter(
 		(playerId) => !attendanceIds.includes(playerId),
 	);
-	const selectedMvpIds = event.attendance.flatMap((row) =>
-		row.is_mvp ? [row.player_id] : [],
-	);
+	const selectedMvpIds = attendanceMvpPlayerIds(event.attendance);
 	const attendanceNameByPlayerId = new Map(
 		event.attendance.map((row) => [row.player_id, row.display_name]),
 	);
@@ -422,13 +425,12 @@ export function ChampionshipEventRoundTab({
 					onStepChange={(next) => {
 						void onBuilderStepChange(next);
 					}}
-					onCancel={
-						event.teams.length >= CHAMPIONSHIP_EVENT.minTeams
-							? () => {
-									void onBuilderStepChange(null);
-								}
-							: undefined
-					}
+					onCancel={handlerWhenAllowed(
+						event.teams.length >= CHAMPIONSHIP_EVENT.minTeams,
+						() => {
+							void onBuilderStepChange(null);
+						},
+					)}
 					onPresentIdsChange={(playerIds) => {
 						draftPresentIdsRef.current = [...playerIds];
 						writeAttendanceDraft(event.id, playerIds);

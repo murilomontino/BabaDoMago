@@ -37,6 +37,34 @@ type EditEventAttendanceModalProps = {
 	) => Promise<void>;
 };
 
+function addCreatedPlayersToPresent(
+	onAddPlayer: EditEventAttendanceModalProps["onAddPlayer"],
+	presentIds: number[],
+	setPresentIds: (ids: number[]) => void,
+	setLocalError: (error: string | null) => void,
+): EditEventAttendanceModalProps["onAddPlayer"] {
+	if (!onAddPlayer) {
+		return undefined;
+	}
+
+	return async (values) => {
+		const created = await onAddPlayer(values);
+		if (created.length === 0) {
+			return created;
+		}
+
+		setLocalError(null);
+		setPresentIds(
+			applyVisibleAttendance(
+				presentIds,
+				created.map((player) => player.id),
+				true,
+			),
+		);
+		return created;
+	};
+}
+
 export function EditEventAttendanceModal({
 	players,
 	attendanceCounts,
@@ -95,26 +123,12 @@ export function EditEventAttendanceModal({
 					}}
 					isAddingPlayer={isAddingPlayer}
 					addPlayerError={addPlayerError}
-					onAddPlayer={
-						onAddPlayer
-							? async (values) => {
-									const created = await onAddPlayer(values);
-									if (created.length === 0) {
-										return created;
-									}
-
-									setLocalError(null);
-									setPresentIds(
-										applyVisibleAttendance(
-											presentIds,
-											created.map((player) => player.id),
-											true,
-										),
-									);
-									return created;
-								}
-							: undefined
-					}
+					onAddPlayer={addCreatedPlayersToPresent(
+						onAddPlayer,
+						presentIds,
+						setPresentIds,
+						setLocalError,
+					)}
 				/>
 				{localError && <p className={`mt-2 ${ERROR_CLASS}`}>{localError}</p>}
 				{errorMessage && (

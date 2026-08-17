@@ -19,6 +19,7 @@ import {
 	compareStartsAtNewestFirst,
 	compareStartsAtOldestFirst,
 	countPlayerAttendance,
+	createEventDate,
 	defaultGoalkeeperIds,
 	draftAttendanceForEnd,
 	drawBalancedEventTeams,
@@ -56,6 +57,7 @@ import {
 	formatNextPeladaShortcut,
 	hasEventListActions,
 	initialBuilderTeams,
+	initialTeamSlots,
 	isEventBuilderStep,
 	isEventRsvpStatus,
 	isMatchAlreadyOpenError,
@@ -117,6 +119,8 @@ check(nextEventDate(EVENT_WEEKDAY.tuesday, "2026-08-17"), "2026-08-18");
 check(nextEventDate(EVENT_WEEKDAY.tuesday, "2026-08-18"), "2026-08-18");
 check(nextEventDate(EVENT_WEEKDAY.monday, "2026-08-16"), "2026-08-17");
 check(nextEventDate(EVENT_WEEKDAY.sunday, "2026-08-17"), "2026-08-23");
+check(createEventDate(null, "2026-08-17"), "2026-08-17");
+check(createEventDate(EVENT_WEEKDAY.tuesday, "2026-08-17"), "2026-08-18");
 check(formatEventTimeShort("19:00:00"), "19h");
 check(formatEventTimeShort("19:30"), "19h30");
 check(
@@ -357,6 +361,11 @@ check(
 );
 
 check(emptyTeamSlots(3).join(","), ",,");
+check(initialTeamSlots(null, 2).join(","), ",");
+check(
+	initialTeamSlots({ players: [{ player_id: 9, is_goalkeeper: true }] }, 2)[0],
+	"9",
+);
 check(replaceSlotAt(["1", "2", "3"], 1, "").join("|"), "1||3");
 check(replaceSlotAt(["1", "", "3"], 1, "9").join("|"), "1|9|3");
 check(builderTeamsHavePlayers(initialBuilderTeams(5, 2)), false);

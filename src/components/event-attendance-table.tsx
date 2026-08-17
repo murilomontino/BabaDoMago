@@ -72,6 +72,31 @@ function stopAttendanceSwitchClick(event: { stopPropagation: () => void }) {
 	event.stopPropagation();
 }
 
+function attendanceFlagHandler(
+	onSet: ((playerIds: readonly number[], checked: boolean) => void) | undefined,
+	playerId: number,
+): ((checked: boolean) => void) | undefined {
+	if (!onSet) {
+		return undefined;
+	}
+
+	return (checked) => {
+		onSet([playerId], checked);
+	};
+}
+
+function attendanceRowToggleHandler(
+	onSet: ((playerIds: readonly number[], present: boolean) => void) | undefined,
+): ((row: AttendanceRow) => void) | undefined {
+	if (!onSet) {
+		return undefined;
+	}
+
+	return (row) => {
+		onSet([row.id], !row.present);
+	};
+}
+
 function AttendanceRowSwitch({
 	id,
 	checked,
@@ -187,16 +212,8 @@ export function EventAttendanceTable({
 			attendanceCount: attendanceCounts.get(player.id) ?? 0,
 			present: presentIds.includes(player.id),
 			goalkeeper: goalkeeperIds.includes(player.id),
-			onTogglePresent: onSetPresent
-				? (checked: boolean) => {
-						onSetPresent([player.id], checked);
-					}
-				: undefined,
-			onToggleGoalkeeper: onSetGoalkeeper
-				? (checked: boolean) => {
-						onSetGoalkeeper([player.id], checked);
-					}
-				: undefined,
+			onTogglePresent: attendanceFlagHandler(onSetPresent, player.id),
+			onToggleGoalkeeper: attendanceFlagHandler(onSetGoalkeeper, player.id),
 		}));
 
 		return [...list].sort(compareByAttendanceCount);
@@ -397,13 +414,7 @@ export function EventAttendanceTable({
 					data={rows}
 					columns={columns}
 					getRowId={(row) => String(row.id)}
-					onRowClick={
-						onSetPresent
-							? (row) => {
-									onSetPresent([row.id], !row.present);
-								}
-							: undefined
-					}
+					onRowClick={attendanceRowToggleHandler(onSetPresent)}
 					getRowClassName={(row) =>
 						`transition-colors duration-200 ease-in-out motion-reduce:transition-none ${
 							row.present ? "bg-pitch-soft" : "even:bg-surface-muted"

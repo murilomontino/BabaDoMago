@@ -3,7 +3,7 @@ import type {
 	ChampionshipEventMatch,
 	ChampionshipEventMatchPlayer,
 } from "../types/championship-event.ts";
-import { CHAMPIONSHIP_EVENT } from "./championship-event.ts";
+import { CHAMPIONSHIP_EVENT, EVENT_ACTION } from "./championship-event.ts";
 import type { EventTeamColor } from "./event-team-color.ts";
 import { PLAYER_LABEL, playerVisibleName } from "./player-name.ts";
 
@@ -35,6 +35,14 @@ export const EVENT_MATCH_LABEL = {
 	showMore: "Ver mais",
 	showLess: "Ver menos",
 } as const;
+
+export function copyMatchLinkLabel(copied: boolean): string {
+	if (copied) {
+		return EVENT_MATCH_LABEL.copied;
+	}
+
+	return EVENT_ACTION.copyMatchLink;
+}
 
 export const EVENT_MATCH_TEAM_PREVIEW = {
 	players: 2,
@@ -132,6 +140,15 @@ export function keepLocalMatchClock(
 	return matchClockSnapshotFromFields(seed);
 }
 
+function pauseElapsedSeconds(pausedAtIso: string, nowMs: number): number {
+	const pausedAt = Date.parse(pausedAtIso);
+	if (!Number.isFinite(pausedAt)) {
+		return 0;
+	}
+
+	return Math.max(0, Math.floor((nowMs - pausedAt) / 1000));
+}
+
 export function applyMatchClockAction(
 	snapshot: MatchClockSnapshot,
 	action: MatchClockAction,
@@ -166,10 +183,7 @@ export function applyMatchClockAction(
 				return snapshot;
 			}
 
-			const pausedAt = Date.parse(snapshot.paused_at);
-			const extra = Number.isFinite(pausedAt)
-				? Math.max(0, Math.floor((nowMs - pausedAt) / 1000))
-				: 0;
+			const extra = pauseElapsedSeconds(snapshot.paused_at, nowMs);
 			return {
 				...snapshot,
 				paused_at: null,

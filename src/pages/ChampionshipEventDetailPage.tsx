@@ -49,6 +49,7 @@ import {
 	useChampionship,
 } from "@/hooks/championships/use-championships";
 import { mutationErrorMessage } from "@/lib/error-message";
+import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
 
 export function ChampionshipEventDetailPage() {
 	const { championshipId: championshipIdParam, eventId: eventIdParam } =
@@ -183,11 +184,9 @@ export function ChampionshipEventDetailPage() {
 				deleteError={mutationErrorMessage(deleteEvent)}
 				isAddingPlayer={addPlayer.isPending}
 				addPlayerError={mutationErrorMessage(addPlayer)}
-				onAddPlayer={
-					canInvite(actorRole)
-						? async (values) => addPlayer.mutateAsync(values)
-						: undefined
-				}
+				onAddPlayer={handlerWhenAllowed(canInvite(actorRole), async (values) =>
+					addPlayer.mutateAsync(values),
+				)}
 				onSaveTeams={async ({
 					presentPlayerIds,
 					teams,

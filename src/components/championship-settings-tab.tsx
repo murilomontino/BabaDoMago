@@ -32,6 +32,7 @@ import {
 	ERROR_CLASS,
 	FIELD_CLASS,
 } from "@/const/ui";
+import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 const DANGER_ROW_CLASS =
@@ -340,7 +341,7 @@ export function ChampionshipSettingsTab({
 					onReactivate={onReactivate}
 					removingPlayerId={removingPlayerId}
 					removeError={removeError}
-					onRemove={canRemove ? onRemove : undefined}
+					onRemove={handlerWhenAllowed(canRemove, onRemove)}
 				/>
 			)}
 			{showDangerZone && (

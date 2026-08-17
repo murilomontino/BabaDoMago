@@ -17,6 +17,7 @@ import { playersFromEventAttendance } from "@/const/championship-event-roster";
 import {
 	EVENT_TAB,
 	EVENT_TABS,
+	eventDetailSelectedTab,
 	showEventDetailTabs,
 } from "@/const/championship-event-tab";
 import type { EventTeamColor } from "@/const/event-team-color";
@@ -180,10 +181,7 @@ export function ChampionshipEventDetail({
 		showTeamBuilder,
 		attendanceCount: event.attendance.length,
 	});
-	const selectedTab =
-		showEventTabs && tab === EVENT_TAB.podium
-			? EVENT_TAB.podium
-			: EVENT_TAB.event;
+	const selectedTab = eventDetailSelectedTab(showEventTabs, tab);
 	const builderStep = step ?? EVENT_BUILDER_STEP.attendance;
 	const draftPresentIdsRef = useRef(
 		resolveBuilderInitialPresentIds(

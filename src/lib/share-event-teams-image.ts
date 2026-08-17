@@ -29,6 +29,22 @@ const NUMBER_WIDTH = 36;
 const CORNER = 12;
 const ROW_CORNER = 8;
 
+function shareCardBackground(color: string | null): string {
+	if (!color) {
+		return EVENT_TEAM_SHARE_COLOR.surface;
+	}
+
+	return eventTeamColorPastel(color);
+}
+
+function shareCardTitleColor(color: string | null, background: string): string {
+	if (!color) {
+		return EVENT_TEAM_SHARE_COLOR.fg;
+	}
+
+	return eventTeamColorFg(background);
+}
+
 function avatarUrlsToLoad(url: string | null | undefined): string[] {
 	if (!url) {
 		return [];
@@ -257,12 +273,8 @@ function drawCard(
 	ceiling: number,
 	avatars: ReadonlyMap<string, HTMLImageElement>,
 ) {
-	const background = card.color
-		? eventTeamColorPastel(card.color)
-		: EVENT_TEAM_SHARE_COLOR.surface;
-	const titleColor = card.color
-		? eventTeamColorFg(background)
-		: EVENT_TEAM_SHARE_COLOR.fg;
+	const background = shareCardBackground(card.color);
+	const titleColor = shareCardTitleColor(card.color, background);
 
 	context.fillStyle = background;
 	context.strokeStyle = EVENT_TEAM_SHARE_COLOR.line;

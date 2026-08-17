@@ -18,10 +18,8 @@ import {
 	PODIUM_FILTER_LABEL,
 	PODIUM_LABEL,
 	PODIUM_METRIC,
-	PODIUM_METRIC_OPTIONS,
 	PODIUM_MONTH_LABEL,
 	PODIUM_MONTHS,
-	PODIUM_PLAYER_METRIC_OPTIONS,
 	PODIUM_PLAYER_METRICS,
 	PODIUM_SEMESTER,
 	type PodiumMetricId,
@@ -30,6 +28,7 @@ import {
 	parsePodiumMetric,
 	podiumAvailableYears,
 	podiumCurrentMonth,
+	podiumMetricOptions,
 	podiumSeasonLabel,
 	resolvePodiumYear,
 	selectPodiumAllMonths,
@@ -41,9 +40,8 @@ import {
 	PODIUM_SHARE_LABEL,
 	podiumShareCardFromSynergyPairs,
 	podiumShareCardsFromPlayers,
-	podiumSharePeriodSlug,
+	podiumShareContext,
 } from "@/const/podium-share";
-import { shareFileDateStamp } from "@/const/share-file-name";
 import { SKELETON_LABEL } from "@/const/skeleton";
 import {
 	championshipTeamBalance,
@@ -53,6 +51,7 @@ import {
 } from "@/const/team-balance-stats";
 import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
 import { usePodiumYear } from "@/hooks/use-podium-year";
+import { includeDefined } from "@/lib/include-when";
 import { sharePodiumImages } from "@/lib/share-podium-image";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type { ChampionshipEvent } from "@/types/championship-event";
@@ -97,9 +96,7 @@ export function ChampionshipPodiumTab({
 	const [shareError, setShareError] = useState<string | null>(null);
 	const currentMonth = podiumCurrentMonth();
 	const includeSynergy = !eventStartsAt;
-	const metricOptions = includeSynergy
-		? PODIUM_METRIC_OPTIONS
-		: PODIUM_PLAYER_METRIC_OPTIONS;
+	const metricOptions = podiumMetricOptions(includeSynergy);
 	const showPeriodFilters = Boolean(events) && includeSynergy;
 	const availableYears = useMemo(
 		() => podiumAvailableYears(events ?? []),
@@ -162,7 +159,7 @@ export function ChampionshipPodiumTab({
 	);
 	const currentCards = useMemo(() => {
 		if (metric === PODIUM_METRIC.synergy) {
-			return synergyCard ? [synergyCard] : [];
+			return includeDefined(synergyCard);
 		}
 
 		if (!isPodiumPlayerMetric(metric)) {
@@ -189,9 +186,7 @@ export function ChampionshipPodiumTab({
 		try {
 			await sharePodiumImages(cards, ceiling, {
 				championshipName,
-				context: eventStartsAt
-					? shareFileDateStamp(eventStartsAt)
-					: podiumSharePeriodSlug(year, semester, months),
+				context: podiumShareContext(eventStartsAt, year, semester, months),
 				generatedAt: new Date().toISOString(),
 			});
 		} catch {

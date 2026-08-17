@@ -39,6 +39,7 @@ import {
 	toRosterRow,
 } from "@/const/roster-stats";
 import { CHIP_CLASS, FIELD_CLASS } from "@/const/ui";
+import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 const rosterColumnHelper = createColumnHelper<DataTableFeatures, RosterRow>();
@@ -170,7 +171,7 @@ export function ChampionshipRoster({
 			eventStatsPlayerId,
 			onUnlink,
 			unlinkingPlayerId,
-			onMerge: canMerge ? onMerge : undefined,
+			onMerge: handlerWhenAllowed(canMerge, onMerge),
 			onDeactivate,
 			deactivatingPlayerId,
 			onReactivate,

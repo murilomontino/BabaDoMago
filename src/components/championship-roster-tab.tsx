@@ -15,6 +15,7 @@ import {
 } from "@/const/player-name-list";
 import { PLAYER_RATING } from "@/const/player-rating";
 import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
+import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 type ChampionshipRosterTabProps = {
@@ -194,18 +195,21 @@ export function ChampionshipRosterTab({
 				currentUserId={currentUserId}
 				claimingPlayerId={claimingPlayerId}
 				onClaim={onClaim}
-				onChangeRating={canUpdateRating ? onChangeRating : undefined}
+				onChangeRating={handlerWhenAllowed(canUpdateRating, onChangeRating)}
 				ratingPlayerId={ratingPlayerId}
 				onEditNickname={onEditNickname}
 				nicknamePlayerId={nicknamePlayerId}
 				onEditEventStats={onEditEventStats}
 				eventStatsPlayerId={eventStatsPlayerId}
-				onChangeRole={canSetRoles ? onChangeRole : undefined}
-				onChangeGoalkeeper={canUpdateRating ? onChangeGoalkeeper : undefined}
-				onUnlink={canUnlink ? onUnlink : undefined}
+				onChangeRole={handlerWhenAllowed(canSetRoles, onChangeRole)}
+				onChangeGoalkeeper={handlerWhenAllowed(
+					canUpdateRating,
+					onChangeGoalkeeper,
+				)}
+				onUnlink={handlerWhenAllowed(canUnlink, onUnlink)}
 				unlinkingPlayerId={unlinkingPlayerId}
-				onMerge={canMerge ? onMerge : undefined}
-				onDeactivate={canDeactivate ? onDeactivate : undefined}
+				onMerge={handlerWhenAllowed(canMerge, onMerge)}
+				onDeactivate={handlerWhenAllowed(canDeactivate, onDeactivate)}
 				deactivatingPlayerId={deactivatingPlayerId}
 			/>
 			{claimError && <p className={`mt-4 ${ERROR_CLASS}`}>{claimError}</p>}

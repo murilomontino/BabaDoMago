@@ -167,6 +167,42 @@ function resolvePlayer(
 	return byId.get(playerId) ?? fallbackPlayer(playerId, displayName);
 }
 
+function matchSlotPlayer(
+	row: ChampionshipEventMatchPlayer | null,
+	rosterById: Map<number, ChampionshipPlayer>,
+): ChampionshipPlayer | null {
+	if (row === null) {
+		return null;
+	}
+
+	return resolvePlayer(row.player_id, row.display_name, rosterById);
+}
+
+function matchSlotPosition(
+	row: ChampionshipEventMatchPlayer | null,
+	slot: number,
+) {
+	if (row === null) {
+		return eventTeamSlotPosition(slot);
+	}
+
+	return eventTeamPlayerPosition(row.is_goalkeeper);
+}
+
+function ownGoalTeamPlayers(
+	ownGoalTeamId: number | null | undefined,
+	matchPlayers: ChampionshipEventMatch["players"],
+	rosterById: Map<number, ChampionshipPlayer>,
+): ChampionshipPlayer[] {
+	if (!ownGoalTeamId) {
+		return [];
+	}
+
+	return matchActiveTeamPlayers(matchPlayers, ownGoalTeamId).map((row) =>
+		resolvePlayer(row.player_id, row.display_name, rosterById),
+	);
+}
+
 type ChampionshipEventPlayProps = {
 	event: ChampionshipEvent;
 	match: ChampionshipEventMatch | null;
@@ -447,12 +483,8 @@ function MatchTeamBlock({
 					(slot) => {
 						const row = slots[slot] ?? null;
 						const occupied = row !== null;
-						const player = occupied
-							? resolvePlayer(row.player_id, row.display_name, rosterById)
-							: null;
-						const position = occupied
-							? eventTeamPlayerPosition(row.is_goalkeeper)
-							: eventTeamSlotPosition(slot);
+						const player = matchSlotPlayer(row, rosterById);
+						const position = matchSlotPosition(row, slot);
 
 						return (
 							<li key={`slot-${slot}`} className={MATCH_PLAY_SLOT_CLASS}>
@@ -816,11 +848,11 @@ export function ChampionshipEventPlay({
 		starA,
 		starB,
 	);
-	const ownGoalPlayers = ownGoalTeamId
-		? matchActiveTeamPlayers(match.players, ownGoalTeamId).map((row) =>
-				resolvePlayer(row.player_id, row.display_name, rosterById),
-			)
-		: [];
+	const ownGoalPlayers = ownGoalTeamPlayers(
+		ownGoalTeamId,
+		match.players,
+		rosterById,
+	);
 	const matchPlayerById = new Map(
 		match.players.map((row) => [row.player_id, row]),
 	);

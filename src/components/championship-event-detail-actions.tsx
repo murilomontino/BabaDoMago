@@ -16,11 +16,15 @@ import {
 	mergePresentIdsForEnd,
 } from "@/const/championship-event";
 import {
-	EVENT_MATCH_LABEL,
+	copyMatchLinkLabel,
 	matchPlayUrl,
 	openEventMatch,
 } from "@/const/championship-event-match";
-import { eventMvpCandidates, toggleEventMvpPlayerId } from "@/const/event-mvp";
+import {
+	eventMvpCandidates,
+	mvpPlayerIdsWhenAllowed,
+	toggleEventMvpPlayerId,
+} from "@/const/event-mvp";
 import { eventRatingPreview } from "@/const/event-rating-adjustment";
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
@@ -106,9 +110,6 @@ export function ChampionshipEventDetailActions({
 	]);
 
 	const canEndEvent = canManage && status === EVENT_STATUS.open;
-	const copyMatchLinkLabel = copied
-		? EVENT_MATCH_LABEL.copied
-		: EVENT_ACTION.copyMatchLink;
 
 	if (!showStartMatch && !canManage) {
 		return null;
@@ -138,7 +139,7 @@ export function ChampionshipEventDetailActions({
 						{showStartMatch && (
 							<IconTooltipButton
 								showLabel
-								label={copyMatchLinkLabel}
+								label={copyMatchLinkLabel(copied)}
 								icon={<Copy className="size-4" />}
 								onClick={() => {
 									void handleCopyMatchLink();
@@ -231,7 +232,7 @@ export function ChampionshipEventDetailActions({
 							try {
 								await onEnd(
 									presentPlayerIdsForEnd,
-									canSetMvp ? mvpPlayerIds : null,
+									mvpPlayerIdsWhenAllowed(canSetMvp, mvpPlayerIds),
 								);
 								clearAttendanceDraft(event.id);
 								setEndMvpPlayerIds(null);

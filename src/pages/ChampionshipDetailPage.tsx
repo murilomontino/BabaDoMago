@@ -47,6 +47,7 @@ import {
 	CHAMPIONSHIP_TAB_LABEL,
 	type ChampionshipTab,
 	championshipTabs,
+	visibleChampionshipTab,
 } from "@/const/championship-tab";
 import {
 	confirmClaimPlayerMessage,
@@ -90,6 +91,7 @@ import {
 	mutationErrorMessage,
 	pendingMutationId,
 } from "@/lib/error-message";
+import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 const ChampionshipLogoCrop = lazy(() =>
@@ -174,10 +176,10 @@ export function ChampionshipDetailPage() {
 		setMvp: canSetEventMvp(actorRole),
 	};
 	const requestedTab = tab ?? CHAMPIONSHIP_TAB.roster;
-	const selectedTab =
-		requestedTab === CHAMPIONSHIP_TAB.management && !permissions.viewManagement
-			? CHAMPIONSHIP_TAB.roster
-			: requestedTab;
+	const selectedTab = visibleChampionshipTab(
+		requestedTab,
+		permissions.viewManagement,
+	);
 	const activePlayers = (data?.players ?? []).filter(
 		(player) => !player.deleted_at,
 	);
@@ -645,9 +647,10 @@ export function ChampionshipDetailPage() {
 					onClaim={handleClaim}
 					onChangeRating={handleChangeRating}
 					onEditNickname={handleEditNickname}
-					onEditEventStats={
-						permissions.overrideEnded ? handleEditEventStats : undefined
-					}
+					onEditEventStats={handlerWhenAllowed(
+						permissions.overrideEnded,
+						handleEditEventStats,
+					)}
 					eventStatsPlayerId={
 						pendingEventStatsPlayer?.id ??
 						pendingMutationId(savePlayerEventStats)?.playerId ??

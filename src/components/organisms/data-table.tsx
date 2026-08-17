@@ -19,6 +19,9 @@ import {
 	DATA_TABLE_MOBILE_PRIMARY,
 	DATA_TABLE_SORT,
 	dataTableDefaultDesc,
+	dataTableRowClickHandler,
+	dataTableRowKeyDownHandler,
+	dataTableSortDirectionLabel,
 	mobileTableCellAbbr,
 	splitMobileTableCells,
 } from "@/const/data-table";
@@ -130,9 +133,7 @@ export function DataTable<TData extends RowData>({
 		.getAllLeafColumns()
 		.filter((column) => column.getCanSort());
 	const activeSort = table.state.sorting[0];
-	const sortDirectionLabel = activeSort?.desc
-		? DATA_TABLE_SORT.desc
-		: DATA_TABLE_SORT.asc;
+	const sortDirectionLabel = dataTableSortDirectionLabel(activeSort?.desc);
 
 	return (
 		<div>
@@ -218,25 +219,8 @@ export function DataTable<TData extends RowData>({
 							]
 								.filter(Boolean)
 								.join(" ")}
-							onClick={
-								onRowClick
-									? () => {
-											onRowClick(row.original);
-										}
-									: undefined
-							}
-							onKeyDown={
-								onRowClick
-									? (event) => {
-											if (event.key !== "Enter" && event.key !== " ") {
-												return;
-											}
-
-											event.preventDefault();
-											onRowClick(row.original);
-										}
-									: undefined
-							}
+							onClick={dataTableRowClickHandler(onRowClick, row.original)}
+							onKeyDown={dataTableRowKeyDownHandler(onRowClick, row.original)}
 						>
 							<div className="flex min-w-0 items-center justify-between gap-3">
 								{primary.map((cell) => (
@@ -336,13 +320,7 @@ export function DataTable<TData extends RowData>({
 								]
 									.filter(Boolean)
 									.join(" ")}
-								onClick={
-									onRowClick
-										? () => {
-												onRowClick(row.original);
-											}
-										: undefined
-								}
+								onClick={dataTableRowClickHandler(onRowClick, row.original)}
 							>
 								{row.getVisibleCells().map((cell) => {
 									const align = cell.column.columnDef.meta?.align ?? "left";

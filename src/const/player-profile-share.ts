@@ -106,6 +106,16 @@ export function playerProfileShareText(card: PlayerProfileShareCard): string {
 	return lines.join("\n");
 }
 
+function shareRoleLabel(player: ChampionshipPlayer, createdBy: string): string {
+	if (!player.user_id) {
+		return PLAYER_PROFILE_LABEL.noAccount;
+	}
+
+	return CHAMPIONSHIP_ROLE_LABEL[
+		resolveChampionshipRole(createdBy, player.user_id, player.role)
+	];
+}
+
 export function playerProfileShareCard(
 	player: ChampionshipPlayer,
 	career: RosterRow,
@@ -115,11 +125,7 @@ export function playerProfileShareCard(
 	nowIso: string,
 ): PlayerProfileShareCard {
 	const name = playerVisibleName(player);
-	const roleLabel = player.user_id
-		? CHAMPIONSHIP_ROLE_LABEL[
-				resolveChampionshipRole(createdBy, player.user_id, player.role)
-			]
-		: PLAYER_PROFILE_LABEL.noAccount;
+	const roleLabel = shareRoleLabel(player, createdBy);
 
 	return {
 		playerId: player.id,

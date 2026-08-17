@@ -139,6 +139,14 @@ export const PODIUM_PLAYER_METRIC_OPTIONS = PODIUM_PLAYER_METRICS.map((id) => ({
 	label: podiumMetricLabel(id),
 }));
 
+export function podiumMetricOptions(includeSynergy: boolean) {
+	if (includeSynergy) {
+		return PODIUM_METRIC_OPTIONS;
+	}
+
+	return PODIUM_PLAYER_METRIC_OPTIONS;
+}
+
 export const PODIUM_STAND_HEIGHT = {
 	[PODIUM_PLACE.first]: 148,
 	[PODIUM_PLACE.second]: 108,

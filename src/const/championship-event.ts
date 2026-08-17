@@ -1,3 +1,4 @@
+import { includeWhen } from "../lib/include-when.ts";
 import {
 	EVENT_TEAM_COLOR_NONE,
 	EVENT_TEAM_COLORS,
@@ -597,6 +598,17 @@ export function nextEventDate(weekday: EventWeekday, fromYmd: string): string {
 	const fromWeekday = isoWeekdayFromYmd(fromYmd);
 	const delta = (weekday - fromWeekday + 7) % 7;
 	return addDaysToYmd(fromYmd, delta);
+}
+
+export function createEventDate(
+	weekday: EventWeekday | null,
+	todayYmd = championshipEventToday(),
+): string {
+	if (!weekday) {
+		return todayYmd;
+	}
+
+	return nextEventDate(weekday, todayYmd);
 }
 
 export function formatEventTimeShort(value: unknown): string {
@@ -1301,6 +1313,22 @@ export function teamPlayerSlots(
 	}, slots);
 }
 
+export function initialTeamSlots(
+	team:
+		| {
+				players: readonly { player_id: number; is_goalkeeper: boolean }[];
+		  }
+		| null
+		| undefined,
+	playersPerTeam: number,
+): string[] {
+	if (!team) {
+		return emptyTeamSlots(playersPerTeam);
+	}
+
+	return teamPlayerSlots(team.players, playersPerTeam);
+}
+
 export function builderTeamsFromDrafts(
 	teams: readonly EventTeamDraft[],
 	playersPerTeam: number,
@@ -1575,7 +1603,7 @@ export function seedPresentIdsFromLastEvent(
 	}
 
 	return last.attendance.flatMap((row) =>
-		roster.has(row.player_id) ? [row.player_id] : [],
+		includeWhen(roster.has(row.player_id), row.player_id),
 	);
 }
 
@@ -1643,7 +1671,7 @@ export function rsvpGoingPlayerIds(
 	rsvps: readonly { player_id: number; status: string }[],
 ): number[] {
 	return rsvps.flatMap((row) =>
-		row.status === EVENT_RSVP_STATUS.going ? [row.player_id] : [],
+		includeWhen(row.status === EVENT_RSVP_STATUS.going, row.player_id),
 	);
 }
 
@@ -2189,7 +2217,9 @@ export function keepGoalkeepersPresent(
 export function defaultGoalkeeperIds(
 	players: readonly { id: number; is_goalkeeper: boolean }[],
 ): number[] {
-	return players.flatMap((player) => (player.is_goalkeeper ? [player.id] : []));
+	return players.flatMap((player) =>
+		includeWhen(player.is_goalkeeper, player.id),
+	);
 }
 
 export function eventGoalkeeperIds(
@@ -2216,7 +2246,7 @@ export function attendanceGoalkeeperIds(
 	attendance: readonly { player_id: number; is_goalkeeper: boolean }[],
 ): number[] {
 	return attendance.flatMap((row) =>
-		row.is_goalkeeper ? [row.player_id] : [],
+		includeWhen(row.is_goalkeeper, row.player_id),
 	);
 }
 
