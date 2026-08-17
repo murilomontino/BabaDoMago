@@ -1,7 +1,11 @@
-import { Settings, Shield } from "lucide-react";
+import { MapPin, Settings, Shield } from "lucide-react";
 import type { FormEvent } from "react";
 import { ChampionshipLogo } from "@/components/championship-logo";
 import { IconTooltipButton } from "@/components/molecules/icon-tooltip-button";
+import {
+	formatChampionshipSchedule,
+	parseEventWeekday,
+} from "@/const/championship-event";
 import { CHAMPIONSHIP_LOGO } from "@/const/championship-logo";
 import { CHAMPIONSHIP_TAB_LABEL } from "@/const/championship-tab";
 import { BUTTON_VARIANT, CARD_CLASS, ERROR_CLASS } from "@/const/ui";
@@ -9,6 +13,9 @@ import { BUTTON_VARIANT, CARD_CLASS, ERROR_CLASS } from "@/const/ui";
 type ChampionshipDetailHeaderProps = {
 	name: string;
 	logoPath: string | null;
+	eventWeekday: number | null;
+	eventTime: string;
+	location: string | null;
 	roleLabel: string;
 	isOwner: boolean;
 	isUploading: boolean;
@@ -23,6 +30,9 @@ type ChampionshipDetailHeaderProps = {
 export function ChampionshipDetailHeader({
 	name,
 	logoPath,
+	eventWeekday,
+	eventTime,
+	location,
 	roleLabel,
 	isOwner,
 	isUploading,
@@ -33,6 +43,12 @@ export function ChampionshipDetailHeader({
 	onLogoChange,
 	onToggleSettings,
 }: ChampionshipDetailHeaderProps) {
+	const scheduleLine = formatChampionshipSchedule({
+		weekday: parseEventWeekday(eventWeekday),
+		eventTime,
+		location,
+	});
+
 	return (
 		<section className={CARD_CLASS}>
 			<div className="flex items-start gap-4">
@@ -62,6 +78,12 @@ export function ChampionshipDetailHeader({
 					<h1 className="text-2xl font-semibold tracking-tight text-fg">
 						{name}
 					</h1>
+					{scheduleLine && (
+						<p className="mt-1 flex items-start gap-1.5 text-sm text-fg-muted">
+							{location && <MapPin className="mt-0.5 size-3.5 shrink-0" />}
+							<span>{scheduleLine}</span>
+						</p>
+					)}
 					<span className="mt-2 inline-flex items-center gap-1 rounded-full bg-pitch-soft px-2 py-0.5 text-xs font-medium text-pitch-fg">
 						<Shield className="size-3" />
 						{roleLabel}

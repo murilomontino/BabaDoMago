@@ -27,6 +27,8 @@ import {
 	EVENT_TEAM_MESSAGE,
 	EVENT_TEAM_POSITION,
 	EVENT_TEAM_POSITION_LABEL,
+	EVENT_WEEKDAY,
+	EVENT_WEEKDAY_LABEL,
 	type EventTeamDraft,
 	emptyTeamSlots,
 	eventDrawRatings,
@@ -39,16 +41,23 @@ import {
 	eventTeamRatingAverage,
 	eventTeamSlotPosition,
 	filterAttendanceByTeam,
+	formatChampionshipSchedule,
 	formatEventTeamRatingAverage,
+	formatEventTimeShort,
+	formatNextPeladaShortcut,
 	initialBuilderTeams,
 	isEventBuilderStep,
+	isoWeekdayFromYmd,
 	keepGoalkeepersPresent,
 	keepPresentSlots,
 	keepTeamPlayersPresent,
+	nextEventDate,
 	nextEventTeamColor,
 	openChampionshipEvents,
 	PLAYER_EVENT_STAT_META,
 	parseAttendanceStatInput,
+	parseChampionshipLocation,
+	parseEventWeekday,
 	pickTeamGoalkeeper,
 	playerEventStatsFromAttendance,
 	resizeBuilderTeams,
@@ -76,7 +85,38 @@ function check(actual: unknown, expected: unknown): void {
 }
 
 check(EVENT_CONFIG_LABEL.skipGuestGoalkeeperMatches, "Goleiro de outro time");
+check(EVENT_CONFIG_LABEL.eventWeekday, "Dia da semana");
+check(EVENT_CONFIG_LABEL.location, "Local");
 check(CHAMPIONSHIP_EVENT.skipGuestGoalkeeperMatchesDefault, true);
+check(CHAMPIONSHIP_EVENT.locationMaxLength, 120);
+check(EVENT_WEEKDAY_LABEL[EVENT_WEEKDAY.tuesday], "terça");
+check(isoWeekdayFromYmd("2026-08-17"), EVENT_WEEKDAY.monday);
+check(isoWeekdayFromYmd("2026-08-18"), EVENT_WEEKDAY.tuesday);
+check(nextEventDate(EVENT_WEEKDAY.tuesday, "2026-08-17"), "2026-08-18");
+check(nextEventDate(EVENT_WEEKDAY.tuesday, "2026-08-18"), "2026-08-18");
+check(nextEventDate(EVENT_WEEKDAY.monday, "2026-08-16"), "2026-08-17");
+check(nextEventDate(EVENT_WEEKDAY.sunday, "2026-08-17"), "2026-08-23");
+check(formatEventTimeShort("19:00:00"), "19h");
+check(formatEventTimeShort("19:30"), "19h30");
+check(
+	formatNextPeladaShortcut({
+		weekday: EVENT_WEEKDAY.tuesday,
+		eventTime: "19:00",
+	}),
+	"Criar terça, 19h",
+);
+check(
+	formatChampionshipSchedule({
+		weekday: EVENT_WEEKDAY.tuesday,
+		eventTime: "19:00",
+		location: "Society do parque",
+	}),
+	"Terça · 19h · Society do parque",
+);
+check(parseEventWeekday(2), EVENT_WEEKDAY.tuesday);
+check(parseEventWeekday(0), null);
+check(parseChampionshipLocation("  campo 2  "), "campo 2");
+check(parseChampionshipLocation("   "), null);
 check(EVENT_CREATE_OPEN_LABEL.title, "Rodadas em aberto");
 check(EVENT_CREATE_OPEN_LABEL.hint.includes("MVP automático"), true);
 check(EVENT_CREATE_OPEN_LABEL.closeAndCreate, "Encerrar e criar");

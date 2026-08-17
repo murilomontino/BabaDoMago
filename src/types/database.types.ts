@@ -479,9 +479,11 @@ export type Database = {
 					created_by: string;
 					deleted_at: string | null;
 					event_time: string;
+					event_weekday: number | null;
 					id: number;
 					invite_code: string;
 					is_visible: boolean;
+					location: string | null;
 					logo_path: string | null;
 					name: string;
 					players_per_team: number;
@@ -492,9 +494,11 @@ export type Database = {
 					created_by?: string;
 					deleted_at?: string | null;
 					event_time?: string;
+					event_weekday?: number | null;
 					id?: number;
 					invite_code?: string;
 					is_visible?: boolean;
+					location?: string | null;
 					logo_path?: string | null;
 					name: string;
 					players_per_team?: number;
@@ -505,9 +509,11 @@ export type Database = {
 					created_by?: string;
 					deleted_at?: string | null;
 					event_time?: string;
+					event_weekday?: number | null;
 					id?: number;
 					invite_code?: string;
 					is_visible?: boolean;
+					location?: string | null;
 					logo_path?: string | null;
 					name?: string;
 					players_per_team?: number;
@@ -818,7 +824,9 @@ export type Database = {
 					championship_id: number;
 					event_time: string;
 					players_per_team: number;
-					skip_guest_goalkeeper_matches: boolean;
+					skip_guest_goalkeeper_matches?: boolean;
+					event_weekday?: number | null;
+					location?: string | null;
 				};
 				Returns: Json;
 			};

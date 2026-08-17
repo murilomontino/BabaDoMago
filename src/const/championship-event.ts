@@ -16,9 +16,45 @@ export const CHAMPIONSHIP_EVENT = {
 	minTeams: 2,
 	minAttendance: 2,
 	skipGuestGoalkeeperMatchesDefault: true,
+	locationMaxLength: 120,
 } as const;
 
+export const EVENT_WEEKDAY = {
+	monday: 1,
+	tuesday: 2,
+	wednesday: 3,
+	thursday: 4,
+	friday: 5,
+	saturday: 6,
+	sunday: 7,
+} as const;
+
+export type EventWeekday = (typeof EVENT_WEEKDAY)[keyof typeof EVENT_WEEKDAY];
+
+export const EVENT_WEEKDAY_LABEL = {
+	[EVENT_WEEKDAY.monday]: "segunda",
+	[EVENT_WEEKDAY.tuesday]: "terça",
+	[EVENT_WEEKDAY.wednesday]: "quarta",
+	[EVENT_WEEKDAY.thursday]: "quinta",
+	[EVENT_WEEKDAY.friday]: "sexta",
+	[EVENT_WEEKDAY.saturday]: "sábado",
+	[EVENT_WEEKDAY.sunday]: "domingo",
+} as const;
+
+export const EVENT_WEEKDAY_OPTIONS = [
+	{ value: EVENT_WEEKDAY.monday, label: "Segunda" },
+	{ value: EVENT_WEEKDAY.tuesday, label: "Terça" },
+	{ value: EVENT_WEEKDAY.wednesday, label: "Quarta" },
+	{ value: EVENT_WEEKDAY.thursday, label: "Quinta" },
+	{ value: EVENT_WEEKDAY.friday, label: "Sexta" },
+	{ value: EVENT_WEEKDAY.saturday, label: "Sábado" },
+	{ value: EVENT_WEEKDAY.sunday, label: "Domingo" },
+] as const;
+
 export const EVENT_CONFIG_LABEL = {
+	eventWeekday: "Dia da semana",
+	eventWeekdayNone: "Não definido",
+	location: "Local",
 	skipGuestGoalkeeperMatches: "Goleiro de outro time",
 	skipGuestGoalkeeperMatchesHint:
 		"Partida do goleiro emprestado só conta se o time vencer.",
@@ -73,6 +109,8 @@ export const EVENT_ERROR_MESSAGE = {
 	"invalid team size": "Time fora do limite",
 	"invalid event date": "Data inválida",
 	"invalid event time": "Hora inválida",
+	"invalid event weekday": "Dia da semana inválido",
+	"invalid location": "Local inválido",
 	"invalid players per team": "Limite inválido",
 	"same team": "Escolha dois times",
 	"team not in event": "Time não pertence à rodada",
@@ -393,6 +431,99 @@ export function parseEventTime(value: unknown): string {
 	}
 
 	return value.slice(0, 5);
+}
+
+export function parseEventWeekday(value: unknown): EventWeekday | null {
+	const parsed = Number(value);
+	if (
+		!Number.isInteger(parsed) ||
+		parsed < EVENT_WEEKDAY.monday ||
+		parsed > EVENT_WEEKDAY.sunday
+	) {
+		return null;
+	}
+
+	return parsed as EventWeekday;
+}
+
+export function parseChampionshipLocation(value: unknown): string | null {
+	if (typeof value !== "string") {
+		return null;
+	}
+
+	const trimmed = value.trim();
+	if (!trimmed) {
+		return null;
+	}
+
+	return trimmed.slice(0, CHAMPIONSHIP_EVENT.locationMaxLength);
+}
+
+export function isEventWeekday(value: unknown): value is EventWeekday {
+	return parseEventWeekday(value) !== null;
+}
+
+export function isoWeekdayFromYmd(ymd: string): EventWeekday {
+	const [year, month, day] = ymd.split("-").map(Number);
+	const utcDay = new Date(Date.UTC(year, month - 1, day, 12, 0, 0)).getUTCDay();
+	return (utcDay === 0 ? EVENT_WEEKDAY.sunday : utcDay) as EventWeekday;
+}
+
+export function addDaysToYmd(ymd: string, days: number): string {
+	const [year, month, day] = ymd.split("-").map(Number);
+	const next = new Date(Date.UTC(year, month - 1, day + days, 12, 0, 0));
+	const y = next.getUTCFullYear();
+	const m = String(next.getUTCMonth() + 1).padStart(2, "0");
+	const d = String(next.getUTCDate()).padStart(2, "0");
+	return `${y}-${m}-${d}`;
+}
+
+export function nextEventDate(weekday: EventWeekday, fromYmd: string): string {
+	const fromWeekday = isoWeekdayFromYmd(fromYmd);
+	const delta = (weekday - fromWeekday + 7) % 7;
+	return addDaysToYmd(fromYmd, delta);
+}
+
+export function formatEventTimeShort(value: unknown): string {
+	const time = parseEventTime(value);
+	const [hour, minute] = time.split(":");
+	if (minute === "00") {
+		return `${Number(hour)}h`;
+	}
+
+	return `${Number(hour)}h${minute}`;
+}
+
+export function formatNextPeladaShortcut(input: {
+	weekday: EventWeekday;
+	eventTime: string;
+}): string {
+	return `Criar ${EVENT_WEEKDAY_LABEL[input.weekday]}, ${formatEventTimeShort(input.eventTime)}`;
+}
+
+export function formatChampionshipSchedule(input: {
+	weekday: EventWeekday | null;
+	eventTime: string;
+	location: string | null;
+}): string | null {
+	const parts: string[] = [];
+	if (input.weekday) {
+		const weekday = EVENT_WEEKDAY_LABEL[input.weekday];
+		parts.push(`${weekday[0]?.toUpperCase() ?? ""}${weekday.slice(1)}`);
+	}
+
+	parts.push(formatEventTimeShort(input.eventTime));
+
+	const location = parseChampionshipLocation(input.location);
+	if (location) {
+		parts.push(location);
+	}
+
+	if (!input.weekday && !location) {
+		return null;
+	}
+
+	return parts.join(" · ");
 }
 
 export function parsePlayersPerTeam(value: unknown): number {

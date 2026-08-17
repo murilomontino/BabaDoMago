@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Field, Form, Formik } from "formik";
-import { CalendarDays, ChevronRight, Plus } from "lucide-react";
+import { CalendarDays, ChevronRight, MapPin, Plus } from "lucide-react";
 import { useState } from "react";
 import { SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
@@ -14,10 +14,15 @@ import {
 	EVENT_ACTION,
 	EVENT_BUILDER_STEP,
 	EVENT_STATUS_LABEL,
+	type EventWeekday,
 	eventStatus,
+	formatChampionshipSchedule,
 	formatEventStartsAt,
+	formatNextPeladaShortcut,
+	nextEventDate,
 	openChampionshipEvents,
 	parseEventTime,
+	parseEventWeekday,
 } from "@/const/championship-event";
 import { CHAMPIONSHIP_TAB_LABEL } from "@/const/championship-tab";
 import { startEventFormSchema } from "@/const/form-schema";
@@ -42,12 +47,16 @@ import {
 type ChampionshipEventsProps = {
 	championshipId: number;
 	eventTime: string;
+	eventWeekday: number | null;
+	location: string | null;
 	canManage: boolean;
 };
 
 export function ChampionshipEvents({
 	championshipId,
 	eventTime,
+	eventWeekday,
+	location,
 	canManage,
 }: ChampionshipEventsProps) {
 	const navigate = useNavigate();
@@ -62,11 +71,23 @@ export function ChampionshipEvents({
 	const events = eventsQuery.data ?? [];
 	const openEvents = openChampionshipEvents(events);
 	const isPending = createEvent.isPending || endEvent.isPending;
+	const weekday = parseEventWeekday(eventWeekday);
+	const scheduleLine = formatChampionshipSchedule({
+		weekday,
+		eventTime,
+		location,
+	});
+	const shortcutLabel =
+		weekday &&
+		formatNextPeladaShortcut({
+			weekday,
+			eventTime,
+		});
 
-	async function handleCreate(eventDate: string, eventTime: string) {
+	async function handleCreate(eventDate: string, eventTimeValue: string) {
 		const eventId = await createEvent.mutateAsync({
 			eventDate,
-			eventTime: parseEventTime(eventTime),
+			eventTime: parseEventTime(eventTimeValue),
 		});
 		setPendingCreate(null);
 		await navigate({
@@ -79,7 +100,10 @@ export function ChampionshipEvents({
 		});
 	}
 
-	async function handleCloseAndCreate(eventDate: string, eventTime: string) {
+	async function handleCloseAndCreate(
+		eventDate: string,
+		eventTimeValue: string,
+	) {
 		await openEvents.reduce(
 			(chain, event) =>
 				chain.then(() =>
@@ -91,7 +115,28 @@ export function ChampionshipEvents({
 				),
 			Promise.resolve(),
 		);
-		await handleCreate(eventDate, eventTime);
+		await handleCreate(eventDate, eventTimeValue);
+	}
+
+	function requestCreate(eventDate: string, eventTimeValue: string) {
+		if (openEvents.length > 0) {
+			createEvent.reset();
+			endEvent.reset();
+			setPendingCreate({
+				eventDate,
+				eventTime: eventTimeValue,
+			});
+			return;
+		}
+
+		void handleCreate(eventDate, eventTimeValue);
+	}
+
+	function handleShortcut(weekdayValue: EventWeekday) {
+		requestCreate(
+			nextEventDate(weekdayValue, championshipEventToday()),
+			parseEventTime(eventTime),
+		);
 	}
 
 	if (eventsQuery.isPending) {
@@ -113,32 +158,41 @@ export function ChampionshipEvents({
 			action={
 				canManage &&
 				!isCreating && (
-					<Button onClick={() => setIsCreating(true)}>
-						<Plus className="size-4" />
-						{EVENT_ACTION.newEvent}
-					</Button>
+					<div className="flex flex-wrap items-center justify-end gap-2">
+						{weekday && shortcutLabel && (
+							<Button
+								variant={BUTTON_VARIANT.secondary}
+								onClick={() => handleShortcut(weekday)}
+								disabled={isPending}
+							>
+								{shortcutLabel}
+							</Button>
+						)}
+						<Button onClick={() => setIsCreating(true)}>
+							<Plus className="size-4" />
+							{EVENT_ACTION.newEvent}
+						</Button>
+					</div>
 				)
 			}
 		>
+			{scheduleLine && (
+				<p className="mb-3 flex items-start gap-1.5 text-sm text-fg-muted">
+					{location && <MapPin className="mt-0.5 size-3.5 shrink-0" />}
+					<span>{scheduleLine}</span>
+				</p>
+			)}
 			{isCreating && (
 				<Formik
 					initialValues={{
-						eventDate: championshipEventToday(),
+						eventDate: weekday
+							? nextEventDate(weekday, championshipEventToday())
+							: championshipEventToday(),
 						eventTime,
 					}}
 					validationSchema={startEventFormSchema}
 					onSubmit={async (values) => {
-						if (openEvents.length > 0) {
-							createEvent.reset();
-							endEvent.reset();
-							setPendingCreate({
-								eventDate: values.eventDate,
-								eventTime: values.eventTime,
-							});
-							return;
-						}
-
-						await handleCreate(values.eventDate, values.eventTime);
+						requestCreate(values.eventDate, values.eventTime);
 					}}
 				>
 					<Form className="space-y-4">
@@ -200,10 +254,21 @@ export function ChampionshipEvents({
 					description="Crie uma rodada para montar os times depois."
 					action={
 						canManage && (
-							<Button onClick={() => setIsCreating(true)}>
-								<Plus className="size-4" />
-								{EVENT_ACTION.newEvent}
-							</Button>
+							<div className="flex flex-wrap items-center justify-center gap-2">
+								{weekday && shortcutLabel && (
+									<Button
+										variant={BUTTON_VARIANT.secondary}
+										onClick={() => handleShortcut(weekday)}
+										disabled={isPending}
+									>
+										{shortcutLabel}
+									</Button>
+								)}
+								<Button onClick={() => setIsCreating(true)}>
+									<Plus className="size-4" />
+									{EVENT_ACTION.newEvent}
+								</Button>
+							</div>
 						)
 					}
 				/>

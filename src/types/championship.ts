@@ -5,6 +5,8 @@ export type Championship = {
 	created_by: string;
 	logo_path: string | null;
 	event_time: string;
+	event_weekday: number | null;
+	location: string | null;
 	players_per_team: number;
 	skip_guest_goalkeeper_matches: boolean;
 	is_visible: boolean;

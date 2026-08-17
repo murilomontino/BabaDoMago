@@ -1,5 +1,10 @@
-import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { House, Trophy, UserPlus, Users } from "lucide-react";
+import {
+	Link,
+	useNavigate,
+	useParams,
+	useSearch,
+} from "@tanstack/react-router";
+import { House, MapPin, Trophy, UserPlus, Users } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
@@ -8,6 +13,10 @@ import { ChampionshipRoster } from "@/components/championship-roster";
 import { DataTableSkeleton } from "@/components/molecules/data-table-skeleton";
 import { SectionCard } from "@/components/section-card";
 import { ThemeToggle } from "@/components/theme-toggle";
+import {
+	formatChampionshipSchedule,
+	parseEventWeekday,
+} from "@/const/championship-event";
 import {
 	comparePlayersByVisibleName,
 	confirmClaimPlayerMessage,
@@ -143,6 +152,11 @@ export function JoinChampionshipPage() {
 	}
 
 	const rosterPlayers = [...data.players].sort(comparePlayersByVisibleName);
+	const scheduleLine = formatChampionshipSchedule({
+		weekday: parseEventWeekday(data.event_weekday),
+		eventTime: data.event_time,
+		location: data.location,
+	});
 
 	return (
 		<main className={`${PAGE_SHELL_CLASS} space-y-6`}>
@@ -167,9 +181,19 @@ export function JoinChampionshipPage() {
 						name={data.name}
 						className="h-16 w-16"
 					/>
-					<h1 className="text-2xl font-semibold tracking-tight text-fg">
-						{data.name}
-					</h1>
+					<div className="min-w-0">
+						<h1 className="text-2xl font-semibold tracking-tight text-fg">
+							{data.name}
+						</h1>
+						{scheduleLine && (
+							<p className="mt-1 flex items-start gap-1.5 text-sm text-fg-muted">
+								{data.location && (
+									<MapPin className="mt-0.5 size-3.5 shrink-0" />
+								)}
+								<span>{scheduleLine}</span>
+							</p>
+						)}
+					</div>
 				</div>
 			</section>
 			<SectionCard

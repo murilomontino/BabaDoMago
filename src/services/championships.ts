@@ -1,6 +1,8 @@
 import {
 	championshipEventErrorMessage,
+	parseChampionshipLocation,
 	parseEventTime,
+	parseEventWeekday,
 	parsePlayersPerTeam,
 } from "@/const/championship-event";
 import {
@@ -26,7 +28,7 @@ const PLAYER_COLUMNS =
 	"id, championship_id, user_id, display_name, nickname, avatar_url, rating, role, is_goalkeeper, deleted_at, goals, assists, assisted_goals, own_goals, wins, losses, draws, matches, mvps" as const;
 
 const CHAMPIONSHIP_COLUMNS =
-	"id, name, invite_code, created_by, logo_path, event_time, players_per_team, skip_guest_goalkeeper_matches, is_visible" as const;
+	"id, name, invite_code, created_by, logo_path, event_time, event_weekday, location, players_per_team, skip_guest_goalkeeper_matches, is_visible" as const;
 
 function asChampionship(value: unknown): Championship {
 	if (!value || typeof value !== "object") {
@@ -45,6 +47,8 @@ function asChampionship(value: unknown): Championship {
 		created_by: String(row.created_by),
 		logo_path: typeof row.logo_path === "string" ? row.logo_path : null,
 		event_time: parseEventTime(row.event_time),
+		event_weekday: parseEventWeekday(row.event_weekday),
+		location: parseChampionshipLocation(row.location),
 		players_per_team: parsePlayersPerTeam(row.players_per_team),
 		skip_guest_goalkeeper_matches: row.skip_guest_goalkeeper_matches !== false,
 		is_visible: row.is_visible !== false,
@@ -334,6 +338,8 @@ export async function updateChampionshipEventConfig(
 	eventTime: string,
 	playersPerTeam: number,
 	skipGuestGoalkeeperMatches: boolean,
+	eventWeekday: number | null,
+	location: string | null,
 ): Promise<Championship> {
 	const { data, error } = await supabase.rpc(
 		"update_championship_event_config",
@@ -342,6 +348,8 @@ export async function updateChampionshipEventConfig(
 			event_time: eventTime,
 			players_per_team: playersPerTeam,
 			skip_guest_goalkeeper_matches: skipGuestGoalkeeperMatches,
+			event_weekday: eventWeekday,
+			location,
 		},
 	);
 

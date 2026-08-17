@@ -498,6 +498,9 @@ export function ChampionshipDetailPage() {
 			<ChampionshipDetailHeader
 				name={data.name}
 				logoPath={data.logo_path}
+				eventWeekday={data.event_weekday}
+				eventTime={data.event_time}
+				location={data.location}
 				roleLabel={CHAMPIONSHIP_ROLE_LABEL[actorRole]}
 				isOwner={isOwner}
 				isUploading={uploadLogo.isPending}
@@ -676,6 +679,8 @@ export function ChampionshipDetailPage() {
 				<ChampionshipEvents
 					championshipId={championshipId}
 					eventTime={data.event_time}
+					eventWeekday={data.event_weekday}
+					location={data.location}
 					canManage={permissions.manageEvent}
 				/>
 			)}
@@ -702,6 +707,8 @@ export function ChampionshipDetailPage() {
 					name={data.name}
 					createdBy={data.created_by}
 					eventTime={data.event_time}
+					eventWeekday={data.event_weekday}
+					location={data.location}
 					playersPerTeam={data.players_per_team}
 					skipGuestGoalkeeperMatches={data.skip_guest_goalkeeper_matches}
 					isVisible={data.is_visible}
