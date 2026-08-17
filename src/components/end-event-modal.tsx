@@ -2,7 +2,10 @@ import { AppDialog } from "@/components/atoms/app-dialog";
 import { Button } from "@/components/button";
 import { EVENT_TEAM_POSITION_CHIP_CLASS } from "@/components/event-team-player";
 import { PlayerRating } from "@/components/player-rating";
-import { EVENT_END_LABEL } from "@/const/championship-event";
+import {
+	EVENT_END_LABEL,
+	EVENT_END_MISSING_ATTENDANCE_LABEL,
+} from "@/const/championship-event";
 import { EVENT_MVP_LABEL, formatEventMvpCount } from "@/const/event-mvp";
 import {
 	type EventRatingPreviewRow,
@@ -16,6 +19,7 @@ type EndEventModalProps = {
 	ceiling: number;
 	canSetMvp: boolean;
 	mvpCandidateIds: readonly number[];
+	missingAttendanceNames?: readonly string[];
 	isPending: boolean;
 	errorMessage: string | null;
 	onToggleMvp: (playerId: number) => void;
@@ -121,6 +125,7 @@ export function EndEventModal({
 	ceiling,
 	canSetMvp,
 	mvpCandidateIds,
+	missingAttendanceNames = [],
 	isPending,
 	errorMessage,
 	onToggleMvp,
@@ -137,6 +142,12 @@ export function EndEventModal({
 					{EVENT_END_LABEL.title}
 				</p>
 				<p className="mb-3 text-sm text-fg-muted">{EVENT_END_LABEL.hint}</p>
+				{missingAttendanceNames.length > 0 && (
+					<p className="mb-3 text-sm text-fg-muted">
+						{EVENT_END_MISSING_ATTENDANCE_LABEL.hint}{" "}
+						{missingAttendanceNames.join(", ")}
+					</p>
+				)}
 				<p className="mb-3 text-sm text-fg-muted">{EVENT_MVP_LABEL.explain}</p>
 				<p className="mb-3">
 					<span className={CHIP_CLASS}>{formatEventMvpCount(mvpCount)}</span>

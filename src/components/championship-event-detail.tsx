@@ -10,7 +10,9 @@ import {
 	Share2,
 	Square,
 	Trash2,
+	UserCheck,
 	UserPlus,
+	Users,
 	X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -33,6 +35,7 @@ import {
 	EventTeamPlayerRow,
 	EventTeamRatingAverage,
 } from "@/components/event-team-player";
+import { LateJoinAttendanceModal } from "@/components/late-join-attendance-modal";
 import { IconTooltipButton } from "@/components/molecules/icon-tooltip-button";
 import { PlayerRating } from "@/components/player-rating";
 import { ReopenEventMatchModal } from "@/components/reopen-event-match-modal";
@@ -45,23 +48,35 @@ import {
 	CHAMPIONSHIP_EVENT,
 	canEditEventTeams,
 	canRemoveEventAttendance,
+	canSelfCheckIn,
 	canStartEventMatch,
+	clearAttendanceDraft,
 	draftAttendanceForEnd,
 	EVENT_ACTION,
 	EVENT_ATTENDANCE_COLUMN_LABEL,
 	EVENT_ATTENDANCE_STAT_ABBR,
 	EVENT_BUILDER_STEP,
 	EVENT_BUILDER_STEP_LABEL,
+	EVENT_CHECK_IN_LABEL,
+	EVENT_RSVP_LABEL,
+	EVENT_RSVP_STATUS,
+	EVENT_RSVP_STATUS_LABEL,
 	EVENT_SECTION_LABEL,
 	EVENT_STATUS,
 	EVENT_TEAM_POSITION_LABEL,
 	type EventAttendanceStatsDraft,
+	type EventRsvpStatus,
 	type EventTeamDraft,
 	eventStatus,
 	eventTeamPlayerIds,
 	eventTeamPlayerPosition,
 	keepGoalkeepersPresent,
+	matchPlayerIdsMissingFromAttendance,
+	mergePresentIdsForEnd,
+	resolveBuilderInitialPresentIds,
+	rsvpGoingPlayerIds,
 	teamHasMatches,
+	writeAttendanceDraft,
 } from "@/const/championship-event";
 import {
 	EVENT_MATCH_LABEL,
@@ -212,6 +227,8 @@ type ChampionshipEventDetailProps = {
 	championshipName: string;
 	players: ChampionshipPlayer[];
 	attendanceCounts: ReadonlyMap<number, number>;
+	seedEvents: readonly ChampionshipEvent[];
+	currentPlayerId: number | null;
 	canManage: boolean;
 	canOverrideEnded: boolean;
 	canSetMvp: boolean;
@@ -224,6 +241,9 @@ type ChampionshipEventDetailProps = {
 		presentPlayerIds: number[],
 		goalkeeperPlayerIds: number[],
 	) => Promise<void>;
+	onEnsureAttendance: (playerId: number) => Promise<void>;
+	onUpsertRsvp: (status: EventRsvpStatus) => Promise<void>;
+	onPromoteRsvpGoing: () => Promise<void>;
 	onSaveAttendanceStats: (stats: EventAttendanceStatsDraft[]) => Promise<void>;
 	onAddTeam: (values: {
 		color: EventTeamColor | null;
@@ -249,6 +269,12 @@ type ChampionshipEventDetailProps = {
 	saveTeamsError: string | null;
 	savingAttendance: boolean;
 	saveAttendanceError: string | null;
+	ensuringAttendance: boolean;
+	ensureAttendanceError: string | null;
+	savingRsvp: boolean;
+	rsvpError: string | null;
+	promotingRsvp: boolean;
+	promoteRsvpError: string | null;
 	savingAttendanceStats: boolean;
 	saveAttendanceStatsError: string | null;
 	addingTeam: boolean;
@@ -337,11 +363,16 @@ export function ChampionshipEventDetail({
 	championshipName,
 	players,
 	attendanceCounts,
+	seedEvents,
+	currentPlayerId,
 	canManage,
 	canOverrideEnded,
 	canSetMvp,
 	onSaveTeams,
 	onSaveAttendance,
+	onEnsureAttendance,
+	onUpsertRsvp,
+	onPromoteRsvpGoing,
 	onSaveAttendanceStats,
 	onAddTeam,
 	onUpdateTeam,
@@ -355,6 +386,12 @@ export function ChampionshipEventDetail({
 	saveTeamsError,
 	savingAttendance,
 	saveAttendanceError,
+	ensuringAttendance,
+	ensureAttendanceError,
+	savingRsvp,
+	rsvpError,
+	promotingRsvp,
+	promoteRsvpError,
 	savingAttendanceStats,
 	saveAttendanceStatsError,
 	addingTeam,
@@ -411,7 +448,8 @@ export function ChampionshipEventDetail({
 	);
 	const showShareTeams =
 		!showTeamBuilder && builderTeamsHavePlayers(detailTeams);
-	const showAttendanceActions = canOverrideEnded && !showTeamBuilder;
+	const showAddAttendance = canManage && !showTeamBuilder;
+	const showAttendanceOwnerActions = canOverrideEnded && !showTeamBuilder;
 	const showAddTeam = canOverrideEnded && !showTeamBuilder;
 	const showStartMatch =
 		!showTeamBuilder &&
@@ -429,6 +467,7 @@ export function ChampionshipEventDetail({
 	const [isMvpOpen, setIsMvpOpen] = useState(false);
 	const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 	const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
+	const [isLateJoinOpen, setIsLateJoinOpen] = useState(false);
 	const [isAttendanceStatsOpen, setIsAttendanceStatsOpen] = useState(false);
 	const [isAddTeamOpen, setIsAddTeamOpen] = useState(false);
 	const [teamToEdit, setTeamToEdit] = useState<ChampionshipEventTeam | null>(
@@ -443,12 +482,32 @@ export function ChampionshipEventDetail({
 	const [matchToReopen, setMatchToReopen] =
 		useState<ChampionshipEventMatch | null>(null);
 	const draftPresentIdsRef = useRef(
-		event.attendance.map((row) => row.player_id),
+		resolveBuilderInitialPresentIds(
+			event.attendance.map((row) => row.player_id),
+			event.id,
+		),
 	);
 
-	const presentPlayerIdsForEnd = draftAttendanceForEnd(
-		showTeamBuilder,
-		draftPresentIdsRef.current,
+	const attendanceIds = event.attendance.map((row) => row.player_id);
+	const missingMatchPlayerIds = matchPlayerIdsMissingFromAttendance(
+		event.matches,
+		attendanceIds,
+	);
+	const presentPlayerIdsForEnd = mergePresentIdsForEnd(
+		draftAttendanceForEnd(showTeamBuilder, draftPresentIdsRef.current),
+		attendanceIds,
+		missingMatchPlayerIds,
+	);
+	const selfCheckIn = canSelfCheckIn({
+		endedAt: event.ended_at,
+		startsAt: event.starts_at,
+		playerId: currentPlayerId,
+		attendanceIds,
+	});
+	const myRsvp = event.rsvps.find((row) => row.player_id === currentPlayerId);
+	const goingRsvpIds = rsvpGoingPlayerIds(event.rsvps);
+	const goingNotPresentIds = goingRsvpIds.filter(
+		(playerId) => !attendanceIds.includes(playerId),
 	);
 	const mvpCandidateIds = eventMvpCandidates(event.attendance)
 		.map((row) => row.playerId)
@@ -611,10 +670,14 @@ export function ChampionshipEventDetail({
 					playersPerTeam={event.players_per_team}
 					players={players}
 					attendanceCounts={attendanceCounts}
+					seedEvents={seedEvents}
 					step={builderStep}
 					startsAt={event.starts_at}
 					championshipName={championshipName}
-					initialPresentIds={event.attendance.map((row) => row.player_id)}
+					initialPresentIds={resolveBuilderInitialPresentIds(
+						event.attendance.map((row) => row.player_id),
+						event.id,
+					)}
 					initialGoalkeeperIds={volunteerGoalkeeperIds}
 					initialTeams={detailTeams}
 					isPending={savingTeams}
@@ -631,9 +694,11 @@ export function ChampionshipEventDetail({
 					}
 					onPresentIdsChange={(playerIds) => {
 						draftPresentIdsRef.current = [...playerIds];
+						writeAttendanceDraft(event.id, playerIds);
 					}}
 					onSubmit={async (values, keepOpen) => {
 						await onSaveTeams(values);
+						clearAttendanceDraft(event.id);
 						if (keepOpen) {
 							return;
 						}
@@ -790,96 +855,168 @@ export function ChampionshipEventDetail({
 				/>
 			)}
 			{selectedTab === EVENT_TAB.event && !showTeamBuilder && (
-				<div>
-					<div className="mb-1 flex items-center gap-2">
-						<p className="text-xs font-medium uppercase tracking-wide text-fg-muted">
-							{EVENT_SECTION_LABEL.attendance}
-						</p>
-						<div className="ml-auto flex items-center gap-1">
-							{canSetMvp && ended && event.attendance.length > 0 && (
-								<IconTooltipButton
-									showLabel
-									label={EVENT_ACTION.setMvp}
-									icon={<Award className="size-4" />}
-									onClick={() => setIsMvpOpen(true)}
-								/>
+				<div className="space-y-6">
+					{status === EVENT_STATUS.open && currentPlayerId !== null && (
+						<div>
+							<p className="mb-1 text-xs font-medium uppercase tracking-wide text-fg-muted">
+								{EVENT_RSVP_LABEL.section}
+							</p>
+							<div className="flex flex-wrap gap-2">
+								{(
+									[
+										EVENT_RSVP_STATUS.going,
+										EVENT_RSVP_STATUS.maybe,
+										EVENT_RSVP_STATUS.out,
+									] as const
+								).map((statusId) => (
+									<Button
+										key={statusId}
+										variant={
+											myRsvp?.status === statusId
+												? BUTTON_VARIANT.primary
+												: BUTTON_VARIANT.secondary
+										}
+										disabled={savingRsvp}
+										onClick={() => {
+											void onUpsertRsvp(statusId);
+										}}
+									>
+										{EVENT_RSVP_STATUS_LABEL[statusId]}
+									</Button>
+								))}
+								{selfCheckIn && (
+									<Button
+										disabled={ensuringAttendance}
+										onClick={() => {
+											void onEnsureAttendance(currentPlayerId);
+										}}
+									>
+										<UserCheck className="size-4" />
+										{EVENT_CHECK_IN_LABEL.action}
+									</Button>
+								)}
+							</div>
+							{rsvpError && <p className={ERROR_CLASS}>{rsvpError}</p>}
+							{ensureAttendanceError && (
+								<p className={ERROR_CLASS}>{ensureAttendanceError}</p>
 							)}
-							{canManage && showAttendanceActions && (
-								<IconTooltipButton
-									showLabel
-									label={EVENT_ACTION.addAttendance}
-									icon={<UserPlus className="size-4" />}
-									onClick={() => setIsAttendanceOpen(true)}
-								/>
-							)}
-							{canManage &&
-								showAttendanceActions &&
-								event.attendance.length > 0 && (
+						</div>
+					)}
+					<div>
+						<div className="mb-1 flex items-center gap-2">
+							<p className="text-xs font-medium uppercase tracking-wide text-fg-muted">
+								{EVENT_SECTION_LABEL.attendance}
+							</p>
+							<div className="ml-auto flex items-center gap-1">
+								{canSetMvp && ended && event.attendance.length > 0 && (
 									<IconTooltipButton
 										showLabel
-										label={EVENT_ACTION.markAttendanceStats}
-										icon={<ChartColumn className="size-4" />}
-										onClick={() => setIsAttendanceStatsOpen(true)}
+										label={EVENT_ACTION.setMvp}
+										icon={<Award className="size-4" />}
+										onClick={() => setIsMvpOpen(true)}
 									/>
 								)}
+								{canManage && showAddAttendance && (
+									<IconTooltipButton
+										showLabel
+										label={EVENT_ACTION.lateJoin}
+										icon={<UserPlus className="size-4" />}
+										onClick={() => setIsLateJoinOpen(true)}
+									/>
+								)}
+								{canManage && showAddAttendance && (
+									<IconTooltipButton
+										showLabel
+										label={EVENT_ACTION.addAttendance}
+										icon={<Plus className="size-4" />}
+										onClick={() => setIsAttendanceOpen(true)}
+									/>
+								)}
+								{canManage &&
+									showAddAttendance &&
+									goingNotPresentIds.length > 0 && (
+										<IconTooltipButton
+											showLabel
+											label={EVENT_ACTION.promoteRsvp}
+											icon={<Users className="size-4" />}
+											disabled={promotingRsvp}
+											onClick={() => {
+												void onPromoteRsvpGoing();
+											}}
+										/>
+									)}
+								{canManage &&
+									showAttendanceOwnerActions &&
+									event.attendance.length > 0 && (
+										<IconTooltipButton
+											showLabel
+											label={EVENT_ACTION.markAttendanceStats}
+											icon={<ChartColumn className="size-4" />}
+											onClick={() => setIsAttendanceStatsOpen(true)}
+										/>
+									)}
+							</div>
 						</div>
-					</div>
-					{event.attendance.length === 0 && (
-						<p className="text-sm text-fg-muted">Ninguém marcado.</p>
-					)}
-					{event.attendance.length > 0 && (
-						<ul className="divide-y divide-line">
-							{event.attendance.map((row) => {
-								const player = resolveRosterPlayer(
-									row.player_id,
-									row.display_name,
-									rosterById,
-								);
+						{promoteRsvpError && (
+							<p className={ERROR_CLASS}>{promoteRsvpError}</p>
+						)}
+						{event.attendance.length === 0 && (
+							<p className="text-sm text-fg-muted">Ninguém marcado.</p>
+						)}
+						{event.attendance.length > 0 && (
+							<ul className="divide-y divide-line">
+								{event.attendance.map((row) => {
+									const player = resolveRosterPlayer(
+										row.player_id,
+										row.display_name,
+										rosterById,
+									);
 
-								return (
-									<li
-										key={row.id}
-										className="flex items-center gap-3 py-2 first:pt-0 last:pb-0"
-									>
-										{player.avatar_url && (
-											<img
-												src={player.avatar_url}
-												alt=""
-												referrerPolicy="no-referrer"
-												className="h-8 w-8 rounded-full object-cover"
-											/>
-										)}
-										{!player.avatar_url && (
-											<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-pitch-soft text-xs font-medium text-pitch-fg">
-												{playerVisibleName(player).charAt(0).toUpperCase()}
-											</span>
-										)}
-										<div className="min-w-0 flex-1">
-											<p className="truncate text-sm font-medium text-fg">
-												{playerVisibleName(player)}
-											</p>
-											<AttendanceStatLine row={row} ceiling={ceiling} />
-										</div>
-										{showAttendanceActions &&
-											canRemoveEventAttendance(
-												player.id,
-												event.attendance.length,
-												teamPlayerIds,
-											) && (
-												<button
-													type="button"
-													aria-label={EVENT_ACTION.removeAttendance}
-													className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-muted hover:text-danger-fg"
-													onClick={() => setAttendanceToRemove(player)}
-												>
-													<X className="size-4" />
-												</button>
+									return (
+										<li
+											key={row.id}
+											className="flex items-center gap-3 py-2 first:pt-0 last:pb-0"
+										>
+											{player.avatar_url && (
+												<img
+													src={player.avatar_url}
+													alt=""
+													referrerPolicy="no-referrer"
+													className="h-8 w-8 rounded-full object-cover"
+												/>
 											)}
-									</li>
-								);
-							})}
-						</ul>
-					)}
+											{!player.avatar_url && (
+												<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-pitch-soft text-xs font-medium text-pitch-fg">
+													{playerVisibleName(player).charAt(0).toUpperCase()}
+												</span>
+											)}
+											<div className="min-w-0 flex-1">
+												<p className="truncate text-sm font-medium text-fg">
+													{playerVisibleName(player)}
+												</p>
+												<AttendanceStatLine row={row} ceiling={ceiling} />
+											</div>
+											{showAttendanceOwnerActions &&
+												canRemoveEventAttendance(
+													player.id,
+													event.attendance.length,
+													teamPlayerIds,
+												) && (
+													<button
+														type="button"
+														aria-label={EVENT_ACTION.removeAttendance}
+														className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-muted hover:text-danger-fg"
+														onClick={() => setAttendanceToRemove(player)}
+													>
+														<X className="size-4" />
+													</button>
+												)}
+										</li>
+									);
+								})}
+							</ul>
+						)}
+					</div>
 				</div>
 			)}
 			{showEventTabs && selectedTab === EVENT_TAB.podium && (
@@ -908,6 +1045,26 @@ export function ChampionshipEventDetail({
 					onSave={async (presentPlayerIds, goalkeeperPlayerIds) => {
 						await onSaveAttendance(presentPlayerIds, goalkeeperPlayerIds);
 						setIsAttendanceOpen(false);
+					}}
+				/>
+			)}
+			{isLateJoinOpen && (
+				<LateJoinAttendanceModal
+					players={players}
+					presentIds={attendanceIds}
+					attendanceCounts={attendanceCounts}
+					isPending={ensuringAttendance}
+					errorMessage={ensureAttendanceError}
+					onCancel={() => {
+						if (ensuringAttendance) {
+							return;
+						}
+
+						setIsLateJoinOpen(false);
+					}}
+					onConfirm={async (playerId) => {
+						await onEnsureAttendance(playerId);
+						setIsLateJoinOpen(false);
 					}}
 				/>
 			)}
@@ -1128,6 +1285,17 @@ export function ChampionshipEventDetail({
 					ceiling={previewCeiling}
 					canSetMvp={canSetMvp}
 					mvpCandidateIds={mvpCandidateIds}
+					missingAttendanceNames={missingMatchPlayerIds.map((playerId) => {
+						const player = players.find((item) => item.id === playerId);
+						if (player) {
+							return playerVisibleName(player);
+						}
+
+						const matchPlayer = event.matches
+							.flatMap((match) => match.players)
+							.find((row) => row.player_id === playerId);
+						return matchPlayer?.display_name ?? String(playerId);
+					})}
 					isPending={ending}
 					errorMessage={endError}
 					onToggleMvp={(playerId) => {
@@ -1150,6 +1318,7 @@ export function ChampionshipEventDetail({
 									presentPlayerIdsForEnd,
 									canSetMvp ? mvpPlayerIds : null,
 								);
+								clearAttendanceDraft(event.id);
 								setEndMvpPlayerIds(null);
 								setIsEndOpen(false);
 							} catch {

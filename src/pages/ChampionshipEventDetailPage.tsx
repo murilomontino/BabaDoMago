@@ -31,12 +31,15 @@ import {
 	useDeleteChampionshipEventMatch,
 	useDeleteChampionshipEventTeam,
 	useEndChampionshipEvent,
+	useEnsureChampionshipEventAttendancePlayer,
+	usePromoteChampionshipEventRsvpGoing,
 	useReopenChampionshipEventMatch,
 	useSaveChampionshipEventAttendance,
 	useSaveChampionshipEventAttendanceStats,
 	useSaveChampionshipEventTeams,
 	useSetChampionshipEventMvps,
 	useUpdateChampionshipEventTeam,
+	useUpsertChampionshipEventRsvp,
 } from "@/hooks/championships/use-championship-events";
 import { useChampionship } from "@/hooks/championships/use-championships";
 
@@ -54,6 +57,10 @@ export function ChampionshipEventDetailPage() {
 	const eventsQuery = useChampionshipEvents(championshipId);
 	const saveTeams = useSaveChampionshipEventTeams(championshipId);
 	const saveAttendance = useSaveChampionshipEventAttendance(championshipId);
+	const ensureAttendance =
+		useEnsureChampionshipEventAttendancePlayer(championshipId);
+	const upsertRsvp = useUpsertChampionshipEventRsvp(championshipId);
+	const promoteRsvp = usePromoteChampionshipEventRsvpGoing(championshipId);
 	const saveAttendanceStats =
 		useSaveChampionshipEventAttendanceStats(championshipId);
 	const addTeam = useAddChampionshipEventTeam(championshipId);
@@ -132,6 +139,8 @@ export function ChampionshipEventDetailPage() {
 				championshipName={championship?.name ?? ""}
 				players={activePlayers}
 				attendanceCounts={attendanceCounts}
+				seedEvents={eventsQuery.data ?? []}
+				currentPlayerId={currentPlayer?.id ?? null}
 				canManage={canManage}
 				canOverrideEnded={canOverrideEnded}
 				canSetMvp={canSetMvp}
@@ -140,6 +149,16 @@ export function ChampionshipEventDetailPage() {
 				savingAttendance={saveAttendance.isPending}
 				saveAttendanceError={
 					saveAttendance.isError ? saveAttendance.error.message : null
+				}
+				ensuringAttendance={ensureAttendance.isPending}
+				ensureAttendanceError={
+					ensureAttendance.isError ? ensureAttendance.error.message : null
+				}
+				savingRsvp={upsertRsvp.isPending}
+				rsvpError={upsertRsvp.isError ? upsertRsvp.error.message : null}
+				promotingRsvp={promoteRsvp.isPending}
+				promoteRsvpError={
+					promoteRsvp.isError ? promoteRsvp.error.message : null
 				}
 				savingAttendanceStats={saveAttendanceStats.isPending}
 				saveAttendanceStatsError={
@@ -181,6 +200,21 @@ export function ChampionshipEventDetailPage() {
 						presentPlayerIds,
 						goalkeeperPlayerIds,
 					});
+				}}
+				onEnsureAttendance={async (playerId) => {
+					await ensureAttendance.mutateAsync({
+						eventId: event.id,
+						playerId,
+					});
+				}}
+				onUpsertRsvp={async (status) => {
+					await upsertRsvp.mutateAsync({
+						eventId: event.id,
+						status,
+					});
+				}}
+				onPromoteRsvpGoing={async () => {
+					await promoteRsvp.mutateAsync(event.id);
 				}}
 				onSaveAttendanceStats={async (stats) => {
 					await saveAttendanceStats.mutateAsync({

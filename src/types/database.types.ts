@@ -158,6 +158,45 @@ export type Database = {
 					},
 				];
 			};
+			championship_event_rsvp: {
+				Row: {
+					event_id: number;
+					id: number;
+					player_id: number;
+					status: string;
+					updated_at: string;
+				};
+				Insert: {
+					event_id: number;
+					id?: number;
+					player_id: number;
+					status: string;
+					updated_at?: string;
+				};
+				Update: {
+					event_id?: number;
+					id?: number;
+					player_id?: number;
+					status?: string;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "championship_event_rsvp_event_id_fkey";
+						columns: ["event_id"];
+						isOneToOne: false;
+						referencedRelation: "championship_events";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "championship_event_rsvp_player_id_fkey";
+						columns: ["player_id"];
+						isOneToOne: false;
+						referencedRelation: "championship_players";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			championship_event_matches: {
 				Row: {
 					created_at: string;
@@ -762,6 +801,26 @@ export type Database = {
 					event_id: number;
 					present_player_ids: Json;
 					goalkeeper_player_ids: Json;
+				};
+				Returns: Json;
+			};
+			ensure_championship_event_attendance_player: {
+				Args: {
+					event_id: number;
+					player_id: number;
+				};
+				Returns: Json;
+			};
+			upsert_championship_event_rsvp: {
+				Args: {
+					event_id: number;
+					status: string;
+				};
+				Returns: Json;
+			};
+			promote_championship_event_rsvp_going: {
+				Args: {
+					event_id: number;
 				};
 				Returns: Json;
 			};

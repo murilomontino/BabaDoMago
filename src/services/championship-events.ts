@@ -20,6 +20,7 @@ import type {
 	ChampionshipEventGoal,
 	ChampionshipEventMatch,
 	ChampionshipEventMatchPlayer,
+	ChampionshipEventRsvp,
 	ChampionshipEventTeam,
 	ChampionshipEventTeamPlayer,
 } from "@/types/championship-event";
@@ -64,6 +65,13 @@ const EVENT_COLUMNS = `
 		rating_delta,
 		is_mvp,
 		mvp_overridden
+	),
+	championship_event_rsvp (
+		id,
+		event_id,
+		player_id,
+		status,
+		updated_at
 	),
 	championship_event_matches (
 		id,
@@ -247,6 +255,25 @@ function asGoal(value: unknown): ChampionshipEventGoal {
 	};
 }
 
+function asRsvp(value: unknown): ChampionshipEventRsvp {
+	if (!value || typeof value !== "object") {
+		throw new Error("event rsvp: invalid payload");
+	}
+
+	const row = value as Record<string, unknown>;
+	if (typeof row.id !== "number" || typeof row.status !== "string") {
+		throw new Error("event rsvp: invalid payload");
+	}
+
+	return {
+		id: row.id,
+		event_id: Number(row.event_id),
+		player_id: Number(row.player_id),
+		status: row.status,
+		updated_at: String(row.updated_at),
+	};
+}
+
 function asMatch(value: unknown): ChampionshipEventMatch {
 	if (!value || typeof value !== "object") {
 		throw new Error("event match: invalid payload");
@@ -307,6 +334,9 @@ function asEvent(value: unknown): ChampionshipEvent {
 	const attendance = Array.isArray(row.championship_event_attendance)
 		? row.championship_event_attendance.map(asAttendance)
 		: [];
+	const rsvps = Array.isArray(row.championship_event_rsvp)
+		? row.championship_event_rsvp.map(asRsvp)
+		: [];
 	const teams = Array.isArray(row.championship_event_teams)
 		? row.championship_event_teams.map(asTeam)
 		: [];
@@ -322,6 +352,7 @@ function asEvent(value: unknown): ChampionshipEvent {
 		skip_guest_goalkeeper_matches: row.skip_guest_goalkeeper_matches !== false,
 		ended_at: typeof row.ended_at === "string" ? row.ended_at : null,
 		attendance: [...attendance].sort((a, b) => a.id - b.id),
+		rsvps: [...rsvps].sort((a, b) => a.player_id - b.player_id),
 		teams: [...teams].sort((a, b) => a.sort_order - b.sort_order),
 		matches: [...matches].sort((a, b) =>
 			a.created_at.localeCompare(b.created_at),
@@ -437,6 +468,52 @@ export async function saveChampionshipEventAttendance(
 		present_player_ids: [...presentPlayerIds],
 		goalkeeper_player_ids: [...goalkeeperPlayerIds],
 	});
+
+	if (error) {
+		throwEventError(error);
+	}
+}
+
+export async function ensureChampionshipEventAttendancePlayer(
+	eventId: number,
+	playerId: number,
+): Promise<void> {
+	const { error } = await supabase.rpc(
+		"ensure_championship_event_attendance_player",
+		{
+			event_id: eventId,
+			player_id: playerId,
+		},
+	);
+
+	if (error) {
+		throwEventError(error);
+	}
+}
+
+export async function upsertChampionshipEventRsvp(
+	eventId: number,
+	status: string,
+): Promise<void> {
+	const { error } = await supabase.rpc("upsert_championship_event_rsvp", {
+		event_id: eventId,
+		status,
+	});
+
+	if (error) {
+		throwEventError(error);
+	}
+}
+
+export async function promoteChampionshipEventRsvpGoing(
+	eventId: number,
+): Promise<void> {
+	const { error } = await supabase.rpc(
+		"promote_championship_event_rsvp_going",
+		{
+			event_id: eventId,
+		},
+	);
 
 	if (error) {
 		throwEventError(error);

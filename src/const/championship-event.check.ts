@@ -1,4 +1,5 @@
 import {
+	ATTENDANCE_SEED,
 	ATTENDANCE_STATS_TEAM_FILTER,
 	ATTENDANCE_STATS_TEAM_FILTER_LABEL,
 	applyVisibleAttendance,
@@ -11,6 +12,7 @@ import {
 	canAddEventMatch,
 	canEditEventTeams,
 	canRemoveEventAttendance,
+	canSelfCheckIn,
 	canStartEventMatch,
 	championshipEventErrorMessage,
 	compareByAttendanceCount,
@@ -24,6 +26,7 @@ import {
 	EVENT_CONFIG_LABEL,
 	EVENT_CREATE_OPEN_LABEL,
 	EVENT_ERROR_MESSAGE,
+	EVENT_RSVP_STATUS,
 	EVENT_TEAM_MESSAGE,
 	EVENT_TEAM_POSITION,
 	EVENT_TEAM_POSITION_LABEL,
@@ -31,8 +34,10 @@ import {
 	EVENT_WEEKDAY_LABEL,
 	type EventTeamDraft,
 	emptyTeamSlots,
+	eventDateYmd,
 	eventDrawRatings,
 	eventGoalkeeperIds,
+	eventIsoWeekday,
 	eventTeamByPlayerId,
 	eventTeamCount,
 	eventTeamPlayerIds,
@@ -47,10 +52,13 @@ import {
 	formatNextPeladaShortcut,
 	initialBuilderTeams,
 	isEventBuilderStep,
+	isEventRsvpStatus,
 	isoWeekdayFromYmd,
 	keepGoalkeepersPresent,
 	keepPresentSlots,
 	keepTeamPlayersPresent,
+	matchPlayerIdsMissingFromAttendance,
+	mergePresentIdsForEnd,
 	nextEventDate,
 	nextEventTeamColor,
 	openChampionshipEvents,
@@ -61,6 +69,8 @@ import {
 	pickTeamGoalkeeper,
 	playerEventStatsFromAttendance,
 	resizeBuilderTeams,
+	rsvpGoingPlayerIds,
+	seedPresentIdsFromHistory,
 	setAttendanceStat,
 	setGoalkeeperSelection,
 	setPlayerEventStat,
@@ -872,5 +882,82 @@ check(
 	PLAYER_EVENT_STAT_META.map((field) => field.id).join(","),
 	"goals,assists,wins,losses,draws,matches",
 );
+
+const seedEvents = [
+	{
+		id: 2,
+		ended_at: "2026-08-10T22:00:00Z",
+		starts_at: "2026-08-10T22:00:00Z",
+		attendance: [{ player_id: 1 }, { player_id: 2 }],
+	},
+	{
+		id: 1,
+		ended_at: "2026-08-03T22:00:00Z",
+		starts_at: "2026-08-03T22:00:00Z",
+		attendance: [{ player_id: 1 }, { player_id: 3 }],
+	},
+];
+check(
+	seedPresentIdsFromHistory(
+		ATTENDANCE_SEED.lastEvent,
+		seedEvents,
+		[1, 2, 3, 4],
+	).join(","),
+	"1,2",
+);
+check(
+	seedPresentIdsFromHistory(
+		ATTENDANCE_SEED.habitual,
+		seedEvents,
+		[1, 2, 3, 4],
+	).join(","),
+	"1,2,3",
+);
+check(
+	seedPresentIdsFromHistory(ATTENDANCE_SEED.clear, seedEvents, [1, 2]).join(
+		",",
+	),
+	"",
+);
+check(
+	matchPlayerIdsMissingFromAttendance(
+		[{ players: [{ player_id: 1 }, { player_id: 9 }] }],
+		[1, 2],
+	).join(","),
+	"9",
+);
+check(mergePresentIdsForEnd([1, 2], [1, 2], [9])?.join(","), "1,2,9");
+check(mergePresentIdsForEnd(null, [1, 2], [9])?.join(","), "1,2,9");
+check(mergePresentIdsForEnd([1, 2], [1, 2], [])?.join(","), "1,2");
+check(mergePresentIdsForEnd(null, [1], []), null);
+check(
+	rsvpGoingPlayerIds([{ player_id: 1, status: EVENT_RSVP_STATUS.going }]).join(
+		",",
+	),
+	"1",
+);
+check(isEventRsvpStatus(EVENT_RSVP_STATUS.maybe), true);
+check(isEventRsvpStatus("nope"), false);
+check(
+	canSelfCheckIn({
+		endedAt: null,
+		startsAt: `${eventDateYmd("2026-08-17T22:00:00-03:00")}T22:00:00-03:00`,
+		playerId: 1,
+		attendanceIds: [],
+		todayYmd: eventDateYmd("2026-08-17T22:00:00-03:00"),
+	}),
+	true,
+);
+check(
+	canSelfCheckIn({
+		endedAt: null,
+		startsAt: "2026-08-17T22:00:00-03:00",
+		playerId: 1,
+		attendanceIds: [1],
+		todayYmd: eventDateYmd("2026-08-17T22:00:00-03:00"),
+	}),
+	false,
+);
+check(typeof eventIsoWeekday("2026-08-17T22:00:00-03:00"), "number");
 
 console.log("championship-event ok");

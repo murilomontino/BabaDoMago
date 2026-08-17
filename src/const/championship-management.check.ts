@@ -109,6 +109,7 @@ function eventRow(
 		skip_guest_goalkeeper_matches: true,
 		ended_at: `2026-08-0${id}T23:00:00.000Z`,
 		attendance: [],
+		rsvps: [],
 		teams: [],
 		matches: [],
 		...overrides,

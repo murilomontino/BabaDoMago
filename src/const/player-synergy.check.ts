@@ -130,6 +130,7 @@ function eventWithMatch(
 		skip_guest_goalkeeper_matches: skipGuestGk,
 		ended_at: "2026-08-14T23:00:00.000Z",
 		attendance: [],
+		rsvps: [],
 		teams,
 		matches: [matchRow],
 	};

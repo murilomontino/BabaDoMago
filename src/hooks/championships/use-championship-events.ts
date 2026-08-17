@@ -15,9 +15,11 @@ import {
 	deleteChampionshipEventTeam,
 	endChampionshipEvent,
 	endChampionshipEventMatch,
+	ensureChampionshipEventAttendancePlayer,
 	getChampionshipEventById,
 	listChampionshipEvents,
 	pauseChampionshipEventMatch,
+	promoteChampionshipEventRsvpGoing,
 	reopenChampionshipEventMatch,
 	resumeChampionshipEventMatch,
 	saveChampionshipEventAttendance,
@@ -31,6 +33,7 @@ import {
 	startChampionshipEventMatch,
 	undoChampionshipEventGoal,
 	updateChampionshipEventTeam,
+	upsertChampionshipEventRsvp,
 } from "@/services/championship-events";
 import {
 	CHAMPIONSHIP_EVENTS_QUERY_KEY,
@@ -120,6 +123,54 @@ export function useSaveChampionshipEventAttendance(_championshipId: number) {
 				presentPlayerIds,
 				goalkeeperPlayerIds,
 			),
+		onSuccess: async () => {
+			await Promise.all([
+				invalidateChampionshipEventQueries(queryClient),
+				invalidateChampionshipQueries(queryClient),
+			]);
+		},
+	});
+}
+
+export function useEnsureChampionshipEventAttendancePlayer(
+	_championshipId: number,
+) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({
+			eventId,
+			playerId,
+		}: {
+			eventId: number;
+			playerId: number;
+		}) => ensureChampionshipEventAttendancePlayer(eventId, playerId),
+		onSuccess: async () => {
+			await Promise.all([
+				invalidateChampionshipEventQueries(queryClient),
+				invalidateChampionshipQueries(queryClient),
+			]);
+		},
+	});
+}
+
+export function useUpsertChampionshipEventRsvp(_championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({ eventId, status }: { eventId: number; status: string }) =>
+			upsertChampionshipEventRsvp(eventId, status),
+		onSuccess: async () => {
+			await invalidateChampionshipEventQueries(queryClient);
+		},
+	});
+}
+
+export function usePromoteChampionshipEventRsvpGoing(_championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (eventId: number) => promoteChampionshipEventRsvpGoing(eventId),
 		onSuccess: async () => {
 			await Promise.all([
 				invalidateChampionshipEventQueries(queryClient),

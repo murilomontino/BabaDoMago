@@ -347,6 +347,7 @@ function eventAt(
 		skip_guest_goalkeeper_matches: true,
 		ended_at: null,
 		attendance,
+		rsvps: [],
 		teams: [],
 		matches: [],
 	};

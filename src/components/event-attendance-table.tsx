@@ -8,6 +8,10 @@ import {
 } from "@/components/organisms/data-table";
 import { PlayerRating } from "@/components/player-rating";
 import {
+	ATTENDANCE_SEED,
+	ATTENDANCE_SEED_HINT,
+	ATTENDANCE_SEED_LABEL,
+	type AttendanceSeedMode,
 	areAllVisiblePresent,
 	compareByAttendanceCount,
 	EVENT_ATTENDANCE_ACTION,
@@ -48,6 +52,7 @@ type EventAttendanceTableProps = {
 		playerIds: readonly number[],
 		asGoalkeeper: boolean,
 	) => void;
+	onSeedAttendance?: (mode: AttendanceSeedMode) => void;
 };
 
 const attendanceColumnHelper = createColumnHelper<
@@ -89,11 +94,7 @@ function AttendanceRowSwitch({
 	);
 }
 
-function AttendancePresentCell({
-	row,
-}: {
-	row: { original: AttendanceRow };
-}) {
+function AttendancePresentCell({ row }: { row: { original: AttendanceRow } }) {
 	const player = row.original;
 
 	return (
@@ -154,9 +155,11 @@ export function EventAttendanceTable({
 	goalkeeperIds = [],
 	onSetPresent,
 	onSetGoalkeeper,
+	onSeedAttendance,
 }: EventAttendanceTableProps) {
 	const [query, setQuery] = useState("");
 	const selectable = Boolean(onSetPresent);
+	const showSeedActions = Boolean(onSeedAttendance);
 	const ceiling = championshipRatingCeiling(
 		players.map((player) => player.rating),
 	);
@@ -293,17 +296,75 @@ export function EventAttendanceTable({
 					}}
 				/>
 			</label>
-			{selectable && rows.length > 0 && onSetPresent && (
-				<Button
-					variant={BUTTON_VARIANT.secondary}
-					onClick={() => {
-						onSetPresent(visibleIds, !allVisiblePresent);
-					}}
-				>
-					{allVisiblePresent
-						? EVENT_ATTENDANCE_ACTION.deselectAll
-						: EVENT_ATTENDANCE_ACTION.selectAll}
-				</Button>
+			{(selectable || showSeedActions) && (
+				<div className="space-y-2">
+					<div className="flex flex-wrap items-center gap-2">
+						{selectable && rows.length > 0 && onSetPresent && (
+							<Button
+								variant={BUTTON_VARIANT.secondary}
+								onClick={() => {
+									onSetPresent(visibleIds, !allVisiblePresent);
+								}}
+							>
+								{allVisiblePresent
+									? EVENT_ATTENDANCE_ACTION.deselectAll
+									: EVENT_ATTENDANCE_ACTION.selectAll}
+							</Button>
+						)}
+						{showSeedActions && onSeedAttendance && (
+							<>
+								<Button
+									type="button"
+									variant={BUTTON_VARIANT.secondary}
+									title={ATTENDANCE_SEED_HINT[ATTENDANCE_SEED.lastEvent]}
+									onClick={() => {
+										onSeedAttendance(ATTENDANCE_SEED.lastEvent);
+									}}
+								>
+									{ATTENDANCE_SEED_LABEL[ATTENDANCE_SEED.lastEvent]}
+								</Button>
+								<Button
+									type="button"
+									variant={BUTTON_VARIANT.secondary}
+									title={ATTENDANCE_SEED_HINT[ATTENDANCE_SEED.habitual]}
+									onClick={() => {
+										onSeedAttendance(ATTENDANCE_SEED.habitual);
+									}}
+								>
+									{ATTENDANCE_SEED_LABEL[ATTENDANCE_SEED.habitual]}
+								</Button>
+								{presentIds.length > 0 && (
+									<Button
+										type="button"
+										variant={BUTTON_VARIANT.secondary}
+										title={ATTENDANCE_SEED_HINT[ATTENDANCE_SEED.clear]}
+										onClick={() => {
+											onSeedAttendance(ATTENDANCE_SEED.clear);
+										}}
+									>
+										{ATTENDANCE_SEED_LABEL[ATTENDANCE_SEED.clear]}
+									</Button>
+								)}
+							</>
+						)}
+					</div>
+					{showSeedActions && (
+						<ul className="space-y-0.5 text-xs text-fg-muted">
+							<li>
+								{ATTENDANCE_SEED_LABEL[ATTENDANCE_SEED.lastEvent]}:{" "}
+								{ATTENDANCE_SEED_HINT[ATTENDANCE_SEED.lastEvent]}
+							</li>
+							<li>
+								{ATTENDANCE_SEED_LABEL[ATTENDANCE_SEED.habitual]}:{" "}
+								{ATTENDANCE_SEED_HINT[ATTENDANCE_SEED.habitual]}
+							</li>
+							<li>
+								{ATTENDANCE_SEED_LABEL[ATTENDANCE_SEED.clear]}:{" "}
+								{ATTENDANCE_SEED_HINT[ATTENDANCE_SEED.clear]}
+							</li>
+						</ul>
+					)}
+				</div>
 			)}
 			{rows.length === 0 && (
 				<p className="text-sm text-fg-muted">{PLAYER_SEARCH.empty}</p>

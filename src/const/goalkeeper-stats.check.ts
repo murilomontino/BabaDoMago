@@ -17,6 +17,7 @@ function eventRow(): ChampionshipEvent {
 		skip_guest_goalkeeper_matches: true,
 		ended_at: "2026-08-01T23:00:00.000Z",
 		attendance: [],
+		rsvps: [],
 		teams: [
 			{
 				id: 10,

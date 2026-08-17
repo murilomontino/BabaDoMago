@@ -61,6 +61,7 @@ function eventRow(): ChampionshipEvent {
 				mvp_overridden: false,
 			},
 		],
+		rsvps: [],
 		teams: [
 			{
 				id: 10,

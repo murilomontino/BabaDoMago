@@ -21,6 +21,14 @@ export type ChampionshipEventAttendance = {
 	mvp_overridden: boolean;
 };
 
+export type ChampionshipEventRsvp = {
+	id: number;
+	event_id: number;
+	player_id: number;
+	status: string;
+	updated_at: string;
+};
+
 export type ChampionshipEventTeamPlayer = {
 	id: number;
 	event_id: number;
@@ -85,6 +93,7 @@ export type ChampionshipEvent = {
 	skip_guest_goalkeeper_matches: boolean;
 	ended_at: string | null;
 	attendance: ChampionshipEventAttendance[];
+	rsvps: ChampionshipEventRsvp[];
 	teams: ChampionshipEventTeam[];
 	matches: ChampionshipEventMatch[];
 };

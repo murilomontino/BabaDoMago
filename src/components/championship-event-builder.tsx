@@ -15,6 +15,7 @@ import {
 } from "@/components/event-team-player";
 import { Tabs } from "@/components/tabs";
 import {
+	type AttendanceSeedMode,
 	applyVisibleAttendance,
 	builderTeamsFromDrafts,
 	builderTeamsHavePlayers,
@@ -28,14 +29,17 @@ import {
 	type EventBuilderStep,
 	type EventTeamBuilderTeam,
 	type EventTeamDraft,
+	type EventWeekday,
 	emptyTeamSlots,
 	eventGoalkeeperIds,
+	eventIsoWeekday,
 	eventTeamCount,
 	eventTeamPlayerOptionLabel,
 	eventTeamSlotPosition,
 	initialBuilderTeams,
 	keepGoalkeepersPresent,
 	resizeBuilderTeams,
+	seedPresentIdsFromHistory,
 	setGoalkeeperSelection,
 	teamSlotsToPlayerIds,
 	validateEventAttendance,
@@ -80,6 +84,12 @@ type ChampionshipEventBuilderProps = {
 	playersPerTeam: number;
 	players: ChampionshipPlayer[];
 	attendanceCounts: ReadonlyMap<number, number>;
+	seedEvents?: readonly {
+		id: number;
+		ended_at: string | null;
+		starts_at: string;
+		attendance: readonly { player_id: number }[];
+	}[];
 	step: EventBuilderStep;
 	startsAt: string;
 	championshipName: string;
@@ -105,6 +115,7 @@ export function ChampionshipEventBuilder({
 	playersPerTeam,
 	players,
 	attendanceCounts,
+	seedEvents = [],
 	step,
 	startsAt,
 	championshipName,
@@ -134,6 +145,7 @@ export function ChampionshipEventBuilder({
 	>(null);
 	const drawWorkerRef = useRef<Worker | null>(null);
 	const rosterIds = players.map((player) => player.id);
+	const seedWeekday: EventWeekday = eventIsoWeekday(startsAt);
 	const ceiling = championshipRatingCeiling(
 		players.map((player) => player.rating),
 	);
@@ -161,6 +173,15 @@ export function ChampionshipEventBuilder({
 
 	function handleSetPresent(playerIds: readonly number[], present: boolean) {
 		const nextPresent = applyVisibleAttendance(presentIds, playerIds, present);
+		setPresentIds(nextPresent);
+		onPresentIdsChange?.(nextPresent);
+		setAttendanceError(null);
+	}
+
+	function handleSeedAttendance(mode: AttendanceSeedMode) {
+		const nextPresent = seedPresentIdsFromHistory(mode, seedEvents, rosterIds, {
+			weekday: seedWeekday,
+		});
 		setPresentIds(nextPresent);
 		onPresentIdsChange?.(nextPresent);
 		setAttendanceError(null);
@@ -460,6 +481,9 @@ export function ChampionshipEventBuilder({
 										goalkeeperIds={goalkeeperIds}
 										onSetPresent={handleSetPresent}
 										onSetGoalkeeper={handleSetGoalkeeper}
+										onSeedAttendance={
+											seedEvents.length > 0 ? handleSeedAttendance : undefined
+										}
 									/>
 									{attendanceError && (
 										<p className={ERROR_CLASS}>{attendanceError}</p>
