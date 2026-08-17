@@ -34,8 +34,24 @@ export const STAR_SIDE = {
 
 export type StarSide = (typeof STAR_SIDE)[keyof typeof STAR_SIDE];
 
+export function maxOrZero(values: readonly number[]): number {
+	if (values.length === 0) {
+		return 0;
+	}
+
+	return Math.max(...values);
+}
+
+export function averageOrZero(total: number, count: number): number {
+	if (count === 0) {
+		return 0;
+	}
+
+	return total / count;
+}
+
 export function championshipRatingCeiling(ratings: readonly number[]): number {
-	const maxRating = ratings.length === 0 ? 0 : Math.max(...ratings);
+	const maxRating = maxOrZero(ratings);
 	return Math.min(
 		PLAYER_RATING.max,
 		Math.max(maxRating, PLAYER_RATING.initialCeiling),

@@ -1,5 +1,7 @@
 import {
+	averageOrZero,
 	championshipRatingCeiling,
+	maxOrZero,
 	PLAYER_RATING,
 	PLAYER_RATING_INPUT,
 	PLAYER_STARS,
@@ -17,6 +19,10 @@ function check(condition: boolean, message: string) {
 }
 
 check(PLAYER_STARS.length === PLAYER_RATING.starCount, "5 star slots");
+check(maxOrZero([]) === 0, "empty max is 0");
+check(maxOrZero([1, 4, 2]) === 4, "max of list");
+check(averageOrZero(10, 0) === 0, "empty average is 0");
+check(averageOrZero(10, 4) === 2.5, "average");
 check(championshipRatingCeiling([]) === 5, "empty uses initial ceiling");
 check(championshipRatingCeiling([0, 0]) === 5, "unrated uses initial ceiling");
 check(championshipRatingCeiling([3, 1]) === 5, "below 5 keeps initial ceiling");

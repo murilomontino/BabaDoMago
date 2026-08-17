@@ -37,6 +37,8 @@ export const EVENT_TEAM_COLOR_LABEL: Record<string, string> = {
 
 export const EVENT_TEAM_COLOR_NONE_LABEL = "Sem cor";
 export const EVENT_TEAM_COLOR_CUSTOM_LABEL = "Cor personalizada";
+export const EVENT_TEAM_COLOR_RAINBOW_GRADIENT =
+	"conic-gradient(#dc2626, #facc15, #166534, #2563eb, #ec4899, #dc2626)";
 
 export const EVENT_TEAM_FG = {
 	light: "#ffffff",
@@ -69,6 +71,44 @@ export function eventTeamName(color: string | null, sortOrder: number): string {
 
 export function isEventTeamColor(value: string): value is EventTeamColor {
 	return EVENT_TEAM_COLOR_HEX.test(value);
+}
+
+export function eventTeamColorOrNone(
+	color: string | null,
+): EventTeamColor | null {
+	if (color === null) {
+		return null;
+	}
+
+	if (!isEventTeamColor(color)) {
+		return null;
+	}
+
+	return color;
+}
+
+export function usedEventTeamColors<T extends string>(color: T | null): T[] {
+	if (color === null) {
+		return [];
+	}
+
+	return [color];
+}
+
+export function eventTeamCustomColorPreview(
+	isCustom: boolean,
+	color: string | null,
+): { backgroundColor: string; backgroundImage?: string } {
+	if (!isCustom) {
+		return {
+			backgroundColor: "transparent",
+			backgroundImage: EVENT_TEAM_COLOR_RAINBOW_GRADIENT,
+		};
+	}
+
+	return {
+		backgroundColor: color ?? "transparent",
+	};
 }
 
 function hexChannel(hex: string, offset: number): number {

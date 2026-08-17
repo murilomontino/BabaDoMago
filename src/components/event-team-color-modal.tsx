@@ -8,6 +8,7 @@ import {
 	EVENT_TEAM_COLOR_LABEL,
 	EVENT_TEAM_COLORS,
 	type EventTeamColor,
+	eventTeamCustomColorPreview,
 	isEventTeamColor,
 	normalizeEventTeamColor,
 } from "@/const/event-team-color";
@@ -97,12 +98,7 @@ export function EventTeamColorModal({
 						<span
 							aria-hidden
 							className={`block size-8 rounded-md border-2 ${isCustom ? "border-current" : "border-black/20"}`}
-							style={{
-								backgroundColor: isCustom ? color : "transparent",
-								backgroundImage: isCustom
-									? undefined
-									: "conic-gradient(#dc2626, #facc15, #166534, #2563eb, #ec4899, #dc2626)",
-							}}
+							style={eventTeamCustomColorPreview(isCustom, color)}
 						/>
 					</label>
 				</div>

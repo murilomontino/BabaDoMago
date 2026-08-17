@@ -17,6 +17,7 @@ import {
 	EventTeamRatingAverage,
 } from "@/components/event-team-player";
 import { GoalkeeperGlovesIcon } from "@/components/goalkeeper-gloves-icon";
+import { MatchClockDebug } from "@/components/match-clock-debug";
 import {
 	MATCH_GOAL_TIMELINE_GRID_CLASS,
 	MatchGoalTimeline,
@@ -67,6 +68,7 @@ import {
 	type EventTeamColor,
 	eventTeamColorStyle,
 	eventTeamName,
+	usedEventTeamColors,
 } from "@/const/event-team-color";
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
@@ -85,6 +87,27 @@ type SlotTarget = {
 	teamId: number;
 	slot: number;
 };
+
+function slotActionTitle(
+	match: ChampionshipEventMatch,
+	slotTarget: SlotTarget | null,
+	playersPerTeam: number,
+): string {
+	if (!slotTarget) {
+		return EVENT_ACTION.fillSlot;
+	}
+
+	const occupied = matchTeamSlots(
+		match.players,
+		slotTarget.teamId,
+		playersPerTeam,
+	)[slotTarget.slot];
+	if (occupied) {
+		return EVENT_ACTION.swapPlayer;
+	}
+
+	return EVENT_ACTION.fillSlot;
+}
 
 type PendingSwap = {
 	teamId: number;
@@ -725,7 +748,7 @@ export function ChampionshipEventPlay({
 						color={colorTeam.color}
 						usedColors={event.teams
 							.filter((team) => team.id !== colorTeam.id)
-							.flatMap((team) => (team.color === null ? [] : [team.color]))}
+							.flatMap((team) => usedEventTeamColors(team.color))}
 						isPending={savingColor}
 						errorMessage={colorError}
 						onCancel={() => {
@@ -802,13 +825,7 @@ export function ChampionshipEventPlay({
 	const volunteerGoalkeeperIds = new Set(
 		attendanceGoalkeeperIds(event.attendance),
 	);
-	const slotTitle = slotTarget
-		? matchTeamSlots(match.players, slotTarget.teamId, event.players_per_team)[
-				slotTarget.slot
-			]
-			? EVENT_ACTION.swapPlayer
-			: EVENT_ACTION.fillSlot
-		: EVENT_ACTION.fillSlot;
+	const slotTitle = slotActionTitle(match, slotTarget, event.players_per_team);
 	const clockMatch = mergeMatchClock(match, localClock);
 	const goalModalOpen = goalTarget !== null || ownGoalTeamId !== null;
 
@@ -1218,6 +1235,7 @@ export function ChampionshipEventPlay({
 					}}
 				/>
 			)}
+			{import.meta.env.DEV && <MatchClockDebug matchId={match.id} />}
 		</div>
 	);
 }

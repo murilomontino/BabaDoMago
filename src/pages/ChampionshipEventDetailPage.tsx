@@ -48,6 +48,7 @@ import {
 	useAddManualPlayer,
 	useChampionship,
 } from "@/hooks/championships/use-championships";
+import { mutationErrorMessage } from "@/lib/error-message";
 
 export function ChampionshipEventDetailPage() {
 	const { championshipId: championshipIdParam, eventId: eventIdParam } =
@@ -153,45 +154,35 @@ export function ChampionshipEventDetailPage() {
 				canOverrideEnded={canOverrideEnded}
 				canSetMvp={canSetMvp}
 				savingTeams={saveTeams.isPending}
-				saveTeamsError={saveTeams.isError ? saveTeams.error.message : null}
+				saveTeamsError={mutationErrorMessage(saveTeams)}
 				savingAttendance={saveAttendance.isPending}
-				saveAttendanceError={
-					saveAttendance.isError ? saveAttendance.error.message : null
-				}
+				saveAttendanceError={mutationErrorMessage(saveAttendance)}
 				ensuringAttendance={ensureAttendance.isPending}
-				ensureAttendanceError={
-					ensureAttendance.isError ? ensureAttendance.error.message : null
-				}
+				ensureAttendanceError={mutationErrorMessage(ensureAttendance)}
 				savingRsvp={upsertRsvp.isPending}
-				rsvpError={upsertRsvp.isError ? upsertRsvp.error.message : null}
+				rsvpError={mutationErrorMessage(upsertRsvp)}
 				promotingRsvp={promoteRsvp.isPending}
-				promoteRsvpError={
-					promoteRsvp.isError ? promoteRsvp.error.message : null
-				}
+				promoteRsvpError={mutationErrorMessage(promoteRsvp)}
 				savingAttendanceStats={saveAttendanceStats.isPending}
-				saveAttendanceStatsError={
-					saveAttendanceStats.isError ? saveAttendanceStats.error.message : null
-				}
+				saveAttendanceStatsError={mutationErrorMessage(saveAttendanceStats)}
 				addingTeam={addTeam.isPending}
-				addTeamError={addTeam.isError ? addTeam.error.message : null}
+				addTeamError={mutationErrorMessage(addTeam)}
 				updatingTeam={updateTeam.isPending}
-				updateTeamError={updateTeam.isError ? updateTeam.error.message : null}
+				updateTeamError={mutationErrorMessage(updateTeam)}
 				deletingTeam={deleteTeam.isPending}
-				deleteTeamError={deleteTeam.isError ? deleteTeam.error.message : null}
+				deleteTeamError={mutationErrorMessage(deleteTeam)}
 				deletingMatch={deleteMatch.isPending}
-				deleteMatchError={
-					deleteMatch.isError ? deleteMatch.error.message : null
-				}
+				deleteMatchError={mutationErrorMessage(deleteMatch)}
 				openingMatch={reopenMatch.isPending}
-				openMatchError={reopenMatch.isError ? reopenMatch.error.message : null}
+				openMatchError={mutationErrorMessage(reopenMatch)}
 				ending={endEvent.isPending}
-				endError={endEvent.isError ? endEvent.error.message : null}
+				endError={mutationErrorMessage(endEvent)}
 				settingMvp={setMvps.isPending}
-				setMvpError={setMvps.isError ? setMvps.error.message : null}
+				setMvpError={mutationErrorMessage(setMvps)}
 				deleting={deleteEvent.isPending}
-				deleteError={deleteEvent.isError ? deleteEvent.error.message : null}
+				deleteError={mutationErrorMessage(deleteEvent)}
 				isAddingPlayer={addPlayer.isPending}
-				addPlayerError={addPlayer.isError ? addPlayer.error.message : null}
+				addPlayerError={mutationErrorMessage(addPlayer)}
 				onAddPlayer={
 					canInvite(actorRole)
 						? async (values) => addPlayer.mutateAsync(values)

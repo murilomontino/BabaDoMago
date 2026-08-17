@@ -78,6 +78,7 @@ import {
 	type EventTeamColor,
 	eventTeamColorStyle,
 	eventTeamName,
+	usedEventTeamColors,
 } from "@/const/event-team-color";
 import {
 	EVENT_TEAM_SHARE_LABEL,
@@ -832,7 +833,7 @@ export function ChampionshipEventRoundTab({
 					presentPlayers={presentPlayers}
 					goalkeeperIds={volunteerGoalkeeperIds}
 					usedColors={event.teams.flatMap((team) =>
-						team.color === null ? [] : [team.color],
+						usedEventTeamColors(team.color),
 					)}
 					takenPlayerIds={teamPlayerIds}
 					isPending={addingTeam}
@@ -857,7 +858,7 @@ export function ChampionshipEventRoundTab({
 					goalkeeperIds={volunteerGoalkeeperIds}
 					usedColors={event.teams
 						.filter((team) => team.id !== teamToEdit.id)
-						.flatMap((team) => (team.color === null ? [] : [team.color]))}
+						.flatMap((team) => usedEventTeamColors(team.color))}
 					takenPlayerIds={eventTeamPlayerIds(
 						event.teams.filter((team) => team.id !== teamToEdit.id),
 					)}

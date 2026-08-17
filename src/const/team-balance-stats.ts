@@ -4,6 +4,7 @@ import {
 	eventTeamRatingAverage,
 } from "./championship-event.ts";
 import { eventTeamName } from "./event-team-color.ts";
+import { averageOrZero } from "./player-rating.ts";
 import {
 	formatRosterCount,
 	formatRosterWinRate,
@@ -142,7 +143,7 @@ export function championshipTeamBalance(
 
 	return {
 		events: rows.length,
-		averageSpread: rows.length === 0 ? 0 : spreadTotal / rows.length,
+		averageSpread: averageOrZero(spreadTotal, rows.length),
 		favoriteDecided: favoriteDecided.length,
 		favoriteWon,
 		favoriteWinRate: rosterWinRate(favoriteWon, favoriteDecided.length),

@@ -73,7 +73,20 @@ export const MATCH_CLOCK_ACTION = {
 export type MatchClockAction =
 	(typeof MATCH_CLOCK_ACTION)[keyof typeof MATCH_CLOCK_ACTION];
 
-export const MATCH_CLOCK_STORAGE_KEY = "baba-match-clock" as const;
+export const MATCH_CLOCK_STORAGE_KEY = "babaDoMago-match-clock" as const;
+
+export const MATCH_CLOCK_DEBUG_LABEL = {
+	open: "Fila do cronômetro",
+	title: "Fila do cronômetro",
+	empty: "Fila vazia.",
+	hold: "Segurar sync",
+	release: "Liberar sync",
+	pending: "Pending",
+	startedAt: "started_at",
+	pausedAt: "paused_at",
+	accumulated: "pause_accumulated_seconds",
+	close: "Fechar",
+} as const;
 
 export type MatchClockSnapshot = {
 	started_at: string | null;
@@ -287,19 +300,28 @@ export function matchPlayerIds(
 	return players.map((player) => player.player_id);
 }
 
+export function compareStartersBeforeSubstitutes(
+	left: { is_substituted: boolean; slot: number | null },
+	right: { is_substituted: boolean; slot: number | null },
+): number {
+	if (left.is_substituted !== right.is_substituted) {
+		if (left.is_substituted) {
+			return 1;
+		}
+
+		return -1;
+	}
+
+	return (left.slot ?? 11) - (right.slot ?? 11);
+}
+
 export function matchTeamPlayers(
 	players: readonly ChampionshipEventMatchPlayer[],
 	teamId: number,
 ): ChampionshipEventMatchPlayer[] {
 	return [...players]
 		.filter((player) => player.team_id === teamId)
-		.sort((left, right) => {
-			if (left.is_substituted !== right.is_substituted) {
-				return left.is_substituted ? 1 : -1;
-			}
-
-			return (left.slot ?? 11) - (right.slot ?? 11);
-		});
+		.sort(compareStartersBeforeSubstitutes);
 }
 
 export function matchActiveTeamPlayers(
@@ -607,31 +629,51 @@ export function formatMatchClock(totalSeconds: number): string {
 	return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
+function pickTeamStarPlayer(
+	players: readonly ChampionshipEventMatchPlayer[],
+	roster: ReadonlyMap<number, MatchStarRosterPlayer>,
+): ChampionshipEventMatchPlayer | null {
+	return players.reduce<ChampionshipEventMatchPlayer | null>((best, player) => {
+		if (!best) {
+			return player;
+		}
+
+		const playerRating = roster.get(player.player_id)?.rating ?? 0;
+		const bestRating = roster.get(best.player_id)?.rating ?? 0;
+		if (playerRating !== bestRating) {
+			if (playerRating > bestRating) {
+				return player;
+			}
+
+			return best;
+		}
+
+		const playerSlot = player.slot ?? 11;
+		const bestSlot = best.slot ?? 11;
+		if (playerSlot !== bestSlot) {
+			if (playerSlot < bestSlot) {
+				return player;
+			}
+
+			return best;
+		}
+
+		if (player.player_id < best.player_id) {
+			return player;
+		}
+
+		return best;
+	}, null);
+}
+
 export function matchTeamStarName(
 	players: readonly ChampionshipEventMatchPlayer[],
 	teamId: number,
 	roster: ReadonlyMap<number, MatchStarRosterPlayer>,
 ): string | null {
-	const team = matchActiveTeamPlayers(players, teamId);
-	const star = team.reduce<ChampionshipEventMatchPlayer | null>(
-		(best, player) => {
-			if (!best) {
-				return player;
-			}
-
-			const playerRating = roster.get(player.player_id)?.rating ?? 0;
-			const bestRating = roster.get(best.player_id)?.rating ?? 0;
-			if (playerRating !== bestRating) {
-				return playerRating > bestRating ? player : best;
-			}
-
-			if ((player.slot ?? 11) !== (best.slot ?? 11)) {
-				return (player.slot ?? 11) < (best.slot ?? 11) ? player : best;
-			}
-
-			return player.player_id < best.player_id ? player : best;
-		},
-		null,
+	const star = pickTeamStarPlayer(
+		matchActiveTeamPlayers(players, teamId),
+		roster,
 	);
 
 	if (!star) {

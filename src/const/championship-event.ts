@@ -570,10 +570,18 @@ export function isEventWeekday(value: unknown): value is EventWeekday {
 	return parseEventWeekday(value) !== null;
 }
 
+export function jsSundayToEventWeekday(utcDay: number): EventWeekday {
+	if (utcDay === 0) {
+		return EVENT_WEEKDAY.sunday;
+	}
+
+	return utcDay as EventWeekday;
+}
+
 export function isoWeekdayFromYmd(ymd: string): EventWeekday {
 	const [year, month, day] = ymd.split("-").map(Number);
 	const utcDay = new Date(Date.UTC(year, month - 1, day, 12, 0, 0)).getUTCDay();
-	return (utcDay === 0 ? EVENT_WEEKDAY.sunday : utcDay) as EventWeekday;
+	return jsSundayToEventWeekday(utcDay);
 }
 
 export function addDaysToYmd(ymd: string, days: number): string {
@@ -707,13 +715,7 @@ export function openChampionshipEvents<
 >(events: readonly T[]): T[] {
 	return events
 		.filter((event) => event.ended_at === null)
-		.sort((left, right) => {
-			if (left.starts_at !== right.starts_at) {
-				return left.starts_at < right.starts_at ? -1 : 1;
-			}
-
-			return left.id - right.id;
-		});
+		.sort(compareStartsAtOldestFirst);
 }
 
 export function championshipEventErrorMessage(message: string): string {
@@ -1535,13 +1537,7 @@ function endedEventsNewestFirst(
 
 			return eventIsoWeekday(event.starts_at) === weekday;
 		})
-		.sort((left, right) => {
-			if (left.starts_at === right.starts_at) {
-				return right.id - left.id;
-			}
-
-			return left.starts_at < right.starts_at ? 1 : -1;
-		});
+		.sort(compareStartsAtNewestFirst);
 }
 
 export function seedPresentIdsFromLastEvent(
@@ -2104,6 +2100,36 @@ export function countPlayerAttendance(
 	}
 
 	return counts;
+}
+
+export function compareStartsAtOldestFirst(
+	left: { starts_at: string; id: number },
+	right: { starts_at: string; id: number },
+): number {
+	if (left.starts_at !== right.starts_at) {
+		if (left.starts_at < right.starts_at) {
+			return -1;
+		}
+
+		return 1;
+	}
+
+	return left.id - right.id;
+}
+
+export function compareStartsAtNewestFirst(
+	left: { starts_at: string; id: number },
+	right: { starts_at: string; id: number },
+): number {
+	if (left.starts_at !== right.starts_at) {
+		if (left.starts_at < right.starts_at) {
+			return 1;
+		}
+
+		return -1;
+	}
+
+	return right.id - left.id;
 }
 
 export function compareByAttendanceCount(

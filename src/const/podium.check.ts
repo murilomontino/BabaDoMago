@@ -22,6 +22,8 @@ import {
 	parsePodiumMonth,
 	podiumAvailableYears,
 	podiumDefaultYear,
+	podiumEnterDelay,
+	podiumEnterInitialHeight,
 	podiumMetricLabel,
 	podiumSeasonLabel,
 	podiumStandings,
@@ -45,11 +47,22 @@ check(PODIUM_PLACE.first === 1, "first place");
 check(PODIUM_PLACE.second === 2, "second place");
 check(PODIUM_PLACE.third === 3, "third place");
 check(PODIUM_PLACES.join(",") === "1,2,3", "places order");
+check(podiumEnterDelay(true, PODIUM_PLACE.first) === 0, "reduce motion delay");
+check(podiumEnterDelay(false, PODIUM_PLACE.first) === 0.24, "first delay");
+check(
+	podiumEnterInitialHeight(true, 80).height === 80,
+	"reduce motion starts full height",
+);
+check(
+	podiumEnterInitialHeight(false, 80).height === 0,
+	"motion starts collapsed",
+);
 check(PODIUM_DISPLAY_ORDER.join(",") === "2,1,3", "display 2-1-3");
 check(PODIUM_DEFAULT_METRIC === ROSTER_COLUMN.goals, "default goals");
 check(PODIUM_LABEL.tab === "Pódio", "tab label");
 check(
-	podiumMetricLabel(ROSTER_COLUMN.assisted_goals) === PODIUM_LABEL.assistedGoals,
+	podiumMetricLabel(ROSTER_COLUMN.assisted_goals) ===
+		PODIUM_LABEL.assistedGoals,
 	"assisted goals podium label",
 );
 check(PODIUM_LABEL.assistedGoals === "O mais servido", "assisted goals name");

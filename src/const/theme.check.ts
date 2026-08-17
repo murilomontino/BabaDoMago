@@ -1,4 +1,5 @@
 import {
+	appearanceFromPreference,
 	nextThemeMode,
 	parseThemeMode,
 	resolveTheme,
@@ -38,3 +39,10 @@ check(
 	resolveTheme(THEME_MODE.system, false) === THEME_APPEARANCE.light,
 	"system follows light",
 );
+check(appearanceFromPreference(true) === THEME_APPEARANCE.dark, "prefers dark");
+check(
+	appearanceFromPreference(false) === THEME_APPEARANCE.light,
+	"prefers light",
+);
+
+console.log("theme ok");

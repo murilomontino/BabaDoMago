@@ -2,6 +2,7 @@ import {
 	drawBalancedEventTeams,
 	type EventTeamDraft,
 } from "../const/championship-event.ts";
+import { caughtErrorMessage } from "../lib/error-message.ts";
 
 type EventTeamDrawRequest = {
 	players: { id: number; rating: number }[];
@@ -28,7 +29,7 @@ self.onmessage = ({ data }: MessageEvent<EventTeamDrawRequest>) => {
 	} catch (error) {
 		self.postMessage({
 			teams: null,
-			error: error instanceof Error ? error.message : "team draw failed",
+			error: caughtErrorMessage(error, "team draw failed"),
 		} satisfies EventTeamDrawResponse);
 	}
 };

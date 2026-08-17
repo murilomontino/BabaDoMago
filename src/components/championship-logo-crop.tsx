@@ -4,6 +4,7 @@ import { AppDialog } from "@/components/atoms/app-dialog";
 import { Button } from "@/components/button";
 import { BUTTON_VARIANT, ERROR_CLASS, MODAL_CLASS } from "@/const/ui";
 import { getCroppedJpeg } from "@/lib/crop-image";
+import { caughtErrorMessage } from "@/lib/error-message";
 
 type ChampionshipLogoCropProps = {
 	imageSrc: string;
@@ -38,9 +39,7 @@ export function ChampionshipLogoCrop({
 			const blob = await getCroppedJpeg(imageSrc, croppedAreaPixels);
 			onConfirm(new File([blob], "logo.jpg", { type: blob.type }));
 		} catch (error) {
-			setErrorMessage(
-				error instanceof Error ? error.message : "Falha ao gerar o recorte",
-			);
+			setErrorMessage(caughtErrorMessage(error, "Falha ao gerar o recorte"));
 			setIsCropping(false);
 		}
 	}

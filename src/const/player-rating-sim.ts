@@ -1,4 +1,4 @@
-import { eventMvpStarDelta } from "./event-mvp.ts";
+import { eventMvpBonus } from "./event-mvp.ts";
 import {
 	applyEventRatingDelta,
 	EVENT_RATING_ADJUSTMENT,
@@ -6,7 +6,7 @@ import {
 	eventRatingDrawPoints,
 	eventRatingPoints,
 } from "./event-rating-adjustment.ts";
-import { PLAYER_RATING } from "./player-rating.ts";
+import { averageOrZero, PLAYER_RATING } from "./player-rating.ts";
 
 export const PLAYER_RATING_SIM_LABEL = {
 	title: "Simulação",
@@ -139,10 +139,10 @@ export function simulatePlayerEventRating({
 	const points = eventRatingPoints(wins, draws, losses);
 	const drawPoints = eventRatingDrawPoints(draws, losses);
 	const maxPoints = matches * EVENT_RATING_ADJUSTMENT.winPoints;
-	const rate = maxPoints === 0 ? 0 : points / maxPoints;
+	const rate = averageOrZero(points, maxPoints);
 	const inDeadZone = eventRatingInDeadZone(wins, draws, losses, matches);
 	const isSeed = rating === PLAYER_RATING.default && !belowMinMatches;
-	const mvpBonus = isMvp ? eventMvpStarDelta() : 0;
+	const mvpBonus = eventMvpBonus(Boolean(isMvp));
 	const delta =
 		eventRatingDelta(wins, draws, losses, matches, rating, ceiling) + mvpBonus;
 	const to = applyEventRatingDelta(rating, delta);

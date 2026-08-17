@@ -53,8 +53,10 @@ import {
 	EVENT_TEAM_COLOR_NONE,
 	EVENT_TEAM_COLORS,
 	eventTeamColorStyle,
+	eventTeamCustomColorPreview,
 	isEventTeamColor,
 	normalizeEventTeamColor,
+	usedEventTeamColors,
 } from "@/const/event-team-color";
 import {
 	EVENT_TEAM_SHARE_LABEL,
@@ -444,7 +446,7 @@ export function ChampionshipEventBuilder({
 			>
 				{({ values, setFieldValue }) => {
 					const usedColors = values.teams.flatMap((team) =>
-						team.color === null ? [] : [team.color],
+						usedEventTeamColors(team.color),
 					);
 					const assignedIds = new Set(
 						values.teams.flatMap((team) => teamSlotsToPlayerIds(team.slots)),
@@ -613,14 +615,10 @@ export function ChampionshipEventBuilder({
 																		<span
 																			aria-hidden
 																			className={`block size-5 rounded-md border-2 ${isCustom ? "border-current" : "border-black/20"}`}
-																			style={{
-																				backgroundColor: isCustom
-																					? (team.color ?? undefined)
-																					: "transparent",
-																				backgroundImage: isCustom
-																					? undefined
-																					: "conic-gradient(#dc2626, #facc15, #166534, #2563eb, #ec4899, #dc2626)",
-																			}}
+																			style={eventTeamCustomColorPreview(
+																				isCustom,
+																				team.color,
+																			)}
 																		/>
 																	</label>
 																</div>

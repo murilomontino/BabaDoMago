@@ -1,7 +1,11 @@
 import type { ChampionshipPlayer } from "../types/championship.ts";
 import type { ChampionshipEvent } from "../types/championship-event.ts";
-import { formatEventStartsAt } from "./championship-event.ts";
+import {
+	compareStartsAtNewestFirst,
+	formatEventStartsAt,
+} from "./championship-event.ts";
 import { playerVisibleName } from "./player-name.ts";
+import { averageOrZero } from "./player-rating.ts";
 import {
 	formatRosterCount,
 	formatRosterWinRate,
@@ -164,7 +168,7 @@ export function managementSummary(
 
 	return {
 		endedEvents: ended.length,
-		averageAttendance: ended.length === 0 ? 0 : attendanceTotal / ended.length,
+		averageAttendance: averageOrZero(attendanceTotal, ended.length),
 		openEvents: events.filter((event) => event.ended_at === null).length,
 		openMatches: openChampionshipMatches(events).length,
 	};
@@ -232,13 +236,7 @@ export function managementFrequencyRows(
 	events: readonly ChampionshipEvent[],
 ): ManagementFrequencyRow[] {
 	const endedNewestFirst = [...endedChampionshipEvents(events)].sort(
-		(left, right) => {
-			if (left.starts_at === right.starts_at) {
-				return right.id - left.id;
-			}
-
-			return left.starts_at < right.starts_at ? 1 : -1;
-		},
+		compareStartsAtNewestFirst,
 	);
 	const eventCount = endedNewestFirst.length;
 

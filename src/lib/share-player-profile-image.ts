@@ -32,6 +32,40 @@ function loadAvatar(src: string): Promise<HTMLImageElement | null> {
 	});
 }
 
+async function loadOptionalAvatar(
+	url: string | null | undefined,
+): Promise<HTMLImageElement | null> {
+	if (!url) {
+		return null;
+	}
+
+	return loadAvatar(url);
+}
+
+function ratioAgainstCeiling(value: number, ceiling: number): number {
+	if (ceiling <= 0) {
+		return 0;
+	}
+
+	return value / ceiling;
+}
+
+function chartPointT(index: number, lastIndex: number): number {
+	if (lastIndex <= 0) {
+		return 0.5;
+	}
+
+	return index / lastIndex;
+}
+
+function legalNameBlockHeight(legalName: string | null): number {
+	if (!legalName) {
+		return 0;
+	}
+
+	return 36;
+}
+
 function canvasToPng(canvas: HTMLCanvasElement): Promise<Blob> {
 	return new Promise((resolve, reject) => {
 		try {
@@ -176,7 +210,7 @@ function drawRatingChart(
 	const plotW = width - chartAxis;
 	const ticks = [0, ceiling / 2, ceiling];
 	for (const tick of ticks) {
-		const ratio = ceiling <= 0 ? 0 : tick / ceiling;
+		const ratio = ratioAgainstCeiling(tick, ceiling);
 		const ty = plotY + chartHeight * (1 - ratio);
 		context.strokeStyle = PLAYER_PROFILE_SHARE_COLOR.line;
 		context.lineWidth = 1;
@@ -193,9 +227,11 @@ function drawRatingChart(
 
 	const lastIndex = card.chart.length - 1;
 	const points = card.chart.map((point, index) => {
-		const t = lastIndex <= 0 ? 0.5 : index / lastIndex;
-		const ratio =
-			ceiling <= 0 ? 0 : Math.min(1, Math.max(0, point.rating / ceiling));
+		const t = chartPointT(index, lastIndex);
+		const ratio = Math.min(
+			1,
+			Math.max(0, ratioAgainstCeiling(point.rating, ceiling)),
+		);
 		return {
 			x: plotX + t * plotW,
 			y: plotY + chartHeight * (1 - ratio),
@@ -258,7 +294,7 @@ function drawRatingChart(
 
 function profileImageHeight(card: PlayerProfileShareCard): number {
 	const { padding, avatar, star, gap, statColumns } = PLAYER_PROFILE_SHARE;
-	const legal = card.legalName ? 36 : 0;
+	const legal = legalNameBlockHeight(card.legalName);
 	const statRows = Math.ceil(card.stats.length / statColumns);
 	return (
 		padding * 2 +
@@ -281,7 +317,7 @@ async function renderPlayerProfilePng(
 	card: PlayerProfileShareCard,
 	ceiling: number,
 ): Promise<Blob> {
-	const image = card.avatarUrl ? await loadAvatar(card.avatarUrl) : null;
+	const image = await loadOptionalAvatar(card.avatarUrl);
 	const width = PLAYER_PROFILE_SHARE.width;
 	const height = profileImageHeight(card);
 	const canvas = document.createElement("canvas");

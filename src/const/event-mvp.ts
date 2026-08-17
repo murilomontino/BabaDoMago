@@ -100,6 +100,22 @@ export function eventMvpStarDelta(): number {
 	return EVENT_MVP.starBonus;
 }
 
+export function mvpCount(isMvp: boolean): number {
+	if (!isMvp) {
+		return 0;
+	}
+
+	return 1;
+}
+
+export function eventMvpBonus(isMvp: boolean): number {
+	if (!isMvp) {
+		return 0;
+	}
+
+	return eventMvpStarDelta();
+}
+
 export function formatEventMvpCount(selected: number): string {
 	return `${selected}/${EVENT_MVP.candidateLimit} ${EVENT_MVP_LABEL.badge}`;
 }

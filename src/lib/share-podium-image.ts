@@ -25,6 +25,25 @@ const STAR_VIEWBOX = 24;
 const PLAYER_BLOCK = 230;
 const COLUMN_RADIUS = 16;
 
+function avatarUrlsToLoad(url: string | null | undefined): string[] {
+	if (!url) {
+		return [];
+	}
+
+	return [url];
+}
+
+function avatarFromLoaded(
+	url: string | null | undefined,
+	avatars: ReadonlyMap<string, HTMLImageElement>,
+): HTMLImageElement | undefined {
+	if (!url) {
+		return undefined;
+	}
+
+	return avatars.get(url);
+}
+
 function loadAvatar(src: string): Promise<HTMLImageElement | null> {
 	return new Promise((resolve) => {
 		const image = new Image();
@@ -42,9 +61,7 @@ async function loadAvatars(
 	const urls = [
 		...new Set(
 			cards.flatMap((card) =>
-				card.places.flatMap((place) =>
-					place.avatarUrl ? [place.avatarUrl] : [],
-				),
+				card.places.flatMap((place) => avatarUrlsToLoad(place.avatarUrl)),
 			),
 		),
 	];
@@ -213,7 +230,7 @@ function drawPlace(
 	const blockBottom = standY - 16;
 	const nameY = blockBottom - 92;
 	const avatarY = nameY - 12 - PODIUM_SHARE.avatar;
-	const avatar = place.avatarUrl ? avatars.get(place.avatarUrl) : undefined;
+	const avatar = avatarFromLoaded(place.avatarUrl, avatars);
 
 	drawAvatar(context, avatarX, avatarY, place.name, avatar);
 

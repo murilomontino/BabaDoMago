@@ -7,11 +7,12 @@ import {
 import { PlayerRating } from "@/components/player-rating";
 import {
 	formatPodiumMetric,
-	PODIUM_ANIMATION_DELAY,
 	PODIUM_PLACE,
 	PODIUM_STAND_HEIGHT,
 	type PodiumPlace,
 	type PodiumPlayerMetricId,
+	podiumEnterDelay,
+	podiumEnterInitialHeight,
 } from "@/const/podium";
 import type { RosterRow } from "@/const/roster-stats";
 
@@ -58,13 +59,13 @@ export default function PodiumPlaceCard({
 			</div>
 			<motion.div
 				className="flex w-full items-start justify-center overflow-hidden rounded-t-xl border border-line bg-pitch-soft"
-				initial={reduceMotion ? { height } : { height: 0 }}
+				initial={podiumEnterInitialHeight(reduceMotion, height)}
 				animate={{ height }}
 				transition={{
 					type: "spring",
 					stiffness: 120,
 					damping: 18,
-					delay: reduceMotion ? 0 : PODIUM_ANIMATION_DELAY[place],
+					delay: podiumEnterDelay(reduceMotion, place),
 				}}
 			>
 				<span className="pt-2 text-lg font-bold text-pitch-fg">{place}</span>

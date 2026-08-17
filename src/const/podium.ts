@@ -1,6 +1,7 @@
 import type { ChampionshipPlayer } from "../types/championship.ts";
 import type { ChampionshipEvent } from "../types/championship-event.ts";
 import { CHAMPIONSHIP_EVENT } from "./championship-event.ts";
+import { mvpCount } from "./event-mvp.ts";
 import { playerVisibleName } from "./player-name.ts";
 import {
 	formatRosterCount,
@@ -149,6 +150,28 @@ export const PODIUM_ANIMATION_DELAY = {
 	[PODIUM_PLACE.second]: 0.12,
 	[PODIUM_PLACE.third]: 0,
 } as const;
+
+export function podiumEnterDelay(
+	reduceMotion: boolean | null,
+	place: PodiumPlace,
+): number {
+	if (reduceMotion) {
+		return 0;
+	}
+
+	return PODIUM_ANIMATION_DELAY[place];
+}
+
+export function podiumEnterInitialHeight(
+	reduceMotion: boolean | null,
+	height: number,
+): { height: number } {
+	if (reduceMotion) {
+		return { height };
+	}
+
+	return { height: 0 };
+}
 
 export const PODIUM_CONFETTI = {
 	particleCount: 80,
@@ -494,7 +517,7 @@ export function aggregatePodiumPlayersFromEvents(
 			acc.losses += row.losses;
 			acc.draws += row.draws;
 			acc.matches += row.matches;
-			acc.mvps += row.is_mvp ? 1 : 0;
+			acc.mvps += mvpCount(row.is_mvp);
 			byPlayerId.set(row.player_id, acc);
 		}
 	}

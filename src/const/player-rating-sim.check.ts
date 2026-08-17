@@ -23,8 +23,11 @@ function check(actual: unknown, expected: unknown, message: string): void {
 check(PLAYER_RATING_SIM_LABEL.title, "Simulação", "title");
 check(emptyPlayerRatingSimDraft().wins, 0, "empty wins");
 check(
-	setPlayerRatingSimField(emptyPlayerRatingSimDraft(), PLAYER_RATING_SIM_FIELD.wins, 2)
-		.wins,
+	setPlayerRatingSimField(
+		emptyPlayerRatingSimDraft(),
+		PLAYER_RATING_SIM_FIELD.wins,
+		2,
+	).wins,
 	2,
 	"set wins",
 );

@@ -64,6 +64,7 @@ import {
 	useEndChampionshipEvent,
 	useSetChampionshipEventMvps,
 } from "@/hooks/championships/use-championship-events";
+import { mutationErrorMessage } from "@/lib/error-message";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type { ChampionshipEvent } from "@/types/championship-event";
 
@@ -471,7 +472,7 @@ export function ChampionshipEvents({
 			{flow === "delete" && flowEvent && (
 				<DeleteEventModal
 					isPending={deleteEvent.isPending}
-					errorMessage={deleteEvent.isError ? deleteEvent.error.message : null}
+					errorMessage={mutationErrorMessage(deleteEvent)}
 					onCancel={closeFlow}
 					onConfirm={() => {
 						void (async () => {
@@ -505,7 +506,7 @@ export function ChampionshipEvents({
 						},
 					)}
 					isPending={endEvent.isPending}
-					errorMessage={endEvent.isError ? endEvent.error.message : null}
+					errorMessage={mutationErrorMessage(endEvent)}
 					onToggleMvp={(playerId) => {
 						setEndMvpPlayerIds((current) =>
 							toggleEventMvpPlayerId(
@@ -546,7 +547,7 @@ export function ChampionshipEvents({
 						row.is_mvp ? [row.player_id] : [],
 					)}
 					isPending={setMvps.isPending}
-					errorMessage={setMvps.isError ? setMvps.error.message : null}
+					errorMessage={mutationErrorMessage(setMvps)}
 					onCancel={closeFlow}
 					onSave={async (playerIds) => {
 						await setMvps.mutateAsync({

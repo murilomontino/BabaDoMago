@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/empty-state";
 import { PAGE_SHELL_CLASS } from "@/const/ui";
 import { AuthProvider } from "@/contexts/auth";
 import { ThemeProvider } from "@/contexts/theme";
+import { caughtErrorMessage } from "@/lib/error-message";
 
 export const Route = createRootRoute({
 	component: RootLayout,
@@ -29,8 +30,7 @@ function RootLayout() {
 }
 
 function RouteError({ error }: ErrorComponentProps) {
-	const description =
-		error instanceof Error ? error.message : "Erro inesperado.";
+	const description = caughtErrorMessage(error, "Erro inesperado.");
 
 	return (
 		<main className={`${PAGE_SHELL_CLASS} flex min-h-screen items-center`}>

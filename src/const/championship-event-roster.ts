@@ -1,5 +1,6 @@
 import type { ChampionshipPlayer } from "../types/championship.ts";
 import { CHAMPIONSHIP_ROLE } from "./championship-role.ts";
+import { mvpCount } from "./event-mvp.ts";
 
 export function fallbackRosterPlayer(
 	playerId: number,
@@ -72,7 +73,7 @@ export function playersFromEventAttendance(
 		losses: row.losses,
 		draws: row.draws,
 		matches: row.matches,
-		mvps: row.is_mvp ? 1 : 0,
+		mvps: mvpCount(row.is_mvp),
 		rating: row.rating,
 	}));
 }

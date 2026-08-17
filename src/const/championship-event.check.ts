@@ -16,6 +16,8 @@ import {
 	canStartEventMatch,
 	championshipEventErrorMessage,
 	compareByAttendanceCount,
+	compareStartsAtNewestFirst,
+	compareStartsAtOldestFirst,
 	countPlayerAttendance,
 	defaultGoalkeeperIds,
 	draftAttendanceForEnd,
@@ -58,6 +60,7 @@ import {
 	isEventRsvpStatus,
 	isMatchAlreadyOpenError,
 	isoWeekdayFromYmd,
+	jsSundayToEventWeekday,
 	keepGoalkeepersPresent,
 	keepPresentSlots,
 	keepTeamPlayersPresent,
@@ -104,8 +107,11 @@ check(EVENT_CONFIG_LABEL.location, "Local");
 check(CHAMPIONSHIP_EVENT.skipGuestGoalkeeperMatchesDefault, true);
 check(CHAMPIONSHIP_EVENT.locationMaxLength, 120);
 check(EVENT_WEEKDAY_LABEL[EVENT_WEEKDAY.tuesday], "terça");
+check(isoWeekdayFromYmd("2026-08-16"), EVENT_WEEKDAY.sunday);
 check(isoWeekdayFromYmd("2026-08-17"), EVENT_WEEKDAY.monday);
 check(isoWeekdayFromYmd("2026-08-18"), EVENT_WEEKDAY.tuesday);
+check(jsSundayToEventWeekday(0), EVENT_WEEKDAY.sunday);
+check(jsSundayToEventWeekday(1), EVENT_WEEKDAY.monday);
 check(nextEventDate(EVENT_WEEKDAY.tuesday, "2026-08-17"), "2026-08-18");
 check(nextEventDate(EVENT_WEEKDAY.tuesday, "2026-08-18"), "2026-08-18");
 check(nextEventDate(EVENT_WEEKDAY.monday, "2026-08-16"), "2026-08-17");
@@ -331,6 +337,20 @@ check(
 	compareByAttendanceCount(
 		{ attendanceCount: 1, display_name: "Ana" },
 		{ attendanceCount: 3, display_name: "Bia" },
+	) > 0,
+	true,
+);
+check(
+	compareStartsAtOldestFirst(
+		{ starts_at: "2026-01-01", id: 2 },
+		{ starts_at: "2026-02-01", id: 1 },
+	) < 0,
+	true,
+);
+check(
+	compareStartsAtNewestFirst(
+		{ starts_at: "2026-01-01", id: 2 },
+		{ starts_at: "2026-02-01", id: 1 },
 	) > 0,
 	true,
 );

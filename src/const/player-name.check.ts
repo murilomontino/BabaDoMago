@@ -1,12 +1,12 @@
 import {
 	comparePlayersByVisibleName,
 	confirmClaimPlayerMessage,
+	isGoalkeeperKind,
 	PLAYER_KIND,
 	PLAYER_KIND_LABEL,
 	PLAYER_KIND_OPTIONS,
 	PLAYER_LABEL,
 	PLAYER_NICKNAME,
-	isGoalkeeperKind,
 	playerKindFromGoalkeeper,
 	playerVisibleName,
 } from "./player-name.ts";

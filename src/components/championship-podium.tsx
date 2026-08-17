@@ -31,7 +31,6 @@ import {
 } from "@/const/player-synergy";
 import {
 	formatPodiumMetric,
-	PODIUM_ANIMATION_DELAY,
 	PODIUM_CONFETTI,
 	PODIUM_DISPLAY_ORDER,
 	PODIUM_LABEL,
@@ -40,6 +39,8 @@ import {
 	type PodiumMetricId,
 	type PodiumPlace,
 	type PodiumPlayerMetricId,
+	podiumEnterDelay,
+	podiumEnterInitialHeight,
 	podiumStandings,
 	rankPodiumRows,
 } from "@/const/podium";
@@ -262,13 +263,13 @@ function PodiumPairPlace({
 			</div>
 			<motion.div
 				className="flex w-full items-start justify-center overflow-hidden rounded-t-xl border border-line bg-pitch-soft"
-				initial={reduceMotion ? { height } : { height: 0 }}
+				initial={podiumEnterInitialHeight(reduceMotion, height)}
 				animate={{ height }}
 				transition={{
 					type: "spring",
 					stiffness: 120,
 					damping: 18,
-					delay: reduceMotion ? 0 : PODIUM_ANIMATION_DELAY[place],
+					delay: podiumEnterDelay(reduceMotion, place),
 				}}
 			>
 				<span className="pt-2 text-lg font-bold text-pitch-fg">{place}</span>

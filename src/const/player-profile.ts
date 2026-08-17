@@ -1,3 +1,5 @@
+import { compareStartsAtNewestFirst } from "./championship-event.ts";
+import { mvpCount } from "./event-mvp.ts";
 import { applyEventRatingDelta } from "./event-rating-adjustment.ts";
 import { rosterSafeCount } from "./roster-stats.ts";
 
@@ -186,7 +188,7 @@ export function playerProfileHistory(
 					wins: rosterSafeCount(attendance.wins),
 					losses: rosterSafeCount(attendance.losses),
 					draws: rosterSafeCount(attendance.draws),
-					mvps: attendance.is_mvp === true ? 1 : 0,
+					mvps: mvpCount(attendance.is_mvp === true),
 					matches: rosterSafeCount(attendance.matches),
 					ratingFrom,
 					ratingDelta,
@@ -194,13 +196,12 @@ export function playerProfileHistory(
 				},
 			];
 		})
-		.sort((left, right) => {
-			if (left.startsAt === right.startsAt) {
-				return right.eventId - left.eventId;
-			}
-
-			return left.startsAt < right.startsAt ? 1 : -1;
-		});
+		.sort((left, right) =>
+			compareStartsAtNewestFirst(
+				{ starts_at: left.startsAt, id: left.eventId },
+				{ starts_at: right.startsAt, id: right.eventId },
+			),
+		);
 }
 
 export function playerRatingHistoryChartSeries(

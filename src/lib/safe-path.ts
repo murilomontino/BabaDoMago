@@ -1,3 +1,5 @@
+import { ROUTES } from "../const/routes.ts";
+
 export function isSafeInternalPath(path: string | undefined): path is string {
 	if (!path) {
 		return false;
@@ -14,6 +16,22 @@ export function isSafeInternalPath(path: string | undefined): path is string {
 	return true;
 }
 
+export function safeInternalPathOrHome(path: string | undefined): string {
+	if (isSafeInternalPath(path)) {
+		return path;
+	}
+
+	return ROUTES.home;
+}
+
+function queryJoinSeparator(path: string): "?" | "&" {
+	if (path.includes("?")) {
+		return "&";
+	}
+
+	return "?";
+}
+
 export function withClaimQuery(
 	path: string,
 	claim: string | undefined,
@@ -22,6 +40,5 @@ export function withClaimQuery(
 		return path;
 	}
 
-	const separator = path.includes("?") ? "&" : "?";
-	return `${path}${separator}claim=${encodeURIComponent(claim)}`;
+	return `${path}${queryJoinSeparator(path)}claim=${encodeURIComponent(claim)}`;
 }

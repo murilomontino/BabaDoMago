@@ -32,8 +32,25 @@ import {
 } from "@/hooks/championships/use-championship-events";
 import { useChampionship } from "@/hooks/championships/use-championships";
 import { useFlushMatchClock } from "@/hooks/match-clock-sync";
+import { mutationErrorMessage } from "@/lib/error-message";
 
 const PLAY_SHELL_CLASS = "flex h-dvh flex-col overflow-hidden p-2";
+
+function startMatchErrorMessage(startMatch: {
+	isError: boolean;
+	error: { message: string } | null;
+}): string | null {
+	const message = mutationErrorMessage(startMatch);
+	if (!message) {
+		return null;
+	}
+
+	if (isMatchAlreadyOpenError(message)) {
+		return null;
+	}
+
+	return message;
+}
 
 export function ChampionshipEventPlayPage() {
 	const { championshipId: championshipIdParam, eventId: eventIdParam } =
@@ -56,9 +73,8 @@ export function ChampionshipEventPlayPage() {
 	const resumeMatch = useResumeChampionshipEventMatch(championshipId);
 	const endMatch = useEndChampionshipEventMatch(championshipId);
 	useChampionshipEventRealtime(championshipId, eventId);
-	const openMatchId = eventQuery.data
-		? (openEventMatch(eventQuery.data.matches)?.id ?? null)
-		: null;
+	const openMatchId =
+		openEventMatch(eventQuery.data?.matches ?? [])?.id ?? null;
 	useFlushMatchClock(openMatchId);
 
 	if (championshipQuery.isPending || eventQuery.isPending) {
@@ -119,29 +135,22 @@ export function ChampionshipEventPlayPage() {
 						match={openMatch}
 						players={activePlayers}
 						starting={startMatch.isPending}
-						startError={
-							startMatch.isError &&
-							!isMatchAlreadyOpenError(startMatch.error.message)
-								? startMatch.error.message
-								: null
-						}
+						startError={startMatchErrorMessage(startMatch)}
 						savingPlayer={setPlayer.isPending || setGoalkeeper.isPending}
 						playerError={
-							(setPlayer.isError && setPlayer.error.message) ||
-							(setGoalkeeper.isError && setGoalkeeper.error.message) ||
-							null
+							mutationErrorMessage(setPlayer) ??
+							mutationErrorMessage(setGoalkeeper)
 						}
 						savingGoal={addGoal.isPending}
-						goalError={addGoal.isError ? addGoal.error.message : null}
+						goalError={mutationErrorMessage(addGoal)}
 						undoing={undoGoal.isPending}
-						undoError={undoGoal.isError ? undoGoal.error.message : null}
+						undoError={mutationErrorMessage(undoGoal)}
 						ending={endMatch.isPending}
-						endError={endMatch.isError ? endMatch.error.message : null}
+						endError={mutationErrorMessage(endMatch)}
 						clockError={
-							(startClock.isError && startClock.error.message) ||
-							(pauseMatch.isError && pauseMatch.error.message) ||
-							(resumeMatch.isError && resumeMatch.error.message) ||
-							null
+							mutationErrorMessage(startClock) ??
+							mutationErrorMessage(pauseMatch) ??
+							mutationErrorMessage(resumeMatch)
 						}
 						onStart={async (teamAId, teamBId) => {
 							const { data } = await eventQuery.refetch();

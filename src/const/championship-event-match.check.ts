@@ -7,6 +7,7 @@ import {
 	applyMatchClockAction,
 	canConfirmMatchTeams,
 	clampMatchDurationMinutes,
+	compareStartersBeforeSubstitutes,
 	EVENT_GOAL_KIND,
 	EVENT_GOAL_LABEL,
 	EVENT_MATCH_CLOCK_LABEL,
@@ -32,6 +33,8 @@ import {
 	isOpenMatch,
 	lastMatchGoal,
 	MATCH_CLOCK_ACTION,
+	MATCH_CLOCK_DEBUG_LABEL,
+	MATCH_CLOCK_STORAGE_KEY,
 	matchAssistCandidates,
 	matchBenchPlayerIds,
 	matchClockElapsedSeconds,
@@ -67,6 +70,15 @@ function check(actual: unknown, expected: unknown, message: string): void {
 		);
 	}
 }
+
+check(
+	compareStartersBeforeSubstitutes(
+		{ is_substituted: false, slot: 2 },
+		{ is_substituted: true, slot: 1 },
+	) < 0,
+	true,
+	"starters before substitutes",
+);
 
 function player(
 	overrides: Partial<ChampionshipEventMatchPlayer> &
@@ -554,6 +566,8 @@ check(formatMatchClock(65), "01:05", "clock 65");
 check(formatMatchClock(420), "07:00", "clock 7min");
 check(EVENT_MATCH_CLOCK_LABEL.start, "Iniciar", "start label");
 check(EVENT_MATCH_CLOCK_LABEL.pause, "Pausar", "pause label");
+check(MATCH_CLOCK_STORAGE_KEY, "babaDoMago-match-clock", "clock storage key");
+check(MATCH_CLOCK_DEBUG_LABEL.empty, "Fila vazia.", "clock debug empty");
 check(matchClockElapsedSeconds(clockBase, startMs), 0, "elapsed at start");
 check(
 	matchClockElapsedSeconds(clockBase, startMs + 10_000),

@@ -4,10 +4,10 @@ import { useState } from "react";
 import { Button } from "@/components/button";
 import { GoogleIcon } from "@/components/google-icon";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { ROUTES } from "@/const/routes";
 import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
-import { isSafeInternalPath } from "@/lib/safe-path";
+import { caughtErrorMessage } from "@/lib/error-message";
+import { safeInternalPathOrHome } from "@/lib/safe-path";
 
 export function LoginPage() {
 	const { signInWithGoogle } = useAuth();
@@ -19,15 +19,12 @@ export function LoginPage() {
 		setErrorMessage(null);
 		setIsSigningIn(true);
 
-		const nextPath = isSafeInternalPath(search.redirect)
-			? search.redirect
-			: ROUTES.home;
+		const nextPath = safeInternalPathOrHome(search.redirect);
 
 		try {
 			await signInWithGoogle(nextPath);
 		} catch (error) {
-			const message =
-				error instanceof Error ? error.message : "Falha ao entrar com Google";
+			const message = caughtErrorMessage(error, "Falha ao entrar com Google");
 			setErrorMessage(message);
 			setIsSigningIn(false);
 		}

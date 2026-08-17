@@ -5,15 +5,18 @@ import {
 	parsePlayersPerTeam,
 } from "@/const/championship-event";
 import {
+	compareStartersBeforeSubstitutes,
 	EVENT_MATCH_DURATION,
 	matchDurationSeconds,
 } from "@/const/championship-event-match";
 import {
 	type EventTeamColor,
+	eventTeamColorOrNone,
 	isEventTeamColor,
 	normalizeEventTeamColor,
 } from "@/const/event-team-color";
 import { supabase } from "@/lib/supabase";
+import { optionalNumber, optionalString } from "@/lib/unknown-value";
 import type {
 	ChampionshipEvent,
 	ChampionshipEventAttendance,
@@ -180,16 +183,14 @@ function asTeam(value: unknown): ChampionshipEventTeam {
 		throw new Error("event team: invalid payload");
 	}
 
-	const color = normalizeEventTeamColor(
-		typeof row.color === "string" ? row.color : null,
-	);
+	const color = normalizeEventTeamColor(optionalString(row.color));
 	if (color !== null && !isEventTeamColor(color)) {
 		throw new Error("event team: invalid payload");
 	}
 
 	const nested = row.championship_event_team_players;
 	const players = Array.isArray(nested) ? nested.map(asTeamPlayer) : [];
-	const teamColor = color !== null && isEventTeamColor(color) ? color : null;
+	const teamColor = eventTeamColorOrNone(color);
 
 	return {
 		id: row.id,
@@ -228,7 +229,7 @@ function asMatchPlayer(value: unknown): ChampionshipEventMatchPlayer {
 		player_id: Number(row.player_id),
 		display_name: row.display_name,
 		is_goalkeeper: row.is_goalkeeper === true,
-		slot: typeof row.slot === "number" ? row.slot : null,
+		slot: optionalNumber(row.slot),
 		is_substituted: row.is_substituted === true,
 		include_stats: row.include_stats !== false,
 	};
@@ -249,11 +250,9 @@ function asGoal(value: unknown): ChampionshipEventGoal {
 		match_id: Number(row.match_id),
 		event_id: Number(row.event_id),
 		scorer_player_id: Number(row.scorer_player_id),
-		assist_player_id:
-			typeof row.assist_player_id === "number" ? row.assist_player_id : null,
+		assist_player_id: optionalNumber(row.assist_player_id),
 		is_own_goal: row.is_own_goal === true,
-		elapsed_seconds:
-			typeof row.elapsed_seconds === "number" ? row.elapsed_seconds : null,
+		elapsed_seconds: optionalNumber(row.elapsed_seconds),
 		created_at: String(row.created_at),
 	};
 }
@@ -300,23 +299,18 @@ function asMatch(value: unknown): ChampionshipEventMatch {
 		team_a_id: Number(row.team_a_id),
 		team_b_id: Number(row.team_b_id),
 		created_at: String(row.created_at),
-		ended_at: typeof row.ended_at === "string" ? row.ended_at : null,
-		winner_team_id:
-			typeof row.winner_team_id === "number" ? row.winner_team_id : null,
+		ended_at: optionalString(row.ended_at),
+		winner_team_id: optionalNumber(row.winner_team_id),
 		duration_seconds: Number(row.duration_seconds ?? 420),
-		started_at: typeof row.started_at === "string" ? row.started_at : null,
-		paused_at: typeof row.paused_at === "string" ? row.paused_at : null,
+		started_at: optionalString(row.started_at),
+		paused_at: optionalString(row.paused_at),
 		pause_accumulated_seconds: Number(row.pause_accumulated_seconds ?? 0),
 		players: [...players].sort((left, right) => {
 			if (left.team_id !== right.team_id) {
 				return left.team_id - right.team_id;
 			}
 
-			if (left.is_substituted !== right.is_substituted) {
-				return left.is_substituted ? 1 : -1;
-			}
-
-			return (left.slot ?? 11) - (right.slot ?? 11);
+			return compareStartersBeforeSubstitutes(left, right);
 		}),
 		goals: [...goals].sort((left, right) =>
 			left.created_at.localeCompare(right.created_at),
@@ -353,7 +347,7 @@ function asEvent(value: unknown): ChampionshipEvent {
 		starts_at: row.starts_at,
 		players_per_team: parsePlayersPerTeam(row.players_per_team),
 		skip_guest_goalkeeper_matches: row.skip_guest_goalkeeper_matches !== false,
-		ended_at: typeof row.ended_at === "string" ? row.ended_at : null,
+		ended_at: optionalString(row.ended_at),
 		attendance: [...attendance].sort((a, b) => a.id - b.id),
 		rsvps: [...rsvps].sort((a, b) => a.player_id - b.player_id),
 		teams: [...teams].sort((a, b) => a.sort_order - b.sort_order),

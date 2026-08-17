@@ -1,12 +1,14 @@
 import {
 	EVENT_MVP,
 	EVENT_MVP_LABEL,
+	eventMvpBonus,
 	eventMvpCandidates,
 	eventMvpNames,
 	eventMvpPickCandidates,
 	eventMvpPlayerIds,
 	eventMvpStarDelta,
 	formatEventMvpCount,
+	mvpCount,
 	toggleEventMvpPlayerId,
 } from "./event-mvp.ts";
 
@@ -24,6 +26,10 @@ check(EVENT_MVP_LABEL.pickHint.includes("3"), "pick hint");
 check(EVENT_MVP_LABEL.explain.includes("+0,1"), "explain bonus");
 check(EVENT_MVP_LABEL.explain.includes("3"), "explain limit");
 check(eventMvpStarDelta() === 0.1, "bonus fixo no jogador");
+check(mvpCount(true) === 1, "mvp counts as 1");
+check(mvpCount(false) === 0, "not mvp counts as 0");
+check(eventMvpBonus(true) === 0.1, "mvp bonus applied");
+check(eventMvpBonus(false) === 0, "no mvp bonus");
 check(formatEventMvpCount(1) === "1/3 MVP", "count 1/3");
 check(formatEventMvpCount(3) === "3/3 MVP", "count 3/3");
 check(formatEventMvpCount(0) === "0/3 MVP", "count 0/3");

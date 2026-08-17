@@ -1,5 +1,6 @@
 import { AUDIT_PAGE_SIZE, type AuditAction } from "@/const/championship-audit";
 import { supabase } from "@/lib/supabase";
+import { optionalNumber, optionalRecord } from "@/lib/unknown-value";
 import type { ChampionshipAuditLog } from "@/types/championship-audit";
 
 export type ChampionshipAuditPage = {
@@ -23,15 +24,9 @@ function asAuditLog(value: unknown): ChampionshipAuditLog {
 		actorDisplayName: String(row.actor_display_name ?? ""),
 		action: row.action,
 		entityType: String(row.entity_type ?? ""),
-		entityId: typeof row.entity_id === "number" ? row.entity_id : null,
-		beforeData:
-			row.before_data && typeof row.before_data === "object"
-				? (row.before_data as Record<string, unknown>)
-				: null,
-		afterData:
-			row.after_data && typeof row.after_data === "object"
-				? (row.after_data as Record<string, unknown>)
-				: null,
+		entityId: optionalNumber(row.entity_id),
+		beforeData: optionalRecord(row.before_data),
+		afterData: optionalRecord(row.after_data),
 		createdAt: String(row.created_at ?? ""),
 	};
 }

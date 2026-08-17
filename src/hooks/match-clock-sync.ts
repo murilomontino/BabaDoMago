@@ -11,6 +11,20 @@ import {
 } from "@/services/championship-events";
 
 const flushTail = new Map<number, Promise<void>>();
+let flushHeld = false;
+
+export function isMatchClockFlushHeld(): boolean {
+	return flushHeld;
+}
+
+export function setMatchClockFlushHeld(held: boolean, matchId: number): void {
+	flushHeld = held;
+	if (held) {
+		return;
+	}
+
+	void enqueueMatchClockFlush(matchId);
+}
 
 async function runMatchClockAction(
 	matchId: number,
@@ -35,6 +49,10 @@ async function runMatchClockAction(
 
 async function flushMatchClockPending(matchId: number): Promise<void> {
 	for (;;) {
+		if (flushHeld) {
+			return;
+		}
+
 		const snapshot = useMatchClockStore.getState().clocks[String(matchId)];
 		const action = snapshot?.pending[0];
 		if (!action) {

@@ -18,6 +18,7 @@ import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
 import { PLAYER_RATING } from "@/const/player-rating";
 import { rosterSafeCount } from "@/const/roster-stats";
 import { supabase } from "@/lib/supabase";
+import { optionalString } from "@/lib/unknown-value";
 import type {
 	Championship,
 	ChampionshipPlayer,
@@ -45,7 +46,7 @@ function asChampionship(value: unknown): Championship {
 		name: row.name,
 		invite_code: String(row.invite_code),
 		created_by: String(row.created_by),
-		logo_path: typeof row.logo_path === "string" ? row.logo_path : null,
+		logo_path: optionalString(row.logo_path),
 		event_time: parseEventTime(row.event_time),
 		event_weekday: parseEventWeekday(row.event_weekday),
 		location: parseChampionshipLocation(row.location),
@@ -77,14 +78,14 @@ function asPlayer(value: unknown): ChampionshipPlayer {
 	return {
 		id: row.id,
 		championship_id: Number(row.championship_id),
-		user_id: typeof row.user_id === "string" ? row.user_id : null,
+		user_id: optionalString(row.user_id),
 		display_name: row.display_name,
-		nickname: typeof row.nickname === "string" ? row.nickname : null,
-		avatar_url: typeof row.avatar_url === "string" ? row.avatar_url : null,
+		nickname: optionalString(row.nickname),
+		avatar_url: optionalString(row.avatar_url),
 		rating,
-		role: typeof row.role === "string" ? row.role : CHAMPIONSHIP_ROLE.member,
+		role: optionalString(row.role) ?? CHAMPIONSHIP_ROLE.member,
 		is_goalkeeper: row.is_goalkeeper === true,
-		deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
+		deleted_at: optionalString(row.deleted_at),
 		goals: rosterSafeCount(row.goals),
 		assists: rosterSafeCount(row.assists),
 		assisted_goals: rosterSafeCount(row.assisted_goals),
