@@ -8,6 +8,9 @@ export const SKELETON_LABEL = {
 	event: "Carregando rodada",
 	match: "Carregando partida",
 	player: "Carregando perfil",
+	chart: "Carregando gráfico",
+	podium: "Carregando pódio",
+	logoCrop: "Carregando recorte",
 } as const;
 
 export const LIST_ROW_SKELETON_VARIANT = {

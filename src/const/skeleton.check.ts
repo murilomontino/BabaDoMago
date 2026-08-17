@@ -34,6 +34,9 @@ check(SKELETON_LABEL.events === "Carregando rodadas", "events label");
 check(SKELETON_LABEL.event === "Carregando rodada", "event label");
 check(SKELETON_LABEL.match === "Carregando partida", "match label");
 check(SKELETON_LABEL.player === "Carregando perfil", "player label");
+check(SKELETON_LABEL.chart === "Carregando gráfico", "chart label");
+check(SKELETON_LABEL.podium === "Carregando pódio", "podium label");
+check(SKELETON_LABEL.logoCrop === "Carregando recorte", "logo crop label");
 check(skeletonClassName().includes("animate-pulse"), "pulse class");
 check(skeletonClassName("h-8").includes("h-8"), "merges class");
 

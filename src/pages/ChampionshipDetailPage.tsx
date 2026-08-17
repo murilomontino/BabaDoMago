@@ -1,10 +1,10 @@
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { Users } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, lazy, Suspense, useState } from "react";
+import { AppDialog } from "@/components/atoms/app-dialog";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { ChampionshipDetailHeader } from "@/components/championship-detail-header";
 import { ChampionshipEvents } from "@/components/championship-events";
-import { ChampionshipLogoCrop } from "@/components/championship-logo-crop";
 import { ChampionshipManagementTab } from "@/components/championship-management-tab";
 import { ChampionshipPodiumTab } from "@/components/championship-podium-tab";
 import { ChampionshipRosterTab } from "@/components/championship-roster-tab";
@@ -58,7 +58,7 @@ import {
 } from "@/const/player-rating";
 import { ROUTES } from "@/const/routes";
 import { SKELETON_LABEL } from "@/const/skeleton";
-import { CARD_CLASS, ERROR_CLASS } from "@/const/ui";
+import { CARD_CLASS, ERROR_CLASS, MODAL_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
 import {
 	useChampionshipEvents,
@@ -86,6 +86,12 @@ import {
 } from "@/hooks/championships/use-championships";
 import { useChampionshipTab } from "@/hooks/use-championship-tab";
 import type { ChampionshipPlayer } from "@/types/championship";
+
+const ChampionshipLogoCrop = lazy(() =>
+	import("@/components/championship-logo-crop").then((m) => ({
+		default: m.ChampionshipLogoCrop,
+	})),
+);
 
 export function ChampionshipDetailPage() {
 	const { championshipId: championshipIdParam } = useParams({
@@ -522,11 +528,13 @@ export function ChampionshipDetailPage() {
 				}}
 			/>
 			{logoCropSrc && (
-				<ChampionshipLogoCrop
-					imageSrc={logoCropSrc}
-					onCancel={handleLogoCropCancel}
-					onConfirm={handleLogoCropConfirm}
-				/>
+				<Suspense fallback={<LogoCropSkeleton onClose={handleLogoCropCancel} />}>
+					<ChampionshipLogoCrop
+						imageSrc={logoCropSrc}
+						onCancel={handleLogoCropCancel}
+						onConfirm={handleLogoCropConfirm}
+					/>
+				</Suspense>
 			)}
 			{pendingNicknamePlayer && (
 				<EditPlayerNicknameModal
@@ -814,4 +822,15 @@ function ChampionshipDetailPageSkeleton() {
 
 function ignoreTabChange() {
 	return;
+}
+
+function LogoCropSkeleton({ onClose }: { onClose: () => void }) {
+	return (
+		<AppDialog onClose={onClose}>
+			<SkeletonRegion label={SKELETON_LABEL.logoCrop} className={MODAL_CLASS}>
+				<Skeleton className="mb-3 h-5 w-32" />
+				<Skeleton className="h-72 w-full" />
+			</SkeletonRegion>
+		</AppDialog>
+	);
 }

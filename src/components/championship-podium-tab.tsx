@@ -1,7 +1,7 @@
 import { LoaderCircle, Share2, Trophy } from "lucide-react";
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
+import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
-import { ChampionshipPodium } from "@/components/championship-podium";
 import { SectionCard } from "@/components/section-card";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import {
@@ -44,6 +44,7 @@ import {
 	podiumSharePeriodSlug,
 } from "@/const/podium-share";
 import { shareFileDateStamp } from "@/const/share-file-name";
+import { SKELETON_LABEL } from "@/const/skeleton";
 import {
 	championshipTeamBalance,
 	formatTeamBalanceSpread,
@@ -55,6 +56,12 @@ import { usePodiumYear } from "@/hooks/use-podium-year";
 import { sharePodiumImages } from "@/lib/share-podium-image";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type { ChampionshipEvent } from "@/types/championship-event";
+
+const ChampionshipPodium = lazy(() =>
+	import("@/components/championship-podium").then((m) => ({
+		default: m.ChampionshipPodium,
+	})),
+);
 
 const FILTER_CHIP =
 	"inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium transition";
@@ -351,12 +358,14 @@ export function ChampionshipPodiumTab({
 				)}
 			</div>
 			{shareError && <p className={`mb-4 ${ERROR_CLASS}`}>{shareError}</p>}
-			<ChampionshipPodium
-				players={podiumPlayers}
-				metric={metric}
-				synergyPairs={synergyPairs}
-				worstPairs={worstPairs}
-			/>
+			<Suspense fallback={<PodiumStageSkeleton />}>
+				<ChampionshipPodium
+					players={podiumPlayers}
+					metric={metric}
+					synergyPairs={synergyPairs}
+					worstPairs={worstPairs}
+				/>
+			</Suspense>
 			{teamBalance && teamBalance.events > 0 && (
 				<div className="mt-8 space-y-3">
 					<h3 className="text-sm font-semibold text-fg">
@@ -384,5 +393,13 @@ export function ChampionshipPodiumTab({
 				</div>
 			)}
 		</SectionCard>
+	);
+}
+
+function PodiumStageSkeleton() {
+	return (
+		<SkeletonRegion label={SKELETON_LABEL.podium}>
+			<Skeleton className="h-48 w-full" />
+		</SkeletonRegion>
 	);
 }

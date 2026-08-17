@@ -538,22 +538,21 @@ function matchClockAction(started: boolean, paused: boolean): MatchClockAction {
 }
 
 function MatchClockBar({
-	elapsedSeconds,
-	started,
-	paused,
+	match,
 	busy,
 	onStartClock,
 	onPause,
 	onResume,
 }: {
-	elapsedSeconds: number;
-	started: boolean;
-	paused: boolean;
+	match: ChampionshipEventMatch;
 	busy: boolean;
 	onStartClock: () => void;
 	onPause: () => void;
 	onResume: () => void;
 }) {
+	const elapsedSeconds = useMatchClock(match);
+	const started = matchClockIsStarted(match);
+	const paused = matchClockIsPaused(match);
 	const action = matchClockAction(started, paused);
 	const playing = action !== MATCH_CLOCK_ACTION.pause;
 
@@ -650,7 +649,6 @@ export function ChampionshipEventPlay({
 	);
 	const busy =
 		starting || savingPlayer || savingGoal || undoing || ending || pausing;
-	const elapsedSeconds = useMatchClock(match);
 	const canStartSelected = canConfirmMatchTeams(selected);
 
 	if (!match) {
@@ -885,9 +883,7 @@ export function ChampionshipEventPlay({
 					</div>
 				</div>
 				<MatchClockBar
-					elapsedSeconds={elapsedSeconds}
-					started={matchClockIsStarted(match)}
-					paused={matchClockIsPaused(match)}
+					match={match}
 					busy={busy}
 					onStartClock={() => {
 						if (busy) {

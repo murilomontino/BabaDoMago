@@ -18,7 +18,7 @@ import {
 	matchScore,
 	matchTeamPlayers,
 } from "@/const/championship-event-match";
-import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
+import { resolveRosterPlayer } from "@/const/championship-event-roster";
 import { PLAYER_LABEL, playerVisibleName } from "@/const/player-name";
 import { CARD_CLASS, CHIP_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
@@ -37,41 +37,6 @@ type ChampionshipEventMatchHistoryProps = {
 	onOpenMatch: (match: ChampionshipEventMatch) => void;
 	onRemoveMatch: (match: ChampionshipEventMatch) => void;
 };
-
-function fallbackRosterPlayer(
-	playerId: number,
-	displayName: string,
-): ChampionshipPlayer {
-	return {
-		id: playerId,
-		championship_id: 0,
-		user_id: null,
-		display_name: displayName,
-		nickname: null,
-		avatar_url: null,
-		rating: 0,
-		role: CHAMPIONSHIP_ROLE.member,
-		is_goalkeeper: false,
-		deleted_at: null,
-		goals: 0,
-		assists: 0,
-		assisted_goals: 0,
-		own_goals: 0,
-		wins: 0,
-		losses: 0,
-		draws: 0,
-		matches: 0,
-		mvps: 0,
-	};
-}
-
-function resolveRosterPlayer(
-	playerId: number,
-	displayName: string,
-	byId: ReadonlyMap<number, ChampionshipPlayer>,
-): ChampionshipPlayer {
-	return byId.get(playerId) ?? fallbackRosterPlayer(playerId, displayName);
-}
 
 function MatchLineupPlayer({
 	row,

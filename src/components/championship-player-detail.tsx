@@ -1,13 +1,12 @@
 import { createColumnHelper } from "@tanstack/react-table";
 import { CalendarDays, Handshake, LoaderCircle, Share2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { AppDialog } from "@/components/atoms/app-dialog";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
 import { DataTableSkeleton } from "@/components/molecules/data-table-skeleton";
 import { PlayerNameLink } from "@/components/molecules/player-name-link";
-import { PlayerRatingHistoryChart } from "@/components/molecules/player-rating-history-chart";
 import {
 	DataTable,
 	type DataTableFeatures,
@@ -87,6 +86,12 @@ import { usePlayerProfileTab } from "@/hooks/use-player-profile-tab";
 import { sharePlayerProfileImage } from "@/lib/share-player-profile-image";
 import { enlargeAvatarUrl } from "@/lib/user-profile";
 import type { ChampionshipPlayer } from "@/types/championship";
+
+const PlayerRatingHistoryChart = lazy(() =>
+	import("@/components/molecules/player-rating-history-chart").then((m) => ({
+		default: m.PlayerRatingHistoryChart,
+	})),
+);
 
 const historyColumnHelper = createColumnHelper<
 	DataTableFeatures,
@@ -697,14 +702,16 @@ export function ChampionshipPlayerDetail({
 						)}
 						{!historyPending && !historyError && history.length > 0 && (
 							<div className="space-y-4">
-								<PlayerRatingHistoryChart
-									points={playerRatingHistoryChartSeries(
-										history,
-										player.rating,
-										new Date().toISOString(),
-									)}
-									ceiling={ceiling}
-								/>
+								<Suspense fallback={<PlayerHistoryChartSkeleton />}>
+									<PlayerRatingHistoryChart
+										points={playerRatingHistoryChartSeries(
+											history,
+											player.rating,
+											new Date().toISOString(),
+										)}
+										ceiling={ceiling}
+									/>
+								</Suspense>
 								<PlayerHistoryTable
 									history={history}
 									onOpenEvent={onOpenEvent}
@@ -718,13 +725,27 @@ export function ChampionshipPlayerDetail({
 	);
 }
 
+function PlayerHistoryChartRect() {
+	return (
+		<div style={{ height: PLAYER_RATING_HISTORY_CHART.height }}>
+			<Skeleton className="h-full w-full" />
+		</div>
+	);
+}
+
+function PlayerHistoryChartSkeleton() {
+	return (
+		<SkeletonRegion label={SKELETON_LABEL.chart}>
+			<PlayerHistoryChartRect />
+		</SkeletonRegion>
+	);
+}
+
 function PlayerHistorySkeleton() {
 	return (
 		<SkeletonRegion label={SKELETON_LABEL.events}>
 			<div className="space-y-4">
-				<div style={{ height: PLAYER_RATING_HISTORY_CHART.height }}>
-					<Skeleton className="h-full w-full" />
-				</div>
+				<PlayerHistoryChartRect />
 				<DataTableSkeleton
 					headers={PLAYER_PROFILE_HISTORY_COLUMNS.map(
 						(id) => PLAYER_PROFILE_HISTORY_ABBR[id],
