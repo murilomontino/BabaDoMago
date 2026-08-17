@@ -19,6 +19,7 @@ import {
 	builderTeamsFromDrafts,
 	builderTeamsHavePlayers,
 	CHAMPIONSHIP_EVENT,
+	defaultGoalkeeperIds,
 	EVENT_ACTION,
 	EVENT_BUILDER_STEP,
 	EVENT_BUILDER_TABS,
@@ -28,12 +29,14 @@ import {
 	type EventTeamBuilderTeam,
 	type EventTeamDraft,
 	emptyTeamSlots,
+	eventGoalkeeperIds,
 	eventTeamCount,
 	eventTeamPlayerOptionLabel,
 	eventTeamSlotPosition,
 	initialBuilderTeams,
 	keepGoalkeepersPresent,
 	resizeBuilderTeams,
+	setGoalkeeperSelection,
 	teamSlotsToPlayerIds,
 	validateEventAttendance,
 	validateEventTeams,
@@ -119,7 +122,7 @@ export function ChampionshipEventBuilder({
 		...initialPresentIds,
 	]);
 	const [goalkeeperIds, setGoalkeeperIds] = useState<number[]>(() =>
-		keepGoalkeepersPresent(initialGoalkeeperIds, initialPresentIds),
+		eventGoalkeeperIds(defaultGoalkeeperIds(players), initialGoalkeeperIds),
 	);
 	const [attendanceError, setAttendanceError] = useState<string | null>(null);
 	const [teamsError, setTeamsError] = useState<string | null>(null);
@@ -136,6 +139,10 @@ export function ChampionshipEventBuilder({
 	);
 	const presentPlayers = players.filter((player) =>
 		presentIds.includes(player.id),
+	);
+	const presentGoalkeeperIds = keepGoalkeepersPresent(
+		goalkeeperIds,
+		presentIds,
 	);
 	const presentRatings = presentPlayers.map((player) => player.rating);
 	const teamsStart =
@@ -155,7 +162,6 @@ export function ChampionshipEventBuilder({
 	function handleSetPresent(playerIds: readonly number[], present: boolean) {
 		const nextPresent = applyVisibleAttendance(presentIds, playerIds, present);
 		setPresentIds(nextPresent);
-		setGoalkeeperIds((current) => keepGoalkeepersPresent(current, nextPresent));
 		onPresentIdsChange?.(nextPresent);
 		setAttendanceError(null);
 	}
@@ -164,23 +170,8 @@ export function ChampionshipEventBuilder({
 		playerIds: readonly number[],
 		asGoalkeeper: boolean,
 	) {
-		if (asGoalkeeper) {
-			const nextPresent = applyVisibleAttendance(presentIds, playerIds, true);
-			setPresentIds(nextPresent);
-			setGoalkeeperIds((current) =>
-				keepGoalkeepersPresent([...current, ...playerIds], nextPresent),
-			);
-			onPresentIdsChange?.(nextPresent);
-			setAttendanceError(null);
-			return;
-		}
-
-		const visible = new Set(playerIds);
 		setGoalkeeperIds((current) =>
-			keepGoalkeepersPresent(
-				current.filter((id) => !visible.has(id)),
-				presentIds,
-			),
+			setGoalkeeperSelection(current, playerIds, asGoalkeeper),
 		);
 		setAttendanceError(null);
 	}
@@ -242,7 +233,7 @@ export function ChampionshipEventBuilder({
 				worker.postMessage({
 					players: presentPlayers.map(({ id, rating }) => ({ id, rating })),
 					playersPerTeam,
-					volunteerIds: goalkeeperIds,
+					volunteerIds: presentGoalkeeperIds,
 				});
 			});
 			const teamsInvalid =
@@ -256,7 +247,7 @@ export function ChampionshipEventBuilder({
 			await onSubmit(
 				{
 					presentPlayerIds: presentIds,
-					goalkeeperPlayerIds: goalkeeperIds,
+					goalkeeperPlayerIds: presentGoalkeeperIds,
 					teams: drafts,
 				},
 				true,
@@ -394,7 +385,7 @@ export function ChampionshipEventBuilder({
 
 					await onSubmit({
 						presentPlayerIds: presentIds,
-						goalkeeperPlayerIds: goalkeeperIds,
+						goalkeeperPlayerIds: presentGoalkeeperIds,
 						teams: drafts,
 					});
 				}}

@@ -19,6 +19,7 @@ export type ChampionshipPlayer = {
 	avatar_url: string | null;
 	rating: number;
 	role: string;
+	is_goalkeeper: boolean;
 	deleted_at: string | null;
 	goals: number;
 	assists: number;

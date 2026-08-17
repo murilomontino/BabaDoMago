@@ -34,6 +34,8 @@ type AttendanceRow = {
 	attendanceCount: number;
 	present: boolean;
 	goalkeeper: boolean;
+	onTogglePresent?: (checked: boolean) => void;
+	onToggleGoalkeeper?: (checked: boolean) => void;
 };
 
 type EventAttendanceTableProps = {
@@ -52,6 +54,73 @@ const attendanceColumnHelper = createColumnHelper<
 	DataTableFeatures,
 	AttendanceRow
 >();
+
+function stopAttendanceSwitchClick(event: { stopPropagation: () => void }) {
+	event.stopPropagation();
+}
+
+function AttendanceRowSwitch({
+	id,
+	checked,
+	disabled,
+	onCheckedChange,
+}: {
+	id: string;
+	checked: boolean;
+	disabled?: boolean;
+	onCheckedChange?: (checked: boolean) => void;
+}) {
+	return (
+		<label
+			htmlFor={id}
+			className="inline-flex"
+			onClick={stopAttendanceSwitchClick}
+			onKeyDown={stopAttendanceSwitchClick}
+		>
+			<Switch
+				id={id}
+				checked={checked}
+				disabled={disabled}
+				onCheckedChange={(next) => {
+					onCheckedChange?.(next);
+				}}
+			/>
+		</label>
+	);
+}
+
+function AttendancePresentCell({
+	row,
+}: {
+	row: { original: AttendanceRow };
+}) {
+	const player = row.original;
+
+	return (
+		<AttendanceRowSwitch
+			id={`event-present-${player.id}`}
+			checked={player.present}
+			onCheckedChange={player.onTogglePresent}
+		/>
+	);
+}
+
+function AttendanceGoalkeeperCell({
+	row,
+}: {
+	row: { original: AttendanceRow };
+}) {
+	const player = row.original;
+
+	return (
+		<AttendanceRowSwitch
+			id={`event-goalkeeper-${player.id}`}
+			checked={player.goalkeeper}
+			disabled={!player.onToggleGoalkeeper}
+			onCheckedChange={player.onToggleGoalkeeper}
+		/>
+	);
+}
 
 function AttendancePlayerCell({ player }: { player: AttendanceRow }) {
 	return (
@@ -104,10 +173,27 @@ export function EventAttendanceTable({
 			attendanceCount: attendanceCounts.get(player.id) ?? 0,
 			present: presentIds.includes(player.id),
 			goalkeeper: goalkeeperIds.includes(player.id),
+			onTogglePresent: onSetPresent
+				? (checked: boolean) => {
+						onSetPresent([player.id], checked);
+					}
+				: undefined,
+			onToggleGoalkeeper: onSetGoalkeeper
+				? (checked: boolean) => {
+						onSetGoalkeeper([player.id], checked);
+					}
+				: undefined,
 		}));
 
 		return [...list].sort(compareByAttendanceCount);
-	}, [visiblePlayers, attendanceCounts, presentIds, goalkeeperIds]);
+	}, [
+		visiblePlayers,
+		attendanceCounts,
+		presentIds,
+		goalkeeperIds,
+		onSetPresent,
+		onSetGoalkeeper,
+	]);
 	const visibleIds = rows.map((row) => row.id);
 	const allVisiblePresent = areAllVisiblePresent(presentIds, visibleIds);
 
@@ -141,7 +227,7 @@ export function EventAttendanceTable({
 			),
 		});
 
-		if (!selectable || !onSetPresent) {
+		if (!selectable) {
 			return attendanceColumnHelper.columns([
 				playerColumn,
 				ratingColumn,
@@ -159,30 +245,7 @@ export function EventAttendanceTable({
 					align: "center" as const,
 					title: EVENT_ATTENDANCE_COLUMN_LABEL.present,
 				},
-				cell: ({ row }) => {
-					const inputId = `event-present-${row.original.id}`;
-
-					return (
-						<label
-							htmlFor={inputId}
-							className="inline-flex"
-							onClick={(event) => {
-								event.stopPropagation();
-							}}
-							onKeyDown={(event) => {
-								event.stopPropagation();
-							}}
-						>
-							<Switch
-								id={inputId}
-								checked={row.original.present}
-								onCheckedChange={(checked) => {
-									onSetPresent([row.original.id], checked);
-								}}
-							/>
-						</label>
-					);
-				},
+				cell: AttendancePresentCell,
 			}),
 			attendanceColumnHelper.accessor("goalkeeper", {
 				id: EVENT_ATTENDANCE_COLUMN.goalkeeper,
@@ -193,37 +256,13 @@ export function EventAttendanceTable({
 					align: "center" as const,
 					title: EVENT_ATTENDANCE_COLUMN_LABEL.goalkeeper,
 				},
-				cell: ({ row }) => {
-					const inputId = `event-goalkeeper-${row.original.id}`;
-
-					return (
-						<label
-							htmlFor={inputId}
-							className="inline-flex"
-							onClick={(event) => {
-								event.stopPropagation();
-							}}
-							onKeyDown={(event) => {
-								event.stopPropagation();
-							}}
-						>
-							<Switch
-								id={inputId}
-								checked={row.original.goalkeeper}
-								disabled={!onSetGoalkeeper}
-								onCheckedChange={(checked) => {
-									onSetGoalkeeper?.([row.original.id], checked);
-								}}
-							/>
-						</label>
-					);
-				},
+				cell: AttendanceGoalkeeperCell,
 			}),
 			playerColumn,
 			ratingColumn,
 			countColumn,
 		]);
-	}, [ceiling, onSetGoalkeeper, onSetPresent, selectable]);
+	}, [ceiling, selectable]);
 
 	return (
 		<div className="space-y-3">
@@ -282,7 +321,9 @@ export function EventAttendanceTable({
 							: undefined
 					}
 					getRowClassName={(row) =>
-						row.present ? "bg-pitch-soft" : "even:bg-surface-muted"
+						`transition-colors duration-200 ease-in-out motion-reduce:transition-none ${
+							row.present ? "bg-pitch-soft" : "even:bg-surface-muted"
+						}`
 					}
 				/>
 			)}

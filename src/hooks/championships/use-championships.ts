@@ -14,6 +14,7 @@ import {
 	reactivatePlayer,
 	removePlayer,
 	renameChampionship,
+	setPlayerIsGoalkeeper,
 	setPlayerRole,
 	transferChampionshipOwner,
 	unlinkPlayer,
@@ -23,12 +24,14 @@ import {
 	updatePlayerRating,
 	uploadChampionshipLogo,
 } from "@/services/championships";
+import type { ChampionshipWithPlayers } from "@/types/championship";
 import {
 	CHAMPIONSHIP_BY_ID_QUERY_KEY,
 	CHAMPIONSHIP_BY_INVITE_QUERY_KEY,
 	CHAMPIONSHIPS_QUERY_KEY,
 	invalidateChampionshipEventQueries,
 	invalidateChampionshipQueries,
+	withChampionshipPlayerGoalkeeper,
 } from "./championships-query-keys";
 
 export function useChampionships() {
@@ -84,10 +87,12 @@ export function useAddManualPlayer(championshipId: number) {
 		mutationFn: ({
 			displayNames,
 			rating,
+			isGoalkeeper,
 		}: {
 			displayNames: string[];
 			rating: number;
-		}) => addManualPlayers(championshipId, displayNames, rating),
+			isGoalkeeper: boolean;
+		}) => addManualPlayers(championshipId, displayNames, rating, isGoalkeeper),
 		onSuccess: async () => {
 			await invalidateChampionshipQueries(queryClient);
 		},
@@ -199,6 +204,55 @@ export function useSetPlayerRole() {
 	return useMutation({
 		mutationFn: ({ playerId, role }: { playerId: number; role: string }) =>
 			setPlayerRole(playerId, role),
+		onSuccess: async () => {
+			await invalidateChampionshipQueries(queryClient);
+		},
+	});
+}
+
+export function useSetPlayerIsGoalkeeper() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({
+			playerId,
+			isGoalkeeper,
+		}: {
+			playerId: number;
+			isGoalkeeper: boolean;
+		}) => setPlayerIsGoalkeeper(playerId, isGoalkeeper),
+		onMutate: ({ playerId, isGoalkeeper }) => {
+			const previous = queryClient.getQueriesData<ChampionshipWithPlayers>({
+				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,
+			});
+			void queryClient.cancelQueries({
+				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,
+			});
+			queryClient.setQueriesData<ChampionshipWithPlayers>(
+				{ queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY },
+				(data) => {
+					if (!data) {
+						return data;
+					}
+
+					return withChampionshipPlayerGoalkeeper(
+						data,
+						playerId,
+						isGoalkeeper,
+					);
+				},
+			);
+			return { previous };
+		},
+		onError: (_error, _variables, context) => {
+			if (!context) {
+				return;
+			}
+
+			for (const [queryKey, data] of context.previous) {
+				queryClient.setQueryData(queryKey, data);
+			}
+		},
 		onSuccess: async () => {
 			await invalidateChampionshipQueries(queryClient);
 		},

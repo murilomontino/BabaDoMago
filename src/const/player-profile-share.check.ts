@@ -23,6 +23,7 @@ const player: ChampionshipPlayer = {
 	avatar_url: "https://example.com/ana.png",
 	rating: 8,
 	role: "captain",
+	is_goalkeeper: false,
 	deleted_at: null,
 	goals: 4,
 	assists: 2,

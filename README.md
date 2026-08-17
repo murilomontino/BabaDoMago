@@ -2,6 +2,10 @@
 
 SPA React (Vite + TypeScript) com TanStack Query, TanStack Router, Tailwind e Supabase.
 
+## Documentação
+
+- [Nota (rating) do jogador](docs/rating.md) — motivação, fórmula, zona morta, semente e simulador
+
 ## Setup
 
 ```bash

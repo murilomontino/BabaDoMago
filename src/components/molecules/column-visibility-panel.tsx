@@ -18,7 +18,7 @@ export function ColumnVisibilityPanel({ items }: ColumnVisibilityPanelProps) {
 	}
 
 	return (
-		<details className="group relative mb-3">
+		<details className="group relative">
 			<summary className="inline-flex cursor-pointer list-none items-center gap-1 text-sm font-medium text-fg-muted hover:text-fg">
 				Colunas
 				<ChevronDown className="size-4 transition-transform group-open:rotate-180" />

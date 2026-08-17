@@ -15,6 +15,7 @@ import {
 	championshipEventErrorMessage,
 	compareByAttendanceCount,
 	countPlayerAttendance,
+	defaultGoalkeeperIds,
 	draftAttendanceForEnd,
 	drawBalancedEventTeams,
 	EVENT_ATTENDANCE_MESSAGE,
@@ -29,6 +30,7 @@ import {
 	type EventTeamDraft,
 	emptyTeamSlots,
 	eventDrawRatings,
+	eventGoalkeeperIds,
 	eventTeamByPlayerId,
 	eventTeamCount,
 	eventTeamPlayerIds,
@@ -51,6 +53,7 @@ import {
 	playerEventStatsFromAttendance,
 	resizeBuilderTeams,
 	setAttendanceStat,
+	setGoalkeeperSelection,
 	setPlayerEventStat,
 	sortAttendanceByTeam,
 	teamHasMatches,
@@ -414,6 +417,20 @@ check(String(applyVisibleAttendance([3], [1, 2], true)), "3,1,2");
 check(String(applyVisibleAttendance([1, 2, 3], [1, 2], false)), "3");
 check(String(keepGoalkeepersPresent([1, 2, 9], [1, 3])), "1");
 check(String(keepGoalkeepersPresent([2, 2, 1], [1, 2])), "2,1");
+check(
+	String(
+		defaultGoalkeeperIds([
+			{ id: 1, is_goalkeeper: false },
+			{ id: 2, is_goalkeeper: true },
+			{ id: 3, is_goalkeeper: true },
+		]),
+	),
+	"2,3",
+);
+check(String(eventGoalkeeperIds([2, 3], [3, 4])), "2,3,4");
+check(String(setGoalkeeperSelection([1], [2], true)), "1,2");
+check(String(setGoalkeeperSelection([1, 2], [2], false)), "1");
+check(String(setGoalkeeperSelection([1], [1], true)), "1");
 check(
 	String(
 		attendanceGoalkeeperIds([

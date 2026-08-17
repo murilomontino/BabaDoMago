@@ -10,6 +10,7 @@ export const EVENT_RATING_ADJUSTMENT = {
 	scaleDivisor: 2,
 	winPoints: 3,
 	drawPoints: 1,
+	drawPointsBonus: 1.5,
 } as const;
 
 export const EVENT_RATING_INITIAL = {
@@ -46,9 +47,29 @@ function roundRatioToTenths(numerator: number, denominator: number): number {
 	return (sign * Math.floor((absN + absD / 2) / absD)) / 10;
 }
 
+export function eventRatingDrawPoints(draws: number, losses: number): number {
+	if (draws > losses) {
+		return EVENT_RATING_ADJUSTMENT.drawPointsBonus;
+	}
+
+	return EVENT_RATING_ADJUSTMENT.drawPoints;
+}
+
+export function eventRatingPoints(
+	wins: number,
+	draws: number,
+	losses: number,
+): number {
+	return (
+		wins * EVENT_RATING_ADJUSTMENT.winPoints +
+		draws * eventRatingDrawPoints(draws, losses)
+	);
+}
+
 export function eventRatingDelta(
 	wins: number,
 	draws: number,
+	losses: number,
 	matches: number,
 	rating: number,
 	ceiling: number,
@@ -57,9 +78,7 @@ export function eventRatingDelta(
 		return 0;
 	}
 
-	const points =
-		wins * EVENT_RATING_ADJUSTMENT.winPoints +
-		draws * EVENT_RATING_ADJUSTMENT.drawPoints;
+	const points = eventRatingPoints(wins, draws, losses);
 	const maxPoints = matches * EVENT_RATING_ADJUSTMENT.winPoints;
 	const wrScale = 20;
 	const pointUnits = points * wrScale;
@@ -109,13 +128,15 @@ export function recomputePlayerEventRating(
 	oldDelta: number,
 	wins: number,
 	draws: number,
+	losses: number,
 	matches: number,
 	ceiling: number,
 	snapshotRating = rating,
 ): number {
 	return applyEventRatingDelta(
 		rating,
-		-oldDelta + eventRatingDelta(wins, draws, matches, snapshotRating, ceiling),
+		-oldDelta +
+			eventRatingDelta(wins, draws, losses, matches, snapshotRating, ceiling),
 	);
 }
 
@@ -124,9 +145,11 @@ export function playerEventRatingAfterSave({
 	storedDelta,
 	oldWins,
 	oldDraws,
+	oldLosses,
 	oldMatches,
 	wins,
 	draws,
+	losses,
 	matches,
 	ceiling,
 	snapshotRating,
@@ -135,9 +158,11 @@ export function playerEventRatingAfterSave({
 	storedDelta: number;
 	oldWins: number;
 	oldDraws: number;
+	oldLosses: number;
 	oldMatches: number;
 	wins: number;
 	draws: number;
+	losses: number;
 	matches: number;
 	ceiling: number;
 	snapshotRating?: number;
@@ -145,7 +170,14 @@ export function playerEventRatingAfterSave({
 	if (
 		rating !== PLAYER_RATING.default &&
 		storedDelta === 0 &&
-		eventRatingDelta(oldWins, oldDraws, oldMatches, rating, ceiling) !== 0
+		eventRatingDelta(
+			oldWins,
+			oldDraws,
+			oldLosses,
+			oldMatches,
+			rating,
+			ceiling,
+		) !== 0
 	) {
 		return rating;
 	}
@@ -155,6 +187,7 @@ export function playerEventRatingAfterSave({
 		storedDelta,
 		wins,
 		draws,
+		losses,
 		matches,
 		ceiling,
 		snapshotRating ?? rating,
@@ -176,6 +209,7 @@ export function eventRatingPreview({
 		display_name: string;
 		wins: number;
 		draws: number;
+		losses: number;
 		matches: number;
 	}[];
 	players: readonly {
@@ -206,6 +240,7 @@ export function eventRatingPreview({
 			eventRatingDelta(
 				stats?.wins ?? 0,
 				stats?.draws ?? 0,
+				stats?.losses ?? 0,
 				stats?.matches ?? 0,
 				from,
 				ceiling,

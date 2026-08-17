@@ -1,5 +1,6 @@
-import { Field, Form, Formik } from "formik";
+import { Field, type FieldProps, Form, Formik } from "formik";
 import { Copy, Plus, Users } from "lucide-react";
+import { Switch } from "@/components/atoms/switch";
 import { Button } from "@/components/button";
 import { ChampionshipRoster } from "@/components/championship-roster";
 import { FormError } from "@/components/form-error";
@@ -7,6 +8,7 @@ import { PlayerRatingField } from "@/components/player-rating-field";
 import { SectionCard } from "@/components/section-card";
 import type { AssignableChampionshipRole } from "@/const/championship-role";
 import { addPlayerFormSchema } from "@/const/form-schema";
+import { PLAYER_LABEL } from "@/const/player-name";
 import {
 	PLAYER_NAME_LIST,
 	parsePlayerNameList,
@@ -44,6 +46,7 @@ type ChampionshipRosterTabProps = {
 	onAddPlayer: (values: {
 		displayNames: string[];
 		rating: number;
+		isGoalkeeper: boolean;
 	}) => Promise<void>;
 	onClaim: (playerId: number) => void;
 	onChangeRating: (playerId: number, rating: number) => void;
@@ -51,6 +54,8 @@ type ChampionshipRosterTabProps = {
 	onEditEventStats?: (playerId: number) => void;
 	eventStatsPlayerId?: number | null;
 	onChangeRole: (playerId: number, role: AssignableChampionshipRole) => void;
+	onChangeGoalkeeper?: (playerId: number, isGoalkeeper: boolean) => void;
+	goalkeeperError: string | null;
 	onUnlink: (playerId: number) => void;
 	onMerge: (playerId: number) => void;
 	onDeactivate: (playerId: number) => void;
@@ -89,6 +94,8 @@ export function ChampionshipRosterTab({
 	onEditEventStats,
 	eventStatsPlayerId,
 	onChangeRole,
+	onChangeGoalkeeper,
+	goalkeeperError,
 	onUnlink,
 	onMerge,
 	onDeactivate,
@@ -118,12 +125,14 @@ export function ChampionshipRosterTab({
 					initialValues={{
 						name: "",
 						rating: PLAYER_RATING.default,
+						isGoalkeeper: false,
 					}}
 					validationSchema={addPlayerFormSchema}
 					onSubmit={async (values, helpers) => {
 						await onAddPlayer({
 							displayNames: parsePlayerNameList(values.name),
 							rating: values.rating,
+							isGoalkeeper: values.isGoalkeeper,
 						});
 						helpers.resetForm();
 					}}
@@ -140,6 +149,26 @@ export function ChampionshipRosterTab({
 							<div className="hidden md:block">
 								<PlayerRatingField ceiling={rosterCeiling} />
 							</div>
+							<label
+								htmlFor="add-player-goalkeeper"
+								className="flex items-center gap-2 text-sm text-fg"
+							>
+								<Field name="isGoalkeeper">
+									{(props: FieldProps<boolean>) => (
+										<Switch
+											id="add-player-goalkeeper"
+											checked={props.field.value === true}
+											onCheckedChange={(checked) => {
+												void props.form.setFieldValue(
+													props.field.name,
+													checked,
+												);
+											}}
+										/>
+									)}
+								</Field>
+								{PLAYER_LABEL.goalkeeper}
+							</label>
 							<Button
 								type="submit"
 								variant={BUTTON_VARIANT.ghost}
@@ -172,6 +201,7 @@ export function ChampionshipRosterTab({
 				onEditEventStats={onEditEventStats}
 				eventStatsPlayerId={eventStatsPlayerId}
 				onChangeRole={canSetRoles ? onChangeRole : undefined}
+				onChangeGoalkeeper={canUpdateRating ? onChangeGoalkeeper : undefined}
 				onUnlink={canUnlink ? onUnlink : undefined}
 				unlinkingPlayerId={unlinkingPlayerId}
 				onMerge={canMerge ? onMerge : undefined}
@@ -186,6 +216,9 @@ export function ChampionshipRosterTab({
 			)}
 			{ratingError && <p className={`mt-4 ${ERROR_CLASS}`}>{ratingError}</p>}
 			{roleError && <p className={`mt-4 ${ERROR_CLASS}`}>{roleError}</p>}
+			{goalkeeperError && (
+				<p className={`mt-4 ${ERROR_CLASS}`}>{goalkeeperError}</p>
+			)}
 		</SectionCard>
 	);
 }

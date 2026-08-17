@@ -11,22 +11,44 @@ export function enlargeAvatarUrl(url: string): string {
 	return url.replace(/([?&])sz=\d+/, `$1sz=${AVATAR_PREVIEW_SIZE}`);
 }
 
-export function getUserAvatarUrl(user: User | null): string | null {
-	if (!user) {
+type AvatarMetadata = {
+	avatar_url?: unknown;
+	picture?: unknown;
+};
+
+function avatarUrlFromRecord(
+	data: AvatarMetadata | null | undefined,
+): string | null {
+	if (!data) {
 		return null;
 	}
 
-	const avatarUrl = user.user_metadata.avatar_url;
+	const avatarUrl = data.avatar_url;
 	if (typeof avatarUrl === "string" && avatarUrl.length > 0) {
 		return avatarUrl;
 	}
 
-	const picture = user.user_metadata.picture;
+	const picture = data.picture;
 	if (typeof picture === "string" && picture.length > 0) {
 		return picture;
 	}
 
 	return null;
+}
+
+export function getUserAvatarUrl(user: User | null): string | null {
+	if (!user) {
+		return null;
+	}
+
+	const googleIdentity = user.identities?.find(
+		(identity) => identity.provider === "google",
+	);
+
+	return (
+		avatarUrlFromRecord(googleIdentity?.identity_data) ??
+		avatarUrlFromRecord(user.user_metadata)
+	);
 }
 
 export function getUserDisplayName(user: User | null): string {

@@ -25,7 +25,7 @@ export const EVENT_MATCH_LABEL = {
 	winner: "Vencedor",
 	draw: "Empate",
 	open: "Em andamento",
-	selectTeams: "Selecione dois times",
+	selectTeams: "Selecione dois times para o confronto",
 	emptySlot: "Vago",
 	emptyTeam: "Ninguém no time.",
 	copied: "Link copiado.",
@@ -299,6 +299,20 @@ export function matchPlayUrl(
 
 export function isMatchSlotGoalkeeper(slot: number): boolean {
 	return slot === 0;
+}
+
+export function sortBenchForSlot<T extends { id: number }>(
+	players: readonly T[],
+	slot: number,
+	isGoalkeeper: (playerId: number) => boolean,
+): T[] {
+	if (!isMatchSlotGoalkeeper(slot)) {
+		return [...players];
+	}
+
+	const goalkeepers = players.filter((player) => isGoalkeeper(player.id));
+	const others = players.filter((player) => !isGoalkeeper(player.id));
+	return [...goalkeepers, ...others];
 }
 
 export function matchSlotCount(playersPerTeam: number): number {

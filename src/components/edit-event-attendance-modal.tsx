@@ -4,9 +4,12 @@ import { Button } from "@/components/button";
 import { EventAttendanceTable } from "@/components/event-attendance-table";
 import {
 	applyVisibleAttendance,
+	defaultGoalkeeperIds,
 	EVENT_ACTION,
+	eventGoalkeeperIds,
 	keepGoalkeepersPresent,
 	keepTeamPlayersPresent,
+	setGoalkeeperSelection,
 	validateEventAttendance,
 } from "@/const/championship-event";
 import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
@@ -44,10 +47,7 @@ export function EditEventAttendanceModal({
 		keepTeamPlayersPresent(initialPresentIds, teamPlayerIds),
 	);
 	const [goalkeeperIds, setGoalkeeperIds] = useState(() =>
-		keepGoalkeepersPresent(
-			initialGoalkeeperIds,
-			keepTeamPlayersPresent(initialPresentIds, teamPlayerIds),
-		),
+		eventGoalkeeperIds(defaultGoalkeeperIds(players), initialGoalkeeperIds),
 	);
 	const [localError, setLocalError] = useState<string | null>(null);
 
@@ -69,49 +69,18 @@ export function EditEventAttendanceModal({
 						setLocalError(null);
 						if (!present) {
 							const removable = playerIds.filter((id) => !locked.has(id));
-							const nextPresent = applyVisibleAttendance(
-								presentIds,
-								removable,
-								false,
-							);
-							setPresentIds(nextPresent);
-							setGoalkeeperIds((current) =>
-								keepGoalkeepersPresent(current, nextPresent),
+							setPresentIds(
+								applyVisibleAttendance(presentIds, removable, false),
 							);
 							return;
 						}
 
-						const nextPresent = applyVisibleAttendance(
-							presentIds,
-							playerIds,
-							true,
-						);
-						setPresentIds(nextPresent);
-						setGoalkeeperIds((current) =>
-							keepGoalkeepersPresent(current, nextPresent),
-						);
+						setPresentIds(applyVisibleAttendance(presentIds, playerIds, true));
 					}}
 					onSetGoalkeeper={(playerIds, asGoalkeeper) => {
 						setLocalError(null);
-						if (asGoalkeeper) {
-							const nextPresent = applyVisibleAttendance(
-								presentIds,
-								playerIds,
-								true,
-							);
-							setPresentIds(nextPresent);
-							setGoalkeeperIds((current) =>
-								keepGoalkeepersPresent([...current, ...playerIds], nextPresent),
-							);
-							return;
-						}
-
-						const visible = new Set(playerIds);
 						setGoalkeeperIds((current) =>
-							keepGoalkeepersPresent(
-								current.filter((id) => !visible.has(id)),
-								presentIds,
-							),
+							setGoalkeeperSelection(current, playerIds, asGoalkeeper),
 						);
 					}}
 				/>

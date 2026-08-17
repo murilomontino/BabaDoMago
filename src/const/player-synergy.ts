@@ -236,6 +236,7 @@ function fallbackSynergyPlayer(
 		avatar_url: null,
 		rating: 0,
 		role: CHAMPIONSHIP_ROLE.member,
+		is_goalkeeper: false,
 		deleted_at: null,
 		goals: 0,
 		assists: 0,

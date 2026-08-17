@@ -56,6 +56,7 @@ type ChampionshipRosterProps = {
 	onEditEventStats?: (playerId: number) => void;
 	eventStatsPlayerId?: number | null;
 	onChangeRole?: (playerId: number, role: AssignableChampionshipRole) => void;
+	onChangeGoalkeeper?: (playerId: number, isGoalkeeper: boolean) => void;
 	onUnlink?: (playerId: number) => void;
 	unlinkingPlayerId?: number | null;
 	onMerge?: (playerId: number) => void;
@@ -103,6 +104,7 @@ export function ChampionshipRoster({
 	onEditEventStats,
 	eventStatsPlayerId,
 	onChangeRole,
+	onChangeGoalkeeper,
 	onUnlink,
 	unlinkingPlayerId,
 	onMerge,
@@ -141,8 +143,9 @@ export function ChampionshipRoster({
 		() => ({
 			createdBy,
 			onChangeRole,
+			onChangeGoalkeeper,
 		}),
-		[createdBy, onChangeRole],
+		[createdBy, onChangeRole, onChangeGoalkeeper],
 	);
 	const playerRatingShared = useMemo(
 		() => ({
