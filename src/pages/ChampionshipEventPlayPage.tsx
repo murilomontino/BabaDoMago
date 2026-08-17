@@ -31,6 +31,7 @@ import {
 	useUpdateChampionshipEventTeam,
 } from "@/hooks/championships/use-championship-events";
 import { useChampionship } from "@/hooks/championships/use-championships";
+import { useFlushMatchClock } from "@/hooks/match-clock-sync";
 
 const PLAY_SHELL_CLASS = "flex h-dvh flex-col overflow-hidden p-2";
 
@@ -55,6 +56,10 @@ export function ChampionshipEventPlayPage() {
 	const resumeMatch = useResumeChampionshipEventMatch(championshipId);
 	const endMatch = useEndChampionshipEventMatch(championshipId);
 	useChampionshipEventRealtime(championshipId, eventId);
+	const openMatchId = eventQuery.data
+		? (openEventMatch(eventQuery.data.matches)?.id ?? null)
+		: null;
+	useFlushMatchClock(openMatchId);
 
 	if (championshipQuery.isPending || eventQuery.isPending) {
 		return <ChampionshipEventPlayPageSkeleton />;
@@ -137,11 +142,6 @@ export function ChampionshipEventPlayPage() {
 							(pauseMatch.isError && pauseMatch.error.message) ||
 							(resumeMatch.isError && resumeMatch.error.message) ||
 							null
-						}
-						pausing={
-							startClock.isPending ||
-							pauseMatch.isPending ||
-							resumeMatch.isPending
 						}
 						onStart={async (teamAId, teamBId) => {
 							const { data } = await eventQuery.refetch();
@@ -246,26 +246,35 @@ export function ChampionshipEventPlayPage() {
 
 							await endMatch.mutateAsync(openMatch.id);
 						}}
-						onStartClock={async () => {
+						onStartClock={() => {
 							if (!openMatch) {
 								return;
 							}
 
-							await startClock.mutateAsync(openMatch.id);
+							void startClock.mutate({
+								matchId: openMatch.id,
+								seed: openMatch,
+							});
 						}}
-						onPause={async () => {
+						onPause={() => {
 							if (!openMatch) {
 								return;
 							}
 
-							await pauseMatch.mutateAsync(openMatch.id);
+							void pauseMatch.mutate({
+								matchId: openMatch.id,
+								seed: openMatch,
+							});
 						}}
-						onResume={async () => {
+						onResume={() => {
 							if (!openMatch) {
 								return;
 							}
 
-							await resumeMatch.mutateAsync(openMatch.id);
+							void resumeMatch.mutate({
+								matchId: openMatch.id,
+								seed: openMatch,
+							});
 						}}
 					/>
 				</div>

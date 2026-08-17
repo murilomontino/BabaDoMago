@@ -1,5 +1,5 @@
 import { ArrowLeftRight, ChevronDown, Pause, Play } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/button";
 import { ChampionshipEventBenchModal } from "@/components/championship-event-bench-modal";
 import { ChampionshipEventGoalModal } from "@/components/championship-event-goal-modal";
@@ -44,6 +44,8 @@ import {
 	type EventMatchEndIntent,
 	formatMatchClock,
 	formatMatchScore,
+	MATCH_CLOCK_ACTION,
+	type MatchClockAction,
 	matchActiveTeamPlayers,
 	matchAssistCandidates,
 	matchBenchPlayerIds,
@@ -56,6 +58,7 @@ import {
 	matchTeamSlots,
 	matchTeamStarName,
 	matchWinnerTeamId,
+	mergeMatchClock,
 	sortBenchForSlot,
 	toggleMatchTeamSelection,
 } from "@/const/championship-event-match";
@@ -68,6 +71,7 @@ import {
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
+import { useMatchClockStore } from "@/hooks/match-clock-store";
 import { useMatchClock } from "@/hooks/use-match-clock";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type {
@@ -92,12 +96,6 @@ type PendingSwap = {
 type GoalTarget = {
 	teamId: number;
 	player: ChampionshipEventMatchPlayer;
-};
-
-type ClockHold = {
-	elapsedSeconds: number;
-	resumeOnClose: boolean;
-	pausedAt: string;
 };
 
 function fallbackPlayer(
@@ -150,7 +148,6 @@ type ChampionshipEventPlayProps = {
 	ending: boolean;
 	endError: string | null;
 	clockError: string | null;
-	pausing: boolean;
 	onStart: (teamAId: number, teamBId: number) => Promise<void>;
 	onSetPlayer: (
 		teamId: number,
@@ -168,9 +165,9 @@ type ChampionshipEventPlayProps = {
 	onUndoGoal: (goalId: number) => Promise<void>;
 	onEnd: () => Promise<void>;
 	onNext: () => Promise<void>;
-	onStartClock: () => Promise<void>;
-	onPause: () => Promise<void>;
-	onResume: () => Promise<void>;
+	onStartClock: () => void;
+	onPause: () => void;
+	onResume: () => void;
 	onChangeTeamColor: (
 		teamId: number,
 		color: EventTeamColor | null,
@@ -524,16 +521,10 @@ function OwnGoalButton({
 	);
 }
 
-const MATCH_CLOCK_ACTION = {
-	start: "start",
-	pause: "pause",
-	resume: "resume",
-} as const;
-
-type MatchClockAction =
-	(typeof MATCH_CLOCK_ACTION)[keyof typeof MATCH_CLOCK_ACTION];
-
-function matchClockAction(started: boolean, paused: boolean): MatchClockAction {
+function matchClockBarAction(
+	started: boolean,
+	paused: boolean,
+): MatchClockAction {
 	if (!started) {
 		return MATCH_CLOCK_ACTION.start;
 	}
@@ -561,7 +552,7 @@ function MatchClockBar({
 	const elapsedSeconds = useMatchClock(match);
 	const started = matchClockIsStarted(match);
 	const paused = matchClockIsPaused(match);
-	const action = matchClockAction(started, paused);
+	const action = matchClockBarAction(started, paused);
 	const playing = action !== MATCH_CLOCK_ACTION.pause;
 
 	function handleClick() {
@@ -623,7 +614,6 @@ export function ChampionshipEventPlay({
 	ending,
 	endError,
 	clockError,
-	pausing,
 	onStart,
 	onSetPlayer,
 	onSetGoalkeeper,
@@ -651,14 +641,24 @@ export function ChampionshipEventPlay({
 	const [pendingSwap, setPendingSwap] = useState<PendingSwap | null>(null);
 	const [goalTarget, setGoalTarget] = useState<GoalTarget | null>(null);
 	const [ownGoalTeamId, setOwnGoalTeamId] = useState<number | null>(null);
-	const [clockHold, setClockHold] = useState<ClockHold | null>(null);
-	const goalPauseRef = useRef<Promise<void> | null>(null);
+	const resumeOnCloseRef = useRef(false);
+	const goalElapsedRef = useRef(0);
+	const localClock = useMatchClockStore((state) =>
+		match === null ? undefined : state.clocks[String(match.id)],
+	);
+
+	useEffect(() => {
+		if (!match?.ended_at) {
+			return;
+		}
+
+		useMatchClockStore.getState().clear(match.id);
+	}, [match?.ended_at, match?.id]);
 	const [endIntent, setEndIntent] = useState<EventMatchEndIntent | null>(null);
 	const [colorTeam, setColorTeam] = useState<ChampionshipEventTeam | null>(
 		null,
 	);
-	const busy =
-		starting || savingPlayer || savingGoal || undoing || ending || pausing;
+	const busy = starting || savingPlayer || savingGoal || undoing || ending;
 	const canStartSelected = canConfirmMatchTeams(selected);
 
 	if (!match) {
@@ -809,44 +809,28 @@ export function ChampionshipEventPlay({
 			? EVENT_ACTION.swapPlayer
 			: EVENT_ACTION.fillSlot
 		: EVENT_ACTION.fillSlot;
-	const clockMatch = clockHold
-		? { ...match, paused_at: match.paused_at ?? clockHold.pausedAt }
-		: match;
+	const clockMatch = mergeMatchClock(match, localClock);
 	const goalModalOpen = goalTarget !== null || ownGoalTeamId !== null;
 
 	function beginGoalClockHold() {
-		if (!match) {
-			return;
-		}
-
-		const running = matchClockIsStarted(match) && !matchClockIsPaused(match);
-		setClockHold({
-			elapsedSeconds: matchClockElapsedSeconds(match, Date.now()),
-			resumeOnClose: running,
-			pausedAt: match.paused_at ?? new Date().toISOString(),
-		});
+		const running =
+			matchClockIsStarted(clockMatch) && !matchClockIsPaused(clockMatch);
+		goalElapsedRef.current = matchClockElapsedSeconds(clockMatch, Date.now());
+		resumeOnCloseRef.current = running;
 		if (!running) {
-			goalPauseRef.current = null;
 			return;
 		}
 
-		goalPauseRef.current = onPause();
+		void onPause();
 	}
 
-	async function endGoalClockHold() {
-		const shouldResume = clockHold?.resumeOnClose === true;
-		const pendingPause = goalPauseRef.current;
-		goalPauseRef.current = null;
-		setClockHold(null);
-		if (pendingPause) {
-			await pendingPause;
-		}
-
-		if (!shouldResume) {
+	function endGoalClockHold() {
+		if (!resumeOnCloseRef.current) {
 			return;
 		}
 
-		await onResume();
+		resumeOnCloseRef.current = false;
+		void onResume();
 	}
 
 	return (
@@ -1083,10 +1067,10 @@ export function ChampionshipEventPlay({
 						});
 						await onAddGoal({
 							...payload,
-							elapsedSeconds: clockHold?.elapsedSeconds ?? 0,
+							elapsedSeconds: goalElapsedRef.current,
 						});
 						setGoalTarget(null);
-						await endGoalClockHold();
+						endGoalClockHold();
 					}}
 				/>
 			)}
@@ -1111,10 +1095,10 @@ export function ChampionshipEventPlay({
 							scorerPlayerId: playerId,
 							assistPlayerId: null,
 							isOwnGoal: true,
-							elapsedSeconds: clockHold?.elapsedSeconds ?? 0,
+							elapsedSeconds: goalElapsedRef.current,
 						});
 						setOwnGoalTeamId(null);
-						await endGoalClockHold();
+						endGoalClockHold();
 					}}
 				/>
 			)}
@@ -1214,9 +1198,11 @@ export function ChampionshipEventPlay({
 							try {
 								switch (endIntent) {
 									case EVENT_MATCH_END_INTENT.end:
+										useMatchClockStore.getState().clear(match.id);
 										await onEnd();
 										break;
 									case EVENT_MATCH_END_INTENT.next:
+										useMatchClockStore.getState().clear(match.id);
 										await onNext();
 										break;
 									default: {

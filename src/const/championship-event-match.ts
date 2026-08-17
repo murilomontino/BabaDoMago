@@ -64,6 +64,124 @@ export type MatchClockFields = {
 	ended_at: string | null;
 };
 
+export const MATCH_CLOCK_ACTION = {
+	start: "start",
+	pause: "pause",
+	resume: "resume",
+} as const;
+
+export type MatchClockAction =
+	(typeof MATCH_CLOCK_ACTION)[keyof typeof MATCH_CLOCK_ACTION];
+
+export const MATCH_CLOCK_STORAGE_KEY = "baba-match-clock" as const;
+
+export type MatchClockSnapshot = {
+	started_at: string | null;
+	paused_at: string | null;
+	pause_accumulated_seconds: number;
+	pending: MatchClockAction[];
+};
+
+export function matchClockSnapshotFromFields(
+	fields: Pick<
+		MatchClockFields,
+		"started_at" | "paused_at" | "pause_accumulated_seconds"
+	>,
+): MatchClockSnapshot {
+	return {
+		started_at: fields.started_at,
+		paused_at: fields.paused_at,
+		pause_accumulated_seconds: fields.pause_accumulated_seconds,
+		pending: [],
+	};
+}
+
+export function hasMatchClockLocal(
+	local: MatchClockSnapshot | undefined,
+): local is MatchClockSnapshot {
+	return (
+		local !== undefined &&
+		(local.started_at !== null || local.pending.length > 0)
+	);
+}
+
+export function applyMatchClockAction(
+	snapshot: MatchClockSnapshot,
+	action: MatchClockAction,
+	nowMs: number,
+): MatchClockSnapshot {
+	const nowIso = new Date(nowMs).toISOString();
+	switch (action) {
+		case MATCH_CLOCK_ACTION.start: {
+			if (snapshot.started_at !== null) {
+				return snapshot;
+			}
+
+			return {
+				...snapshot,
+				started_at: nowIso,
+				pending: [...snapshot.pending, action],
+			};
+		}
+		case MATCH_CLOCK_ACTION.pause: {
+			if (snapshot.started_at === null || snapshot.paused_at !== null) {
+				return snapshot;
+			}
+
+			return {
+				...snapshot,
+				paused_at: nowIso,
+				pending: [...snapshot.pending, action],
+			};
+		}
+		case MATCH_CLOCK_ACTION.resume: {
+			if (snapshot.paused_at === null) {
+				return snapshot;
+			}
+
+			const pausedAt = Date.parse(snapshot.paused_at);
+			const extra = Number.isFinite(pausedAt)
+				? Math.max(0, Math.floor((nowMs - pausedAt) / 1000))
+				: 0;
+			return {
+				...snapshot,
+				paused_at: null,
+				pause_accumulated_seconds: snapshot.pause_accumulated_seconds + extra,
+				pending: [...snapshot.pending, action],
+			};
+		}
+		default: {
+			const _exhaustive: never = action;
+			return _exhaustive;
+		}
+	}
+}
+
+export function shiftMatchClockPending(
+	snapshot: MatchClockSnapshot,
+): MatchClockSnapshot {
+	return {
+		...snapshot,
+		pending: snapshot.pending.slice(1),
+	};
+}
+
+export function mergeMatchClock<T extends MatchClockFields>(
+	server: T,
+	local: MatchClockSnapshot | undefined,
+): T {
+	if (server.ended_at !== null || !hasMatchClockLocal(local)) {
+		return server;
+	}
+
+	return {
+		...server,
+		started_at: local.started_at,
+		paused_at: local.paused_at,
+		pause_accumulated_seconds: local.pause_accumulated_seconds,
+	};
+}
+
 export const EVENT_MATCH_END_INTENT = {
 	end: "end",
 	next: "next",

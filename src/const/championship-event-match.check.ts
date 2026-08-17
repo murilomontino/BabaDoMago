@@ -4,6 +4,7 @@ import type {
 } from "../types/championship-event.ts";
 import { CHAMPIONSHIP_EVENT } from "./championship-event.ts";
 import {
+	applyMatchClockAction,
 	canConfirmMatchTeams,
 	clampMatchDurationMinutes,
 	EVENT_GOAL_KIND,
@@ -30,11 +31,13 @@ import {
 	isMatchSlotGoalkeeper,
 	isOpenMatch,
 	lastMatchGoal,
+	MATCH_CLOCK_ACTION,
 	matchAssistCandidates,
 	matchBenchPlayerIds,
 	matchClockElapsedSeconds,
 	matchClockIsPaused,
 	matchClockIsStarted,
+	matchClockSnapshotFromFields,
 	matchDurationSeconds,
 	matchEndWinnerLabel,
 	matchGoalForTeamA,
@@ -49,6 +52,7 @@ import {
 	matchTeamStarName,
 	matchWinnerColor,
 	matchWinnerTeamId,
+	mergeMatchClock,
 	openEventMatch,
 	shouldStartEventMatch,
 	sortBenchForSlot,
@@ -615,6 +619,69 @@ check(
 	}),
 	true,
 	"is started",
+);
+
+const seeded = matchClockSnapshotFromFields(clockBase);
+const pausedLocal = applyMatchClockAction(
+	seeded,
+	MATCH_CLOCK_ACTION.pause,
+	startMs + 10_000,
+);
+check(pausedLocal.pending.join(","), MATCH_CLOCK_ACTION.pause, "pause pending");
+check(
+	matchClockElapsedSeconds(
+		mergeMatchClock(clockBase, pausedLocal),
+		startMs + 60_000,
+	),
+	10,
+	"local pause freezes elapsed",
+);
+const resumedLocal = applyMatchClockAction(
+	pausedLocal,
+	MATCH_CLOCK_ACTION.resume,
+	startMs + 25_000,
+);
+check(resumedLocal.paused_at, null, "resume clears pause");
+check(resumedLocal.pause_accumulated_seconds, 15, "resume accumulates pause");
+check(
+	matchClockElapsedSeconds(
+		mergeMatchClock(clockBase, resumedLocal),
+		startMs + 40_000,
+	),
+	25,
+	"resume excludes paused time",
+);
+check(
+	applyMatchClockAction(pausedLocal, MATCH_CLOCK_ACTION.pause, startMs + 20_000)
+		.pending.length,
+	1,
+	"pause noop skips pending",
+);
+const startedLocal = applyMatchClockAction(
+	matchClockSnapshotFromFields({
+		started_at: null,
+		paused_at: null,
+		pause_accumulated_seconds: 0,
+	}),
+	MATCH_CLOCK_ACTION.start,
+	startMs,
+);
+check(startedLocal.started_at, clockBase.started_at, "start stamps now");
+check(
+	mergeMatchClock(
+		{ ...clockBase, started_at: "2026-08-14T12:00:05.000Z" },
+		startedLocal,
+	).started_at,
+	clockBase.started_at,
+	"merge prefers local",
+);
+check(
+	mergeMatchClock(
+		{ ...clockBase, ended_at: "2026-08-14T12:01:00.000Z" },
+		pausedLocal,
+	).paused_at,
+	null,
+	"ended ignores local",
 );
 
 console.log("championship-event-match ok");
