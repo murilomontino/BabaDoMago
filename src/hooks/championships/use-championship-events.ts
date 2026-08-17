@@ -370,17 +370,20 @@ export function useAddChampionshipEventGoal(_championshipId: number) {
 			scorerPlayerId,
 			assistPlayerId,
 			isOwnGoal,
+			elapsedSeconds,
 		}: {
 			matchId: number;
 			scorerPlayerId: number;
 			assistPlayerId: number | null;
 			isOwnGoal: boolean;
+			elapsedSeconds: number | null;
 		}) =>
 			addChampionshipEventGoal(
 				matchId,
 				scorerPlayerId,
 				assistPlayerId,
 				isOwnGoal,
+				elapsedSeconds,
 			),
 		onSuccess: async () => {
 			await invalidateChampionshipEventQueries(queryClient);

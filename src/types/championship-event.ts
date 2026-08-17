@@ -66,6 +66,7 @@ export type ChampionshipEventGoal = {
 	scorer_player_id: number;
 	assist_player_id: number | null;
 	is_own_goal: boolean;
+	elapsed_seconds: number | null;
 	created_at: string;
 };
 

@@ -305,6 +305,7 @@ export type Database = {
 				Row: {
 					assist_player_id: number | null;
 					created_at: string;
+					elapsed_seconds: number | null;
 					event_id: number;
 					id: number;
 					is_own_goal: boolean;
@@ -314,6 +315,7 @@ export type Database = {
 				Insert: {
 					assist_player_id?: number | null;
 					created_at?: string;
+					elapsed_seconds?: number | null;
 					event_id: number;
 					id?: number;
 					is_own_goal?: boolean;
@@ -323,6 +325,7 @@ export type Database = {
 				Update: {
 					assist_player_id?: number | null;
 					created_at?: string;
+					elapsed_seconds?: number | null;
 					event_id?: number;
 					id?: number;
 					is_own_goal?: boolean;
@@ -625,6 +628,7 @@ export type Database = {
 					scorer_player_id: number;
 					assist_player_id: number | null;
 					is_own_goal: boolean;
+					elapsed_seconds?: number | null;
 				};
 				Returns: Json;
 			};

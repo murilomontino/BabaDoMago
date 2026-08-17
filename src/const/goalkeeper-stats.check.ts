@@ -99,6 +99,7 @@ function eventRow(): ChampionshipEvent {
 						scorer_player_id: 2,
 						assist_player_id: null,
 						is_own_goal: false,
+						elapsed_seconds: null,
 						created_at: "2026-08-01T22:05:00.000Z",
 					},
 					{
@@ -108,6 +109,7 @@ function eventRow(): ChampionshipEvent {
 						scorer_player_id: 1,
 						assist_player_id: null,
 						is_own_goal: true,
+						elapsed_seconds: null,
 						created_at: "2026-08-01T22:06:00.000Z",
 					},
 				],

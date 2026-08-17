@@ -2,6 +2,7 @@ import { X } from "lucide-react";
 import { GoalTimelineEvent } from "@/components/molecules/goal-timeline-event";
 import { EVENT_ACTION } from "@/const/championship-event";
 import {
+	formatMatchClock,
 	matchGoalForTeamA,
 	matchGoalTimeline,
 } from "@/const/championship-event-match";
@@ -81,7 +82,10 @@ export function MatchGoalTimeline({
 							{forTeamA && undo}
 							{forTeamA && event}
 						</div>
-						<span />
+						<span className="text-center text-[10px] font-medium tabular-nums text-fg-muted">
+							{goal.elapsed_seconds !== null &&
+								formatMatchClock(goal.elapsed_seconds)}
+						</span>
 						<div className="flex min-w-0 items-center justify-start gap-0.5">
 							{!forTeamA && event}
 							{!forTeamA && undo}

@@ -47,6 +47,7 @@ import {
 	matchActiveTeamPlayers,
 	matchAssistCandidates,
 	matchBenchPlayerIds,
+	matchClockElapsedSeconds,
 	matchClockIsPaused,
 	matchClockIsStarted,
 	matchEndWinnerLabel,
@@ -91,6 +92,12 @@ type PendingSwap = {
 type GoalTarget = {
 	teamId: number;
 	player: ChampionshipEventMatchPlayer;
+};
+
+type ClockHold = {
+	elapsedSeconds: number;
+	resumeOnClose: boolean;
+	pausedAt: string;
 };
 
 function fallbackPlayer(
@@ -156,6 +163,7 @@ type ChampionshipEventPlayProps = {
 		scorerPlayerId: number;
 		assistPlayerId: number | null;
 		isOwnGoal: boolean;
+		elapsedSeconds: number | null;
 	}) => Promise<void>;
 	onUndoGoal: (goalId: number) => Promise<void>;
 	onEnd: () => Promise<void>;
@@ -643,6 +651,8 @@ export function ChampionshipEventPlay({
 	const [pendingSwap, setPendingSwap] = useState<PendingSwap | null>(null);
 	const [goalTarget, setGoalTarget] = useState<GoalTarget | null>(null);
 	const [ownGoalTeamId, setOwnGoalTeamId] = useState<number | null>(null);
+	const [clockHold, setClockHold] = useState<ClockHold | null>(null);
+	const goalPauseRef = useRef<Promise<void> | null>(null);
 	const [endIntent, setEndIntent] = useState<EventMatchEndIntent | null>(null);
 	const [colorTeam, setColorTeam] = useState<ChampionshipEventTeam | null>(
 		null,
@@ -799,6 +809,45 @@ export function ChampionshipEventPlay({
 			? EVENT_ACTION.swapPlayer
 			: EVENT_ACTION.fillSlot
 		: EVENT_ACTION.fillSlot;
+	const clockMatch = clockHold
+		? { ...match, paused_at: match.paused_at ?? clockHold.pausedAt }
+		: match;
+	const goalModalOpen = goalTarget !== null || ownGoalTeamId !== null;
+
+	function beginGoalClockHold() {
+		if (!match) {
+			return;
+		}
+
+		const running = matchClockIsStarted(match) && !matchClockIsPaused(match);
+		setClockHold({
+			elapsedSeconds: matchClockElapsedSeconds(match, Date.now()),
+			resumeOnClose: running,
+			pausedAt: match.paused_at ?? new Date().toISOString(),
+		});
+		if (!running) {
+			goalPauseRef.current = null;
+			return;
+		}
+
+		goalPauseRef.current = onPause();
+	}
+
+	async function endGoalClockHold() {
+		const shouldResume = clockHold?.resumeOnClose === true;
+		const pendingPause = goalPauseRef.current;
+		goalPauseRef.current = null;
+		setClockHold(null);
+		if (pendingPause) {
+			await pendingPause;
+		}
+
+		if (!shouldResume) {
+			return;
+		}
+
+		await onResume();
+	}
 
 	return (
 		<div className="flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden">
@@ -817,6 +866,7 @@ export function ChampionshipEventPlay({
 						return;
 					}
 
+					beginGoalClockHold();
 					setGoalTarget({ teamId: match.team_a_id, player });
 				}}
 				onSetGoalkeeper={(player) => {
@@ -845,6 +895,7 @@ export function ChampionshipEventPlay({
 									return;
 								}
 
+								beginGoalClockHold();
 								setOwnGoalTeamId(match.team_a_id);
 							}}
 						/>
@@ -877,30 +928,31 @@ export function ChampionshipEventPlay({
 									return;
 								}
 
+								beginGoalClockHold();
 								setOwnGoalTeamId(match.team_b_id);
 							}}
 						/>
 					</div>
 				</div>
 				<MatchClockBar
-					match={match}
-					busy={busy}
+					match={clockMatch}
+					busy={busy || goalModalOpen}
 					onStartClock={() => {
-						if (busy) {
+						if (busy || goalModalOpen) {
 							return;
 						}
 
 						void onStartClock();
 					}}
 					onPause={() => {
-						if (busy) {
+						if (busy || goalModalOpen) {
 							return;
 						}
 
 						void onPause();
 					}}
 					onResume={() => {
-						if (busy) {
+						if (busy || goalModalOpen) {
 							return;
 						}
 
@@ -945,6 +997,7 @@ export function ChampionshipEventPlay({
 						return;
 					}
 
+					beginGoalClockHold();
 					setGoalTarget({ teamId: match.team_b_id, player });
 				}}
 				onSetGoalkeeper={(player) => {
@@ -1020,6 +1073,7 @@ export function ChampionshipEventPlay({
 						}
 
 						setGoalTarget(null);
+						void endGoalClockHold();
 					}}
 					onConfirm={async (values) => {
 						const payload = matchGoalPayload({
@@ -1027,8 +1081,12 @@ export function ChampionshipEventPlay({
 							kind: values.kind,
 							assistPlayerId: values.assistPlayerId,
 						});
-						await onAddGoal(payload);
+						await onAddGoal({
+							...payload,
+							elapsedSeconds: clockHold?.elapsedSeconds ?? 0,
+						});
 						setGoalTarget(null);
+						await endGoalClockHold();
 					}}
 				/>
 			)}
@@ -1046,14 +1104,17 @@ export function ChampionshipEventPlay({
 						}
 
 						setOwnGoalTeamId(null);
+						void endGoalClockHold();
 					}}
 					onSelect={async (playerId) => {
 						await onAddGoal({
 							scorerPlayerId: playerId,
 							assistPlayerId: null,
 							isOwnGoal: true,
+							elapsedSeconds: clockHold?.elapsedSeconds ?? 0,
 						});
 						setOwnGoalTeamId(null);
+						await endGoalClockHold();
 					}}
 				/>
 			)}

@@ -91,6 +91,7 @@ function goal(
 		match_id: 1,
 		event_id: 1,
 		assist_player_id: overrides.assist_player_id ?? null,
+		elapsed_seconds: null,
 		created_at: "2026-08-13T00:00:00Z",
 		...overrides,
 	};
@@ -385,6 +386,27 @@ const timeline = matchGoalTimeline([
 	}),
 ]);
 check(timeline.map((item) => item.id).join(","), "1,3,2", "timeline order");
+const elapsedTimeline = matchGoalTimeline([
+	goal({
+		id: 2,
+		scorer_player_id: 2,
+		is_own_goal: false,
+		elapsed_seconds: 90,
+		created_at: "2026-08-13T00:00:01Z",
+	}),
+	goal({
+		id: 1,
+		scorer_player_id: 1,
+		is_own_goal: false,
+		elapsed_seconds: 30,
+		created_at: "2026-08-13T00:00:02Z",
+	}),
+]);
+check(
+	elapsedTimeline.map((item) => item.id).join(","),
+	"1,2",
+	"timeline elapsed order",
+);
 check(
 	matchGoalForTeamA(goal({ scorer_player_id: 1, is_own_goal: false }), teamA),
 	true,

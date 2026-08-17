@@ -544,6 +544,16 @@ export function matchGoalTimeline(
 	goals: readonly ChampionshipEventGoal[],
 ): ChampionshipEventGoal[] {
 	return [...goals].sort((left, right) => {
+		const leftElapsed = left.elapsed_seconds;
+		const rightElapsed = right.elapsed_seconds;
+		if (leftElapsed !== null && rightElapsed !== null) {
+			if (leftElapsed !== rightElapsed) {
+				return leftElapsed - rightElapsed;
+			}
+
+			return left.id - right.id;
+		}
+
 		if (left.created_at !== right.created_at) {
 			return left.created_at < right.created_at ? -1 : 1;
 		}

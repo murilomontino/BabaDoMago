@@ -104,6 +104,7 @@ const EVENT_COLUMNS = `
 			scorer_player_id,
 			assist_player_id,
 			is_own_goal,
+			elapsed_seconds,
 			created_at
 		)
 	)
@@ -251,6 +252,8 @@ function asGoal(value: unknown): ChampionshipEventGoal {
 		assist_player_id:
 			typeof row.assist_player_id === "number" ? row.assist_player_id : null,
 		is_own_goal: row.is_own_goal === true,
+		elapsed_seconds:
+			typeof row.elapsed_seconds === "number" ? row.elapsed_seconds : null,
 		created_at: String(row.created_at),
 	};
 }
@@ -715,12 +718,14 @@ export async function addChampionshipEventGoal(
 	scorerPlayerId: number,
 	assistPlayerId: number | null,
 	isOwnGoal: boolean,
+	elapsedSeconds: number | null,
 ): Promise<void> {
 	const { error } = await supabase.rpc("add_championship_event_goal", {
 		match_id: matchId,
 		scorer_player_id: scorerPlayerId,
 		assist_player_id: assistPlayerId,
 		is_own_goal: isOwnGoal,
+		elapsed_seconds: elapsedSeconds,
 	});
 
 	if (error) {
