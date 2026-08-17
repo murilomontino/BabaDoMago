@@ -35,6 +35,7 @@ export const PODIUM_LABEL = {
 	tab: "Pódio",
 	metric: "Métrica",
 	synergy: "Sinergia",
+	assistedGoals: "O mais servido",
 	emptyPlayers: "Nenhum jogador ainda",
 	emptyStats: "Nenhuma estatística ainda",
 } as const;
@@ -118,6 +119,10 @@ export function isPodiumPlayerMetric(
 export function podiumMetricLabel(metric: PodiumMetricId): string {
 	if (metric === PODIUM_METRIC.synergy) {
 		return PODIUM_LABEL.synergy;
+	}
+
+	if (metric === ROSTER_COLUMN.assisted_goals) {
+		return PODIUM_LABEL.assistedGoals;
 	}
 
 	return ROSTER_COLUMN_LABEL[metric];

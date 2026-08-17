@@ -57,6 +57,10 @@ function player(
 }
 
 check(podiumShareHeading(ROSTER_COLUMN.goals), "Pódio · Gols");
+check(
+	podiumShareHeading(ROSTER_COLUMN.assisted_goals),
+	"Pódio · O mais servido",
+);
 check(podiumShareHeading(PODIUM_METRIC.synergy), "Pódio · Sinergia");
 check(podiumSharePeriodSlug(2026, null, []), "Temporada 2026");
 check(podiumSharePeriodSlug(2027, null, []), "Temporada 2027");

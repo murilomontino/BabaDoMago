@@ -22,6 +22,7 @@ import {
 	parsePodiumMonth,
 	podiumAvailableYears,
 	podiumDefaultYear,
+	podiumMetricLabel,
 	podiumSeasonLabel,
 	podiumStandings,
 	rankPodiumRows,
@@ -47,6 +48,11 @@ check(PODIUM_PLACES.join(",") === "1,2,3", "places order");
 check(PODIUM_DISPLAY_ORDER.join(",") === "2,1,3", "display 2-1-3");
 check(PODIUM_DEFAULT_METRIC === ROSTER_COLUMN.goals, "default goals");
 check(PODIUM_LABEL.tab === "Pódio", "tab label");
+check(
+	podiumMetricLabel(ROSTER_COLUMN.assisted_goals) === PODIUM_LABEL.assistedGoals,
+	"assisted goals podium label",
+);
+check(PODIUM_LABEL.assistedGoals === "O mais servido", "assisted goals name");
 check(parsePodiumMetric("goals") === ROSTER_COLUMN.goals, "parse goals");
 check(parsePodiumMetric("assists") === ROSTER_COLUMN.assists, "parse assists");
 check(
