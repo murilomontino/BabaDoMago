@@ -115,6 +115,7 @@ const player: ChampionshipPlayer = {
 	user_id: null,
 	display_name: "Ana",
 	nickname: null,
+	nickname_tags: [],
 	avatar_url: null,
 	rating: 5,
 	role: "member",

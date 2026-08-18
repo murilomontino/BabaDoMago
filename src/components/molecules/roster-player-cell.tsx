@@ -17,18 +17,11 @@ import {
 	playerKindFromGoalkeeper,
 } from "@/const/player-name";
 import { PLAYER_PROFILE_LABEL } from "@/const/player-profile";
-import { MODAL_CLASS } from "@/const/ui";
+import { MODAL_CLASS, PLAYER_KIND_SELECT_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 const ROLE_TAG_CLASS =
 	"mt-1 inline-flex rounded-full bg-pitch-soft px-2 py-0.5 text-xs font-medium text-pitch-fg";
-
-const KIND_SELECT_CLASS =
-	"mt-1 h-6 cursor-pointer rounded-full border-0 px-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-pitch/20";
-
-const KIND_SELECT_ON_CLASS = `${KIND_SELECT_CLASS} bg-pitch-soft text-pitch-fg`;
-
-const KIND_SELECT_OFF_CLASS = `${KIND_SELECT_CLASS} bg-surface-muted text-fg-muted`;
 
 const ROLE_PICKER = {
 	title: "Permissão",
@@ -93,8 +86,8 @@ export function RosterPlayerCell({
 								value={selectedKind}
 								className={
 									selectedKind === PLAYER_KIND.goalkeeper
-										? KIND_SELECT_ON_CLASS
-										: KIND_SELECT_OFF_CLASS
+										? PLAYER_KIND_SELECT_CLASS.on
+										: PLAYER_KIND_SELECT_CLASS.off
 								}
 								onChange={(event) => {
 									const nextKind = playerKindFromGoalkeeper(

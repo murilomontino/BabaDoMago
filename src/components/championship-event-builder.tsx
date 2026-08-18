@@ -13,6 +13,7 @@ import {
 	EventTeamRatingAverage,
 	EventTeamRemoveButton,
 } from "@/components/event-team-player";
+import { AttendanceFloatingSave } from "@/components/molecules/attendance-floating-save";
 import { Tabs } from "@/components/tabs";
 import {
 	type AttendanceSeedMode,
@@ -512,7 +513,7 @@ export function ChampionshipEventBuilder({
 								onChange={handleTabChange}
 							/>
 							{step === EVENT_BUILDER_STEP.attendance && (
-								<>
+								<div className="space-y-4 pb-24 md:pb-0">
 									<p className="text-sm font-medium text-fg">Presentes</p>
 									<EventAttendanceTable
 										players={players}
@@ -545,9 +546,19 @@ export function ChampionshipEventBuilder({
 												Cancelar
 											</Button>
 										)}
-										<Button type="submit">Continuar</Button>
+										<Button type="submit" className="hidden md:inline-flex">
+											{EVENT_ACTION.continue}
+										</Button>
 									</div>
-								</>
+									<AttendanceFloatingSave
+										selected={presentIds.length}
+										total={players.length}
+										disabled={isPending}
+										type="submit"
+									>
+										{EVENT_ACTION.continue}
+									</AttendanceFloatingSave>
+								</div>
 							)}
 							{step === EVENT_BUILDER_STEP.teams && (
 								<FieldArray name="teams">

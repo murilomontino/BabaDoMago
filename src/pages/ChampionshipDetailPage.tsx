@@ -51,6 +51,7 @@ import {
 } from "@/const/championship-tab";
 import {
 	confirmClaimPlayerMessage,
+	normalizeNicknameTags,
 	playerVisibleName,
 } from "@/const/player-name";
 import {
@@ -281,20 +282,28 @@ export function ChampionshipDetailPage() {
 		setPendingNicknamePlayer(null);
 	}
 
-	function handleNicknameConfirm(nickname: string) {
+	function handleNicknameConfirm(nickname: string, nicknameTags: string[]) {
 		if (!pendingNicknamePlayer) {
 			return;
 		}
 
 		const next = nickname.trim();
 		const current = pendingNicknamePlayer.nickname?.trim() ?? "";
-		if (next === current) {
+		const nextTags = normalizeNicknameTags(nicknameTags);
+		const currentTags = normalizeNicknameTags(
+			pendingNicknamePlayer.nickname_tags,
+		);
+		if (next === current && nextTags.join("\0") === currentTags.join("\0")) {
 			setPendingNicknamePlayer(null);
 			return;
 		}
 
 		updateNickname.mutate(
-			{ playerId: pendingNicknamePlayer.id, nickname: next },
+			{
+				playerId: pendingNicknamePlayer.id,
+				nickname: next,
+				nicknameTags: nextTags,
+			},
 			{
 				onSuccess: () => {
 					setPendingNicknamePlayer(null);
@@ -606,6 +615,7 @@ export function ChampionshipDetailPage() {
 					players={activePlayers}
 					createdBy={data.created_by}
 					currentUserId={user?.id ?? null}
+					championshipName={data.name}
 					rosterCeiling={rosterCeiling}
 					copied={copied}
 					canInvite={permissions.invite}

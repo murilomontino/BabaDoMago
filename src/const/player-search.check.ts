@@ -41,4 +41,23 @@ const byLegal = filterPlayersBySearch(nicknamed, "murilo");
 check(byLegal.length, 1);
 check(byLegal[0]?.display_name, "Murilo");
 
+const tagged = [
+	{
+		display_name: "Murilo Montino",
+		nickname: "Vitinho",
+		nickname_tags: ["Vita", "José"],
+	},
+	{ display_name: "Ana", nickname: null, nickname_tags: [] },
+];
+const byTag = filterPlayersBySearch(tagged, "vita");
+check(byTag.length, 1);
+check(byTag[0]?.display_name, "Murilo Montino");
+
+const byTagAccent = filterPlayersBySearch(tagged, "jose");
+check(byTagAccent.length, 1);
+check(byTagAccent[0]?.nickname, "Vitinho");
+
+const missTag = filterPlayersBySearch(tagged, "neno");
+check(missTag.length, 0);
+
 console.log("player-search ok");

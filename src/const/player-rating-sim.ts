@@ -21,7 +21,7 @@ export const PLAYER_RATING_SIM_LABEL = {
 	delta: "Delta",
 	from: "De",
 	to: "Para",
-	mvp: "MVP (+0,1)",
+	mvp: "MVP (+2%)",
 	drawPoints: "Pontos por empate",
 	belowMinMatches: "Menos de 3 jogos: a nota não muda.",
 	deadZone: "Zona morta (45%–55%): delta 0.",
@@ -142,7 +142,7 @@ export function simulatePlayerEventRating({
 	const rate = averageOrZero(points, maxPoints);
 	const inDeadZone = eventRatingInDeadZone(wins, draws, losses, matches);
 	const isSeed = rating === PLAYER_RATING.default && !belowMinMatches;
-	const mvpBonus = eventMvpBonus(Boolean(isMvp));
+	const mvpBonus = eventMvpBonus(Boolean(isMvp), rating);
 	const delta =
 		eventRatingDelta(wins, draws, losses, matches, rating, ceiling) + mvpBonus;
 	const to = applyEventRatingDelta(rating, delta);

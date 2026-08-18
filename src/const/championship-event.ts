@@ -159,6 +159,7 @@ export const EVENT_ACTION = {
 	promoteRsvp: "Promover quem vai",
 	addMatch: "Adicionar partida",
 	startMatch: "Ir para nova partida",
+	continue: "Continuar",
 	continueMatch: "Continuar partida",
 	nextMatch: "Próxima partida",
 	endMatch: "Encerrar",

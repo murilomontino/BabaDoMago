@@ -38,7 +38,7 @@ Sem empates (`draws = 0`) o rate vira `wins / matches` e o delta antigo se mant�
 
 - `ceiling` = `max(maior rating do campeonato, 5)`, clamp 0–100
 - resultado ranqueado clamp 0.1–100 (`PLAYER_RATING.floor` / `max`); `rating === 0` continua sentinela
-- MVP soma `+0.1` em cima do delta (`EVENT_MVP.starBonus`)
+- MVP soma `max(0.1, ceil(rating * 0.02 * 10) / 10)` em cima do delta (`EVENT_MVP.percent` / `EVENT_MVP.minBonus`); snapshot `rating === 0` ainda ganha `0.1`
 - `championship_event_attendance.rating_delta` guarda o delta (ou a semente) aplicado; recompute faz `rating - old_delta + new_delta` com o snapshot da presença, não a nota atual, na fórmula
 
 Não inventar Elo, K-factor, ajuste por gols ou por adversário. Reusar `eventRatingDelta`. Ao alterar a regra, atualizar SQL + TS + `event-rating-adjustment.check.ts`.

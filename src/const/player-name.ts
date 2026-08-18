@@ -1,13 +1,19 @@
 export const PLAYER_NICKNAME = {
 	maxLength: 40,
+	maxTags: 8,
 } as const;
 
 export const PLAYER_LABEL = {
 	nickname: "Apelido",
 	nicknamePlaceholder: "Apelido no baba",
+	nicknameTags: "Apelidos para busca",
+	nicknameTagsPlaceholder: "vita, vitin",
+	nicknameTagRemove: "Remover",
 	eventStats: "Stats da rodada",
 	player: "Jogador",
 	goalkeeper: "Goleiro",
+	add: "add",
+	addAria: "Adicionar jogador",
 } as const;
 
 export const PLAYER_KIND = {
@@ -37,6 +43,28 @@ export function playerKindFromGoalkeeper(isGoalkeeper: boolean): PlayerKind {
 
 export function isGoalkeeperKind(kind: PlayerKind): boolean {
 	return kind === PLAYER_KIND.goalkeeper;
+}
+
+export function normalizeNicknameTags(tags: readonly string[]): string[] {
+	const seen = new Set<string>();
+	return tags.flatMap((raw) => {
+		const tag = raw.trim();
+		if (tag.length === 0 || tag.length > PLAYER_NICKNAME.maxLength) {
+			return [];
+		}
+
+		const key = tag.toLowerCase();
+		if (seen.has(key)) {
+			return [];
+		}
+
+		if (seen.size >= PLAYER_NICKNAME.maxTags) {
+			return [];
+		}
+
+		seen.add(key);
+		return [tag];
+	});
 }
 
 export function playerVisibleName(player: {

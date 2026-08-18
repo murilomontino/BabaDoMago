@@ -227,6 +227,15 @@ function PlayerProfileHeader({
 					{player.is_goalkeeper && (
 						<span className={ROLE_TAG_CLASS}>{PLAYER_LABEL.goalkeeper}</span>
 					)}
+					{player.nickname_tags.length > 0 && (
+						<div className="mt-1 flex flex-wrap gap-1">
+							{player.nickname_tags.map((tag) => (
+								<span key={tag} className={CHIP_CLASS}>
+									{tag}
+								</span>
+							))}
+						</div>
+					)}
 				</div>
 				<div className="ml-auto flex items-center gap-2">
 					<div className="flex items-center gap-2">

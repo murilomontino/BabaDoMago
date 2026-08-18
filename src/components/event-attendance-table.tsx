@@ -304,7 +304,7 @@ export function EventAttendanceTable({
 				<span className="flex items-center justify-between gap-2">
 					{PLAYER_SEARCH.label}
 					<span className="flex items-center gap-1">
-						<span className={CHIP_CLASS}>
+						<span className={`${CHIP_CLASS} hidden md:inline`}>
 							{`${presentIds.length}/${players.length}`}
 						</span>
 						<span className={CHIP_CLASS}>

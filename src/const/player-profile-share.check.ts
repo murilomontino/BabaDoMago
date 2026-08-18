@@ -20,6 +20,7 @@ const player: ChampionshipPlayer = {
 	user_id: "u-1",
 	display_name: "Ana Souza",
 	nickname: "Nena",
+	nickname_tags: [],
 	avatar_url: "https://example.com/ana.png",
 	rating: 8,
 	role: "captain",

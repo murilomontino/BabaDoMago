@@ -1,4 +1,8 @@
-import { PLAYER_NAME_LIST, parsePlayerNameList } from "./player-name-list.ts";
+import {
+	PLAYER_NAME_LIST,
+	parsePlayerNameList,
+	playerNameListInputValue,
+} from "./player-name-list.ts";
 
 function check(condition: boolean, message: string) {
 	if (!condition) {
@@ -60,6 +64,11 @@ check(
 	PLAYER_NAME_LIST.placeholder.includes("Um nome por linha"),
 	"placeholder hint",
 );
+check(
+	PLAYER_NAME_LIST.inputPlaceholder === "Nome, ou cole a lista",
+	"input placeholder",
+);
+check(PLAYER_NAME_LIST.separator === ", ", "list separator");
 
 check(parsePlayerNameList("Vitinho").join("|") === "Vitinho", "single name");
 check(parsePlayerNameList("  ").length === 0, "blank");
@@ -76,5 +85,24 @@ check(
 	parsePlayerNameList("1. Vitinho\r\n2. Murilo").join("|") === "Vitinho|Murilo",
 	"crlf",
 );
+check(
+	parsePlayerNameList("Vitinho, Murilo").join("|") === "Vitinho|Murilo",
+	"comma list",
+);
+check(
+	parsePlayerNameList("1. Vitinho ✅, 2. Murilo ✅").join("|") ===
+		"Vitinho|Murilo",
+	"comma numbered list",
+);
+check(
+	playerNameListInputValue(pasted) ===
+		parsePlayerNameList(pasted).join(PLAYER_NAME_LIST.separator),
+	"paste into input keeps cleaned names",
+);
+check(
+	playerNameListInputValue("1. Vitinho ✅") === "Vitinho",
+	"paste numbered line cleans",
+);
+check(playerNameListInputValue("Vitinho") === "Vitinho", "paste plain name");
 
 console.log("player-name-list ok");

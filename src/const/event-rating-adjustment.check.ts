@@ -238,7 +238,35 @@ const highCeilingMvpPreview = eventRatingPreview({
 	presentPlayerIds: null,
 	mvpPlayerIds: [1],
 });
-check(highCeilingMvpPreview[0]?.to, 20.1, "mvp +0.1 no jogador");
+check(highCeilingMvpPreview[0]?.to, 20.4, "mvp 2% da nota 20");
+
+const seedMvpPreview = eventRatingPreview({
+	attendance: [
+		{
+			player_id: 1,
+			display_name: "Novo",
+			wins: 4,
+			draws: 0,
+			losses: 0,
+			matches: 6,
+		},
+	],
+	players: [
+		{
+			id: 1,
+			rating: PLAYER_RATING.default,
+			nickname: null,
+			display_name: "Novo",
+		},
+	],
+	presentPlayerIds: null,
+	mvpPlayerIds: [1],
+});
+check(
+	seedMvpPreview[0]?.to,
+	EVENT_RATING_INITIAL.high + 0.1,
+	"sentinela mvp soma piso",
+);
 
 const draftPreview = eventRatingPreview({
 	attendance: [

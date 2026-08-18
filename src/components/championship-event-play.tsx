@@ -147,6 +147,7 @@ function fallbackPlayer(
 		user_id: null,
 		display_name: displayName,
 		nickname: null,
+		nickname_tags: [],
 		avatar_url: null,
 		rating: 0,
 		role: CHAMPIONSHIP_ROLE.member,

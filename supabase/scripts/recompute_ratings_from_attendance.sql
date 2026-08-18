@@ -1,6 +1,6 @@
 -- Recalcula rating_delta e championship_players.rating
 -- a partir da nota da presença (antes do evento) + aproveitamento
--- ((3*V + drawPts*E) / (3*J)) + MVP +0,1.
+-- ((3*V + drawPts*E) / (3*J)) + MVP 2% ceil 1 casa (mínimo +0,1).
 -- drawPts = 1.5 se E > D, senao 1.
 --
 -- Nao rode o arquivo inteiro.
@@ -44,7 +44,7 @@ recomputed as (
 			a.rating,
 			c.ceiling
 		) + case
-			when a.is_mvp then 0.1
+			when a.is_mvp then public.championship_event_mvp_bonus(a.rating)
 			else 0
 		end as new_delta
 	from public.championship_event_attendance a
@@ -104,7 +104,7 @@ select
 		a.rating,
 		c.ceiling
 	) + case
-		when a.is_mvp then 0.1
+		when a.is_mvp then public.championship_event_mvp_bonus(a.rating)
 		else 0
 	end as new_delta
 from public.championship_event_attendance a

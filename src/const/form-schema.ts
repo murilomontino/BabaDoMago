@@ -1,4 +1,4 @@
-import { boolean, number, object, string } from "yup";
+import { array, boolean, number, object, string } from "yup";
 import { CHAMPIONSHIP_EVENT } from "./championship-event.ts";
 import { PLAYER_NICKNAME } from "./player-name.ts";
 import { parsePlayerNameList } from "./player-name-list.ts";
@@ -10,6 +10,7 @@ export const FORM_MESSAGE = {
 	playerRequired: "Selecione um jogador",
 	ratingInvalid: "Nota inválida",
 	nicknameInvalid: "Apelido inválido",
+	nicknameTagsInvalid: "Apelidos inválidos",
 	eventTimeInvalid: "Hora inválida",
 	eventWeekdayInvalid: "Dia inválido",
 	locationInvalid: "Local inválido",
@@ -67,6 +68,19 @@ export const playerNicknameSchema = object({
 	nickname: string()
 		.trim()
 		.max(PLAYER_NICKNAME.maxLength, FORM_MESSAGE.nicknameInvalid),
+	nickname_tags: array()
+		.of(
+			string()
+				.trim()
+				.max(PLAYER_NICKNAME.maxLength, FORM_MESSAGE.nicknameInvalid)
+				.required(),
+		)
+		.max(PLAYER_NICKNAME.maxTags, FORM_MESSAGE.nicknameTagsInvalid)
+		.default([]),
+	tagDraft: string().max(
+		PLAYER_NICKNAME.maxLength,
+		FORM_MESSAGE.nicknameInvalid,
+	),
 });
 
 export const mergePlayersSchema = object({

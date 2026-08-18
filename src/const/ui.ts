@@ -47,6 +47,14 @@ export const CHIP_CLASS =
 
 export const PLAYER_AVATAR_CLASS = "ml-2 size-10 shrink-0 md:ml-0 md:size-9";
 
+const PLAYER_KIND_SELECT_BASE =
+	"mt-1 h-6 cursor-pointer rounded-full border-0 px-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-pitch/20";
+
+export const PLAYER_KIND_SELECT_CLASS = {
+	on: `${PLAYER_KIND_SELECT_BASE} bg-pitch-soft text-pitch-fg`,
+	off: `${PLAYER_KIND_SELECT_BASE} bg-surface-muted text-fg-muted`,
+} as const;
+
 export function buttonClassName(
 	variant: ButtonVariant,
 	className?: string,

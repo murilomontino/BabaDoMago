@@ -19,6 +19,7 @@ type ChampionshipPlayersRow = {
 	matches: number;
 	own_goals: number;
 	nickname: string | null;
+	nickname_tags: string[];
 	rating: number;
 	removed_at: string | null;
 	role: string;
@@ -480,6 +481,7 @@ export type Database = {
 					id?: number;
 					matches?: number;
 					nickname?: string | null;
+					nickname_tags?: string[];
 					own_goals?: number;
 					rating?: number;
 					removed_at?: string | null;
@@ -503,6 +505,7 @@ export type Database = {
 					id?: number;
 					matches?: number;
 					nickname?: string | null;
+					nickname_tags?: string[];
 					own_goals?: number;
 					rating?: number;
 					removed_at?: string | null;
@@ -916,7 +919,11 @@ export type Database = {
 				Returns: Json;
 			};
 			update_player_nickname: {
-				Args: { player_id: number; nickname: string };
+				Args: {
+					player_id: number;
+					nickname: string;
+					nickname_tags: string[];
+				};
 				Returns: Json;
 			};
 			update_player_rating: {

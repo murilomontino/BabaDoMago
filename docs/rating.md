@@ -28,7 +28,7 @@ Resultado: uma métrica única, a mesma no TypeScript e no Postgres, usada no pr
 | Teto (`ceiling`) | `max(maior rating do elenco, 5)`, limitado a 100 |
 | Piso | `0.1` para quem já tem nota; `0` só como sentinela |
 | Delta | Quanto a nota muda na rodada (ou a semente, na primeira vez) |
-| MVP | Bônus fixo `+0.1` em cima do delta |
+| MVP | `2%` da nota snapshot, ceil em 1 casa, mínimo `+0.1` |
 
 Pontuação da rodada (como futebol):
 
@@ -45,7 +45,7 @@ Pontuação da rodada (como futebol):
 - Menos de **3 jogos** na presença da rodada (`matches < 3`)
 - Jogador **já ranqueado** (`rating ≠ 0`) com aproveitamento na **zona morta**: 45% a 55% inclusive
 
-Nesses casos o delta da fórmula é `0` (o MVP ainda pode somar `+0.1` se marcado).
+Nesses casos o delta da fórmula é `0` (o MVP ainda pode somar o bônus percentual se marcado).
 
 ---
 
@@ -93,10 +93,15 @@ Exceção: snapshot de presença com `rating = 0`, nota manual já preenchida no
 Depois do delta (ou da semente), se o jogador for MVP da rodada:
 
 ```text
-deltaEfetivo = delta + 0.1
+bonus        = max(0.1, ceil(rating * 0.02 * 10) / 10)
+deltaEfetivo = delta + bonus
 ```
 
-Até 3 MVPs por rodada, escolhidos pelos melhores números; o bônus é plano (`+0.1`), não percentual.
+`rating` é o snapshot da presença (nota que o jogador já tinha). Sentinela `0` ainda ganha o piso `+0.1`.
+
+Até 3 MVPs por rodada, escolhidos pelos melhores números.
+
+Exemplos do bônus: `0.01 → 0.1`, `0.14 → 0.2`, nota `20 → +0.4`.
 
 ---
 
@@ -191,7 +196,7 @@ Zona morta (2V 2D), nota `4`, teto 5:
 | Sem MVP | 0 | 4 → 4 |
 | Com MVP | +0,1 | 4 → **4,1** |
 
-Mesmo na zona morta o MVP ainda soma `+0,1`.
+`4 × 2% = 0,08` arredonda para cima em `+0,1`. Nota `20` com MVP e 0 jogos: `+0,4` (`20 → 20,4`). Sentinela `0` com MVP: piso `+0,1`.
 
 ### Limites
 
@@ -210,7 +215,7 @@ Mesmo na zona morta o MVP ainda soma `+0,1`.
 | TypeScript (fonte da UI) | [`src/const/event-rating-adjustment.ts`](../src/const/event-rating-adjustment.ts) — `eventRatingDelta`, `applyEventRatingDelta`, `eventRatingPreview` |
 | Checks | [`src/const/event-rating-adjustment.check.ts`](../src/const/event-rating-adjustment.check.ts) |
 | Simulador (ficha do jogador) | [`src/const/player-rating-sim.ts`](../src/const/player-rating-sim.ts) — aba **Simulação** |
-| Postgres | `public.championship_event_rating_delta`, `public.championship_player_rating_apply` |
+| Postgres | `public.championship_event_rating_delta`, `public.championship_player_rating_apply`, `public.championship_event_mvp_bonus` |
 | Persistência ao encerrar | `adjust_championship_player_ratings_for_event` |
 | Recálculo manual (script) | [`supabase/scripts/recompute_ratings_from_attendance.sql`](../supabase/scripts/recompute_ratings_from_attendance.sql) |
 
