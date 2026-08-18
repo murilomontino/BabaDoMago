@@ -547,9 +547,9 @@ export function ChampionshipEventBuilder({
 												Cancelar
 											</Button>
 										)}
-										<Button type="submit" className="hidden md:inline-flex">
-											{EVENT_ACTION.continue}
-										</Button>
+										<span className="hidden md:inline-flex">
+											<Button type="submit">{EVENT_ACTION.continue}</Button>
+										</span>
 									</div>
 									<AttendanceFloatingSave
 										selected={presentIds.length}

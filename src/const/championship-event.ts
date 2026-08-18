@@ -362,7 +362,6 @@ export const EVENT_ATTENDANCE_COLUMN = {
 	player: "player",
 	rating: "rating",
 	count: "count",
-	actions: "actions",
 	eventDate: "eventDate",
 	goals: "goals",
 	assists: "assists",
@@ -380,7 +379,6 @@ export const EVENT_ATTENDANCE_COLUMN_LABEL = {
 	player: "Jogador",
 	rating: "Rating",
 	count: "Presenças",
-	actions: "Ações",
 	eventDate: "Data",
 	goals: "Gols",
 	assists: "Assistências",
@@ -537,6 +535,9 @@ export const ATTENDANCE_STATS_TEAM_FILTER_LABEL = {
 export const EVENT_ATTENDANCE_ACTION = {
 	selectAll: "Selecionar todos",
 	deselectAll: "Desselecionar todos",
+	hideSelected: "Ocultar selecionados",
+	selectedList: "Selecionados",
+	unselectAria: "Remover da presença",
 	addPlayer: "Adicionar",
 	addPlayerPlaceholder: "Nome do jogador",
 	addPlayerAria: "Adicionar jogador",
@@ -2337,4 +2338,17 @@ export function areAllVisiblePresent(
 
 	const present = new Set(presentIds);
 	return visibleIds.every((id) => present.has(id));
+}
+
+export function filterAttendanceListPlayers<T extends { id: number }>(
+	players: readonly T[],
+	presentIds: readonly number[],
+	hideSelected: boolean,
+): T[] {
+	if (!hideSelected) {
+		return [...players];
+	}
+
+	const present = new Set(presentIds);
+	return players.filter((player) => !present.has(player.id));
 }

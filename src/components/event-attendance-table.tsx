@@ -1,4 +1,6 @@
 import { createColumnHelper } from "@tanstack/react-table";
+import { X } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useMemo, useState } from "react";
 import { Switch } from "@/components/atoms/switch";
 import { Button } from "@/components/button";
@@ -23,7 +25,9 @@ import {
 	EVENT_ATTENDANCE_ACTION,
 	EVENT_ATTENDANCE_COLUMN,
 	EVENT_ATTENDANCE_COLUMN_LABEL,
+	filterAttendanceListPlayers,
 } from "@/const/championship-event";
+import { DATA_TABLE_ROW_EXIT } from "@/const/data-table";
 import { playerVisibleName } from "@/const/player-name";
 import { PLAYER_NAME_LIST } from "@/const/player-name-list";
 import { championshipRatingCeiling } from "@/const/player-rating";
@@ -35,6 +39,8 @@ import {
 	PLAYER_AVATAR_CLASS,
 } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
+
+const HIDE_SELECTED_SWITCH_ID = "event-attendance-hide-selected";
 
 type AttendanceRow = {
 	id: number;
@@ -53,6 +59,7 @@ type EventAttendanceTableProps = {
 	attendanceCounts: ReadonlyMap<number, number>;
 	presentIds?: readonly number[];
 	goalkeeperIds?: readonly number[];
+	lockedPresentIds?: readonly number[];
 	onSetPresent?: (playerIds: readonly number[], present: boolean) => void;
 	onSetGoalkeeper?: (
 		playerIds: readonly number[],
@@ -186,11 +193,64 @@ function AttendancePlayerCell({ player }: { player: AttendanceRow }) {
 	);
 }
 
+function AttendanceSelectedList({
+	players,
+	lockedIds,
+	onUnselect,
+}: {
+	players: readonly { id: number; display_name: string }[];
+	lockedIds: ReadonlySet<number>;
+	onUnselect: (playerId: number) => void;
+}) {
+	const reduceMotion = useReducedMotion() === true;
+	const duration = reduceMotion ? 0 : DATA_TABLE_ROW_EXIT.duration;
+
+	return (
+		<div className="space-y-1">
+			<p className="text-sm font-medium text-fg">
+				{EVENT_ATTENDANCE_ACTION.selectedList}
+			</p>
+			<ul className="flex flex-wrap gap-1">
+				<AnimatePresence initial={false}>
+					{players.map((player) => {
+						const locked = lockedIds.has(player.id);
+
+						return (
+							<motion.li
+								key={player.id}
+								initial={{ opacity: 0 }}
+								animate={{ opacity: 1 }}
+								exit={{ opacity: 0 }}
+								transition={{ duration }}
+								className={`inline-flex items-center gap-1 ${CHIP_CLASS}`}
+							>
+								{player.display_name}
+								<button
+									type="button"
+									disabled={locked}
+									aria-label={`${EVENT_ATTENDANCE_ACTION.unselectAria} ${player.display_name}`}
+									className="rounded text-fg-muted hover:text-fg disabled:opacity-50"
+									onClick={() => {
+										onUnselect(player.id);
+									}}
+								>
+									<X className="size-3" />
+								</button>
+							</motion.li>
+						);
+					})}
+				</AnimatePresence>
+			</ul>
+		</div>
+	);
+}
+
 export function EventAttendanceTable({
 	players,
 	attendanceCounts,
 	presentIds = [],
 	goalkeeperIds = [],
+	lockedPresentIds = [],
 	onSetPresent,
 	onSetGoalkeeper,
 	onSeedAttendance,
@@ -199,15 +259,39 @@ export function EventAttendanceTable({
 	onAddPlayer,
 }: EventAttendanceTableProps) {
 	const [query, setQuery] = useState("");
+	const [hideSelected, setHideSelected] = useState(false);
 	const selectable = Boolean(onSetPresent);
 	const showSeedActions = Boolean(onSeedAttendance);
+	const lockedIds = useMemo(
+		() => new Set(lockedPresentIds),
+		[lockedPresentIds],
+	);
 	const ceiling = championshipRatingCeiling(
 		players.map((player) => player.rating),
 	);
-	const visiblePlayers = useMemo(
+	const searchedPlayers = useMemo(
 		() => filterPlayersBySearch(players, query),
 		[players, query],
 	);
+	const visiblePlayers = useMemo(
+		() =>
+			filterAttendanceListPlayers(searchedPlayers, presentIds, hideSelected),
+		[searchedPlayers, presentIds, hideSelected],
+	);
+	const selectedPlayers = useMemo(() => {
+		if (!hideSelected) {
+			return [];
+		}
+
+		const present = new Set(presentIds);
+		return players.flatMap((player) => {
+			if (!present.has(player.id)) {
+				return [];
+			}
+
+			return [{ id: player.id, display_name: playerVisibleName(player) }];
+		});
+	}, [hideSelected, players, presentIds]);
 	const rows = useMemo(() => {
 		const list = visiblePlayers.map((player) => ({
 			id: player.id,
@@ -288,30 +372,14 @@ export function EventAttendanceTable({
 					}),
 				]
 			: [];
-		const actionsColumns = onAddPlayer
-			? [
-					attendanceColumnHelper.display({
-						id: EVENT_ATTENDANCE_COLUMN.actions,
-						header: EVENT_ATTENDANCE_COLUMN_LABEL.actions,
-						enableHiding: false,
-						enableSorting: false,
-						meta: {
-							align: "center" as const,
-							title: EVENT_ATTENDANCE_COLUMN_LABEL.actions,
-						},
-						cell: () => null,
-					}),
-				]
-			: [];
 
 		return attendanceColumnHelper.columns([
 			...presentColumns,
 			playerColumn,
 			ratingColumn,
 			countColumn,
-			...actionsColumns,
 		]);
-	}, [ceiling, onAddPlayer, selectable]);
+	}, [ceiling, selectable]);
 
 	const addPlayerCells = useMemo(() => {
 		if (!onAddPlayer) {
@@ -331,7 +399,7 @@ export function EventAttendanceTable({
 					isAddingPlayer={isAddingPlayer}
 				/>
 			),
-			[EVENT_ATTENDANCE_COLUMN.actions]: (
+			[EVENT_ATTENDANCE_COLUMN.present]: (
 				<RosterAddPlayerActionsCell isAddingPlayer={isAddingPlayer} />
 			),
 		};
@@ -344,6 +412,7 @@ export function EventAttendanceTable({
 			columns={columns}
 			getRowId={(row) => String(row.id)}
 			onRowClick={attendanceRowToggleHandler(onSetPresent)}
+			animateRowExit={hideSelected}
 			getRowClassName={(row) =>
 				`transition-colors duration-200 ease-in-out motion-reduce:transition-none ${
 					row.present ? "bg-pitch-soft" : "even:bg-surface-muted"
@@ -355,33 +424,56 @@ export function EventAttendanceTable({
 
 	return (
 		<div className="space-y-3">
-			<label
-				htmlFor="event-attendance-search"
-				className="block text-sm text-fg-muted"
-			>
-				<span className="flex items-center justify-between gap-2">
-					{PLAYER_SEARCH.label}
-					<span className="flex items-center gap-1">
-						<span className={`${CHIP_CLASS} hidden md:inline`}>
-							{`${presentIds.length}/${players.length}`}
-						</span>
-						<span className={CHIP_CLASS}>
-							{`${visiblePlayers.length} ${PLAYER_SEARCH.filteredLabel}`}
+			<div className="sticky top-0 z-20 -mx-4 space-y-2 bg-field px-4 py-2 md:static md:mx-0 md:bg-transparent md:px-0 md:py-0">
+				<label
+					htmlFor="event-attendance-search"
+					className="block text-sm text-fg-muted"
+				>
+					<span className="flex items-center justify-between gap-2">
+						{PLAYER_SEARCH.label}
+						<span className="flex items-center gap-1">
+							<span className={`${CHIP_CLASS} hidden md:inline`}>
+								{`${presentIds.length}/${players.length}`}
+							</span>
+							<span className={CHIP_CLASS}>
+								{`${visiblePlayers.length} ${PLAYER_SEARCH.filteredLabel}`}
+							</span>
 						</span>
 					</span>
-				</span>
-				<textarea
-					id="event-attendance-search"
-					rows={4}
-					value={query}
-					placeholder={PLAYER_NAME_LIST.placeholder}
-					autoComplete="off"
-					className={`mt-1 min-h-20 resize-y !h-auto ${FIELD_CLASS}`}
-					onChange={(event) => {
-						setQuery(event.target.value);
+					<textarea
+						id="event-attendance-search"
+						rows={4}
+						value={query}
+						placeholder={PLAYER_NAME_LIST.placeholder}
+						autoComplete="off"
+						className={`mt-1 min-h-20 resize-y h-auto! ${FIELD_CLASS}`}
+						onChange={(event) => {
+							setQuery(event.target.value);
+						}}
+					/>
+				</label>
+				{selectable && (
+					<div className="flex items-center justify-between gap-3 text-sm text-fg-muted">
+						<label htmlFor={HIDE_SELECTED_SWITCH_ID}>
+							{EVENT_ATTENDANCE_ACTION.hideSelected}
+						</label>
+						<Switch
+							id={HIDE_SELECTED_SWITCH_ID}
+							checked={hideSelected}
+							onCheckedChange={setHideSelected}
+						/>
+					</div>
+				)}
+			</div>
+			{hideSelected && selectedPlayers.length > 0 && onSetPresent && (
+				<AttendanceSelectedList
+					players={selectedPlayers}
+					lockedIds={lockedIds}
+					onUnselect={(playerId) => {
+						onSetPresent([playerId], false);
 					}}
 				/>
-			</label>
+			)}
 			{(selectable || showSeedActions) && (
 				<div className="space-y-2">
 					<div className="flex flex-wrap items-center gap-2">
@@ -452,9 +544,11 @@ export function EventAttendanceTable({
 					)}
 				</div>
 			)}
-			{rows.length === 0 && players.length > 0 && (
-				<p className="text-sm text-fg-muted">{PLAYER_SEARCH.empty}</p>
-			)}
+			{rows.length === 0 &&
+				searchedPlayers.length === 0 &&
+				players.length > 0 && (
+					<p className="text-sm text-fg-muted">{PLAYER_SEARCH.empty}</p>
+				)}
 			{showTable && !onAddPlayer && table}
 			{onAddPlayer && (
 				<RosterAddPlayerForm

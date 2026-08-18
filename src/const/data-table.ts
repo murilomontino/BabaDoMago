@@ -7,11 +7,19 @@ export const DATA_TABLE_MOBILE_ACTIONS = {
 	actions: "actions",
 } as const;
 
+export const DATA_TABLE_EXTRA_PRESENT = "present";
+
 export const DATA_TABLE_SORT = {
 	label: "Ordenar",
 	none: "Padrão",
 	asc: "Crescente",
 	desc: "Decrescente",
+} as const;
+
+export const DATA_TABLE_ROW_EXIT = {
+	y: -24,
+	opacity: 0,
+	duration: 0.2,
 } as const;
 
 export function dataTableDefaultDesc(columnId: string): boolean {

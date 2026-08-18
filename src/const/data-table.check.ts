@@ -1,5 +1,7 @@
 import {
+	DATA_TABLE_EXTRA_PRESENT,
 	DATA_TABLE_MOBILE_PRIMARY,
+	DATA_TABLE_ROW_EXIT,
 	DATA_TABLE_SORT,
 	dataTableDefaultDesc,
 	dataTableRowClickHandler,
@@ -62,7 +64,9 @@ check(
 check(mobileTableCellAbbr("unknown", []) === "", "abbr empty without title");
 
 check(DATA_TABLE_SORT.label === "Ordenar", "sort label");
+check(DATA_TABLE_EXTRA_PRESENT === "present", "extra present slot");
 check(DATA_TABLE_SORT.none === "Padrão", "sort none");
+check(DATA_TABLE_ROW_EXIT.y === -24, "row exit moves up");
 check(
 	dataTableDefaultDesc(DATA_TABLE_MOBILE_PRIMARY.player) === false,
 	"player sorts ascending",

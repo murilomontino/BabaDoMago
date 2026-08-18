@@ -25,8 +25,6 @@ import {
 	draftAttendanceForEnd,
 	drawBalancedEventTeams,
 	EVENT_ATTENDANCE_ACTION,
-	EVENT_ATTENDANCE_COLUMN,
-	EVENT_ATTENDANCE_COLUMN_LABEL,
 	EVENT_ATTENDANCE_MESSAGE,
 	EVENT_ATTENDANCE_STAT_ABBR,
 	EVENT_BUILDER_STEP,
@@ -57,6 +55,7 @@ import {
 	eventTeamsAreReady,
 	eventTeamsSharePlayers,
 	filterAttendanceByTeam,
+	filterAttendanceListPlayers,
 	formatChampionshipSchedule,
 	formatEventTeamRatingAverage,
 	formatEventTimeShort,
@@ -618,6 +617,30 @@ check(areAllVisiblePresent([1], [1, 2]), false);
 check(areAllVisiblePresent([1, 2, 3], []), false);
 check(
 	String(
+		filterAttendanceListPlayers([{ id: 1 }, { id: 2 }], [1], false).map(
+			(player) => player.id,
+		),
+	),
+	"1,2",
+);
+check(
+	String(
+		filterAttendanceListPlayers([{ id: 1 }, { id: 2 }], [1], true).map(
+			(player) => player.id,
+		),
+	),
+	"2",
+);
+check(
+	String(
+		filterAttendanceListPlayers([{ id: 1 }], [1], true).map(
+			(player) => player.id,
+		),
+	),
+	"",
+);
+check(
+	String(
 		eventTeamPlayerIds([
 			{
 				players: [{ player_id: 1 }, { player_id: 2 }],
@@ -853,8 +876,9 @@ check(isEventBuilderStep(null), false);
 check(EVENT_ATTENDANCE_ACTION.addPlayer, "Adicionar");
 check(EVENT_ATTENDANCE_ACTION.addPlayerPlaceholder, "Nome do jogador");
 check(EVENT_ATTENDANCE_ACTION.addPlayerAria, "Adicionar jogador");
-check(EVENT_ATTENDANCE_COLUMN.actions, "actions");
-check(EVENT_ATTENDANCE_COLUMN_LABEL.actions, "Ações");
+check(EVENT_ATTENDANCE_ACTION.hideSelected, "Ocultar selecionados");
+check(EVENT_ATTENDANCE_ACTION.selectedList, "Selecionados");
+check(EVENT_ATTENDANCE_ACTION.unselectAria, "Remover da presença");
 check(EVENT_ATTENDANCE_STAT_ABBR.goals, "G");
 check(EVENT_ATTENDANCE_STAT_ABBR.assistedGoals, "GS");
 check(EVENT_ATTENDANCE_STAT_ABBR.ownGoals, "GC");

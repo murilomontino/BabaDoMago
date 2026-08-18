@@ -16,7 +16,10 @@ function GoalGlyph() {
 	);
 }
 
-export function GoalIcon({ className, "aria-label": ariaLabel }: GoalIconProps) {
+export function GoalIcon({
+	className,
+	"aria-label": ariaLabel,
+}: GoalIconProps) {
 	return (
 		<svg
 			className={className}
