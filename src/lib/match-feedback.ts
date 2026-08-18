@@ -1,44 +1,79 @@
+export const MATCH_SOUND = {
+	start: "/soms/whistle-start.mp3",
+	goal: "/soms/goal-crowd.mp3",
+	end: "/soms/whistle-end.mp3",
+} as const;
+
 export const MATCH_FEEDBACK = {
 	goalMs: 40,
 	timeUpMs: [200, 80, 200],
-	whistleHz: 1760,
-	whistleFirstMs: 120,
-	whistleGapMs: 40,
-	whistleSecondMs: 180,
 } as const;
 
-let audioContext: AudioContext | null = null;
+const players = new Map<string, HTMLAudioElement>();
+const claimed = new Set<string>();
+let unlocked = false;
 
-function audioContextConstructor(): typeof AudioContext | undefined {
-	if (typeof window === "undefined") {
-		return undefined;
-	}
-
-	return window.AudioContext;
-}
-
-function getAudioContext(): AudioContext | null {
-	const Constructor = audioContextConstructor();
-	if (!Constructor) {
+function getPlayer(src: string): HTMLAudioElement | null {
+	if (typeof Audio === "undefined") {
 		return null;
 	}
 
-	if (!audioContext) {
-		audioContext = new Constructor();
+	const existing = players.get(src);
+	if (existing) {
+		return existing;
 	}
 
-	return audioContext;
+	const audio = new Audio(src);
+	audio.preload = "auto";
+	players.set(src, audio);
+	return audio;
 }
 
+// O iOS libera o áudio por elemento, e só dentro de um gesto do usuário. Roda
+// uma vez, no mudo, para o toque que inicia o relógio não sair sem apito.
 export function unlockMatchAudio(): void {
-	const context = getAudioContext();
-	if (!context) {
+	if (unlocked) {
 		return;
 	}
 
-	if (context.state === "suspended") {
-		void context.resume();
+	unlocked = true;
+	for (const src of Object.values(MATCH_SOUND)) {
+		const audio = getPlayer(src);
+		if (!audio) {
+			continue;
+		}
+
+		audio.muted = true;
+		void audio
+			.play()
+			.then(() => {
+				audio.muted = false;
+				if (claimed.has(src)) {
+					return;
+				}
+
+				audio.pause();
+				audio.currentTime = 0;
+			})
+			.catch(() => {
+				audio.muted = false;
+			});
 	}
+}
+
+function playSound(src: string): void {
+	const audio = getPlayer(src);
+	if (!audio) {
+		return;
+	}
+
+	claimed.add(src);
+	audio.muted = false;
+	audio.pause();
+	audio.currentTime = 0;
+	void audio.play().catch(() => {
+		return;
+	});
 }
 
 export function vibrate(pattern: number | readonly number[]): void {
@@ -58,43 +93,16 @@ export function vibrate(pattern: number | readonly number[]): void {
 	navigator.vibrate([...pattern]);
 }
 
-function playTone(
-	context: AudioContext,
-	frequency: number,
-	startOffset: number,
-	duration: number,
-) {
-	const oscillator = context.createOscillator();
-	const gain = context.createGain();
-	oscillator.type = "square";
-	oscillator.frequency.value = frequency;
-	gain.gain.value = 0.18;
-	oscillator.connect(gain);
-	gain.connect(context.destination);
-	const startAt = context.currentTime + startOffset;
-	oscillator.start(startAt);
-	oscillator.stop(startAt + duration);
-}
-
-export function whistle(): void {
-	const context = getAudioContext();
-	if (!context) {
-		return;
-	}
-
-	void context.resume();
-	const first = MATCH_FEEDBACK.whistleFirstMs / 1000;
-	const gap = MATCH_FEEDBACK.whistleGapMs / 1000;
-	const second = MATCH_FEEDBACK.whistleSecondMs / 1000;
-	playTone(context, MATCH_FEEDBACK.whistleHz, 0, first);
-	playTone(context, MATCH_FEEDBACK.whistleHz, first + gap, second);
+export function signalMatchStart(): void {
+	playSound(MATCH_SOUND.start);
 }
 
 export function signalGoal(): void {
+	playSound(MATCH_SOUND.goal);
 	vibrate(MATCH_FEEDBACK.goalMs);
 }
 
 export function signalMatchTimeUp(): void {
-	whistle();
+	playSound(MATCH_SOUND.end);
 	vibrate(MATCH_FEEDBACK.timeUpMs);
 }

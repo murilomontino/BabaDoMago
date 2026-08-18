@@ -6,6 +6,7 @@ import {
 import { Trophy } from "lucide-react";
 import { NuqsAdapter } from "nuqs/adapters/tanstack-router";
 import { EmptyState } from "@/components/empty-state";
+import { PwaInstallBanner } from "@/components/pwa-install-banner";
 import { PAGE_SHELL_CLASS } from "@/const/ui";
 import { AuthProvider } from "@/contexts/auth";
 import { ThemeProvider } from "@/contexts/theme";
@@ -23,6 +24,7 @@ function RootLayout() {
 			<AuthProvider>
 				<NuqsAdapter>
 					<Outlet />
+					<PwaInstallBanner />
 				</NuqsAdapter>
 			</AuthProvider>
 		</ThemeProvider>

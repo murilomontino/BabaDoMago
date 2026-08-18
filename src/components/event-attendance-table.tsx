@@ -424,7 +424,7 @@ export function EventAttendanceTable({
 
 	return (
 		<div className="space-y-3">
-			<div className="sticky top-0 z-20 -mx-4 space-y-2 bg-field px-4 py-2 md:static md:mx-0 md:bg-transparent md:px-0 md:py-0">
+			<div className="sticky top-0 z-20 -mx-5 space-y-2 bg-field px-5 py-2 md:static md:mx-0 md:bg-transparent md:px-0 md:py-0">
 				<label
 					htmlFor="event-attendance-search"
 					className="block text-sm text-fg-muted"

@@ -34,13 +34,20 @@ export const STAT_FIELD_CLASS =
 
 export const ERROR_CLASS = "text-sm text-danger";
 
+// Cada lado usa max() porque pt/pr/pb/pl vencem py/px na ordem do Tailwind:
+// um env() cru zeraria o respiro nos aparelhos sem inset.
 export const SAFE_AREA_CLASS =
-	"pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]";
+	"pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] pl-[max(1.25rem,env(safe-area-inset-left))] pr-[max(1.25rem,env(safe-area-inset-right))] sm:pl-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))]";
 
 export const SAFE_AREA_FAB_CLASS =
-	"right-[max(1rem,env(safe-area-inset-right))] bottom-[calc(1rem+env(safe-area-inset-bottom))]";
+	"right-[max(1.25rem,env(safe-area-inset-right))] bottom-[calc(1.25rem+env(safe-area-inset-bottom))]";
 
-export const PAGE_SHELL_CLASS = `mx-auto max-w-7xl px-4 py-8 sm:px-6 ${SAFE_AREA_CLASS}`;
+// ponytail: o recuo abaixo de md é a altura do stack de SAFE_AREA_FAB_CLASS
+// medida à mão. Se o FAB crescer, virar um layout com rodapé próprio.
+export const SAFE_AREA_BANNER_CLASS =
+	"bottom-[calc(5.5rem+env(safe-area-inset-bottom))] md:bottom-[calc(1.25rem+env(safe-area-inset-bottom))]";
+
+export const PAGE_SHELL_CLASS = `mx-auto max-w-7xl px-5 sm:px-6 ${SAFE_AREA_CLASS}`;
 
 export const CARD_CLASS =
 	"rounded-xl border border-line bg-surface p-4 shadow-sm";
