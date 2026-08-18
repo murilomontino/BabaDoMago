@@ -17,7 +17,7 @@ import {
 } from "@/const/championship-event-match";
 import { ROUTES } from "@/const/routes";
 import { SKELETON_LABEL } from "@/const/skeleton";
-import { BUTTON_VARIANT, ERROR_CLASS, SAFE_AREA_CLASS } from "@/const/ui";
+import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
 import {
 	useAddChampionshipEventGoal,
 	useChampionshipEvent,
