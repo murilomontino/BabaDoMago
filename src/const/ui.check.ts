@@ -5,7 +5,10 @@ import {
 	BUTTON_VARIANT,
 	buttonClassName,
 	ICON_BUTTON_SIZE_CLASS,
+	PAGE_SHELL_CLASS,
 	PLAYER_KIND_SELECT_CLASS,
+	SAFE_AREA_CLASS,
+	SAFE_AREA_FAB_CLASS,
 } from "./ui.ts";
 
 function check(condition: boolean, message: string) {
@@ -32,5 +35,8 @@ check(
 	PLAYER_KIND_SELECT_CLASS.off.includes("bg-surface-muted"),
 	"kind select off",
 );
+check(SAFE_AREA_CLASS.includes("safe-area-inset-bottom"), "safe area padding");
+check(SAFE_AREA_FAB_CLASS.includes("safe-area-inset-bottom"), "fab safe area");
+check(PAGE_SHELL_CLASS.includes(SAFE_AREA_CLASS), "page shell safe area");
 
 console.log("ui ok");

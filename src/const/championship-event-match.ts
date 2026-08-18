@@ -608,6 +608,28 @@ export function clampMatchDurationMinutes(minutes: number): number {
 	return Math.floor(minutes);
 }
 
+export function isMatchTimeUp(
+	elapsedSeconds: number,
+	durationSeconds: number,
+): boolean {
+	if (!Number.isFinite(elapsedSeconds) || !Number.isFinite(durationSeconds)) {
+		return false;
+	}
+
+	if (durationSeconds <= 0) {
+		return false;
+	}
+
+	return elapsedSeconds >= durationSeconds;
+}
+
+export function shouldSignalMatchTimeUp(
+	wasTimeUp: boolean,
+	isTimeUp: boolean,
+): boolean {
+	return isTimeUp && !wasTimeUp;
+}
+
 export function matchClockIsStarted(
 	match: Pick<MatchClockFields, "started_at" | "ended_at">,
 ): boolean {

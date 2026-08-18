@@ -17,7 +17,7 @@ import {
 } from "@/const/championship-event-match";
 import { ROUTES } from "@/const/routes";
 import { SKELETON_LABEL } from "@/const/skeleton";
-import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
+import { BUTTON_VARIANT, ERROR_CLASS, SAFE_AREA_CLASS } from "@/const/ui";
 import {
 	useAddChampionshipEventGoal,
 	useChampionshipEvent,
@@ -34,9 +34,10 @@ import {
 } from "@/hooks/championships/use-championship-events";
 import { useChampionship } from "@/hooks/championships/use-championships";
 import { useFlushMatchClock } from "@/hooks/match-clock-sync";
+import { useWakeLock } from "@/hooks/use-wake-lock";
 import { mutationErrorMessage } from "@/lib/error-message";
 
-const PLAY_SHELL_CLASS = "flex h-dvh flex-col overflow-hidden p-2";
+const PLAY_SHELL_CLASS = `flex h-dvh flex-col overflow-hidden overscroll-contain p-2 select-none touch-manipulation ${SAFE_AREA_CLASS}`;
 
 function startMatchErrorMessage(startMatch: {
 	isError: boolean;
@@ -78,6 +79,7 @@ export function ChampionshipEventPlayPage() {
 	const openMatchId =
 		openEventMatch(eventQuery.data?.matches ?? [])?.id ?? null;
 	useFlushMatchClock(openMatchId);
+	useWakeLock(openMatchId !== null);
 
 	if (championshipQuery.isPending || eventQuery.isPending) {
 		return <ChampionshipEventPlayPageSkeleton />;
@@ -154,7 +156,7 @@ export function ChampionshipEventPlayPage() {
 							mutationErrorMessage(pauseMatch) ??
 							mutationErrorMessage(resumeMatch)
 						}
-						onStart={async (teamAId, teamBId) => {
+						onStart={async (teamAId, teamBId, durationMinutes) => {
 							const { data } = await eventQuery.refetch();
 							const matches = data?.matches ?? event.matches;
 							if (!shouldStartEventMatch(matches)) {
@@ -166,6 +168,7 @@ export function ChampionshipEventPlayPage() {
 									eventId: event.id,
 									teamAId,
 									teamBId,
+									durationMinutes,
 								});
 							} catch (error) {
 								if (

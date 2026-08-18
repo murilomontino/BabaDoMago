@@ -300,11 +300,14 @@ export function useStartChampionshipEventMatch(_championshipId: number) {
 			eventId,
 			teamAId,
 			teamBId,
+			durationMinutes,
 		}: {
 			eventId: number;
 			teamAId: number;
 			teamBId: number;
-		}) => startChampionshipEventMatch(eventId, teamAId, teamBId),
+			durationMinutes?: number;
+		}) =>
+			startChampionshipEventMatch(eventId, teamAId, teamBId, durationMinutes),
 		onSuccess: async () => {
 			await invalidateChampionshipEventQueries(queryClient);
 		},

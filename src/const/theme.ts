@@ -18,6 +18,13 @@ export const THEME_STORAGE_KEY = "baba-theme";
 
 export const THEME_DARK_CLASS = "dark";
 
+export const THEME_COLOR = {
+	light: "#fafaf9",
+	dark: "#0c0a09",
+} as const;
+
+export const PWA_THEME_COLOR = "#166534";
+
 export const THEME_MODE_ORDER = [
 	THEME_MODE.light,
 	THEME_MODE.dark,
@@ -85,6 +92,17 @@ export function resolveTheme(
 	}
 }
 
+export function applyThemeColor(
+	appearance: ThemeAppearance,
+	meta: HTMLMetaElement | null,
+): void {
+	if (!meta) {
+		return;
+	}
+
+	meta.content = THEME_COLOR[appearance];
+}
+
 export function applyThemeClass(
 	appearance: ThemeAppearance,
 	root: HTMLElement,
@@ -92,4 +110,8 @@ export function applyThemeClass(
 	const isDark = appearance === THEME_APPEARANCE.dark;
 	root.classList.toggle(THEME_DARK_CLASS, isDark);
 	root.style.colorScheme = appearance;
+	applyThemeColor(
+		appearance,
+		root.ownerDocument.querySelector('meta[name="theme-color"]'),
+	);
 }

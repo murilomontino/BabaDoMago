@@ -3,7 +3,11 @@
 	<head>
 		<meta charset="UTF-8" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+		/>
+		<meta name="theme-color" content="#fafaf9" />
 		<title>Baba do Mago</title>
 		<script>
 			(function () {
@@ -20,6 +24,10 @@
 				var root = document.documentElement;
 				root.classList.toggle("dark", dark);
 				root.style.colorScheme = dark ? "dark" : "light";
+				var themeMeta = document.querySelector('meta[name="theme-color"]');
+				if (themeMeta) {
+					themeMeta.setAttribute("content", dark ? "#0c0a09" : "#fafaf9");
+				}
 			})();
 		</script>
 	</head>
