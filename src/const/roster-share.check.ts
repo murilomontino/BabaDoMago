@@ -12,6 +12,7 @@ import {
 	rosterSharePlayerName,
 	rosterShareStatColumnWidth,
 	rosterShareText,
+	sortRosterSharePlayers,
 } from "./roster-share.ts";
 import { ROSTER_COLUMN } from "./roster-stats.ts";
 
@@ -79,23 +80,53 @@ check(ROSTER_SHARE_STAT_COLUMNS.includes(ROSTER_COLUMN.assisted_goals), false);
 check(ROSTER_SHARE_STAT_COLUMNS.includes(ROSTER_COLUMN.losses), false);
 check(ROSTER_SHARE_STAT_COLUMNS.includes(ROSTER_COLUMN.draws), false);
 
-const card = rosterShareCard(
-	[
-		player(1, "Ana Souza", {
-			nickname: "Nena",
-			rating: 6,
-			goals: 4,
-			assists: 2,
-			matches: 6,
-			wins: 3,
-			is_goalkeeper: true,
-			avatar_url: "https://example.com/ana.png",
-		}),
-		player(2, "Bruno", { rating: 8, goals: 1, matches: 4, wins: 2 }),
-		player(3, "Caio", { rating: 8, goals: 0, matches: 2, wins: 1 }),
-	],
-	"Baba do Mago",
+const source = [
+	player(1, "Ana Souza", {
+		nickname: "Nena",
+		rating: 6,
+		goals: 4,
+		assists: 2,
+		matches: 6,
+		wins: 3,
+		is_goalkeeper: true,
+		avatar_url: "https://example.com/ana.png",
+	}),
+	player(2, "Bruno", { rating: 8, goals: 1, matches: 4, wins: 2 }),
+	player(3, "Caio", { rating: 8, goals: 0, matches: 2, wins: 1 }),
+];
+
+check(
+	sortRosterSharePlayers(source, null)
+		.map((item) => item.display_name)
+		.join(","),
+	"Ana Souza,Bruno,Caio",
 );
+check(
+	sortRosterSharePlayers(source, {
+		id: ROSTER_COLUMN.rating,
+		desc: true,
+	})
+		.map((item) => item.display_name)
+		.join(","),
+	"Bruno,Caio,Ana Souza",
+);
+check(
+	sortRosterSharePlayers(source, { id: ROSTER_COLUMN.goals, desc: true })
+		.map((item) => item.display_name)
+		.join(","),
+	"Ana Souza,Bruno,Caio",
+);
+check(
+	sortRosterSharePlayers(source, { id: ROSTER_COLUMN.player, desc: false })
+		.map((item) => item.display_name)
+		.join(","),
+	"Ana Souza,Bruno,Caio",
+);
+
+const card = rosterShareCard(source, "Baba do Mago", {
+	id: ROSTER_COLUMN.rating,
+	desc: true,
+});
 
 check(card.championshipName, "Baba do Mago");
 check(card.title, rosterShareHeading(3));
@@ -137,6 +168,11 @@ const text = rosterShareText(card);
 check(text.startsWith("Baba do Mago\nElenco · 3 jogadores\nBruno —"), true);
 check(text.includes("Nena GOL —"), true);
 check(text.includes("G 4"), true);
+
+const unsorted = rosterShareCard(source, "Baba do Mago");
+check(unsorted.players[0]?.name, "Nena GOL");
+check(unsorted.players[1]?.name, "Bruno");
+check(unsorted.players[2]?.name, "Caio");
 
 const emptyCard = rosterShareCard([], "");
 check(emptyCard.players.length, 0);

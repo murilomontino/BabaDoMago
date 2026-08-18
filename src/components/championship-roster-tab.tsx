@@ -1,10 +1,16 @@
 import { Copy, LoaderCircle, Share2, Users } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/button";
 import { ChampionshipRoster } from "@/components/championship-roster";
 import { SectionCard } from "@/components/section-card";
 import type { AssignableChampionshipRole } from "@/const/championship-role";
-import { ROSTER_SHARE_LABEL, rosterShareCard } from "@/const/roster-share";
+import { filterPlayersBySearch } from "@/const/player-search";
+import {
+	ROSTER_SHARE_LABEL,
+	type RosterShareSort,
+	rosterShareCard,
+	sameRosterShareSort,
+} from "@/const/roster-share";
 import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
 import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
 import { shareRosterImage } from "@/lib/share-roster-image";
@@ -97,15 +103,31 @@ export function ChampionshipRosterTab({
 }: ChampionshipRosterTabProps) {
 	const [isSharing, setIsSharing] = useState(false);
 	const [shareError, setShareError] = useState<string | null>(null);
-	const showShare = players.length > 0;
+	const [searchQuery, setSearchQuery] = useState("");
+	const [sorting, setSorting] = useState<RosterShareSort | null>(null);
+	const visiblePlayers = useMemo(
+		() => filterPlayersBySearch(players, searchQuery),
+		[players, searchQuery],
+	);
+	const showShare = visiblePlayers.length > 0;
 	const showActions = showShare || canInvite;
+
+	function handleSortingChange(next: RosterShareSort | null) {
+		setSorting((current) => {
+			if (sameRosterShareSort(current, next)) {
+				return current;
+			}
+
+			return next;
+		});
+	}
 
 	async function handleShare() {
 		setIsSharing(true);
 		setShareError(null);
 		try {
 			await shareRosterImage(
-				rosterShareCard(players, championshipName),
+				rosterShareCard(visiblePlayers, championshipName, sorting),
 				rosterCeiling,
 			);
 		} catch {
@@ -158,6 +180,9 @@ export function ChampionshipRosterTab({
 				createdBy={createdBy}
 				currentUserId={currentUserId}
 				rosterCeiling={rosterCeiling}
+				searchQuery={searchQuery}
+				onSearchQueryChange={setSearchQuery}
+				onSortingChange={handleSortingChange}
 				claimingPlayerId={claimingPlayerId}
 				onClaim={onClaim}
 				onChangeRating={handlerWhenAllowed(canUpdateRating, onChangeRating)}

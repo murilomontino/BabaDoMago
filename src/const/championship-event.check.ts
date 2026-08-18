@@ -25,6 +25,8 @@ import {
 	draftAttendanceForEnd,
 	drawBalancedEventTeams,
 	EVENT_ATTENDANCE_ACTION,
+	EVENT_ATTENDANCE_COLUMN,
+	EVENT_ATTENDANCE_COLUMN_LABEL,
 	EVENT_ATTENDANCE_MESSAGE,
 	EVENT_ATTENDANCE_STAT_ABBR,
 	EVENT_BUILDER_STEP,
@@ -851,6 +853,8 @@ check(isEventBuilderStep(null), false);
 check(EVENT_ATTENDANCE_ACTION.addPlayer, "Adicionar");
 check(EVENT_ATTENDANCE_ACTION.addPlayerPlaceholder, "Nome do jogador");
 check(EVENT_ATTENDANCE_ACTION.addPlayerAria, "Adicionar jogador");
+check(EVENT_ATTENDANCE_COLUMN.actions, "actions");
+check(EVENT_ATTENDANCE_COLUMN_LABEL.actions, "Ações");
 check(EVENT_ATTENDANCE_STAT_ABBR.goals, "G");
 check(EVENT_ATTENDANCE_STAT_ABBR.assistedGoals, "GS");
 check(EVENT_ATTENDANCE_STAT_ABBR.ownGoals, "GC");

@@ -10,7 +10,7 @@ import {
 	useTable,
 } from "@tanstack/react-table";
 import { ArrowDownWideNarrow, ArrowUpNarrowWide } from "lucide-react";
-import { memo, type ReactNode, useId } from "react";
+import { memo, type ReactNode, useEffect, useId } from "react";
 import { SortableHeader } from "@/components/atoms/sortable-header";
 import { ColumnVisibilityPanel } from "@/components/molecules/column-visibility-panel";
 import { TableLegend } from "@/components/molecules/table-legend";
@@ -36,7 +36,7 @@ const TABLE_CELL_ALIGN = {
 
 type TableCellAlign = keyof typeof TABLE_CELL_ALIGN;
 
-function leadingRowCellClass(columnId: string, align: TableCellAlign): string {
+function extraRowCellClass(columnId: string, align: TableCellAlign): string {
 	const alignClass = TABLE_CELL_ALIGN[align];
 	if (columnId === DATA_TABLE_MOBILE_ACTIONS.actions) {
 		return `w-px px-0.5 py-1 ${alignClass}`;
@@ -47,6 +47,65 @@ function leadingRowCellClass(columnId: string, align: TableCellAlign): string {
 	}
 
 	return `whitespace-nowrap px-3 py-3 ${alignClass}`;
+}
+
+type ExtraRowCells = Readonly<Record<string, ReactNode>>;
+
+function ExtraMobileRow({ cells }: { cells: ExtraRowCells }) {
+	return (
+		<li className="py-3">
+			<div className="flex min-w-0 items-center justify-between gap-3">
+				{[
+					DATA_TABLE_MOBILE_PRIMARY.player,
+					DATA_TABLE_MOBILE_PRIMARY.rating,
+				].flatMap((id) => {
+					const cell = cells[id];
+					if (!cell) {
+						return [];
+					}
+
+					return [
+						<div
+							key={id}
+							className={
+								id === DATA_TABLE_MOBILE_PRIMARY.player
+									? "min-w-0 flex-1"
+									: "shrink-0"
+							}
+						>
+							{cell}
+						</div>,
+					];
+				})}
+			</div>
+			{cells[DATA_TABLE_MOBILE_ACTIONS.actions] && (
+				<div className="mt-2 w-full">
+					{cells[DATA_TABLE_MOBILE_ACTIONS.actions]}
+				</div>
+			)}
+		</li>
+	);
+}
+
+function ExtraDesktopRow({
+	cells,
+	columns,
+}: {
+	cells: ExtraRowCells;
+	columns: ReadonlyArray<{ id: string; align: TableCellAlign }>;
+}) {
+	return (
+		<tr>
+			{columns.map((column) => (
+				<td
+					key={column.id}
+					className={extraRowCellClass(column.id, column.align)}
+				>
+					{cells[column.id] ?? null}
+				</td>
+			))}
+		</tr>
+	);
 }
 
 export const dataTableFeatures = tableFeatures({
@@ -89,6 +148,8 @@ type DataTableProps<TData extends RowData> = {
 	onRowClick?: (row: TData) => void;
 	getRowClassName?: (row: TData) => string;
 	leadingRowCells?: Readonly<Record<string, ReactNode>>;
+	trailingRowCells?: Readonly<Record<string, ReactNode>>;
+	onSortingChange?: (sorting: { id: string; desc: boolean } | null) => void;
 };
 
 function DataTableInner<TData extends RowData>({
@@ -101,6 +162,8 @@ function DataTableInner<TData extends RowData>({
 	onRowClick,
 	getRowClassName,
 	leadingRowCells,
+	trailingRowCells,
+	onSortingChange,
 }: DataTableProps<TData>) {
 	const sortSelectId = useId();
 	const table = useTable(
@@ -151,6 +214,26 @@ function DataTableInner<TData extends RowData>({
 		.filter((column) => column.getCanSort());
 	const activeSort = table.state.sorting[0];
 	const sortDirectionLabel = dataTableSortDirectionLabel(activeSort?.desc);
+	const sortId = activeSort?.id ?? "";
+	const sortDesc = activeSort?.desc ?? false;
+
+	useEffect(() => {
+		if (!onSortingChange) {
+			return;
+		}
+
+		if (!sortId) {
+			onSortingChange(null);
+			return;
+		}
+
+		onSortingChange({ id: sortId, desc: sortDesc });
+	}, [onSortingChange, sortDesc, sortId]);
+
+	const extraDesktopColumns = table.getVisibleLeafColumns().map((column) => ({
+		id: column.id,
+		align: column.columnDef.meta?.align ?? "left",
+	}));
 
 	return (
 		<div>
@@ -221,39 +304,7 @@ function DataTableInner<TData extends RowData>({
 				<TableLegend items={legend} />
 			</div>
 			<ul className="divide-y divide-line md:hidden">
-				{leadingRowCells && (
-					<li className="py-3">
-						<div className="flex min-w-0 items-center justify-between gap-3">
-							{[
-								DATA_TABLE_MOBILE_PRIMARY.player,
-								DATA_TABLE_MOBILE_PRIMARY.rating,
-							].flatMap((id) => {
-								const cell = leadingRowCells[id];
-								if (!cell) {
-									return [];
-								}
-
-								return [
-									<div
-										key={id}
-										className={
-											id === DATA_TABLE_MOBILE_PRIMARY.player
-												? "min-w-0 flex-1"
-												: "shrink-0"
-										}
-									>
-										{cell}
-									</div>,
-								];
-							})}
-						</div>
-						{leadingRowCells[DATA_TABLE_MOBILE_ACTIONS.actions] && (
-							<div className="mt-2 w-full">
-								{leadingRowCells[DATA_TABLE_MOBILE_ACTIONS.actions]}
-							</div>
-						)}
-					</li>
-				)}
+				{leadingRowCells && <ExtraMobileRow cells={leadingRowCells} />}
 				{table.getRowModel().rows.map((row) => {
 					const { primary, stats, actions } = splitMobileTableCells(
 						row.getVisibleCells(),
@@ -337,6 +388,7 @@ function DataTableInner<TData extends RowData>({
 						</li>
 					);
 				})}
+				{trailingRowCells && <ExtraMobileRow cells={trailingRowCells} />}
 			</ul>
 			<div className="hidden overflow-x-auto md:block">
 				<table className="w-full min-w-max border-collapse text-sm">
@@ -362,20 +414,10 @@ function DataTableInner<TData extends RowData>({
 					</thead>
 					<tbody className="divide-y divide-line">
 						{leadingRowCells && (
-							<tr>
-								{table.getVisibleLeafColumns().map((column) => {
-									const align = column.columnDef.meta?.align ?? "left";
-
-									return (
-										<td
-											key={column.id}
-											className={leadingRowCellClass(column.id, align)}
-										>
-											{leadingRowCells[column.id] ?? null}
-										</td>
-									);
-								})}
-							</tr>
+							<ExtraDesktopRow
+								cells={leadingRowCells}
+								columns={extraDesktopColumns}
+							/>
 						)}
 						{table.getRowModel().rows.map((row) => (
 							<tr
@@ -405,6 +447,12 @@ function DataTableInner<TData extends RowData>({
 								})}
 							</tr>
 						))}
+						{trailingRowCells && (
+							<ExtraDesktopRow
+								cells={trailingRowCells}
+								columns={extraDesktopColumns}
+							/>
+						)}
 					</tbody>
 				</table>
 			</div>

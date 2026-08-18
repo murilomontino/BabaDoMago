@@ -1,9 +1,6 @@
 import type { ChampionshipPlayer } from "../types/championship.ts";
 import { CHAMPIONSHIP_TAB_LABEL } from "./championship-tab.ts";
-import {
-	comparePlayersByVisibleName,
-	playerVisibleName,
-} from "./player-name.ts";
+import { playerVisibleName } from "./player-name.ts";
 import { PLAYER_RATING } from "./player-rating.ts";
 import { PLAYER_SEARCH } from "./player-search.ts";
 import {
@@ -14,6 +11,8 @@ import {
 	ROSTER_COLUMN_LABEL,
 	ROSTER_DEFAULT_COLUMN_VISIBILITY,
 	ROSTER_STAT_COLUMNS,
+	type RosterRow,
+	type RosterStatColumnId,
 	toRosterRow,
 } from "./roster-stats.ts";
 import { shareFileDateStamp, sharePngFileName } from "./share-file-name.ts";
@@ -103,6 +102,92 @@ export type RosterShareCard = {
 	players: RosterSharePlayer[];
 	legend: typeof ROSTER_SHARE_LEGEND_ITEMS;
 };
+
+export type RosterShareSort = {
+	id: string;
+	desc: boolean;
+};
+
+const ROSTER_SHARE_STAT_IDS = new Set<string>(ROSTER_STAT_COLUMNS);
+
+function isRosterShareStatColumn(
+	columnId: string,
+): columnId is RosterStatColumnId {
+	return ROSTER_SHARE_STAT_IDS.has(columnId);
+}
+
+function rosterShareColumnValue(
+	row: RosterRow,
+	columnId: string,
+): string | number | null {
+	if (columnId === ROSTER_COLUMN.player) {
+		return row.display_name;
+	}
+
+	if (columnId === ROSTER_COLUMN.rating) {
+		return row.rating;
+	}
+
+	if (!isRosterShareStatColumn(columnId)) {
+		return null;
+	}
+
+	return row[columnId];
+}
+
+function compareRosterShareValues(
+	left: string | number,
+	right: string | number,
+): number {
+	if (typeof left === "string" && typeof right === "string") {
+		return left.localeCompare(right, "pt-BR");
+	}
+
+	if (typeof left === "number" && typeof right === "number") {
+		return left - right;
+	}
+
+	return 0;
+}
+
+export function sameRosterShareSort(
+	left: RosterShareSort | null,
+	right: RosterShareSort | null,
+): boolean {
+	if (left === null || right === null) {
+		return left === right;
+	}
+
+	return left.id === right.id && left.desc === right.desc;
+}
+
+export function sortRosterSharePlayers(
+	players: readonly ChampionshipPlayer[],
+	sort: RosterShareSort | null,
+): ChampionshipPlayer[] {
+	if (!sort) {
+		return [...players];
+	}
+
+	return [...players].sort((left, right) => {
+		const leftValue = rosterShareColumnValue(toRosterRow(left), sort.id);
+		const rightValue = rosterShareColumnValue(toRosterRow(right), sort.id);
+		if (leftValue === null || rightValue === null) {
+			return 0;
+		}
+
+		const result = compareRosterShareValues(leftValue, rightValue);
+		if (result === 0) {
+			return 0;
+		}
+
+		if (sort.desc) {
+			return -result;
+		}
+
+		return result;
+	});
+}
 
 export function rosterShareHeading(count: number): string {
 	return `${ROSTER_SHARE.title} · ${count} ${PLAYER_SEARCH.countLabel}`;
@@ -208,22 +293,12 @@ export function rosterShareText(card: RosterShareCard): string {
 		.join("\n");
 }
 
-function compareRosterShareSource(
-	left: ChampionshipPlayer,
-	right: ChampionshipPlayer,
-): number {
-	if (right.rating !== left.rating) {
-		return right.rating - left.rating;
-	}
-
-	return comparePlayersByVisibleName(left, right);
-}
-
 export function rosterShareCard(
 	players: readonly ChampionshipPlayer[],
 	championshipName: string,
+	sort: RosterShareSort | null = null,
 ): RosterShareCard {
-	const sorted = [...players].sort(compareRosterShareSource);
+	const sorted = sortRosterSharePlayers(players, sort);
 
 	return {
 		championshipName,

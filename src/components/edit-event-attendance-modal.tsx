@@ -42,6 +42,8 @@ function addCreatedPlayersToPresent(
 	onAddPlayer: EditEventAttendanceModalProps["onAddPlayer"],
 	presentIds: number[],
 	setPresentIds: (ids: number[]) => void,
+	goalkeeperIds: number[],
+	setGoalkeeperIds: (ids: number[]) => void,
 	setLocalError: (error: string | null) => void,
 ): EditEventAttendanceModalProps["onAddPlayer"] {
 	if (!onAddPlayer) {
@@ -54,14 +56,12 @@ function addCreatedPlayersToPresent(
 			return created;
 		}
 
+		const createdIds = created.map((player) => player.id);
 		setLocalError(null);
-		setPresentIds(
-			applyVisibleAttendance(
-				presentIds,
-				created.map((player) => player.id),
-				true,
-			),
-		);
+		setPresentIds(applyVisibleAttendance(presentIds, createdIds, true));
+		if (values.isGoalkeeper) {
+			setGoalkeeperIds(setGoalkeeperSelection(goalkeeperIds, createdIds, true));
+		}
 		return created;
 	};
 }
@@ -139,6 +139,8 @@ export function EditEventAttendanceModal({
 						onAddPlayer,
 						presentIds,
 						setPresentIds,
+						goalkeeperIds,
+						setGoalkeeperIds,
 						setLocalError,
 					)}
 				/>

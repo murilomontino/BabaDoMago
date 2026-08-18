@@ -226,10 +226,11 @@ export function ChampionshipEventBuilder({
 			return created;
 		}
 
-		handleSetPresent(
-			created.map((player) => player.id),
-			true,
-		);
+		const createdIds = created.map((player) => player.id);
+		handleSetPresent(createdIds, true);
+		if (values.isGoalkeeper) {
+			handleSetGoalkeeper(createdIds, true);
+		}
 		return created;
 	}
 

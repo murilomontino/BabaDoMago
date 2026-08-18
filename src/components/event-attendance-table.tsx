@@ -2,7 +2,12 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 import { Switch } from "@/components/atoms/switch";
 import { Button } from "@/components/button";
-import { EventAttendanceAddPlayer } from "@/components/event-attendance-add-player";
+import {
+	RosterAddPlayerActionsCell,
+	RosterAddPlayerForm,
+	RosterAddPlayerNameCell,
+	RosterAddPlayerRatingCell,
+} from "@/components/molecules/roster-add-player-row";
 import {
 	DataTable,
 	type DataTableFeatures,
@@ -257,43 +262,96 @@ export function EventAttendanceTable({
 				<span className="tabular-nums">{getValue()}</span>
 			),
 		});
-
-		if (!selectable) {
-			return attendanceColumnHelper.columns([
-				playerColumn,
-				ratingColumn,
-				countColumn,
-			]);
-		}
+		const presentColumns = selectable
+			? [
+					attendanceColumnHelper.accessor("present", {
+						id: EVENT_ATTENDANCE_COLUMN.present,
+						header: EVENT_ATTENDANCE_COLUMN_LABEL.present,
+						enableHiding: false,
+						enableSorting: false,
+						meta: {
+							align: "center" as const,
+							title: EVENT_ATTENDANCE_COLUMN_LABEL.present,
+						},
+						cell: AttendancePresentCell,
+					}),
+					attendanceColumnHelper.accessor("goalkeeper", {
+						id: EVENT_ATTENDANCE_COLUMN.goalkeeper,
+						header: EVENT_ATTENDANCE_COLUMN_LABEL.goalkeeper,
+						enableHiding: false,
+						enableSorting: false,
+						meta: {
+							align: "center" as const,
+							title: EVENT_ATTENDANCE_COLUMN_LABEL.goalkeeper,
+						},
+						cell: AttendanceGoalkeeperCell,
+					}),
+				]
+			: [];
+		const actionsColumns = onAddPlayer
+			? [
+					attendanceColumnHelper.display({
+						id: EVENT_ATTENDANCE_COLUMN.actions,
+						header: EVENT_ATTENDANCE_COLUMN_LABEL.actions,
+						enableHiding: false,
+						enableSorting: false,
+						meta: {
+							align: "center" as const,
+							title: EVENT_ATTENDANCE_COLUMN_LABEL.actions,
+						},
+						cell: () => null,
+					}),
+				]
+			: [];
 
 		return attendanceColumnHelper.columns([
-			attendanceColumnHelper.accessor("present", {
-				id: EVENT_ATTENDANCE_COLUMN.present,
-				header: EVENT_ATTENDANCE_COLUMN_LABEL.present,
-				enableHiding: false,
-				enableSorting: false,
-				meta: {
-					align: "center" as const,
-					title: EVENT_ATTENDANCE_COLUMN_LABEL.present,
-				},
-				cell: AttendancePresentCell,
-			}),
-			attendanceColumnHelper.accessor("goalkeeper", {
-				id: EVENT_ATTENDANCE_COLUMN.goalkeeper,
-				header: EVENT_ATTENDANCE_COLUMN_LABEL.goalkeeper,
-				enableHiding: false,
-				enableSorting: false,
-				meta: {
-					align: "center" as const,
-					title: EVENT_ATTENDANCE_COLUMN_LABEL.goalkeeper,
-				},
-				cell: AttendanceGoalkeeperCell,
-			}),
+			...presentColumns,
 			playerColumn,
 			ratingColumn,
 			countColumn,
+			...actionsColumns,
 		]);
-	}, [ceiling, selectable]);
+	}, [ceiling, onAddPlayer, selectable]);
+
+	const addPlayerCells = useMemo(() => {
+		if (!onAddPlayer) {
+			return undefined;
+		}
+
+		return {
+			[EVENT_ATTENDANCE_COLUMN.player]: (
+				<RosterAddPlayerNameCell
+					isAddingPlayer={isAddingPlayer}
+					addPlayerError={addPlayerError}
+				/>
+			),
+			[EVENT_ATTENDANCE_COLUMN.rating]: (
+				<RosterAddPlayerRatingCell
+					ceiling={ceiling}
+					isAddingPlayer={isAddingPlayer}
+				/>
+			),
+			[EVENT_ATTENDANCE_COLUMN.actions]: (
+				<RosterAddPlayerActionsCell isAddingPlayer={isAddingPlayer} />
+			),
+		};
+	}, [addPlayerError, ceiling, isAddingPlayer, onAddPlayer]);
+
+	const showTable = rows.length > 0 || Boolean(onAddPlayer);
+	const table = (
+		<DataTable
+			data={rows}
+			columns={columns}
+			getRowId={(row) => String(row.id)}
+			onRowClick={attendanceRowToggleHandler(onSetPresent)}
+			getRowClassName={(row) =>
+				`transition-colors duration-200 ease-in-out motion-reduce:transition-none ${
+					row.present ? "bg-pitch-soft" : "even:bg-surface-muted"
+				}`
+			}
+			trailingRowCells={addPlayerCells}
+		/>
+	);
 
 	return (
 		<div className="space-y-3">
@@ -324,18 +382,6 @@ export function EventAttendanceTable({
 					}}
 				/>
 			</label>
-			{onAddPlayer && (
-				<EventAttendanceAddPlayer
-					ceiling={ceiling}
-					isAddingPlayer={isAddingPlayer}
-					addPlayerError={addPlayerError}
-					onAddPlayer={async (values) => {
-						const created = await onAddPlayer(values);
-						setQuery("");
-						return created;
-					}}
-				/>
-			)}
 			{(selectable || showSeedActions) && (
 				<div className="space-y-2">
 					<div className="flex flex-wrap items-center gap-2">
@@ -406,21 +452,19 @@ export function EventAttendanceTable({
 					)}
 				</div>
 			)}
-			{rows.length === 0 && (
+			{rows.length === 0 && players.length > 0 && (
 				<p className="text-sm text-fg-muted">{PLAYER_SEARCH.empty}</p>
 			)}
-			{rows.length > 0 && (
-				<DataTable
-					data={rows}
-					columns={columns}
-					getRowId={(row) => String(row.id)}
-					onRowClick={attendanceRowToggleHandler(onSetPresent)}
-					getRowClassName={(row) =>
-						`transition-colors duration-200 ease-in-out motion-reduce:transition-none ${
-							row.present ? "bg-pitch-soft" : "even:bg-surface-muted"
-						}`
-					}
-				/>
+			{showTable && !onAddPlayer && table}
+			{onAddPlayer && (
+				<RosterAddPlayerForm
+					onAddPlayer={async (values) => {
+						await onAddPlayer(values);
+						setQuery("");
+					}}
+				>
+					{table}
+				</RosterAddPlayerForm>
 			)}
 		</div>
 	);

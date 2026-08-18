@@ -76,6 +76,9 @@ type ChampionshipRosterProps = {
 	emptyTitle?: string;
 	withStats?: boolean;
 	rosterCeiling?: number;
+	searchQuery?: string;
+	onSearchQueryChange?: (query: string) => void;
+	onSortingChange?: (sorting: { id: string; desc: boolean } | null) => void;
 	isAddingPlayer?: boolean;
 	addPlayerError?: string | null;
 	onAddPlayer?: (values: {
@@ -132,11 +135,23 @@ export function ChampionshipRoster({
 	emptyTitle = "Nenhum jogador ainda",
 	withStats = true,
 	rosterCeiling,
+	searchQuery: searchQueryProp,
+	onSearchQueryChange,
+	onSortingChange,
 	isAddingPlayer = false,
 	addPlayerError = null,
 	onAddPlayer,
 }: ChampionshipRosterProps) {
-	const [query, setQuery] = useState("");
+	const [uncontrolledQuery, setUncontrolledQuery] = useState("");
+	const query = searchQueryProp ?? uncontrolledQuery;
+	function setQuery(next: string) {
+		if (onSearchQueryChange) {
+			onSearchQueryChange(next);
+			return;
+		}
+
+		setUncontrolledQuery(next);
+	}
 	const alreadyMember = Boolean(
 		currentUserId && players.some((player) => player.user_id === currentUserId),
 	);
@@ -511,6 +526,7 @@ export function ChampionshipRoster({
 					initialColumnVisibility={ROSTER_DEFAULT_COLUMN_VISIBILITY}
 					legendItems={ROSTER_LEGEND_ITEMS}
 					leadingRowCells={addPlayerCells}
+					onSortingChange={onSortingChange}
 				/>
 			)}
 		</div>
