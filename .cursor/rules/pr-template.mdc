@@ -1,0 +1,28 @@
+---
+description: Template de pull request do Baba do Mago. Use ao criar ou descrever PRs com gh pr create.
+alwaysApply: false
+---
+
+# Template de PR
+
+Título: `feat: <o quê em português>`. Sem ponto final.
+
+Corpo em português. Agrupar por área (`###`), não um parágrafo só. Cada bullet é comportamento visível, não nome de arquivo.
+
+```markdown
+## Summary
+
+Funcionalidades desta branch em relação à `main`.
+
+### <Área>
+- <o que o usuário passa a poder fazer>
+
+## Test plan
+- [ ] <passo reproduzível na UI ou no banco>
+```
+
+Áreas comuns: Nota, Rodada, Partida, Presença, Elenco, Pódio, Perfil, Gestão, Docs.
+
+Test plan: um checkbox por fluxo. Incluir caso negativo quando o diff muda permissão ou fórmula da nota.
+
+Não inventar Elo. Se a PR mexe em rating, conferir SQL + TS + `event-rating-adjustment.check.ts`.
