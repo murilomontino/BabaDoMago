@@ -1,6 +1,7 @@
 import { Root, Thumb } from "@radix-ui/react-switch";
 
-const SWITCH_TRANSITION = "duration-200 ease-in-out motion-reduce:transition-none";
+const SWITCH_TRANSITION =
+	"duration-200 ease-in-out motion-reduce:transition-none";
 
 const SWITCH_ROOT_CLASS = `inline-flex h-6 w-10 shrink-0 items-center overflow-hidden rounded-full border border-line transition-[background-color,border-color] ${SWITCH_TRANSITION} focus:outline-none focus:ring-2 focus:ring-pitch/20 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-pitch data-[state=checked]:bg-pitch data-[state=unchecked]:bg-surface-muted`;
 

@@ -7,6 +7,8 @@ import { TeamCardSkeleton } from "@/components/molecules/team-card-skeleton";
 import {
 	canStartEventMatch,
 	EVENT_ACTION,
+	eventMatchTeamCount,
+	eventTeamSourcePlayers,
 	isMatchAlreadyOpenError,
 } from "@/const/championship-event";
 import {
@@ -105,7 +107,7 @@ export function ChampionshipEventPlayPage() {
 	const openMatch = openEventMatch(event.matches);
 	const canStart = canStartEventMatch({
 		ended: event.ended_at !== null,
-		teamCount: event.teams.length,
+		teamCount: eventMatchTeamCount(event.teams),
 	});
 	const activePlayers = (championshipQuery.data?.players ?? []).filter(
 		(player) => !player.deleted_at,
@@ -187,12 +189,14 @@ export function ChampionshipEventPlayPage() {
 								return;
 							}
 
+							const sourcePlayers = eventTeamSourcePlayers(team);
+
 							await updateTeam.mutateAsync({
 								teamId,
 								color,
-								playerIds: team.players.map((player) => player.player_id),
+								playerIds: sourcePlayers.map((player) => player.player_id),
 								goalkeeperId:
-									team.players.find((player) => player.is_goalkeeper)
+									sourcePlayers.find((player) => player.is_goalkeeper)
 										?.player_id ?? 0,
 							});
 						}}

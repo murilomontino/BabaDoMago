@@ -389,19 +389,28 @@ export type Database = {
 					color: string | null;
 					event_id: number;
 					id: number;
+					is_active: boolean;
 					sort_order: number;
+					template_goalkeeper_id: number;
+					template_player_ids: Json;
 				};
 				Insert: {
 					color?: string | null;
 					event_id: number;
 					id?: number;
+					is_active?: boolean;
 					sort_order: number;
+					template_goalkeeper_id?: number;
+					template_player_ids?: Json;
 				};
 				Update: {
 					color?: string | null;
 					event_id?: number;
 					id?: number;
+					is_active?: boolean;
 					sort_order?: number;
+					template_goalkeeper_id?: number;
+					template_player_ids?: Json;
 				};
 				Relationships: [
 					{
@@ -601,6 +610,7 @@ export type Database = {
 					team_color: string | null;
 					player_ids: Json;
 					goalkeeper_id: number;
+					is_active?: boolean;
 				};
 				Returns: Json;
 			};
@@ -718,6 +728,10 @@ export type Database = {
 			};
 			set_championship_event_mvps: {
 				Args: { event_id: number; player_ids: Json };
+				Returns: Json;
+			};
+			set_championship_event_team_active: {
+				Args: { team_id: number; is_active: boolean };
 				Returns: Json;
 			};
 			set_player_role: {

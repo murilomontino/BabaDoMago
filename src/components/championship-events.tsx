@@ -23,6 +23,7 @@ import {
 	EVENT_STATUS_LABEL,
 	type EventWeekday,
 	eventListActionFlags,
+	eventMatchTeamCount,
 	eventStatus,
 	formatChampionshipSchedule,
 	formatEventStartsAt,
@@ -181,7 +182,7 @@ export function ChampionshipEvents({
 			canManage,
 			canSetMvp,
 			ended: Boolean(flowEvent.ended_at),
-			teamCount: flowEvent.teams.length,
+			teamCount: eventMatchTeamCount(flowEvent.teams),
 			attendanceCount: flowEvent.attendance.length,
 		});
 	const actionsWhen = flowEvent && formatEventStartsAt(flowEvent.starts_at);
@@ -407,7 +408,7 @@ export function ChampionshipEvents({
 									canManage,
 									canSetMvp,
 									ended: Boolean(event.ended_at),
-									teamCount: event.teams.length,
+									teamCount: eventMatchTeamCount(event.teams),
 									attendanceCount: event.attendance.length,
 								}),
 							)}

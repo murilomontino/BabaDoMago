@@ -107,6 +107,9 @@ function team(
 		event_id: 1,
 		color: EVENT_TEAM_COLOR.white,
 		sort_order: id,
+		is_active: true,
+		template_player_ids: [],
+		template_goalkeeper_id: 0,
 		players: players.map((row) => ({
 			id: row.player_id,
 			event_id: 1,

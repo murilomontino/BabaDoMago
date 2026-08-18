@@ -43,6 +43,9 @@ export type ChampionshipEventTeam = {
 	event_id: number;
 	color: EventTeamColor | null;
 	sort_order: number;
+	is_active: boolean;
+	template_player_ids: number[];
+	template_goalkeeper_id: number;
 	players: ChampionshipEventTeamPlayer[];
 };
 

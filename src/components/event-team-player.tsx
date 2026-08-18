@@ -86,7 +86,7 @@ export function EventTeamColorDot({ color }: EventTeamColorDotProps) {
 	return (
 		<span
 			aria-hidden
-			className="absolute right-2 top-2 size-3 rounded-full border border-black/25"
+			className="pointer-events-none absolute right-2 top-2 size-3 rounded-full border border-black/25"
 			style={{ backgroundColor: color }}
 		/>
 	);

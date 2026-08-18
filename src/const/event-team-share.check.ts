@@ -36,11 +36,13 @@ const cards = eventTeamsShareCards(
 			key: "a",
 			color: EVENT_TEAM_COLOR.red,
 			slots: ["1", "", "2"],
+			isActive: true,
 		},
 		{
 			key: "b",
 			color: EVENT_TEAM_COLOR_NONE,
 			slots: ["", "99"],
+			isActive: true,
 		},
 	],
 	[ana, bruno],

@@ -34,9 +34,11 @@ import {
 import {
 	attendanceGoalkeeperIds,
 	EVENT_ACTION,
+	EVENT_TEAM_MESSAGE,
 	EVENT_TEAM_POSITION_LABEL,
 	eventTeamPlayerPosition,
 	eventTeamSlotPosition,
+	eventTeamsSharePlayers,
 } from "@/const/championship-event";
 import {
 	canConfirmMatchTeams,
@@ -729,6 +731,16 @@ export function ChampionshipEventPlay({
 	);
 	const busy = starting || savingPlayer || savingGoal || undoing || ending;
 	const canStartSelected = canConfirmMatchTeams(selected);
+	const selectedTeamA = event.teams.find((team) => team.id === selected[0]);
+	const selectedTeamB = event.teams.find((team) => team.id === selected[1]);
+	const sharedPlayersError =
+		selectedTeamA &&
+		selectedTeamB &&
+		eventTeamsSharePlayers(selectedTeamA.players, selectedTeamB.players)
+			? EVENT_TEAM_MESSAGE.sharedPlayers
+			: null;
+
+	const selectableTeams = event.teams;
 
 	if (!match) {
 		return (
@@ -737,7 +749,7 @@ export function ChampionshipEventPlay({
 					{EVENT_MATCH_LABEL.selectTeams}
 				</p>
 				<ul className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
-					{event.teams.map((team) => {
+					{selectableTeams.map((team) => {
 						const pickOrder = pickOrderFromIndex(selected.indexOf(team.id));
 
 						return (
@@ -769,11 +781,15 @@ export function ChampionshipEventPlay({
 					})}
 				</ul>
 				<div className="shrink-0 space-y-2 pt-2">
-					{startError && <p className={ERROR_CLASS}>{startError}</p>}
+					{(startError || sharedPlayersError) && (
+						<p className={ERROR_CLASS}>{startError ?? sharedPlayersError}</p>
+					)}
 					<div className="flex justify-end">
 						<Button
 							className="w-full md:w-auto"
-							disabled={starting || !canStartSelected}
+							disabled={
+								starting || !canStartSelected || Boolean(sharedPlayersError)
+							}
 							onClick={() => {
 								const teamAId = selected[0];
 								const teamBId = selected[1];

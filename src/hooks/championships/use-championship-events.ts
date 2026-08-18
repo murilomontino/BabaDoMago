@@ -94,6 +94,7 @@ export function useSaveChampionshipEventTeams(_championshipId: number) {
 				color: EventTeamColor | null;
 				playerIds: readonly number[];
 				goalkeeperId: number;
+				isActive?: boolean;
 			}[];
 			goalkeeperPlayerIds: readonly number[];
 		}) =>

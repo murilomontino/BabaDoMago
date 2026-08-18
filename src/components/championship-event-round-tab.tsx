@@ -36,7 +36,6 @@ import {
 	attendanceGoalkeeperIds,
 	builderTeamsFromEvent,
 	builderTeamsHavePlayers,
-	CHAMPIONSHIP_EVENT,
 	canEditEventTeams,
 	canRemoveEventAttendance,
 	canSelfCheckIn,
@@ -62,6 +61,8 @@ import {
 	eventRsvpButtonVariant,
 	eventTeamPlayerIds,
 	eventTeamPlayerPosition,
+	eventTeamSourcePlayers,
+	eventTeamsAreReady,
 	keepGoalkeepersPresent,
 	resolveBuilderInitialPresentIds,
 	rsvpGoingPlayerIds,
@@ -425,12 +426,9 @@ export function ChampionshipEventRoundTab({
 					onStepChange={(next) => {
 						void onBuilderStepChange(next);
 					}}
-					onCancel={handlerWhenAllowed(
-						event.teams.length >= CHAMPIONSHIP_EVENT.minTeams,
-						() => {
-							void onBuilderStepChange(null);
-						},
-					)}
+					onCancel={handlerWhenAllowed(eventTeamsAreReady(event.teams), () => {
+						void onBuilderStepChange(null);
+					})}
 					onPresentIdsChange={(playerIds) => {
 						draftPresentIdsRef.current = [...playerIds];
 						writeAttendanceDraft(event.id, playerIds);
@@ -502,11 +500,14 @@ export function ChampionshipEventRoundTab({
 					<ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
 						{event.teams.map((team) => {
 							const cardStyle = eventTeamColorStyle(team.color);
-							const teamRoster = team.players.map((row) => ({
+							const sourcePlayers = eventTeamSourcePlayers(team);
+							const teamRoster = sourcePlayers.map((row) => ({
 								row,
 								player: resolveRosterPlayer(
 									row.player_id,
-									row.display_name,
+									event.attendance.find(
+										(attendance) => attendance.player_id === row.player_id,
+									)?.display_name ?? "",
 									rosterById,
 								),
 							}));
@@ -552,7 +553,7 @@ export function ChampionshipEventRoundTab({
 
 											return (
 												<li
-													key={row.id}
+													key={row.player_id}
 													className={EVENT_TEAM_PLAYER_SLOT_CLASS}
 												>
 													<span
@@ -837,7 +838,6 @@ export function ChampionshipEventRoundTab({
 					usedColors={event.teams.flatMap((team) =>
 						usedEventTeamColors(team.color),
 					)}
-					takenPlayerIds={teamPlayerIds}
 					isPending={addingTeam}
 					errorMessage={addTeamError}
 					onCancel={() => {
@@ -861,12 +861,9 @@ export function ChampionshipEventRoundTab({
 					usedColors={event.teams
 						.filter((team) => team.id !== teamToEdit.id)
 						.flatMap((team) => usedEventTeamColors(team.color))}
-					takenPlayerIds={eventTeamPlayerIds(
-						event.teams.filter((team) => team.id !== teamToEdit.id),
-					)}
 					initialTeam={{
 						color: teamToEdit.color,
-						players: teamToEdit.players,
+						players: eventTeamSourcePlayers(teamToEdit),
 					}}
 					isPending={updatingTeam}
 					errorMessage={updateTeamError}
