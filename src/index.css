@@ -38,7 +38,7 @@ html.dark {
 }
 
 body {
-	min-height: 100vh;
+	min-height: 100dvh;
 	background-color: var(--color-field);
 	background-image: radial-gradient(
 		ellipse 80% 50% at 50% -20%,

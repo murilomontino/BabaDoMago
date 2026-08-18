@@ -5,6 +5,7 @@ import {
 	parsePlayersPerTeam,
 } from "@/const/championship-event";
 import {
+	clampMatchDurationMinutes,
 	compareStartersBeforeSubstitutes,
 	EVENT_MATCH_DURATION,
 	matchDurationSeconds,
@@ -620,12 +621,17 @@ export async function startChampionshipEventMatch(
 	eventId: number,
 	teamAId: number,
 	teamBId: number,
+	durationMinutes?: number,
 ): Promise<void> {
 	const { error } = await supabase.rpc("start_championship_event_match", {
 		event_id: eventId,
 		team_a_id: teamAId,
 		team_b_id: teamBId,
-		duration_seconds: matchDurationSeconds(EVENT_MATCH_DURATION.defaultMinutes),
+		duration_seconds: matchDurationSeconds(
+			clampMatchDurationMinutes(
+				durationMinutes ?? EVENT_MATCH_DURATION.defaultMinutes,
+			),
+		),
 	});
 
 	if (error) {

@@ -44,12 +44,14 @@ import {
 	canConfirmMatchTeams,
 	EVENT_GOAL_LABEL,
 	EVENT_MATCH_CLOCK_LABEL,
+	EVENT_MATCH_DURATION,
 	EVENT_MATCH_END_INTENT,
 	EVENT_MATCH_LABEL,
 	EVENT_MATCH_TEAM_PREVIEW,
 	type EventMatchEndIntent,
 	formatMatchClock,
 	formatMatchScore,
+	isMatchTimeUp,
 	MATCH_CLOCK_ACTION,
 	type MatchClockAction,
 	matchActiveTeamPlayers,
@@ -65,6 +67,7 @@ import {
 	matchTeamStarName,
 	matchWinnerTeamId,
 	mergeMatchClock,
+	shouldSignalMatchTimeUp,
 	sortBenchForSlot,
 	toggleMatchTeamSelection,
 } from "@/const/championship-event-match";
@@ -83,6 +86,11 @@ import {
 	useMatchClockStore,
 } from "@/hooks/match-clock-store";
 import { useMatchClock } from "@/hooks/use-match-clock";
+import {
+	signalGoal,
+	signalMatchTimeUp,
+	unlockMatchAudio,
+} from "@/lib/match-feedback";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type {
 	ChampionshipEvent,
@@ -224,7 +232,11 @@ type ChampionshipEventPlayProps = {
 	ending: boolean;
 	endError: string | null;
 	clockError: string | null;
-	onStart: (teamAId: number, teamBId: number) => Promise<void>;
+	onStart: (
+		teamAId: number,
+		teamBId: number,
+		durationMinutes: number,
+	) => Promise<void>;
 	onSetPlayer: (
 		teamId: number,
 		slot: number,
@@ -626,11 +638,26 @@ function MatchClockBar({
 	const paused = matchClockIsPaused(match);
 	const action = matchClockBarAction(started, paused);
 	const playing = action !== MATCH_CLOCK_ACTION.pause;
+	const timeUp = isMatchTimeUp(elapsedSeconds, match.duration_seconds);
+	const timeUpMatchIdRef = useRef(match.id);
+	const wasTimeUpRef = useRef(true);
+
+	useEffect(() => {
+		const wasTimeUp =
+			timeUpMatchIdRef.current === match.id ? wasTimeUpRef.current : true;
+		timeUpMatchIdRef.current = match.id;
+		wasTimeUpRef.current = timeUp;
+		if (shouldSignalMatchTimeUp(wasTimeUp, timeUp)) {
+			signalMatchTimeUp();
+		}
+	}, [match.id, timeUp]);
 
 	function handleClick() {
 		if (busy) {
 			return;
 		}
+
+		unlockMatchAudio();
 
 		switch (action) {
 			case MATCH_CLOCK_ACTION.start:
@@ -657,7 +684,9 @@ function MatchClockBar({
 			onClick={handleClick}
 			className="flex w-full shrink-0 flex-col items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 disabled:opacity-50"
 		>
-			<span className="w-full text-center text-4xl font-semibold tabular-nums tracking-tight text-fg">
+			<span
+				className={`w-full text-center text-4xl font-semibold tabular-nums tracking-tight ${timeUp ? "text-danger" : "text-fg"}`}
+			>
 				{formatMatchClock(elapsedSeconds)}
 			</span>
 			<span
@@ -709,6 +738,9 @@ export function ChampionshipEventPlay({
 		(row) => rosterById.get(row.player_id)?.rating ?? row.rating,
 	);
 	const [selected, setSelected] = useState<number[]>([]);
+	const [durationMinutes, setDurationMinutes] = useState<number>(
+		EVENT_MATCH_DURATION.defaultMinutes,
+	);
 	const [slotTarget, setSlotTarget] = useState<SlotTarget | null>(null);
 	const [pendingSwap, setPendingSwap] = useState<PendingSwap | null>(null);
 	const [goalTarget, setGoalTarget] = useState<GoalTarget | null>(null);
@@ -785,6 +817,31 @@ export function ChampionshipEventPlay({
 					{(startError || sharedPlayersError) && (
 						<p className={ERROR_CLASS}>{startError ?? sharedPlayersError}</p>
 					)}
+					<div className="flex flex-wrap items-center gap-2">
+						<span className="text-sm font-medium text-fg-muted">
+							{EVENT_MATCH_CLOCK_LABEL.duration}
+						</span>
+						{EVENT_MATCH_DURATION.presetsMinutes.map((minutes) => {
+							const selectedDuration = minutes === durationMinutes;
+
+							return (
+								<Button
+									key={minutes}
+									variant={
+										selectedDuration
+											? BUTTON_VARIANT.primary
+											: BUTTON_VARIANT.secondary
+									}
+									aria-pressed={selectedDuration}
+									onClick={() => {
+										setDurationMinutes(minutes);
+									}}
+								>
+									{`${minutes} ${EVENT_MATCH_CLOCK_LABEL.minutes}`}
+								</Button>
+							);
+						})}
+					</div>
 					<div className="flex justify-end">
 						<Button
 							className="w-full md:w-auto"
@@ -798,7 +855,7 @@ export function ChampionshipEventPlay({
 									return;
 								}
 
-								void onStart(teamAId, teamBId);
+								void onStart(teamAId, teamBId, durationMinutes);
 							}}
 						>
 							{EVENT_ACTION.startMatch}
@@ -1148,6 +1205,7 @@ export function ChampionshipEventPlay({
 							...payload,
 							elapsedSeconds: goalElapsedRef.current,
 						});
+						signalGoal();
 						setGoalTarget(null);
 						endGoalClockHold();
 					}}
@@ -1176,6 +1234,7 @@ export function ChampionshipEventPlay({
 							isOwnGoal: true,
 							elapsedSeconds: goalElapsedRef.current,
 						});
+						signalGoal();
 						setOwnGoalTeamId(null);
 						endGoalClockHold();
 					}}

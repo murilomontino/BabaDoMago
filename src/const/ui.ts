@@ -34,7 +34,13 @@ export const STAT_FIELD_CLASS =
 
 export const ERROR_CLASS = "text-sm text-danger";
 
-export const PAGE_SHELL_CLASS = "mx-auto max-w-7xl px-4 py-8 sm:px-6";
+export const SAFE_AREA_CLASS =
+	"pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]";
+
+export const SAFE_AREA_FAB_CLASS =
+	"right-[max(1rem,env(safe-area-inset-right))] bottom-[calc(1rem+env(safe-area-inset-bottom))]";
+
+export const PAGE_SHELL_CLASS = `mx-auto max-w-7xl px-4 py-8 sm:px-6 ${SAFE_AREA_CLASS}`;
 
 export const CARD_CLASS =
 	"rounded-xl border border-line bg-surface p-4 shadow-sm";

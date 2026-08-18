@@ -1,9 +1,11 @@
 import {
 	appearanceFromPreference,
 	nextThemeMode,
+	PWA_THEME_COLOR,
 	parseThemeMode,
 	resolveTheme,
 	THEME_APPEARANCE,
+	THEME_COLOR,
 	THEME_MODE,
 } from "./theme.ts";
 
@@ -44,5 +46,8 @@ check(
 	appearanceFromPreference(false) === THEME_APPEARANCE.light,
 	"prefers light",
 );
+check(THEME_COLOR.light === "#fafaf9", "light theme color");
+check(THEME_COLOR.dark === "#0c0a09", "dark theme color");
+check(PWA_THEME_COLOR === "#166534", "pwa theme color");
 
 console.log("theme ok");

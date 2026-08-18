@@ -30,6 +30,7 @@ import {
 	formatMatchClock,
 	formatMatchScore,
 	isMatchSlotGoalkeeper,
+	isMatchTimeUp,
 	isOpenMatch,
 	keepLocalMatchClock,
 	lastMatchGoal,
@@ -61,6 +62,7 @@ import {
 	matchWinnerTeamId,
 	mergeMatchClock,
 	openEventMatch,
+	shouldSignalMatchTimeUp,
 	shouldStartEventMatch,
 	sortBenchForSlot,
 	toggleMatchTeamSelection,
@@ -572,6 +574,15 @@ check(
 	EVENT_MATCH_DURATION.defaultMinutes,
 	"clamp nan",
 );
+check(isMatchTimeUp(419, 420), false, "time up before");
+check(isMatchTimeUp(420, 420), true, "time up at duration");
+check(isMatchTimeUp(421, 420), true, "time up after");
+check(isMatchTimeUp(1, 0), false, "time up zero duration");
+check(isMatchTimeUp(Number.NaN, 420), false, "time up nan elapsed");
+check(shouldSignalMatchTimeUp(false, true), true, "signal rising edge");
+check(shouldSignalMatchTimeUp(true, true), false, "no signal already up");
+check(shouldSignalMatchTimeUp(false, false), false, "no signal still under");
+check(shouldSignalMatchTimeUp(true, false), false, "no signal falling");
 check(formatMatchClock(0), "00:00", "clock zero");
 check(formatMatchClock(65), "01:05", "clock 65");
 check(formatMatchClock(420), "07:00", "clock 7min");

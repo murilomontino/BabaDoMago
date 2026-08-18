@@ -277,6 +277,7 @@ export function ChampionshipSettingsTab({
 											id="championship-players-per-team"
 											name="playersPerTeam"
 											type="number"
+											inputMode="numeric"
 											min={CHAMPIONSHIP_EVENT.playersPerTeamMin}
 											max={CHAMPIONSHIP_EVENT.playersPerTeamMax}
 											className={`mt-1 ${FIELD_CLASS}`}

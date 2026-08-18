@@ -8,6 +8,7 @@ import {
 	useMemo,
 	useState,
 } from "react";
+import { queryClient, queryPersister } from "@/lib/query-client";
 import { safeInternalPathOrHome } from "@/lib/safe-path";
 import { supabase } from "@/lib/supabase";
 import { ensureCurrentUser } from "@/services/users";
@@ -59,6 +60,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 			const nextUser = session?.user ?? null;
 			setUser(nextUser);
 			setIsLoading(false);
+
+			if (event === "SIGNED_OUT") {
+				queryClient.clear();
+				void queryPersister.removeClient();
+				return;
+			}
 
 			if (event !== "SIGNED_IN" && event !== "USER_UPDATED") {
 				return;
