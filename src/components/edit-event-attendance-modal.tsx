@@ -115,6 +115,7 @@ export function EditEventAttendanceModal({
 					attendanceCounts={attendanceCounts}
 					presentIds={presentIds}
 					goalkeeperIds={goalkeeperIds}
+					lockedPresentIds={teamPlayerIds}
 					onSetPresent={(playerIds, present) => {
 						setLocalError(null);
 						if (!present) {
@@ -156,15 +157,16 @@ export function EditEventAttendanceModal({
 					>
 						Cancelar
 					</Button>
-					<Button
-						className="hidden md:inline-flex"
-						onClick={() => {
-							void handleSave();
-						}}
-						disabled={isPending}
-					>
-						{EVENT_ACTION.saveAttendance}
-					</Button>
+					<span className="hidden md:inline-flex">
+						<Button
+							onClick={() => {
+								void handleSave();
+							}}
+							disabled={isPending}
+						>
+							{EVENT_ACTION.saveAttendance}
+						</Button>
+					</span>
 				</div>
 				<AttendanceFloatingSave
 					selected={presentIds.length}
