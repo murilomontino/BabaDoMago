@@ -2,6 +2,7 @@ import {
 	isIosSafari,
 	isStandaloneDisplay,
 	PWA_INSTALL_LABEL,
+	shouldPersistPwaDismissal,
 	shouldShowPwaInstall,
 } from "./pwa-install.ts";
 
@@ -82,6 +83,9 @@ check(
 	true,
 	"ios hint",
 );
+check(shouldPersistPwaDismissal("accepted"), true, "accepted is final");
+check(shouldPersistPwaDismissal("dismissed"), false, "cancel comes back later");
+
 check(PWA_INSTALL_LABEL.install, "Instalar", "install label");
 
 console.log("pwa-install ok");

@@ -2,7 +2,7 @@ import { useRouterState } from "@tanstack/react-router";
 import { Download } from "lucide-react";
 import { Button } from "@/components/button";
 import { PWA_INSTALL_LABEL } from "@/const/pwa-install";
-import { BUTTON_VARIANT, CARD_CLASS } from "@/const/ui";
+import { BUTTON_VARIANT, CARD_CLASS, SAFE_AREA_BANNER_CLASS } from "@/const/ui";
 import { usePwaInstall } from "@/hooks/use-pwa-install";
 
 export function PwaInstallBanner() {
@@ -18,7 +18,7 @@ export function PwaInstallBanner() {
 
 	return (
 		<div
-			className={`fixed inset-x-4 z-50 mx-auto max-w-lg ${CARD_CLASS} bottom-[calc(1rem+env(safe-area-inset-bottom))]`}
+			className={`fixed inset-x-4 z-40 mx-auto max-w-lg ${CARD_CLASS} ${SAFE_AREA_BANNER_CLASS}`}
 			role="dialog"
 			aria-label={PWA_INSTALL_LABEL.title}
 		>

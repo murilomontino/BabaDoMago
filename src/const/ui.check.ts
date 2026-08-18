@@ -7,6 +7,7 @@ import {
 	ICON_BUTTON_SIZE_CLASS,
 	PAGE_SHELL_CLASS,
 	PLAYER_KIND_SELECT_CLASS,
+	SAFE_AREA_BANNER_CLASS,
 	SAFE_AREA_CLASS,
 	SAFE_AREA_FAB_CLASS,
 } from "./ui.ts";
@@ -40,5 +41,17 @@ check(SAFE_AREA_CLASS.includes("max(1.25rem"), "safe area keeps padding");
 check(SAFE_AREA_FAB_CLASS.includes("safe-area-inset-bottom"), "fab safe area");
 check(PAGE_SHELL_CLASS.includes(SAFE_AREA_CLASS), "page shell safe area");
 check(PAGE_SHELL_CLASS.includes("px-5"), "page shell mobile padding");
+// pt/pr/pb/pl vencem py/px, então nenhum lado pode ficar com env() cru.
+for (const side of ["pt", "pb", "pl", "pr"]) {
+	check(
+		!new RegExp(`\\b${side}-\\[env\\(`).test(SAFE_AREA_CLASS),
+		`${side} needs a max() floor`,
+	);
+}
+check(
+	!PAGE_SHELL_CLASS.includes("py-"),
+	"page shell vertical comes from safe area",
+);
+check(SAFE_AREA_BANNER_CLASS.includes("md:bottom-"), "banner clears the fab");
 
 console.log("ui ok");

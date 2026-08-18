@@ -30,6 +30,14 @@ export function isIosSafari(
 	return /Safari/i.test(userAgent) && !/CriOS|FxiOS|EdgiOS/i.test(userAgent);
 }
 
+// Recusar a caixa nativa não é "nunca mais": só o aceite (ou o "Agora não"
+// do nosso banner) grava a escolha, o resto volta na próxima visita.
+export function shouldPersistPwaDismissal(
+	outcome: "accepted" | "dismissed",
+): boolean {
+	return outcome === "accepted";
+}
+
 export function shouldShowPwaInstall(input: {
 	dismissed: boolean;
 	standalone: boolean;

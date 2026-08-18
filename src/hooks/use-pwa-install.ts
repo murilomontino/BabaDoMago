@@ -3,6 +3,7 @@ import {
 	isIosSafari,
 	isStandaloneDisplay,
 	PWA_INSTALL_STORAGE_KEY,
+	shouldPersistPwaDismissal,
 	shouldShowPwaInstall,
 } from "@/const/pwa-install";
 
@@ -82,8 +83,12 @@ export function usePwaInstall() {
 		}
 
 		await promptEvent.prompt();
-		await promptEvent.userChoice;
-		dismiss();
+		const { outcome } = await promptEvent.userChoice;
+		// O evento só serve para um prompt, então some da tela de qualquer forma.
+		setPromptEvent(null);
+		if (shouldPersistPwaDismissal(outcome)) {
+			dismiss();
+		}
 	}, [dismiss, promptEvent]);
 
 	return {
