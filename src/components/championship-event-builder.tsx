@@ -13,6 +13,7 @@ import {
 	EventTeamRatingAverage,
 	EventTeamRemoveButton,
 } from "@/components/event-team-player";
+import { AttendanceFloatingSave } from "@/components/molecules/attendance-floating-save";
 import { Tabs } from "@/components/tabs";
 import {
 	type AttendanceSeedMode,
@@ -35,6 +36,7 @@ import {
 	eventIsoWeekday,
 	eventTeamCount,
 	eventTeamPlayerOptionLabel,
+	eventTeamSlotPool,
 	eventTeamSlotPosition,
 	initialBuilderTeams,
 	keepGoalkeepersPresent,
@@ -224,10 +226,11 @@ export function ChampionshipEventBuilder({
 			return created;
 		}
 
-		handleSetPresent(
-			created.map((player) => player.id),
-			true,
-		);
+		const createdIds = created.map((player) => player.id);
+		handleSetPresent(createdIds, true);
+		if (values.isGoalkeeper) {
+			handleSetGoalkeeper(createdIds, true);
+		}
 		return created;
 	}
 
@@ -415,11 +418,14 @@ export function ChampionshipEventBuilder({
 						return;
 					}
 
-					const drafts = values.teams.map((team) => ({
-						color: team.color,
-						playerIds: teamSlotsToPlayerIds(team.slots),
-						goalkeeperId: Number(team.slots[0]),
-					}));
+					const drafts = values.teams
+						.map((team) => ({
+							color: team.color,
+							playerIds: teamSlotsToPlayerIds(team.slots),
+							goalkeeperId: Number(team.slots[0]),
+							isActive: true,
+						}))
+						.filter((team) => team.playerIds.length > 0);
 					const attendanceInvalid = validateEventAttendance(
 						presentIds,
 						rosterIds,
@@ -449,12 +455,14 @@ export function ChampionshipEventBuilder({
 					const usedColors = values.teams.flatMap((team) =>
 						usedEventTeamColors(team.color),
 					);
-					const assignedIds = new Set(
-						values.teams.flatMap((team) => teamSlotsToPlayerIds(team.slots)),
-					);
-					const pool = presentPlayers.filter(
-						(player) => !assignedIds.has(player.id),
-					);
+					function slotPool(teamIndex: number, slot: number) {
+						return eventTeamSlotPool(
+							presentPlayers,
+							values.teams,
+							teamIndex,
+							slot,
+						);
+					}
 
 					function handleColorChange(teamIndex: number, color: string | null) {
 						if (color === null) {
@@ -506,7 +514,7 @@ export function ChampionshipEventBuilder({
 								onChange={handleTabChange}
 							/>
 							{step === EVENT_BUILDER_STEP.attendance && (
-								<>
+								<div className="space-y-4 pb-24 md:pb-0">
 									<p className="text-sm font-medium text-fg">Presentes</p>
 									<EventAttendanceTable
 										players={players}
@@ -539,9 +547,19 @@ export function ChampionshipEventBuilder({
 												Cancelar
 											</Button>
 										)}
-										<Button type="submit">Continuar</Button>
+										<Button type="submit" className="hidden md:inline-flex">
+											{EVENT_ACTION.continue}
+										</Button>
 									</div>
-								</>
+									<AttendanceFloatingSave
+										selected={presentIds.length}
+										total={players.length}
+										disabled={isPending}
+										type="submit"
+									>
+										{EVENT_ACTION.continue}
+									</AttendanceFloatingSave>
+								</div>
 							)}
 							{step === EVENT_BUILDER_STEP.teams && (
 								<FieldArray name="teams">
@@ -567,65 +585,70 @@ export function ChampionshipEventBuilder({
 													return (
 														<article
 															key={team.key}
-															className="relative space-y-2 rounded-lg border border-line bg-surface p-2"
+															className="relative min-w-0 space-y-2 rounded-lg border border-line bg-surface p-2"
 															style={cardStyle}
 														>
 															<EventTeamColorDot color={team.color} />
-															<div className="flex items-center gap-2">
-																<div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
-																	<EventTeamColorNoneButton
-																		selected={team.color === null}
-																		onSelect={() =>
-																			handleColorChange(teamIndex, null)
-																		}
-																	/>
-																	{EVENT_TEAM_COLORS.map((color) => {
-																		const taken =
-																			usedColors.includes(color) &&
-																			color !== team.color;
-																		const selected = team.color === color;
-
-																		return (
-																			<button
-																				key={color}
-																				type="button"
-																				disabled={taken}
-																				aria-label={
-																					EVENT_TEAM_COLOR_LABEL[color] ?? color
-																				}
-																				aria-pressed={selected}
-																				onClick={() =>
-																					handleColorChange(teamIndex, color)
-																				}
-																				className={`size-5 rounded-md border-2 disabled:opacity-30 ${selected ? "border-current" : "border-black/20"}`}
-																				style={{ backgroundColor: color }}
-																			/>
-																		);
-																	})}
-																	<label className="relative size-5 shrink-0">
-																		<input
-																			type="color"
-																			value={
-																				team.color ?? EVENT_TEAM_COLOR.white
+															<div className="flex min-w-0 items-center gap-2">
+																<div className="min-w-0 flex-1 space-y-1">
+																	<div className="flex min-w-0 flex-wrap items-center gap-1">
+																		<EventTeamColorNoneButton
+																			selected={team.color === null}
+																			onSelect={() =>
+																				handleColorChange(teamIndex, null)
 																			}
-																			aria-label={EVENT_TEAM_COLOR_CUSTOM_LABEL}
-																			onChange={(event) => {
-																				handleColorChange(
-																					teamIndex,
-																					event.target.value,
-																				);
-																			}}
-																			className="absolute inset-0 cursor-pointer opacity-0"
 																		/>
-																		<span
-																			aria-hidden
-																			className={`block size-5 rounded-md border-2 ${isCustom ? "border-current" : "border-black/20"}`}
-																			style={eventTeamCustomColorPreview(
-																				isCustom,
-																				team.color,
-																			)}
-																		/>
-																	</label>
+																		{EVENT_TEAM_COLORS.map((color) => {
+																			const taken =
+																				usedColors.includes(color) &&
+																				color !== team.color;
+																			const selected = team.color === color;
+
+																			return (
+																				<button
+																					key={color}
+																					type="button"
+																					disabled={taken}
+																					aria-label={
+																						EVENT_TEAM_COLOR_LABEL[color] ??
+																						color
+																					}
+																					aria-pressed={selected}
+																					onClick={() =>
+																						handleColorChange(teamIndex, color)
+																					}
+																					className={`size-5 rounded-md border-2 disabled:opacity-30 ${selected ? "border-current" : "border-black/20"}`}
+																					style={{ backgroundColor: color }}
+																				/>
+																			);
+																		})}
+																		<label className="relative size-5 shrink-0">
+																			<input
+																				type="color"
+																				value={
+																					team.color ?? EVENT_TEAM_COLOR.white
+																				}
+																				aria-label={
+																					EVENT_TEAM_COLOR_CUSTOM_LABEL
+																				}
+																				onChange={(event) => {
+																					handleColorChange(
+																						teamIndex,
+																						event.target.value,
+																					);
+																				}}
+																				className="absolute inset-0 cursor-pointer opacity-0"
+																			/>
+																			<span
+																				aria-hidden
+																				className={`block size-5 rounded-md border-2 ${isCustom ? "border-current" : "border-black/20"}`}
+																				style={eventTeamCustomColorPreview(
+																					isCustom,
+																					team.color,
+																				)}
+																			/>
+																		</label>
+																	</div>
 																</div>
 																{values.teams.length >
 																	CHAMPIONSHIP_EVENT.minTeams && (
@@ -646,6 +669,8 @@ export function ChampionshipEventBuilder({
 																	const player = presentPlayers.find(
 																		(item) => String(item.id) === slotValue,
 																	);
+
+																	const available = slotPool(teamIndex, slot);
 
 																	return (
 																		<li
@@ -682,13 +707,13 @@ export function ChampionshipEventBuilder({
 																				<Field
 																					as="select"
 																					name={`teams.${teamIndex}.slots.${slot}`}
-																					disabled={pool.length === 0}
-																					className={FIELD_CLASS}
+																					disabled={available.length === 0}
+																					className={`${FIELD_CLASS} relative z-10 min-w-0 flex-1`}
 																				>
 																					<option value="">
 																						Adicionar jogador
 																					</option>
-																					{pool.map((item) => (
+																					{available.map((item) => (
 																						<option
 																							key={item.id}
 																							value={String(item.id)}
@@ -733,6 +758,7 @@ export function ChampionshipEventBuilder({
 																key: `team-${Date.now()}`,
 																color: EVENT_TEAM_COLOR_NONE,
 																slots: emptyTeamSlots(playersPerTeam),
+																isActive: true,
 															});
 															setTeamsError(null);
 														}}

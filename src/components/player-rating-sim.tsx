@@ -122,7 +122,9 @@ export function PlayerRatingSim({ rating, ceiling }: PlayerRatingSimProps) {
 					</dd>
 				</div>
 				<div>
-					<dt className="text-fg-muted">{PLAYER_RATING_SIM_LABEL.drawPoints}</dt>
+					<dt className="text-fg-muted">
+						{PLAYER_RATING_SIM_LABEL.drawPoints}
+					</dt>
 					<dd className="font-medium tabular-nums text-fg">
 						{result.drawPoints}
 					</dd>
@@ -135,7 +137,9 @@ export function PlayerRatingSim({ rating, ceiling }: PlayerRatingSimProps) {
 				</div>
 			</dl>
 			{result.drawPoints > 1 && (
-				<p className="text-xs text-fg-muted">{PLAYER_RATING_SIM_LABEL.drawBonus}</p>
+				<p className="text-xs text-fg-muted">
+					{PLAYER_RATING_SIM_LABEL.drawBonus}
+				</p>
 			)}
 			{result.belowMinMatches && (
 				<p className="text-xs text-fg-muted">
@@ -143,7 +147,9 @@ export function PlayerRatingSim({ rating, ceiling }: PlayerRatingSimProps) {
 				</p>
 			)}
 			{result.inDeadZone && !result.belowMinMatches && !result.isSeed && (
-				<p className="text-xs text-fg-muted">{PLAYER_RATING_SIM_LABEL.deadZone}</p>
+				<p className="text-xs text-fg-muted">
+					{PLAYER_RATING_SIM_LABEL.deadZone}
+				</p>
 			)}
 			{result.isSeed && (
 				<p className="text-xs text-fg-muted">{PLAYER_RATING_SIM_LABEL.seed}</p>

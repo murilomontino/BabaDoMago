@@ -20,14 +20,22 @@ function check(condition: boolean, message: string) {
 	}
 }
 
-check(EVENT_MVP.starBonus === 0.1, "star bonus");
+check(EVENT_MVP.percent === 0.02, "percent");
+check(EVENT_MVP.minBonus === 0.1, "min bonus");
 check(EVENT_MVP.candidateLimit === 3, "candidate limit");
 check(EVENT_MVP_LABEL.badge === "MVP", "badge");
 check(EVENT_MVP_LABEL.toggleHint.includes("nota"), "toggle hint");
 check(EVENT_MVP_LABEL.pickHint.includes("3"), "pick hint");
-check(EVENT_MVP_LABEL.explain.includes("+0,1"), "explain bonus");
+check(EVENT_MVP_LABEL.explain.includes("2%"), "explain percent");
+check(EVENT_MVP_LABEL.explain.includes("+0,1"), "explain min bonus");
 check(EVENT_MVP_LABEL.explain.includes("3"), "explain limit");
-check(eventMvpStarDelta() === 0.1, "bonus fixo no jogador");
+check(eventMvpStarDelta(0) === 0.1, "sentinela ganha piso");
+check(eventMvpStarDelta(0.5) === 0.1, "0.01 ceil 0.1");
+check(eventMvpStarDelta(7) === 0.2, "0.14 ceil 0.2");
+check(eventMvpStarDelta(5) === 0.1, "0.10 fica 0.1");
+check(eventMvpStarDelta(20) === 0.4, "20 ganha 0.4");
+check(eventMvpBonus(true, 4) === 0.1, "mvp bonus applied");
+check(eventMvpBonus(false, 20) === 0, "no mvp bonus");
 check(mvpCount(true) === 1, "mvp counts as 1");
 check(mvpCount(false) === 0, "not mvp counts as 0");
 check(
@@ -42,8 +50,6 @@ check(
 	"mvp allowed",
 );
 check(mvpPlayerIdsWhenAllowed(false, [1, 2]) === null, "mvp hidden");
-check(eventMvpBonus(true) === 0.1, "mvp bonus applied");
-check(eventMvpBonus(false) === 0, "no mvp bonus");
 check(formatEventMvpCount(1) === "1/3 MVP", "count 1/3");
 check(formatEventMvpCount(3) === "3/3 MVP", "count 3/3");
 check(formatEventMvpCount(0) === "0/3 MVP", "count 0/3");

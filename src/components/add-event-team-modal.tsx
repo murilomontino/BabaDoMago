@@ -47,7 +47,6 @@ type AddEventTeamModalProps = {
 	presentPlayers: ChampionshipPlayer[];
 	goalkeeperIds?: readonly number[];
 	usedColors: readonly EventTeamColor[];
-	takenPlayerIds: readonly number[];
 	initialTeam?: {
 		color: EventTeamColor | null;
 		players: readonly { player_id: number; is_goalkeeper: boolean }[];
@@ -67,7 +66,6 @@ export function AddEventTeamModal({
 	presentPlayers,
 	goalkeeperIds = [],
 	usedColors,
-	takenPlayerIds,
 	initialTeam,
 	isPending,
 	errorMessage,
@@ -87,10 +85,7 @@ export function AddEventTeamModal({
 	);
 	const [localError, setLocalError] = useState<string | null>(null);
 	const assignedIds = new Set(teamSlotsToPlayerIds(slots));
-	const taken = new Set(takenPlayerIds);
-	const pool = presentPlayers.filter(
-		(player) => !assignedIds.has(player.id) && !taken.has(player.id),
-	);
+	const pool = presentPlayers.filter((player) => !assignedIds.has(player.id));
 	const isCustom =
 		color !== null && !EVENT_TEAM_COLORS.some((item) => item === color);
 	const cardStyle = eventTeamColorStyle(color);
@@ -209,7 +204,13 @@ export function AddEventTeamModal({
 											<select
 												value=""
 												disabled={pool.length === 0}
-												className={FIELD_CLASS}
+												className={`${FIELD_CLASS} relative z-10 min-w-0 flex-1`}
+												onClick={(event) => {
+													event.stopPropagation();
+												}}
+												onMouseDown={(event) => {
+													event.stopPropagation();
+												}}
 												onChange={(event) => {
 													const value = event.target.value;
 													setSlots((current) =>
@@ -274,7 +275,6 @@ export function AddEventTeamModal({
 									draft,
 									playersPerTeam,
 									usedColors,
-									takenPlayerIds,
 									presentIds,
 								);
 								if (invalid) {

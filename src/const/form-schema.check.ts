@@ -87,6 +87,32 @@ check(
 	}),
 	"nickname too long",
 );
+check(
+	playerNicknameSchema.isValidSync({
+		nickname: "Vitinho",
+		nickname_tags: ["Vita", "Vitin"],
+		tagDraft: "",
+	}),
+	"nickname tags ok",
+);
+check(
+	!playerNicknameSchema.isValidSync({
+		nickname: "Vitinho",
+		nickname_tags: Array.from({ length: PLAYER_NICKNAME.maxTags + 1 }, (_, i) =>
+			String(i),
+		),
+		tagDraft: "",
+	}),
+	"nickname tags over max",
+);
+check(
+	!playerNicknameSchema.isValidSync({
+		nickname: "Vitinho",
+		nickname_tags: ["x".repeat(PLAYER_NICKNAME.maxLength + 1)],
+		tagDraft: "",
+	}),
+	"nickname tag too long",
+);
 
 check(
 	transferOwnerSchema.isValidSync({ playerId: "12" }),

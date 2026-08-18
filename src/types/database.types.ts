@@ -19,6 +19,7 @@ type ChampionshipPlayersRow = {
 	matches: number;
 	own_goals: number;
 	nickname: string | null;
+	nickname_tags: string[];
 	rating: number;
 	removed_at: string | null;
 	role: string;
@@ -389,19 +390,28 @@ export type Database = {
 					color: string | null;
 					event_id: number;
 					id: number;
+					is_active: boolean;
 					sort_order: number;
+					template_goalkeeper_id: number;
+					template_player_ids: Json;
 				};
 				Insert: {
 					color?: string | null;
 					event_id: number;
 					id?: number;
+					is_active?: boolean;
 					sort_order: number;
+					template_goalkeeper_id?: number;
+					template_player_ids?: Json;
 				};
 				Update: {
 					color?: string | null;
 					event_id?: number;
 					id?: number;
+					is_active?: boolean;
 					sort_order?: number;
+					template_goalkeeper_id?: number;
+					template_player_ids?: Json;
 				};
 				Relationships: [
 					{
@@ -471,6 +481,7 @@ export type Database = {
 					id?: number;
 					matches?: number;
 					nickname?: string | null;
+					nickname_tags?: string[];
 					own_goals?: number;
 					rating?: number;
 					removed_at?: string | null;
@@ -494,6 +505,7 @@ export type Database = {
 					id?: number;
 					matches?: number;
 					nickname?: string | null;
+					nickname_tags?: string[];
 					own_goals?: number;
 					rating?: number;
 					removed_at?: string | null;
@@ -601,6 +613,7 @@ export type Database = {
 					team_color: string | null;
 					player_ids: Json;
 					goalkeeper_id: number;
+					is_active?: boolean;
 				};
 				Returns: Json;
 			};
@@ -718,6 +731,10 @@ export type Database = {
 			};
 			set_championship_event_mvps: {
 				Args: { event_id: number; player_ids: Json };
+				Returns: Json;
+			};
+			set_championship_event_team_active: {
+				Args: { team_id: number; is_active: boolean };
 				Returns: Json;
 			};
 			set_player_role: {
@@ -902,7 +919,11 @@ export type Database = {
 				Returns: Json;
 			};
 			update_player_nickname: {
-				Args: { player_id: number; nickname: string };
+				Args: {
+					player_id: number;
+					nickname: string;
+					nickname_tags: string[];
+				};
 				Returns: Json;
 			};
 			update_player_rating: {

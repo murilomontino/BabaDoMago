@@ -3,6 +3,12 @@ import { UserPlus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { EmptyState } from "@/components/empty-state";
 import {
+	RosterAddPlayerActionsCell,
+	RosterAddPlayerForm,
+	RosterAddPlayerNameCell,
+	RosterAddPlayerRatingCell,
+} from "@/components/molecules/roster-add-player-row";
+import {
 	RosterPlayerActions,
 	type RosterPlayerActionsProps,
 } from "@/components/molecules/roster-player-actions";
@@ -69,6 +75,17 @@ type ChampionshipRosterProps = {
 	removingPlayerId?: number | null;
 	emptyTitle?: string;
 	withStats?: boolean;
+	rosterCeiling?: number;
+	searchQuery?: string;
+	onSearchQueryChange?: (query: string) => void;
+	onSortingChange?: (sorting: { id: string; desc: boolean } | null) => void;
+	isAddingPlayer?: boolean;
+	addPlayerError?: string | null;
+	onAddPlayer?: (values: {
+		displayNames: string[];
+		rating: number;
+		isGoalkeeper: boolean;
+	}) => Promise<void>;
 };
 
 function rosterPlayerCellProps(
@@ -117,8 +134,24 @@ export function ChampionshipRoster({
 	removingPlayerId,
 	emptyTitle = "Nenhum jogador ainda",
 	withStats = true,
+	rosterCeiling,
+	searchQuery: searchQueryProp,
+	onSearchQueryChange,
+	onSortingChange,
+	isAddingPlayer = false,
+	addPlayerError = null,
+	onAddPlayer,
 }: ChampionshipRosterProps) {
-	const [query, setQuery] = useState("");
+	const [uncontrolledQuery, setUncontrolledQuery] = useState("");
+	const query = searchQueryProp ?? uncontrolledQuery;
+	function setQuery(next: string) {
+		if (onSearchQueryChange) {
+			onSearchQueryChange(next);
+			return;
+		}
+
+		setUncontrolledQuery(next);
+	}
 	const alreadyMember = Boolean(
 		currentUserId && players.some((player) => player.user_id === currentUserId),
 	);
@@ -392,13 +425,41 @@ export function ChampionshipRoster({
 		[playerCellShared, playerRatingShared, playerActionsShared],
 	);
 
-	if (players.length === 0) {
+	const addCeiling = rosterCeiling ?? ceiling;
+	const addPlayerCells = useMemo(() => {
+		if (!onAddPlayer) {
+			return undefined;
+		}
+
+		return {
+			[ROSTER_COLUMN.player]: (
+				<RosterAddPlayerNameCell
+					isAddingPlayer={isAddingPlayer}
+					addPlayerError={addPlayerError}
+				/>
+			),
+			[ROSTER_COLUMN.rating]: (
+				<RosterAddPlayerRatingCell
+					ceiling={addCeiling}
+					isAddingPlayer={isAddingPlayer}
+				/>
+			),
+			[ROSTER_COLUMN.actions]: (
+				<RosterAddPlayerActionsCell isAddingPlayer={isAddingPlayer} />
+			),
+		};
+	}, [onAddPlayer, isAddingPlayer, addPlayerError, addCeiling]);
+
+	if (players.length === 0 && !onAddPlayer) {
 		return (
 			<EmptyState icon={<UserPlus className="size-10" />} title={emptyTitle} />
 		);
 	}
 
-	return (
+	const showPlayers = visiblePlayers.length > 0;
+	const showList = showPlayers || Boolean(addPlayerCells);
+
+	const roster = (
 		<div className="space-y-3">
 			<label
 				htmlFor="roster-player-search"
@@ -422,11 +483,20 @@ export function ChampionshipRoster({
 					}}
 				/>
 			</label>
-			{visiblePlayers.length === 0 && (
+			{!showPlayers && players.length > 0 && (
 				<p className="text-sm text-fg-muted">{PLAYER_SEARCH.empty}</p>
 			)}
-			{visiblePlayers.length > 0 && !withStats && (
+			{showList && !withStats && (
 				<ul className="divide-y divide-line">
+					{addPlayerCells && (
+						<li className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 md:flex-row md:items-center md:justify-between">
+							<div className="flex min-w-0 flex-1 items-center justify-between gap-3">
+								{addPlayerCells[ROSTER_COLUMN.player]}
+								{addPlayerCells[ROSTER_COLUMN.rating]}
+							</div>
+							{addPlayerCells[ROSTER_COLUMN.actions]}
+						</li>
+					)}
 					{visiblePlayers.map((player) => (
 						<li
 							key={player.id}
@@ -447,7 +517,7 @@ export function ChampionshipRoster({
 					))}
 				</ul>
 			)}
-			{visiblePlayers.length > 0 && withStats && (
+			{showList && withStats && (
 				<DataTable
 					data={rows}
 					columns={columns}
@@ -455,8 +525,20 @@ export function ChampionshipRoster({
 					hideableColumns={ROSTER_STAT_COLUMN_OPTIONS}
 					initialColumnVisibility={ROSTER_DEFAULT_COLUMN_VISIBILITY}
 					legendItems={ROSTER_LEGEND_ITEMS}
+					leadingRowCells={addPlayerCells}
+					onSortingChange={onSortingChange}
 				/>
 			)}
 		</div>
+	);
+
+	if (!onAddPlayer) {
+		return roster;
+	}
+
+	return (
+		<RosterAddPlayerForm onAddPlayer={onAddPlayer}>
+			{roster}
+		</RosterAddPlayerForm>
 	);
 }

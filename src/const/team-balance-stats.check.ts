@@ -68,6 +68,9 @@ function eventRow(): ChampionshipEvent {
 				event_id: 1,
 				color: EVENT_TEAM_COLOR.white,
 				sort_order: 0,
+				is_active: true,
+				template_player_ids: [],
+				template_goalkeeper_id: 0,
 				players: [
 					{
 						id: 1,
@@ -84,6 +87,9 @@ function eventRow(): ChampionshipEvent {
 				event_id: 1,
 				color: EVENT_TEAM_COLOR.black,
 				sort_order: 1,
+				is_active: true,
+				template_player_ids: [],
+				template_goalkeeper_id: 0,
 				players: [
 					{
 						id: 2,

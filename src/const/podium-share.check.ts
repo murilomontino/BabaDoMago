@@ -38,6 +38,7 @@ function player(
 		user_id: null,
 		display_name: displayName,
 		nickname: null,
+		nickname_tags: [],
 		avatar_url: null,
 		rating: 5,
 		role: "member",

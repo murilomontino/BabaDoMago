@@ -44,6 +44,9 @@ const EVENT_COLUMNS = `
 		event_id,
 		color,
 		sort_order,
+		is_active,
+		template_player_ids,
+		template_goalkeeper_id,
 		championship_event_team_players (
 			id,
 			event_id,
@@ -195,12 +198,18 @@ function asTeam(value: unknown): ChampionshipEventTeam {
 	const nested = row.championship_event_team_players;
 	const players = mapUnknownRows(nested, asTeamPlayer);
 	const teamColor = eventTeamColorOrNone(color);
+	const templatePlayerIds = Array.isArray(row.template_player_ids)
+		? row.template_player_ids.map((playerId) => Number(playerId))
+		: [];
 
 	return {
 		id: row.id,
 		event_id: Number(row.event_id),
 		color: teamColor,
 		sort_order: Number(row.sort_order),
+		is_active: row.is_active !== false,
+		template_player_ids: templatePlayerIds,
+		template_goalkeeper_id: Number(row.template_goalkeeper_id ?? 0),
 		players: [...players].sort((a, b) => {
 			if (a.is_goalkeeper !== b.is_goalkeeper) {
 				if (a.is_goalkeeper) {
@@ -434,6 +443,7 @@ export async function saveChampionshipEventTeams(
 		color: EventTeamColor | null;
 		playerIds: readonly number[];
 		goalkeeperId: number;
+		isActive?: boolean;
 	}[],
 	goalkeeperPlayerIds: readonly number[] = [],
 ): Promise<void> {
@@ -444,6 +454,7 @@ export async function saveChampionshipEventTeams(
 			color: normalizeEventTeamColor(team.color),
 			player_ids: [...team.playerIds],
 			goalkeeper_id: team.goalkeeperId,
+			is_active: team.isActive !== false,
 		})),
 		goalkeeper_player_ids: [...goalkeeperPlayerIds],
 	});

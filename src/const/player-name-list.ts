@@ -1,6 +1,8 @@
 export const PLAYER_NAME_LIST = {
 	placeholder:
 		"Um nome por linha.\nCole a lista: números e emojis são ignorados.\nEx.: 1. Vitinho ✅",
+	inputPlaceholder: "Nome, ou cole a lista",
+	separator: ", ",
 } as const;
 
 function cleanPlayerNameLine(line: string): string {
@@ -14,8 +16,13 @@ function cleanPlayerNameLine(line: string): string {
 export function parsePlayerNameList(raw: string): string[] {
 	const names = raw
 		.split(/\r?\n/)
+		.flatMap((line) => line.split(","))
 		.map(cleanPlayerNameLine)
 		.filter((name) => name.length > 0);
 
 	return [...new Set(names)];
+}
+
+export function playerNameListInputValue(raw: string): string {
+	return parsePlayerNameList(raw).join(PLAYER_NAME_LIST.separator);
 }

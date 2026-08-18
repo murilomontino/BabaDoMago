@@ -140,10 +140,12 @@ export function useUpdatePlayerNickname() {
 		mutationFn: ({
 			playerId,
 			nickname,
+			nicknameTags,
 		}: {
 			playerId: number;
 			nickname: string;
-		}) => updatePlayerNickname(playerId, nickname),
+			nicknameTags: string[];
+		}) => updatePlayerNickname(playerId, nickname, nicknameTags),
 		onSuccess: async () => {
 			await invalidateChampionshipQueries(queryClient);
 		},

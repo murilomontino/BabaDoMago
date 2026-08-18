@@ -13,7 +13,11 @@ function normalizePlayerSearch(value: string): string {
 }
 
 export function filterPlayersBySearch<
-	T extends { display_name: string; nickname?: string | null },
+	T extends {
+		display_name: string;
+		nickname?: string | null;
+		nickname_tags?: readonly string[] | null;
+	},
 >(players: readonly T[], query: string): T[] {
 	const tokens = parsePlayerNameList(query)
 		.flatMap((name) => name.split(","))
@@ -25,10 +29,13 @@ export function filterPlayersBySearch<
 	}
 
 	return players.filter((player) => {
-		const name = normalizePlayerSearch(player.display_name);
-		const nickname = normalizePlayerSearch(player.nickname ?? "");
-		return tokens.some(
-			(token) => name.includes(token) || nickname.includes(token),
+		const haystack = [
+			player.display_name,
+			player.nickname ?? "",
+			...(player.nickname_tags ?? []),
+		].map(normalizePlayerSearch);
+		return tokens.some((token) =>
+			haystack.some((value) => value.includes(token)),
 		);
 	});
 }

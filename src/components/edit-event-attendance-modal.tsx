@@ -2,6 +2,7 @@ import { useState } from "react";
 import { AppDialog } from "@/components/atoms/app-dialog";
 import { Button } from "@/components/button";
 import { EventAttendanceTable } from "@/components/event-attendance-table";
+import { AttendanceFloatingSave } from "@/components/molecules/attendance-floating-save";
 import {
 	applyVisibleAttendance,
 	defaultGoalkeeperIds,
@@ -41,6 +42,8 @@ function addCreatedPlayersToPresent(
 	onAddPlayer: EditEventAttendanceModalProps["onAddPlayer"],
 	presentIds: number[],
 	setPresentIds: (ids: number[]) => void,
+	goalkeeperIds: number[],
+	setGoalkeeperIds: (ids: number[]) => void,
 	setLocalError: (error: string | null) => void,
 ): EditEventAttendanceModalProps["onAddPlayer"] {
 	if (!onAddPlayer) {
@@ -53,14 +56,12 @@ function addCreatedPlayersToPresent(
 			return created;
 		}
 
+		const createdIds = created.map((player) => player.id);
 		setLocalError(null);
-		setPresentIds(
-			applyVisibleAttendance(
-				presentIds,
-				created.map((player) => player.id),
-				true,
-			),
-		);
+		setPresentIds(applyVisibleAttendance(presentIds, createdIds, true));
+		if (values.isGoalkeeper) {
+			setGoalkeeperIds(setGoalkeeperSelection(goalkeeperIds, createdIds, true));
+		}
 		return created;
 	};
 }
@@ -89,9 +90,20 @@ export function EditEventAttendanceModal({
 	);
 	const [localError, setLocalError] = useState<string | null>(null);
 
+	async function handleSave() {
+		const next = keepTeamPlayersPresent(presentIds, teamPlayerIds);
+		const invalid = validateEventAttendance(next, rosterIds);
+		if (invalid) {
+			setLocalError(invalid);
+			return;
+		}
+
+		await onSave(next, keepGoalkeepersPresent(goalkeeperIds, next));
+	}
+
 	return (
 		<AppDialog onClose={onCancel}>
-			<div className="max-h-[90dvh] w-full max-w-2xl overflow-y-auto rounded-xl bg-surface p-4 shadow-lg">
+			<div className="max-h-[90dvh] w-full max-w-2xl overflow-y-auto rounded-xl bg-surface p-4 pb-24 shadow-lg md:pb-4">
 				<p className="mb-1 text-sm font-medium tracking-tight text-fg">
 					{EVENT_ACTION.addAttendance}
 				</p>
@@ -127,6 +139,8 @@ export function EditEventAttendanceModal({
 						onAddPlayer,
 						presentIds,
 						setPresentIds,
+						goalkeeperIds,
+						setGoalkeeperIds,
 						setLocalError,
 					)}
 				/>
@@ -143,23 +157,25 @@ export function EditEventAttendanceModal({
 						Cancelar
 					</Button>
 					<Button
+						className="hidden md:inline-flex"
 						onClick={() => {
-							void (async () => {
-								const next = keepTeamPlayersPresent(presentIds, teamPlayerIds);
-								const invalid = validateEventAttendance(next, rosterIds);
-								if (invalid) {
-									setLocalError(invalid);
-									return;
-								}
-
-								await onSave(next, keepGoalkeepersPresent(goalkeeperIds, next));
-							})();
+							void handleSave();
 						}}
 						disabled={isPending}
 					>
 						{EVENT_ACTION.saveAttendance}
 					</Button>
 				</div>
+				<AttendanceFloatingSave
+					selected={presentIds.length}
+					total={players.length}
+					disabled={isPending}
+					onClick={() => {
+						void handleSave();
+					}}
+				>
+					{EVENT_ACTION.saveAttendance}
+				</AttendanceFloatingSave>
 			</div>
 		</AppDialog>
 	);

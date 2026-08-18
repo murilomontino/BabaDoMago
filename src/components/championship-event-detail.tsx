@@ -4,13 +4,13 @@ import { ChampionshipEventRoundTab } from "@/components/championship-event-round
 import { ChampionshipPodiumTab } from "@/components/championship-podium-tab";
 import { Tabs } from "@/components/tabs";
 import {
-	CHAMPIONSHIP_EVENT,
 	canEditEventTeams,
 	EVENT_BUILDER_STEP,
 	type EventAttendanceStatsDraft,
 	type EventRsvpStatus,
 	type EventTeamDraft,
 	eventStatus,
+	eventTeamsAreReady,
 	resolveBuilderInitialPresentIds,
 } from "@/const/championship-event";
 import { playersFromEventAttendance } from "@/const/championship-event-roster";
@@ -174,8 +174,7 @@ export function ChampionshipEventDetail({
 	const teamsEditable = canManage && canEditEventTeams(event);
 	const [step, setStep] = useEventBuilderStep();
 	const [tab, setTab] = useEventTab();
-	const mustBuild =
-		teamsEditable && event.teams.length < CHAMPIONSHIP_EVENT.minTeams;
+	const mustBuild = teamsEditable && !eventTeamsAreReady(event.teams);
 	const showTeamBuilder = teamsEditable && (step !== null || mustBuild);
 	const showEventTabs = showEventDetailTabs({
 		showTeamBuilder,

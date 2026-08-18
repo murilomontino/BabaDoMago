@@ -2,6 +2,7 @@ import {
 	ATTENDANCE_SEED,
 	ATTENDANCE_STATS_TEAM_FILTER,
 	ATTENDANCE_STATS_TEAM_FILTER_LABEL,
+	activeEventTeams,
 	applyVisibleAttendance,
 	areAllVisiblePresent,
 	attendanceGoalkeeperIds,
@@ -24,6 +25,8 @@ import {
 	draftAttendanceForEnd,
 	drawBalancedEventTeams,
 	EVENT_ATTENDANCE_ACTION,
+	EVENT_ATTENDANCE_COLUMN,
+	EVENT_ATTENDANCE_COLUMN_LABEL,
 	EVENT_ATTENDANCE_MESSAGE,
 	EVENT_ATTENDANCE_STAT_ABBR,
 	EVENT_BUILDER_STEP,
@@ -49,7 +52,10 @@ import {
 	eventTeamPlayerOptionLabel,
 	eventTeamPlayerPosition,
 	eventTeamRatingAverage,
+	eventTeamSlotPool,
 	eventTeamSlotPosition,
+	eventTeamsAreReady,
+	eventTeamsSharePlayers,
 	filterAttendanceByTeam,
 	formatChampionshipSchedule,
 	formatEventTeamRatingAverage,
@@ -170,8 +176,9 @@ function draft(
 	color: EventTeamDraft["color"],
 	playerIds: number[],
 	goalkeeperId = playerIds[0] ?? 0,
+	isActive = true,
 ): EventTeamDraft {
-	return { color, playerIds, goalkeeperId };
+	return { color, playerIds, goalkeeperId, isActive };
 }
 
 check(validateEventTeams([], 5), EVENT_TEAM_MESSAGE.minTeams);
@@ -220,7 +227,38 @@ check(
 		[draft(EVENT_TEAM_COLOR.white, [1]), draft(EVENT_TEAM_COLOR.black, [1])],
 		5,
 	),
+	null,
+);
+
+check(
+	validateEventTeams(
+		[draft(EVENT_TEAM_COLOR.white, [1, 1]), draft(EVENT_TEAM_COLOR.black, [2])],
+		5,
+	),
 	EVENT_TEAM_MESSAGE.playerDuplicate,
+);
+
+check(
+	validateEventTeams(
+		[
+			draft(EVENT_TEAM_COLOR.white, [1]),
+			draft(EVENT_TEAM_COLOR.black, [2]),
+			{ color: null, playerIds: [3, 4], goalkeeperId: 3, isActive: false },
+		],
+		5,
+	),
+	null,
+);
+
+check(
+	validateEventTeams(
+		[
+			draft(EVENT_TEAM_COLOR.white, [1]),
+			{ color: null, playerIds: [], goalkeeperId: 0, isActive: false },
+		],
+		5,
+	),
+	EVENT_TEAM_MESSAGE.playerEmpty,
 );
 
 check(
@@ -269,18 +307,12 @@ check(
 	EVENT_ATTENDANCE_MESSAGE.minPresent,
 );
 check(
-	validateEventTeam(
-		draft(EVENT_TEAM_COLOR.white, [1, 2]),
-		5,
-		[],
-		[],
-		[1, 2, 3],
-	),
+	validateEventTeam(draft(EVENT_TEAM_COLOR.white, [1, 2]), 5, [], [1, 2, 3]),
 	null,
 );
-check(validateEventTeam(draft(null, [1, 2]), 5, [], [], [1, 2, 3]), null);
+check(validateEventTeam(draft(null, [1, 2]), 5, [], [1, 2, 3]), null);
 check(
-	validateEventTeam(draft(null, [1]), 5, [EVENT_TEAM_COLOR.white], [], [1, 2]),
+	validateEventTeam(draft(null, [1]), 5, [EVENT_TEAM_COLOR.white], [1, 2]),
 	null,
 );
 check(
@@ -288,17 +320,16 @@ check(
 		draft(EVENT_TEAM_COLOR.white, [1]),
 		5,
 		[EVENT_TEAM_COLOR.white],
-		[],
 		[1, 2],
 	),
 	EVENT_TEAM_MESSAGE.colorDuplicate,
 );
 check(
-	validateEventTeam(draft(EVENT_TEAM_COLOR.white, [1]), 5, [], [1], [1, 2]),
+	validateEventTeam(draft(EVENT_TEAM_COLOR.white, [1, 1]), 5, [], [1, 2]),
 	EVENT_TEAM_MESSAGE.playerDuplicate,
 );
 check(
-	validateEventTeam(draft(EVENT_TEAM_COLOR.white, [9]), 5, [], [], [1, 2]),
+	validateEventTeam(draft(EVENT_TEAM_COLOR.white, [9]), 5, [], [1, 2]),
 	EVENT_TEAM_MESSAGE.playerNotPresent,
 );
 
@@ -371,8 +402,8 @@ check(replaceSlotAt(["1", "", "3"], 1, "9").join("|"), "1|9|3");
 check(builderTeamsHavePlayers(initialBuilderTeams(5, 2)), false);
 check(
 	builderTeamsHavePlayers([
-		{ key: "a", color: null, slots: ["", "1"] },
-		{ key: "b", color: null, slots: ["", ""] },
+		{ key: "a", color: null, slots: ["", "1"], isActive: true },
+		{ key: "b", color: null, slots: ["", ""], isActive: true },
 	]),
 	true,
 );
@@ -406,6 +437,9 @@ check(
 			{
 				id: 10,
 				color: EVENT_TEAM_COLOR.white,
+				is_active: true,
+				template_player_ids: [],
+				template_goalkeeper_id: 0,
 				players: [
 					{ player_id: 2, is_goalkeeper: false },
 					{ player_id: 1, is_goalkeeper: true },
@@ -414,6 +448,9 @@ check(
 			{
 				id: 11,
 				color: EVENT_TEAM_COLOR.black,
+				is_active: true,
+				template_player_ids: [],
+				template_goalkeeper_id: 0,
 				players: [{ player_id: 3, is_goalkeeper: true }],
 			},
 		],
@@ -494,6 +531,46 @@ check(
 	"1|2|",
 );
 check(String(teamSlotsToPlayerIds(["1", "", "2"])), "1,2");
+check(
+	String(
+		eventTeamSlotPool(
+			[{ id: 1 }, { id: 2 }, { id: 3 }],
+			[{ slots: ["1", ""] }, { slots: ["", ""] }],
+			1,
+			0,
+		).map((player) => player.id),
+	),
+	"1,2,3",
+);
+check(
+	String(
+		eventTeamSlotPool(
+			[{ id: 1 }, { id: 2 }, { id: 3 }],
+			[{ slots: ["1", ""] }, { slots: ["", ""] }],
+			1,
+			0,
+		).map((player) => player.id),
+	),
+	"1,2,3",
+);
+check(
+	eventTeamsSharePlayers(
+		[{ player_id: 1 }, { player_id: 2 }],
+		[{ player_id: 3 }],
+	),
+	false,
+);
+check(
+	eventTeamsSharePlayers(
+		[{ player_id: 1 }, { player_id: 2 }],
+		[{ player_id: 2 }, { player_id: 3 }],
+	),
+	true,
+);
+check(
+	championshipEventErrorMessage("shared player"),
+	EVENT_ERROR_MESSAGE["shared player"],
+);
 check(eventTeamSlotPosition(0), EVENT_TEAM_POSITION.goalkeeper);
 check(eventTeamSlotPosition(1), EVENT_TEAM_POSITION.player);
 check(eventTeamPlayerPosition(true), EVENT_TEAM_POSITION.goalkeeper);
@@ -542,12 +619,24 @@ check(areAllVisiblePresent([1, 2, 3], []), false);
 check(
 	String(
 		eventTeamPlayerIds([
-			{ players: [{ player_id: 1 }, { player_id: 2 }] },
+			{
+				players: [{ player_id: 1 }, { player_id: 2 }],
+			},
 			{ players: [{ player_id: 2 }] },
+			{ players: [{ player_id: 9 }] },
 		]),
 	),
-	"1,2",
+	"1,2,9",
 );
+check(
+	eventTeamsAreReady([
+		{ is_active: true, players: [{ player_id: 1 }] },
+		{ is_active: true, players: [{ player_id: 2 }] },
+		{ is_active: false, players: [] },
+	]),
+	true,
+);
+check(activeEventTeams([{ is_active: true }, { is_active: false }]).length, 1);
 check(String(keepTeamPlayersPresent([3], [1, 2])), "3,1,2");
 check(canRemoveEventAttendance(3, 3, [1, 2]), true);
 check(canRemoveEventAttendance(1, 3, [1, 2]), false);
@@ -764,6 +853,8 @@ check(isEventBuilderStep(null), false);
 check(EVENT_ATTENDANCE_ACTION.addPlayer, "Adicionar");
 check(EVENT_ATTENDANCE_ACTION.addPlayerPlaceholder, "Nome do jogador");
 check(EVENT_ATTENDANCE_ACTION.addPlayerAria, "Adicionar jogador");
+check(EVENT_ATTENDANCE_COLUMN.actions, "actions");
+check(EVENT_ATTENDANCE_COLUMN_LABEL.actions, "Ações");
 check(EVENT_ATTENDANCE_STAT_ABBR.goals, "G");
 check(EVENT_ATTENDANCE_STAT_ABBR.assistedGoals, "GS");
 check(EVENT_ATTENDANCE_STAT_ABBR.ownGoals, "GC");

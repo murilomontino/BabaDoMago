@@ -5,6 +5,7 @@ import {
 	BUTTON_VARIANT,
 	buttonClassName,
 	ICON_BUTTON_SIZE_CLASS,
+	PLAYER_KIND_SELECT_CLASS,
 } from "./ui.ts";
 
 function check(condition: boolean, message: string) {
@@ -26,5 +27,10 @@ check(
 );
 check(ariaHiddenWhenUnlabelled(undefined) === true, "hidden without label");
 check(ariaHiddenWhenUnlabelled("Gol") === undefined, "labelled stays visible");
+check(PLAYER_KIND_SELECT_CLASS.on.includes("bg-pitch-soft"), "kind select on");
+check(
+	PLAYER_KIND_SELECT_CLASS.off.includes("bg-surface-muted"),
+	"kind select off",
+);
 
 console.log("ui ok");

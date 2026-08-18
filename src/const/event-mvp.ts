@@ -3,7 +3,8 @@ import { playerVisibleName } from "./player-name.ts";
 import { rosterGoalInvolvement } from "./roster-stats.ts";
 
 export const EVENT_MVP = {
-	starBonus: 0.1,
+	percent: 0.02,
+	minBonus: 0.1,
 	candidateLimit: 3,
 } as const;
 
@@ -16,7 +17,7 @@ export const EVENT_MVP_LABEL = {
 	pickHint: "Os 3 com melhor estatística desta rodada.",
 	pickEmpty: "Ninguém com estatística nesta rodada.",
 	explain:
-		"MVP é o destaque da rodada. Ganha +0,1 na nota. Até 3 jogadores, pelos melhores números.",
+		"MVP é o destaque da rodada. Ganha 2% da nota, arredondado para cima (mínimo +0,1). Até 3 jogadores, pelos melhores números.",
 	toggleHint: "Toque para marcar ou desmarcar. A nota muda na hora.",
 	save: "Salvar",
 	cancel: "Cancelar",
@@ -97,8 +98,11 @@ export function eventMvpPickCandidates(
 	];
 }
 
-export function eventMvpStarDelta(): number {
-	return EVENT_MVP.starBonus;
+export function eventMvpStarDelta(rating: number): number {
+	const tenths = Math.round(Math.max(0, rating) * 10);
+	const percentHundredths = Math.round(EVENT_MVP.percent * 100);
+	const bonusTenths = Math.floor((tenths * percentHundredths + 99) / 100);
+	return Math.max(EVENT_MVP.minBonus, bonusTenths / 10);
 }
 
 export function attendanceMvpPlayerIds(
@@ -126,12 +130,12 @@ export function mvpCount(isMvp: boolean): number {
 	return 1;
 }
 
-export function eventMvpBonus(isMvp: boolean): number {
+export function eventMvpBonus(isMvp: boolean, rating: number): number {
 	if (!isMvp) {
 		return 0;
 	}
 
-	return eventMvpStarDelta();
+	return eventMvpStarDelta(rating);
 }
 
 export function formatEventMvpCount(selected: number): string {

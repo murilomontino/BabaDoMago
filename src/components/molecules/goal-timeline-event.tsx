@@ -1,4 +1,5 @@
-import { Goal, Handshake } from "lucide-react";
+import { Handshake } from "lucide-react";
+import { GoalIcon } from "@/components/goal-icon";
 import { OwnGoalIcon } from "@/components/soccer-ball-icon";
 import { EVENT_GOAL_LABEL } from "@/const/championship-event-match";
 
@@ -28,7 +29,10 @@ export function GoalTimelineEvent({
 				/>
 			)}
 			{!isOwnGoal && (
-				<Goal className="size-3 shrink-0" aria-label={EVENT_GOAL_LABEL.goal} />
+				<GoalIcon
+					className="size-3 shrink-0"
+					aria-label={EVENT_GOAL_LABEL.goal}
+				/>
 			)}
 			<span className="truncate">{scorerName}</span>
 			{assistName && (

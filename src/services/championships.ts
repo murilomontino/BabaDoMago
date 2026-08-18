@@ -15,6 +15,7 @@ import {
 	championshipQuotaErrorMessage,
 } from "@/const/championship-quota";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
+import { normalizeNicknameTags } from "@/const/player-name";
 import { PLAYER_RATING } from "@/const/player-rating";
 import { rosterSafeCount } from "@/const/roster-stats";
 import { supabase } from "@/lib/supabase";
@@ -26,7 +27,7 @@ import type {
 } from "@/types/championship";
 
 const PLAYER_COLUMNS =
-	"id, championship_id, user_id, display_name, nickname, avatar_url, rating, role, is_goalkeeper, deleted_at, goals, assists, assisted_goals, own_goals, wins, losses, draws, matches, mvps" as const;
+	"id, championship_id, user_id, display_name, nickname, nickname_tags, avatar_url, rating, role, is_goalkeeper, deleted_at, goals, assists, assisted_goals, own_goals, wins, losses, draws, matches, mvps" as const;
 
 const CHAMPIONSHIP_COLUMNS =
 	"id, name, invite_code, created_by, logo_path, event_time, event_weekday, location, players_per_team, skip_guest_goalkeeper_matches, is_visible" as const;
@@ -81,6 +82,13 @@ function asPlayer(value: unknown): ChampionshipPlayer {
 		user_id: optionalString(row.user_id),
 		display_name: row.display_name,
 		nickname: optionalString(row.nickname),
+		nickname_tags: normalizeNicknameTags(
+			Array.isArray(row.nickname_tags)
+				? row.nickname_tags.filter(
+						(item): item is string => typeof item === "string",
+					)
+				: [],
+		),
 		avatar_url: optionalString(row.avatar_url),
 		rating,
 		role: optionalString(row.role) ?? CHAMPIONSHIP_ROLE.member,
@@ -305,10 +313,12 @@ export async function updatePlayerRating(
 export async function updatePlayerNickname(
 	playerId: number,
 	nickname: string,
+	nicknameTags: string[],
 ): Promise<ChampionshipPlayer> {
 	const { data, error } = await supabase.rpc("update_player_nickname", {
 		player_id: playerId,
 		nickname,
+		nickname_tags: normalizeNicknameTags(nicknameTags),
 	});
 
 	if (error) {

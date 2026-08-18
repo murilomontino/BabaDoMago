@@ -3,6 +3,7 @@ import {
 	confirmClaimPlayerMessage,
 	isGoalkeeperKind,
 	legalNameIfDifferent,
+	normalizeNicknameTags,
 	PLAYER_KIND,
 	PLAYER_KIND_LABEL,
 	PLAYER_KIND_OPTIONS,
@@ -19,14 +20,26 @@ function check(condition: boolean, message: string) {
 }
 
 check(PLAYER_NICKNAME.maxLength === 40, "nickname max");
+check(PLAYER_NICKNAME.maxTags === 8, "nickname max tags");
 check(PLAYER_LABEL.nickname === "Apelido", "nickname label");
 check(
 	PLAYER_LABEL.nicknamePlaceholder === "Apelido no baba",
 	"nickname placeholder",
 );
+check(
+	PLAYER_LABEL.nicknameTags === "Apelidos para busca",
+	"nickname tags label",
+);
+check(
+	PLAYER_LABEL.nicknameTagsPlaceholder === "vita, vitin",
+	"nickname tags placeholder",
+);
+check(PLAYER_LABEL.nicknameTagRemove === "Remover", "nickname tag remove");
 check(PLAYER_LABEL.eventStats === "Stats da rodada", "event stats label");
 check(PLAYER_LABEL.player === "Jogador", "player label");
 check(PLAYER_LABEL.goalkeeper === "Goleiro", "goalkeeper label");
+check(PLAYER_LABEL.add === "add", "add label");
+check(PLAYER_LABEL.addAria === "Adicionar jogador", "add aria");
 check(
 	PLAYER_KIND_LABEL[PLAYER_KIND.player] === PLAYER_LABEL.player,
 	"player kind label",
@@ -91,5 +104,18 @@ check(
 	"legal when nickname differs",
 );
 check(legalNameIfDifferent("Ana", "Ana") === null, "no legal when same");
+
+check(
+	normalizeNicknameTags(["  Vita  ", "", "vita", "Vitin"]).join(",") ===
+		"Vita,Vitin",
+	"tags trim unique",
+);
+check(normalizeNicknameTags(["x".repeat(41)]).length === 0, "tag too long");
+check(
+	normalizeNicknameTags(["a", "b", "c", "d", "e", "f", "g", "h", "i"]).join(
+		",",
+	) === "a,b,c,d,e,f,g,h",
+	"tags cap",
+);
 
 console.log("player-name ok");

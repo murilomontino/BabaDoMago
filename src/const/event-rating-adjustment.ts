@@ -263,7 +263,7 @@ export function eventRatingPreview({
 				stats?.matches ?? 0,
 				from,
 				ceiling,
-			) + eventMvpBonus(isMvp),
+			) + eventMvpBonus(isMvp, from),
 		);
 
 		return {

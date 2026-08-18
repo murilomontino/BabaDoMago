@@ -1,5 +1,6 @@
-import { Goal, Handshake, X } from "lucide-react";
+import { Handshake, X } from "lucide-react";
 import { EventTeamChip } from "@/components/event-team-player";
+import { GoalIcon } from "@/components/goal-icon";
 import { GoalkeeperGlovesIcon } from "@/components/goalkeeper-gloves-icon";
 import {
 	MATCH_GOAL_TIMELINE_GRID_CLASS,
@@ -81,7 +82,7 @@ function MatchIconGlyph({ id }: { id: EventMatchIcon }) {
 		case EVENT_MATCH_ICON.goalkeeper:
 			return <GoalkeeperGlovesIcon className="size-3 shrink-0" />;
 		case EVENT_MATCH_ICON.goal:
-			return <Goal className="size-3 shrink-0" />;
+			return <GoalIcon className="size-3 shrink-0" />;
 		case EVENT_MATCH_ICON.assist:
 			return <Handshake className="size-3 shrink-0" />;
 		case EVENT_MATCH_ICON.ownGoal:

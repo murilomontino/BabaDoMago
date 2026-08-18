@@ -10,7 +10,7 @@ import {
 	useTable,
 } from "@tanstack/react-table";
 import { ArrowDownWideNarrow, ArrowUpNarrowWide } from "lucide-react";
-import { useId } from "react";
+import { memo, type ReactNode, useEffect, useId } from "react";
 import { SortableHeader } from "@/components/atoms/sortable-header";
 import { ColumnVisibilityPanel } from "@/components/molecules/column-visibility-panel";
 import { TableLegend } from "@/components/molecules/table-legend";
@@ -33,6 +33,80 @@ const TABLE_CELL_ALIGN = {
 	center: "text-center",
 	right: "text-right",
 } as const;
+
+type TableCellAlign = keyof typeof TABLE_CELL_ALIGN;
+
+function extraRowCellClass(columnId: string, align: TableCellAlign): string {
+	const alignClass = TABLE_CELL_ALIGN[align];
+	if (columnId === DATA_TABLE_MOBILE_ACTIONS.actions) {
+		return `w-px px-0.5 py-1 ${alignClass}`;
+	}
+
+	if (columnId === DATA_TABLE_MOBILE_PRIMARY.player) {
+		return `px-3 py-3 ${alignClass}`;
+	}
+
+	return `whitespace-nowrap px-3 py-3 ${alignClass}`;
+}
+
+type ExtraRowCells = Readonly<Record<string, ReactNode>>;
+
+function ExtraMobileRow({ cells }: { cells: ExtraRowCells }) {
+	return (
+		<li className="py-3">
+			<div className="flex min-w-0 items-center justify-between gap-3">
+				{[
+					DATA_TABLE_MOBILE_PRIMARY.player,
+					DATA_TABLE_MOBILE_PRIMARY.rating,
+				].flatMap((id) => {
+					const cell = cells[id];
+					if (!cell) {
+						return [];
+					}
+
+					return [
+						<div
+							key={id}
+							className={
+								id === DATA_TABLE_MOBILE_PRIMARY.player
+									? "min-w-0 flex-1"
+									: "shrink-0"
+							}
+						>
+							{cell}
+						</div>,
+					];
+				})}
+			</div>
+			{cells[DATA_TABLE_MOBILE_ACTIONS.actions] && (
+				<div className="mt-2 w-full">
+					{cells[DATA_TABLE_MOBILE_ACTIONS.actions]}
+				</div>
+			)}
+		</li>
+	);
+}
+
+function ExtraDesktopRow({
+	cells,
+	columns,
+}: {
+	cells: ExtraRowCells;
+	columns: ReadonlyArray<{ id: string; align: TableCellAlign }>;
+}) {
+	return (
+		<tr>
+			{columns.map((column) => (
+				<td
+					key={column.id}
+					className={extraRowCellClass(column.id, column.align)}
+				>
+					{cells[column.id] ?? null}
+				</td>
+			))}
+		</tr>
+	);
+}
 
 export const dataTableFeatures = tableFeatures({
 	columnVisibilityFeature,
@@ -73,9 +147,12 @@ type DataTableProps<TData extends RowData> = {
 	legendItems?: readonly DataTableLegendItem[];
 	onRowClick?: (row: TData) => void;
 	getRowClassName?: (row: TData) => string;
+	leadingRowCells?: Readonly<Record<string, ReactNode>>;
+	trailingRowCells?: Readonly<Record<string, ReactNode>>;
+	onSortingChange?: (sorting: { id: string; desc: boolean } | null) => void;
 };
 
-export function DataTable<TData extends RowData>({
+function DataTableInner<TData extends RowData>({
 	data,
 	columns,
 	getRowId,
@@ -84,6 +161,9 @@ export function DataTable<TData extends RowData>({
 	legendItems = [],
 	onRowClick,
 	getRowClassName,
+	leadingRowCells,
+	trailingRowCells,
+	onSortingChange,
 }: DataTableProps<TData>) {
 	const sortSelectId = useId();
 	const table = useTable(
@@ -134,6 +214,26 @@ export function DataTable<TData extends RowData>({
 		.filter((column) => column.getCanSort());
 	const activeSort = table.state.sorting[0];
 	const sortDirectionLabel = dataTableSortDirectionLabel(activeSort?.desc);
+	const sortId = activeSort?.id ?? "";
+	const sortDesc = activeSort?.desc ?? false;
+
+	useEffect(() => {
+		if (!onSortingChange) {
+			return;
+		}
+
+		if (!sortId) {
+			onSortingChange(null);
+			return;
+		}
+
+		onSortingChange({ id: sortId, desc: sortDesc });
+	}, [onSortingChange, sortDesc, sortId]);
+
+	const extraDesktopColumns = table.getVisibleLeafColumns().map((column) => ({
+		id: column.id,
+		align: column.columnDef.meta?.align ?? "left",
+	}));
 
 	return (
 		<div>
@@ -204,6 +304,7 @@ export function DataTable<TData extends RowData>({
 				<TableLegend items={legend} />
 			</div>
 			<ul className="divide-y divide-line md:hidden">
+				{leadingRowCells && <ExtraMobileRow cells={leadingRowCells} />}
 				{table.getRowModel().rows.map((row) => {
 					const { primary, stats, actions } = splitMobileTableCells(
 						row.getVisibleCells(),
@@ -287,6 +388,7 @@ export function DataTable<TData extends RowData>({
 						</li>
 					);
 				})}
+				{trailingRowCells && <ExtraMobileRow cells={trailingRowCells} />}
 			</ul>
 			<div className="hidden overflow-x-auto md:block">
 				<table className="w-full min-w-max border-collapse text-sm">
@@ -311,6 +413,12 @@ export function DataTable<TData extends RowData>({
 						))}
 					</thead>
 					<tbody className="divide-y divide-line">
+						{leadingRowCells && (
+							<ExtraDesktopRow
+								cells={leadingRowCells}
+								columns={extraDesktopColumns}
+							/>
+						)}
 						{table.getRowModel().rows.map((row) => (
 							<tr
 								key={row.id}
@@ -339,6 +447,12 @@ export function DataTable<TData extends RowData>({
 								})}
 							</tr>
 						))}
+						{trailingRowCells && (
+							<ExtraDesktopRow
+								cells={trailingRowCells}
+								columns={extraDesktopColumns}
+							/>
+						)}
 					</tbody>
 				</table>
 			</div>
@@ -348,3 +462,5 @@ export function DataTable<TData extends RowData>({
 		</div>
 	);
 }
+
+export const DataTable = memo(DataTableInner) as typeof DataTableInner;

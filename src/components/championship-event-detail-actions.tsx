@@ -12,6 +12,7 @@ import {
 	EVENT_ACTION,
 	EVENT_STATUS,
 	type EventStatus,
+	eventMatchTeamCount,
 	matchPlayerIdsMissingFromAttendance,
 	mergePresentIdsForEnd,
 } from "@/const/championship-event";
@@ -72,7 +73,7 @@ export function ChampionshipEventDetailActions({
 		!showTeamBuilder &&
 		canStartEventMatch({
 			ended,
-			teamCount: event.teams.length,
+			teamCount: eventMatchTeamCount(event.teams),
 		});
 	const openMatch = openEventMatch(event.matches);
 	const [copied, setCopied] = useState(false);

@@ -99,4 +99,26 @@ const mvp = simulatePlayerEventRating({
 check(mvp.delta, 0.1, "mvp on dead zone");
 check(mvp.to, 4.1, "mvp applies");
 
+const highMvp = simulatePlayerEventRating({
+	rating: 20,
+	wins: 0,
+	draws: 0,
+	losses: 0,
+	ceiling: 20,
+	isMvp: true,
+});
+check(highMvp.delta, 0.4, "mvp 2% de 20");
+check(highMvp.to, 20.4, "mvp 20 vira 20.4");
+
+const seedMvp = simulatePlayerEventRating({
+	rating: PLAYER_RATING.default,
+	wins: 4,
+	draws: 0,
+	losses: 0,
+	ceiling: 5,
+	isMvp: true,
+});
+check(seedMvp.delta, EVENT_RATING_INITIAL.high + 0.1, "seed mvp delta");
+check(seedMvp.to, EVENT_RATING_INITIAL.high + 0.1, "seed mvp to");
+
 console.log("player-rating-sim ok");
