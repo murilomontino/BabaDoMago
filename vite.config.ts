@@ -26,7 +26,7 @@ export default defineConfig({
 		tailwindcss(),
 		VitePWA({
 			registerType: "autoUpdate",
-			includeAssets: ["favicon.svg", "icons.svg"],
+			includeAssets: ["favicon.svg", "icons.svg", "soms/*.mp3"],
 			manifest: {
 				name: "Baba do Mago",
 				short_name: "Baba do Mago",
@@ -38,7 +38,7 @@ export default defineConfig({
 			},
 			workbox: {
 				navigateFallback: "index.html",
-				globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,webmanifest}"],
+				globPatterns: ["**/*.{js,css,html,ico,png,svg,mp3,woff2,webmanifest}"],
 			},
 			pwaAssets: {
 				preset: "minimal-2023",

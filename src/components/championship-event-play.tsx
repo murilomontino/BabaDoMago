@@ -88,6 +88,7 @@ import {
 import { useMatchClock } from "@/hooks/use-match-clock";
 import {
 	signalGoal,
+	signalMatchStart,
 	signalMatchTimeUp,
 	unlockMatchAudio,
 } from "@/lib/match-feedback";
@@ -661,6 +662,7 @@ function MatchClockBar({
 
 		switch (action) {
 			case MATCH_CLOCK_ACTION.start:
+				signalMatchStart();
 				onStartClock();
 				return;
 			case MATCH_CLOCK_ACTION.resume:

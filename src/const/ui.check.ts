@@ -36,7 +36,9 @@ check(
 	"kind select off",
 );
 check(SAFE_AREA_CLASS.includes("safe-area-inset-bottom"), "safe area padding");
+check(SAFE_AREA_CLASS.includes("max(1.25rem"), "safe area keeps padding");
 check(SAFE_AREA_FAB_CLASS.includes("safe-area-inset-bottom"), "fab safe area");
 check(PAGE_SHELL_CLASS.includes(SAFE_AREA_CLASS), "page shell safe area");
+check(PAGE_SHELL_CLASS.includes("px-5"), "page shell mobile padding");
 
 console.log("ui ok");

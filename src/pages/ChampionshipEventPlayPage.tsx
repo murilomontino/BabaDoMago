@@ -17,7 +17,7 @@ import {
 } from "@/const/championship-event-match";
 import { ROUTES } from "@/const/routes";
 import { SKELETON_LABEL } from "@/const/skeleton";
-import { BUTTON_VARIANT, ERROR_CLASS, SAFE_AREA_CLASS } from "@/const/ui";
+import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
 import {
 	useAddChampionshipEventGoal,
 	useChampionshipEvent,
@@ -37,7 +37,8 @@ import { useFlushMatchClock } from "@/hooks/match-clock-sync";
 import { useWakeLock } from "@/hooks/use-wake-lock";
 import { mutationErrorMessage } from "@/lib/error-message";
 
-const PLAY_SHELL_CLASS = `flex h-dvh flex-col overflow-hidden overscroll-contain p-2 select-none touch-manipulation ${SAFE_AREA_CLASS}`;
+const PLAY_SHELL_CLASS =
+	"flex h-dvh flex-col overflow-hidden overscroll-contain select-none touch-manipulation pt-[max(0.75rem,env(safe-area-inset-top))] pr-[max(0.75rem,env(safe-area-inset-right))] pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))]";
 
 function startMatchErrorMessage(startMatch: {
 	isError: boolean;
