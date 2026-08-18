@@ -16,6 +16,7 @@ import {
 	EventTeamPlayerRow,
 	EventTeamRatingAverage,
 } from "@/components/event-team-player";
+import { GoalIcon } from "@/components/goal-icon";
 import { GoalkeeperGlovesIcon } from "@/components/goalkeeper-gloves-icon";
 import {
 	isMatchClockDebugVisible,
@@ -29,7 +30,6 @@ import {
 	OWN_GOAL_LABEL_POSITION,
 	OwnGoalIcon,
 	type OwnGoalLabelPosition,
-	SoccerBallIcon,
 } from "@/components/soccer-ball-icon";
 import {
 	attendanceGoalkeeperIds,
@@ -511,7 +511,7 @@ function MatchTeamBlock({
 												{playerVisibleName(player)}
 											</span>
 										</span>
-										<SoccerBallIcon className="size-4 shrink-0" />
+										<GoalIcon className="size-4 shrink-0" />
 									</button>
 								)}
 								{!player && (
