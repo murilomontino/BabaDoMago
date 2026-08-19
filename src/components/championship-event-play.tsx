@@ -42,6 +42,7 @@ import {
 } from "@/const/championship-event";
 import {
 	canConfirmMatchTeams,
+	clampMatchDurationMinutes,
 	EVENT_GOAL_LABEL,
 	EVENT_MATCH_CLOCK_LABEL,
 	EVENT_MATCH_DURATION,
@@ -51,6 +52,7 @@ import {
 	type EventMatchEndIntent,
 	formatMatchClock,
 	formatMatchScore,
+	isMatchDurationPreset,
 	isMatchTimeUp,
 	MATCH_CLOCK_ACTION,
 	type MatchClockAction,
@@ -67,6 +69,7 @@ import {
 	matchTeamStarName,
 	matchWinnerTeamId,
 	mergeMatchClock,
+	parseMatchDurationMinutesInput,
 	shouldSignalMatchTimeUp,
 	sortBenchForSlot,
 	toggleMatchTeamSelection,
@@ -80,7 +83,7 @@ import {
 } from "@/const/event-team-color";
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
-import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
+import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
 import {
 	matchClockFromStore,
 	useMatchClockStore,
@@ -743,6 +746,7 @@ export function ChampionshipEventPlay({
 	const [durationMinutes, setDurationMinutes] = useState<number>(
 		EVENT_MATCH_DURATION.defaultMinutes,
 	);
+	const [customDuration, setCustomDuration] = useState(false);
 	const [slotTarget, setSlotTarget] = useState<SlotTarget | null>(null);
 	const [pendingSwap, setPendingSwap] = useState<PendingSwap | null>(null);
 	const [goalTarget, setGoalTarget] = useState<GoalTarget | null>(null);
@@ -824,7 +828,8 @@ export function ChampionshipEventPlay({
 							{EVENT_MATCH_CLOCK_LABEL.duration}
 						</span>
 						{EVENT_MATCH_DURATION.presetsMinutes.map((minutes) => {
-							const selectedDuration = minutes === durationMinutes;
+							const selectedDuration =
+								!customDuration && minutes === durationMinutes;
 
 							return (
 								<Button
@@ -836,6 +841,7 @@ export function ChampionshipEventPlay({
 									}
 									aria-pressed={selectedDuration}
 									onClick={() => {
+										setCustomDuration(false);
 										setDurationMinutes(minutes);
 									}}
 								>
@@ -843,8 +849,47 @@ export function ChampionshipEventPlay({
 								</Button>
 							);
 						})}
+						<Button
+							variant={
+								customDuration
+									? BUTTON_VARIANT.primary
+									: BUTTON_VARIANT.secondary
+							}
+							aria-pressed={customDuration}
+							onClick={() => {
+								setCustomDuration(true);
+								if (isMatchDurationPreset(durationMinutes)) {
+									setDurationMinutes(EVENT_MATCH_DURATION.defaultMinutes);
+								}
+							}}
+						>
+							{EVENT_MATCH_CLOCK_LABEL.custom}
+						</Button>
+						{customDuration && (
+							<label className="flex items-center gap-2 text-sm text-fg-muted">
+								<input
+									type="number"
+									min={EVENT_MATCH_DURATION.minMinutes}
+									max={EVENT_MATCH_DURATION.maxMinutes}
+									inputMode="numeric"
+									value={durationMinutes}
+									className={`w-20 ${FIELD_CLASS}`}
+									onChange={(event) => {
+										const minutes = parseMatchDurationMinutesInput(
+											event.target.value,
+										);
+										if (minutes === null) {
+											return;
+										}
+
+										setDurationMinutes(clampMatchDurationMinutes(minutes));
+									}}
+								/>
+								<span>{EVENT_MATCH_CLOCK_LABEL.minutes}</span>
+							</label>
+						)}
 					</div>
-					<div className="flex justify-end">
+					<div className="grid gap-2 md:flex md:justify-end">
 						<Button
 							className="w-full md:w-auto"
 							disabled={
@@ -861,6 +906,16 @@ export function ChampionshipEventPlay({
 							}}
 						>
 							{EVENT_ACTION.startMatch}
+						</Button>
+						<Button
+							variant={BUTTON_VARIANT.ghost}
+							className="h-14 text-base w-full md:w-auto"
+							disabled={busy}
+							onClick={() => {
+								void onEnd();
+							}}
+						>
+							{EVENT_ACTION.endMatch}
 						</Button>
 					</div>
 				</div>

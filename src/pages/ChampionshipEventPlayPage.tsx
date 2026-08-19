@@ -36,6 +36,11 @@ import { useChampionship } from "@/hooks/championships/use-championships";
 import { useFlushMatchClock } from "@/hooks/match-clock-sync";
 import { useWakeLock } from "@/hooks/use-wake-lock";
 import { mutationErrorMessage } from "@/lib/error-message";
+import type {
+	ChampionshipEventMatch,
+	ChampionshipEventTeam,
+} from "@/types/championship-event";
+import type { ChampionshipPlayer } from "@/types/championship";
 
 const PLAY_SHELL_CLASS =
 	"flex h-dvh flex-col overflow-hidden overscroll-contain select-none touch-manipulation pt-[max(0.75rem,env(safe-area-inset-top))] pr-[max(0.75rem,env(safe-area-inset-right))] pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))]";
@@ -78,7 +83,8 @@ export function ChampionshipEventPlayPage() {
 	const endMatch = useEndChampionshipEventMatch(championshipId);
 	useChampionshipEventRealtime(championshipId, eventId);
 	const openMatchId =
-		openEventMatch(eventQuery.data?.matches ?? [])?.id ?? null;
+		openEventMatch<ChampionshipEventMatch>(eventQuery.data?.matches ?? [])?.id ??
+		null;
 	useFlushMatchClock(openMatchId);
 	useWakeLock(openMatchId !== null);
 
@@ -107,13 +113,13 @@ export function ChampionshipEventPlayPage() {
 	}
 
 	const event = eventQuery.data;
-	const openMatch = openEventMatch(event.matches);
+	const openMatch = openEventMatch<ChampionshipEventMatch>(event.matches);
 	const canStart = canStartEventMatch({
 		ended: event.ended_at !== null,
 		teamCount: eventMatchTeamCount(event.teams),
 	});
 	const activePlayers = (championshipQuery.data?.players ?? []).filter(
-		(player) => !player.deleted_at,
+		(player: ChampionshipPlayer) => !player.deleted_at,
 	);
 
 	async function goToEvent() {
@@ -188,7 +194,9 @@ export function ChampionshipEventPlayPage() {
 							(updateTeam.isError && updateTeam.error.message) || null
 						}
 						onChangeTeamColor={async (teamId, color) => {
-							const team = event.teams.find((item) => item.id === teamId);
+							const team = event.teams.find(
+								(item: ChampionshipEventTeam) => item.id === teamId,
+							);
 							if (!team) {
 								return;
 							}
@@ -250,6 +258,7 @@ export function ChampionshipEventPlayPage() {
 						}}
 						onEnd={async () => {
 							if (!openMatch) {
+								await goToEvent();
 								return;
 							}
 
