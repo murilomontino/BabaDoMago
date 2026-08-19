@@ -204,6 +204,7 @@ export function ChampionshipEventDetail({
 	return (
 		<article className="space-y-6">
 			<ChampionshipEventDetailActions
+				championshipName={championshipName}
 				event={event}
 				players={players}
 				canManage={canManage}

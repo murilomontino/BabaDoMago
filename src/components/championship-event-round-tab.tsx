@@ -89,11 +89,16 @@ import {
 	EVENT_TEAM_SHARE_LABEL,
 	eventTeamsShareCards,
 } from "@/const/event-team-share";
+import {
+	EVENT_RECAP_SHARE_LABEL,
+	eventRecapShareRatingChangesFromAttendance,
+} from "@/const/event-recap-share";
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import { CHIP_CLASS, ERROR_CLASS } from "@/const/ui";
 import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
 import { shareEventTeamsImage } from "@/lib/share-event-teams-image";
+import { shareEventRecapImage } from "@/lib/share-event-recap-image";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type {
 	ChampionshipEvent,
@@ -354,6 +359,8 @@ export function ChampionshipEventRoundTab({
 	const showMatchDelete = canOverrideEnded && !showTeamBuilder;
 	const [isSharing, setIsSharing] = useState(false);
 	const [shareError, setShareError] = useState<string | null>(null);
+	const [isSharingRecap, setIsSharingRecap] = useState(false);
+	const [recapError, setRecapError] = useState<string | null>(null);
 	const [isMvpOpen, setIsMvpOpen] = useState(false);
 	const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
 	const [isLateJoinOpen, setIsLateJoinOpen] = useState(false);
@@ -401,6 +408,29 @@ export function ChampionshipEventRoundTab({
 			setShareError(EVENT_TEAM_SHARE_LABEL.shareFailed);
 		} finally {
 			setIsSharing(false);
+		}
+	}
+
+	const recapRatingChanges =
+		eventRecapShareRatingChangesFromAttendance(event.attendance);
+	const showShareRecap = event.ended_at !== null;
+
+	async function handleShareRecap() {
+		setIsSharingRecap(true);
+		setRecapError(null);
+
+		try {
+			await shareEventRecapImage({
+				championshipName,
+				startsAt: event.starts_at,
+				matches: event.matches,
+				teams: event.teams,
+				ratingChanges: recapRatingChanges,
+			});
+		} catch {
+			setRecapError(EVENT_RECAP_SHARE_LABEL.shareFailed);
+		} finally {
+			setIsSharingRecap(false);
 		}
 	}
 
@@ -476,6 +506,28 @@ export function ChampionshipEventRoundTab({
 									}}
 								/>
 							)}
+							{showShareRecap && (
+								<IconTooltipButton
+									showLabel
+									label={
+										isSharingRecap
+											? EVENT_RECAP_SHARE_LABEL.sharing
+											: EVENT_RECAP_SHARE_LABEL.share
+									}
+									icon={
+										<>
+											{isSharingRecap && (
+												<LoaderCircle className="size-4 animate-spin" />
+											)}
+											{!isSharingRecap && <Share2 className="size-4" />}
+										</>
+									}
+									disabled={isSharingRecap}
+									onClick={() => {
+										void handleShareRecap();
+									}}
+								/>
+							)}
 							{canManage && teamsEditable && (
 								<IconTooltipButton
 									showLabel
@@ -497,6 +549,7 @@ export function ChampionshipEventRoundTab({
 						</div>
 					</div>
 					{shareError && <p className={ERROR_CLASS}>{shareError}</p>}
+					{recapError && <p className={ERROR_CLASS}>{recapError}</p>}
 					<ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
 						{event.teams.map((team) => {
 							const cardStyle = eventTeamColorStyle(team.color);

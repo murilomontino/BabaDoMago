@@ -35,6 +35,7 @@ import type { ChampionshipPlayer } from "@/types/championship";
 import type { ChampionshipEvent } from "@/types/championship-event";
 
 type ChampionshipEventDetailActionsProps = {
+	championshipName: string;
 	event: ChampionshipEvent;
 	players: ChampionshipPlayer[];
 	canManage: boolean;
@@ -54,6 +55,7 @@ type ChampionshipEventDetailActionsProps = {
 };
 
 export function ChampionshipEventDetailActions({
+	championshipName,
 	event,
 	players,
 	canManage,
@@ -198,6 +200,10 @@ export function ChampionshipEventDetailActions({
 			</div>
 			{isEndOpen && (
 				<EndEventModal
+					championshipName={championshipName}
+					startsAt={event.starts_at}
+					matches={event.matches}
+					teams={event.teams}
 					rows={ratingPreview}
 					ceiling={previewCeiling}
 					canSetMvp={canSetMvp}
@@ -228,21 +234,14 @@ export function ChampionshipEventDetailActions({
 						setEndMvpPlayerIds(null);
 						setIsEndOpen(false);
 					}}
-					onConfirm={() => {
-						void (async () => {
-							try {
-								await onEnd(
-									presentPlayerIdsForEnd,
-									mvpPlayerIdsWhenAllowed(canSetMvp, mvpPlayerIds),
-								);
-								clearAttendanceDraft(event.id);
-								setEndMvpPlayerIds(null);
-								setIsEndOpen(false);
-							} catch {
-								return;
-							}
-						})();
-					}}
+					onConfirm={() =>
+						onEnd(
+							presentPlayerIdsForEnd,
+							mvpPlayerIdsWhenAllowed(canSetMvp, mvpPlayerIds),
+						).then(() => {
+							clearAttendanceDraft(event.id);
+						})
+					}
 				/>
 			)}
 			{isDeleteOpen && (

@@ -680,6 +680,7 @@ export function ChampionshipDetailPage() {
 			{!isSettingsOpen && selectedTab === CHAMPIONSHIP_TAB.events && (
 				<ChampionshipEvents
 					championshipId={championshipId}
+					championshipName={data.name}
 					eventTime={data.event_time}
 					eventWeekday={data.event_weekday}
 					location={data.location}

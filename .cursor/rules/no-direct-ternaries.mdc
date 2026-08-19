@@ -1,0 +1,54 @@
+---
+description: Evitar ternários diretos na lógica; usar funções nomeadas com early return.
+globs: src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Sem ternário direto na lógica
+
+Em `src/**/*.{ts,tsx}`, **não use `cond ? a : b` na lógica**. Nomeie o ramo com função cujo nome explica **por que** existe.
+
+## Onde aplicar
+
+- atribuições, retornos, argumentos, `flatMap`, handlers opcionais
+- helpers em `src/const/` ou `src/lib/`
+
+## Exceções (JSX / markup)
+
+Permitido no JSX:
+
+- `{cond && <Comp />}` em vez de ternário entre componentes
+- `className`, texto de botão, `variant`, `aria-label` puramente visuais
+
+## Padrão
+
+```typescript
+// ❌ lógica opaca
+const ids = canSetMvp ? mvpPlayerIds : null;
+return rows.flatMap((row) => (row.is_mvp ? [row.player_id] : []));
+
+// ✅ função declarativa + early return
+return mvpPlayerIdsWhenAllowed(canSetMvp, mvpPlayerIds);
+return attendance.flatMap((row) => includeWhen(row.is_mvp, row.player_id));
+```
+
+```typescript
+export function handlerWhenAllowed<T>(allowed: unknown, handler: T): T | undefined {
+	if (!allowed) return undefined;
+	return handler;
+}
+```
+
+## Reutilizar antes de criar
+
+- `includeWhen` / `includeDefined` → `src/lib/include-when.ts`
+- `handlerWhenAllowed` → `src/lib/handler-when-allowed.ts`
+- `mapUnknownRows` → `src/lib/unknown-value.ts`
+
+Lógica nova com ramo nomeado: `*.check.ts` ao lado do módulo.
+
+## Proibido
+
+- ternário aninhado
+- `when(cond, a, b)` genérico sem semântica
+- helper só para esconder ternário sem nomear o porquê

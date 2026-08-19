@@ -1,3 +1,5 @@
+import { Share2, LoaderCircle } from "lucide-react";
+import { useState } from "react";
 import { AppDialog } from "@/components/atoms/app-dialog";
 import { Button } from "@/components/button";
 import { EVENT_TEAM_POSITION_CHIP_CLASS } from "@/components/event-team-player";
@@ -8,11 +10,21 @@ import {
 } from "@/const/championship-event";
 import { EVENT_MVP_LABEL, formatEventMvpCount } from "@/const/event-mvp";
 import {
+	EVENT_RECAP_SHARE_LABEL,
+	eventRecapShareRatingChangesFromPreview,
+	type EventRecapShareRatingChange,
+} from "@/const/event-recap-share";
+import {
 	type EventRatingPreviewRow,
 	formatEventRating,
 } from "@/const/event-rating-adjustment";
 import { PLAYER_STAR_CLASS } from "@/const/player-rating";
 import { BUTTON_VARIANT, CHIP_CLASS, ERROR_CLASS } from "@/const/ui";
+import { shareEventRecapImage } from "@/lib/share-event-recap-image";
+import type {
+	ChampionshipEventMatch,
+	ChampionshipEventTeam,
+} from "@/types/championship-event";
 
 type EndEventModalProps = {
 	rows: readonly EventRatingPreviewRow[];
@@ -20,11 +32,15 @@ type EndEventModalProps = {
 	canSetMvp: boolean;
 	mvpCandidateIds: readonly number[];
 	missingAttendanceNames?: readonly string[];
+	championshipName: string;
+	startsAt: string;
+	matches: readonly ChampionshipEventMatch[];
+	teams: readonly ChampionshipEventTeam[];
 	isPending: boolean;
 	errorMessage: string | null;
 	onToggleMvp: (playerId: number) => void;
 	onCancel: () => void;
-	onConfirm: () => void;
+	onConfirm: () => Promise<void>;
 };
 
 function RatingSnapshot({
@@ -132,18 +148,79 @@ export function EndEventModal({
 	canSetMvp,
 	mvpCandidateIds,
 	missingAttendanceNames = [],
+	championshipName,
+	startsAt,
+	matches,
+	teams,
 	isPending,
 	errorMessage,
 	onToggleMvp,
 	onCancel,
 	onConfirm,
 }: EndEventModalProps) {
+	const [step, setStep] = useState<"confirm" | "share">("confirm");
+	const [isSharing, setIsSharing] = useState(false);
+	const [shareError, setShareError] = useState<string | null>(null);
+
 	const candidateIds = new Set(mvpCandidateIds);
 	const mvpCount = rows.filter((row) => row.isMvp).length;
+
+	const ratingChanges: readonly EventRecapShareRatingChange[] =
+		eventRecapShareRatingChangesFromPreview(rows);
+
+	async function handleShare() {
+		setIsSharing(true);
+		setShareError(null);
+
+		try {
+			await shareEventRecapImage({
+				championshipName,
+				startsAt,
+				matches,
+				teams,
+				ratingChanges,
+			});
+		} catch {
+			setShareError(EVENT_RECAP_SHARE_LABEL.shareFailed);
+		} finally {
+			setIsSharing(false);
+		}
+	}
 
 	return (
 		<AppDialog onClose={onCancel}>
 			<div className="max-h-[90dvh] w-full max-w-5xl overflow-y-auto rounded-xl bg-surface p-4 shadow-lg">
+				{step === "share" ? (
+					<>
+						<p className="mb-1 text-sm font-medium tracking-tight text-fg">
+							Recap após encerrar
+						</p>
+						<p className="mb-3 text-sm text-fg-muted">
+							Recap da noite pronto para compartilhar.
+						</p>
+						{shareError && <p className={`mb-2 ${ERROR_CLASS}`}>{shareError}</p>}
+						<div className="mt-4 flex justify-end gap-2">
+							<Button variant={BUTTON_VARIANT.secondary} onClick={onCancel} disabled={isSharing}>
+								Fechar
+							</Button>
+							<Button
+								variant={BUTTON_VARIANT.primary}
+								onClick={() => {
+									void handleShare();
+								}}
+								disabled={isSharing}
+							>
+								{isSharing ? (
+									<LoaderCircle className="size-4 animate-spin" />
+								) : (
+									<Share2 className="size-4" />
+								)}
+								<span className="ml-2">{EVENT_RECAP_SHARE_LABEL.share}</span>
+							</Button>
+						</div>
+					</>
+				) : (
+					<>
 				<p className="mb-1 text-sm font-medium tracking-tight text-fg">
 					{EVENT_END_LABEL.title}
 				</p>
@@ -190,12 +267,23 @@ export function EndEventModal({
 					</Button>
 					<Button
 						variant={BUTTON_VARIANT.danger}
-						onClick={onConfirm}
+						onClick={() => {
+							void (async () => {
+								try {
+									await onConfirm();
+									setStep("share");
+								} catch {
+									return;
+								}
+							})();
+						}}
 						disabled={isPending}
 					>
 						{EVENT_END_LABEL.confirm}
 					</Button>
 				</div>
+					</>
+				)}
 			</div>
 		</AppDialog>
 	);
