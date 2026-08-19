@@ -585,7 +585,7 @@ export function ChampionshipEventRoundTab({
 					teams={event.teams}
 					rosterById={rosterById}
 					showMatchDelete={showMatchDelete}
-					canOpenMatch={!ended}
+					eventEnded={ended}
 					onOpenMatch={(match) => {
 						if (isOpenMatch(match)) {
 							void onOpenMatch(match);

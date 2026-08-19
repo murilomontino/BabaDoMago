@@ -327,6 +327,21 @@ export function shouldStartEventMatch<T extends { ended_at: string | null }>(
 	return openEventMatch(matches) === null;
 }
 
+export function canOpenEventHistoryMatch(
+	match: Pick<ChampionshipEventMatch, "ended_at">,
+	options: { eventEnded: boolean; hasOpenMatch: boolean },
+): boolean {
+	if (options.eventEnded) {
+		return false;
+	}
+
+	if (isOpenMatch(match)) {
+		return true;
+	}
+
+	return !options.hasOpenMatch;
+}
+
 export function matchPlayerIds(
 	players: readonly { player_id: number }[],
 ): number[] {

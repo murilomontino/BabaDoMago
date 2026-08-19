@@ -9,6 +9,7 @@ import {
 import { OwnGoalIcon } from "@/components/soccer-ball-icon";
 import { EVENT_ACTION, EVENT_SECTION_LABEL } from "@/const/championship-event";
 import {
+	canOpenEventHistoryMatch,
 	EVENT_MATCH_ICON,
 	EVENT_MATCH_ICON_LEGEND,
 	EVENT_MATCH_LABEL,
@@ -19,6 +20,7 @@ import {
 	matchScore,
 	matchTeamPlayers,
 	matchWinnerTeam,
+	openEventMatch,
 } from "@/const/championship-event-match";
 import { resolveRosterPlayer } from "@/const/championship-event-roster";
 import { PLAYER_LABEL, playerVisibleName } from "@/const/player-name";
@@ -35,7 +37,7 @@ type ChampionshipEventMatchHistoryProps = {
 	teams: readonly ChampionshipEventTeam[];
 	rosterById: ReadonlyMap<number, ChampionshipPlayer>;
 	showMatchDelete: boolean;
-	canOpenMatch: boolean;
+	eventEnded: boolean;
 	onOpenMatch: (match: ChampionshipEventMatch) => void;
 	onRemoveMatch: (match: ChampionshipEventMatch) => void;
 };
@@ -249,11 +251,12 @@ export function ChampionshipEventMatchHistory({
 	teams,
 	rosterById,
 	showMatchDelete,
-	canOpenMatch,
+	eventEnded,
 	onOpenMatch,
 	onRemoveMatch,
 }: ChampionshipEventMatchHistoryProps) {
 	const teamById = new Map(teams.map((team) => [team.id, team]));
+	const hasOpenMatch = openEventMatch(matches) !== null;
 
 	return (
 		<div>
@@ -274,7 +277,10 @@ export function ChampionshipEventMatchHistory({
 								teamById={teamById}
 								rosterById={rosterById}
 								showMatchDelete={showMatchDelete}
-								canOpenMatch={canOpenMatch}
+								canOpenMatch={canOpenEventHistoryMatch(match, {
+									eventEnded,
+									hasOpenMatch,
+								})}
 								onOpenMatch={onOpenMatch}
 								onRemoveMatch={onRemoveMatch}
 							/>

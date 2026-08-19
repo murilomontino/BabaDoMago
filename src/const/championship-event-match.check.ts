@@ -61,6 +61,7 @@ import {
 	matchWinnerTeam,
 	matchWinnerTeamId,
 	mergeMatchClock,
+	canOpenEventHistoryMatch,
 	openEventMatch,
 	shouldSignalMatchTimeUp,
 	shouldStartEventMatch,
@@ -142,6 +143,38 @@ check(openEventMatch([ended]), null, "no open");
 check(shouldStartEventMatch([ended, open]), false, "open skips create");
 check(shouldStartEventMatch([ended]), true, "ended starts new");
 check(shouldStartEventMatch([]), true, "empty starts new");
+check(
+	canOpenEventHistoryMatch(ended, {
+		eventEnded: false,
+		hasOpenMatch: false,
+	}),
+	true,
+	"ended match opens without open match",
+);
+check(
+	canOpenEventHistoryMatch(ended, {
+		eventEnded: false,
+		hasOpenMatch: true,
+	}),
+	false,
+	"ended match blocks with open match",
+);
+check(
+	canOpenEventHistoryMatch(open, {
+		eventEnded: false,
+		hasOpenMatch: true,
+	}),
+	true,
+	"open match still opens",
+);
+check(
+	canOpenEventHistoryMatch(ended, {
+		eventEnded: true,
+		hasOpenMatch: false,
+	}),
+	false,
+	"ended event blocks history open",
+);
 
 const slots = matchTeamSlots(
 	[
