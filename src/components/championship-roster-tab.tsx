@@ -141,40 +141,45 @@ export function ChampionshipRosterTab({
 		<SectionCard
 			title="Elenco"
 			icon={<Users className="size-4 text-pitch-fg" />}
-			action={
-				showActions && (
-					<>
-						{showShare && (
+		>
+			{showActions && (
+				<div className="mb-4 flex flex-col gap-2 md:flex-row md:flex-wrap">
+					{showShare && (
+						<Button
+							variant={BUTTON_VARIANT.secondary}
+							className="w-full md:w-auto"
+							disabled={isSharing}
+							onClick={() => {
+								void handleShare();
+							}}
+						>
+							{isSharing && (
+								<LoaderCircle className="size-4 animate-spin" aria-hidden />
+							)}
+							{!isSharing && <Share2 className="size-4" />}
+							{isSharing && ROSTER_SHARE_LABEL.sharing}
+							{!isSharing && ROSTER_SHARE_LABEL.share}
+						</Button>
+					)}
+					{canInvite && (
+						<div className="flex w-full flex-col gap-2 md:w-auto">
+							{copied && (
+								<span className="text-sm font-normal text-fg-muted">
+									{ROSTER_SHARE_LABEL.copied}
+								</span>
+							)}
 							<Button
 								variant={BUTTON_VARIANT.secondary}
-								disabled={isSharing}
-								onClick={() => {
-									void handleShare();
-								}}
+								className="w-full md:w-auto"
+								onClick={onCopyLink}
 							>
-								{isSharing && (
-									<LoaderCircle className="size-4 animate-spin" aria-hidden />
-								)}
-								{!isSharing && <Share2 className="size-4" />}
-								{isSharing && ROSTER_SHARE_LABEL.sharing}
-								{!isSharing && ROSTER_SHARE_LABEL.share}
-							</Button>
-						)}
-						{canInvite && copied && (
-							<span className="text-sm font-normal text-fg-muted">
-								Link copiado.
-							</span>
-						)}
-						{canInvite && (
-							<Button variant={BUTTON_VARIANT.secondary} onClick={onCopyLink}>
 								<Copy className="size-4" />
-								Copiar link de convite
+								{ROSTER_SHARE_LABEL.copyInvite}
 							</Button>
-						)}
-					</>
-				)
-			}
-		>
+						</div>
+					)}
+				</div>
+			)}
 			<ChampionshipRoster
 				players={players}
 				createdBy={createdBy}

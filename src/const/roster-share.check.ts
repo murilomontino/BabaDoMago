@@ -54,6 +54,8 @@ function player(
 
 check(ROSTER_SHARE.title, "Elenco");
 check(ROSTER_SHARE_LABEL.share, "Compartilhar elenco");
+check(ROSTER_SHARE_LABEL.copyInvite, "Copiar link de convite");
+check(ROSTER_SHARE_LABEL.copied, "Link copiado.");
 check(rosterShareHeading(2), `Elenco · 2 ${PLAYER_SEARCH.countLabel}`);
 check(
 	rosterSharePlayerName(player(1, "Ana Souza", { nickname: "Nena" })),

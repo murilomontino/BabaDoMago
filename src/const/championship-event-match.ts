@@ -58,6 +58,7 @@ export const EVENT_MATCH_DURATION = {
 export const EVENT_MATCH_CLOCK_LABEL = {
 	duration: "Duração",
 	minutes: "min",
+	custom: "Custom",
 	start: "Iniciar",
 	pause: "Pausar",
 	resume: "Proseguir",
@@ -327,6 +328,21 @@ export function shouldStartEventMatch<T extends { ended_at: string | null }>(
 	return openEventMatch(matches) === null;
 }
 
+export function canOpenEventHistoryMatch(
+	match: Pick<ChampionshipEventMatch, "ended_at">,
+	options: { eventEnded: boolean; hasOpenMatch: boolean },
+): boolean {
+	if (options.eventEnded) {
+		return false;
+	}
+
+	if (isOpenMatch(match)) {
+		return true;
+	}
+
+	return !options.hasOpenMatch;
+}
+
 export function matchPlayerIds(
 	players: readonly { player_id: number }[],
 ): number[] {
@@ -590,6 +606,25 @@ export function formatMatchScore(scoreA: number, scoreB: number): string {
 
 export function matchDurationSeconds(minutes: number): number {
 	return minutes * 60;
+}
+
+export function isMatchDurationPreset(minutes: number): boolean {
+	return EVENT_MATCH_DURATION.presetsMinutes.some(
+		(preset) => preset === minutes,
+	);
+}
+
+export function parseMatchDurationMinutesInput(value: string): number | null {
+	if (value === "") {
+		return null;
+	}
+
+	const minutes = Number(value);
+	if (!Number.isFinite(minutes)) {
+		return null;
+	}
+
+	return Math.floor(minutes);
 }
 
 export function clampMatchDurationMinutes(minutes: number): number {
