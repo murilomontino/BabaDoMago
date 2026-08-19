@@ -6,6 +6,7 @@ import { CHAMPIONSHIP_EVENT } from "./championship-event.ts";
 import {
 	applyMatchClockAction,
 	canConfirmMatchTeams,
+	canOpenEventHistoryMatch,
 	clampMatchDurationMinutes,
 	compareStartersBeforeSubstitutes,
 	EVENT_GOAL_KIND,
@@ -29,6 +30,7 @@ import {
 	formatGoalTimelineLine,
 	formatMatchClock,
 	formatMatchScore,
+	isMatchDurationPreset,
 	isMatchSlotGoalkeeper,
 	isMatchTimeUp,
 	isOpenMatch,
@@ -61,8 +63,8 @@ import {
 	matchWinnerTeam,
 	matchWinnerTeamId,
 	mergeMatchClock,
-	canOpenEventHistoryMatch,
 	openEventMatch,
+	parseMatchDurationMinutesInput,
 	shouldSignalMatchTimeUp,
 	shouldStartEventMatch,
 	sortBenchForSlot,
@@ -607,6 +609,11 @@ check(
 	EVENT_MATCH_DURATION.defaultMinutes,
 	"clamp nan",
 );
+check(isMatchDurationPreset(5), true, "preset duration");
+check(isMatchDurationPreset(15), false, "custom duration");
+check(parseMatchDurationMinutesInput(""), null, "parse empty duration");
+check(parseMatchDurationMinutesInput("abc"), null, "parse invalid duration");
+check(parseMatchDurationMinutesInput("15"), 15, "parse custom duration");
 check(isMatchTimeUp(419, 420), false, "time up before");
 check(isMatchTimeUp(420, 420), true, "time up at duration");
 check(isMatchTimeUp(421, 420), true, "time up after");
@@ -620,6 +627,7 @@ check(formatMatchClock(0), "00:00", "clock zero");
 check(formatMatchClock(65), "01:05", "clock 65");
 check(formatMatchClock(420), "07:00", "clock 7min");
 check(EVENT_MATCH_CLOCK_LABEL.start, "Iniciar", "start label");
+check(EVENT_MATCH_CLOCK_LABEL.custom, "Custom", "custom label");
 check(EVENT_MATCH_CLOCK_LABEL.pause, "Pausar", "pause label");
 check(MATCH_CLOCK_STORAGE_KEY, "babaDoMago-match-clock", "clock storage key");
 check(MATCH_CLOCK_DEBUG_ENV.key, "VITE_MATCH_CLOCK_DEBUG", "clock debug env");
