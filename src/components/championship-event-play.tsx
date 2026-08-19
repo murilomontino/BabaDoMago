@@ -1,11 +1,11 @@
 import { ArrowLeftRight, ChevronDown, Pause, Play } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { AddEventTeamModal } from "@/components/add-event-team-modal";
 import { Button } from "@/components/button";
 import { ChampionshipEventBenchModal } from "@/components/championship-event-bench-modal";
 import { ChampionshipEventGoalModal } from "@/components/championship-event-goal-modal";
 import { ChampionshipEventSubstitutionModal } from "@/components/championship-event-substitution-modal";
 import { EndEventMatchModal } from "@/components/end-event-match-modal";
-import { EventTeamColorModal } from "@/components/event-team-color-modal";
 import {
 	EVENT_TEAM_CHIP_TIP,
 	EVENT_TEAM_PLAYER_SLOT_CLASS,
@@ -37,6 +37,7 @@ import {
 	EVENT_TEAM_MESSAGE,
 	EVENT_TEAM_POSITION_LABEL,
 	eventTeamPlayerPosition,
+	eventTeamSourcePlayers,
 	eventTeamSlotPosition,
 	eventTeamsSharePlayers,
 } from "@/const/championship-event";
@@ -81,6 +82,7 @@ import {
 	eventTeamName,
 	usedEventTeamColors,
 } from "@/const/event-team-color";
+import { resolveEventPlayers } from "@/const/championship-event-roster";
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
@@ -260,12 +262,14 @@ type ChampionshipEventPlayProps = {
 	onStartClock: () => void;
 	onPause: () => void;
 	onResume: () => void;
-	onChangeTeamColor: (
-		teamId: number,
-		color: EventTeamColor | null,
-	) => Promise<void>;
-	savingColor: boolean;
-	colorError: string | null;
+	onUpdateTeam: (values: {
+		teamId: number;
+		color: EventTeamColor | null;
+		playerIds: number[];
+		goalkeeperId: number;
+	}) => Promise<void>;
+	savingTeam: boolean;
+	teamError: string | null;
 };
 
 const TEAM_CARD_LONG_PRESS_MS = 500;
@@ -730,12 +734,14 @@ export function ChampionshipEventPlay({
 	onStartClock,
 	onPause,
 	onResume,
-	onChangeTeamColor,
-	savingColor,
-	colorError,
+	onUpdateTeam,
+	savingTeam,
+	teamError,
 }: ChampionshipEventPlayProps) {
 	const rosterById = new Map(players.map((player) => [player.id, player]));
 	const teamById = new Map(event.teams.map((team) => [team.id, team]));
+	const presentPlayers = resolveEventPlayers(event.attendance, rosterById);
+	const volunteerGoalkeeperIds = attendanceGoalkeeperIds(event.attendance);
 	const ceiling = championshipRatingCeiling(
 		players.map((player) => player.rating),
 	);
@@ -765,7 +771,7 @@ export function ChampionshipEventPlay({
 		useMatchClockStore.getState().clear(match.id);
 	}, [match?.ended_at, match?.id]);
 	const [endIntent, setEndIntent] = useState<EventMatchEndIntent | null>(null);
-	const [colorTeam, setColorTeam] = useState<ChampionshipEventTeam | null>(
+	const [teamToEdit, setTeamToEdit] = useState<ChampionshipEventTeam | null>(
 		null,
 	);
 	const busy = starting || savingPlayer || savingGoal || undoing || ending;
@@ -812,7 +818,7 @@ export function ChampionshipEventPlay({
 											return;
 										}
 
-										setColorTeam(team);
+										setTeamToEdit(team);
 									}}
 								/>
 							</li>
@@ -919,30 +925,34 @@ export function ChampionshipEventPlay({
 						</Button>
 					</div>
 				</div>
-				{colorTeam && (
-					<EventTeamColorModal
-						color={colorTeam.color}
+				{teamToEdit && (
+					<AddEventTeamModal
+						playersPerTeam={event.players_per_team}
+						presentPlayers={presentPlayers}
+						goalkeeperIds={volunteerGoalkeeperIds}
 						usedColors={event.teams
-							.filter((team) => team.id !== colorTeam.id)
+							.filter((team) => team.id !== teamToEdit.id)
 							.flatMap((team) => usedEventTeamColors(team.color))}
-						isPending={savingColor}
-						errorMessage={colorError}
-						onCancel={() => {
-							if (savingColor) {
-								return;
-							}
-
-							setColorTeam(null);
+						initialTeam={{
+							color: teamToEdit.color,
+							players: eventTeamSourcePlayers(teamToEdit),
 						}}
-						onSelect={async (color) => {
-							if (color === colorTeam.color) {
-								setColorTeam(null);
+						isPending={savingTeam}
+						errorMessage={teamError}
+						onCancel={() => {
+							if (savingTeam) {
 								return;
 							}
 
+							setTeamToEdit(null);
+						}}
+						onAdd={async (values) => {
 							try {
-								await onChangeTeamColor(colorTeam.id, color);
-								setColorTeam(null);
+								await onUpdateTeam({
+									teamId: teamToEdit.id,
+									...values,
+								});
+								setTeamToEdit(null);
 							} catch {
 								return;
 							}
@@ -998,7 +1008,7 @@ export function ChampionshipEventPlay({
 		const present = event.attendance.find((row) => row.player_id === playerId);
 		return resolvePlayer(playerId, present?.display_name ?? "", rosterById);
 	});
-	const volunteerGoalkeeperIds = new Set(
+	const volunteerGoalkeeperIdSet = new Set(
 		attendanceGoalkeeperIds(event.attendance),
 	);
 	const slotTitle = slotActionTitle(match, slotTarget, event.players_per_team);
@@ -1305,7 +1315,7 @@ export function ChampionshipEventPlay({
 						slotTarget.slot,
 						(playerId) =>
 							rosterById.get(playerId)?.is_goalkeeper === true ||
-							volunteerGoalkeeperIds.has(playerId),
+								volunteerGoalkeeperIdSet.has(playerId),
 					)}
 					ceiling={ceiling}
 					isPending={savingPlayer}

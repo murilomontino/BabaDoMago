@@ -172,7 +172,6 @@ export const EVENT_ACTION = {
 	setGoalkeeper: "Goleiro",
 	addTeam: "Adicionar time",
 	editTeam: "Editar time",
-	editTeamColor: "Cor do time",
 	saveTeam: "Salvar time",
 	saveAttendance: "Salvar presença",
 	markAttendanceStats: "Marcar stats",

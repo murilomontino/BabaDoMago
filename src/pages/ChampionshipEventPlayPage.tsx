@@ -8,7 +8,6 @@ import {
 	canStartEventMatch,
 	EVENT_ACTION,
 	eventMatchTeamCount,
-	eventTeamSourcePlayers,
 	isMatchAlreadyOpenError,
 } from "@/const/championship-event";
 import {
@@ -36,10 +35,7 @@ import { useChampionship } from "@/hooks/championships/use-championships";
 import { useFlushMatchClock } from "@/hooks/match-clock-sync";
 import { useWakeLock } from "@/hooks/use-wake-lock";
 import { mutationErrorMessage } from "@/lib/error-message";
-import type {
-	ChampionshipEventMatch,
-	ChampionshipEventTeam,
-} from "@/types/championship-event";
+import type { ChampionshipEventMatch } from "@/types/championship-event";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 const PLAY_SHELL_CLASS =
@@ -189,27 +185,21 @@ export function ChampionshipEventPlayPage() {
 								await eventQuery.refetch();
 							}
 						}}
-						savingColor={updateTeam.isPending}
-						colorError={
+						savingTeam={updateTeam.isPending}
+						teamError={
 							(updateTeam.isError && updateTeam.error.message) || null
 						}
-						onChangeTeamColor={async (teamId, color) => {
-							const team = event.teams.find(
-								(item: ChampionshipEventTeam) => item.id === teamId,
-							);
-							if (!team) {
-								return;
-							}
-
-							const sourcePlayers = eventTeamSourcePlayers(team);
-
+						onUpdateTeam={async ({
+							teamId,
+							color,
+							playerIds,
+							goalkeeperId,
+						}) => {
 							await updateTeam.mutateAsync({
 								teamId,
 								color,
-								playerIds: sourcePlayers.map((player) => player.player_id),
-								goalkeeperId:
-									sourcePlayers.find((player) => player.is_goalkeeper)
-										?.player_id ?? 0,
+								playerIds,
+								goalkeeperId,
 							});
 						}}
 						onSetPlayer={async (teamId, slot, playerId, includeStats) => {
