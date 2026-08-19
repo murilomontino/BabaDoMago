@@ -41,6 +41,8 @@ export const ROSTER_SHARE_LABEL = {
 	share: "Compartilhar elenco",
 	sharing: "Gerando imagem...",
 	shareFailed: "Não foi possível compartilhar o elenco",
+	copyInvite: "Copiar link de convite",
+	copied: "Link copiado.",
 } as const;
 
 export const ROSTER_SHARE_COLOR = {
