@@ -79,6 +79,7 @@ import type { ChampionshipPlayer } from "@/types/championship";
 import type { ChampionshipEvent } from "@/types/championship-event";
 
 type ChampionshipEventsProps = {
+	championshipName: string;
 	championshipId: number;
 	eventTime: string;
 	eventWeekday: number | null;
@@ -120,6 +121,7 @@ function endIdsForFlowEvent(flowEvent: ChampionshipEvent | null) {
 }
 
 export function ChampionshipEvents({
+	championshipName,
 	championshipId,
 	eventTime,
 	eventWeekday,
@@ -502,6 +504,10 @@ export function ChampionshipEvents({
 			)}
 			{flow === "end" && flowEvent && endIds && ratingPreview && (
 				<EndEventModal
+					championshipName={championshipName}
+					startsAt={flowEvent.starts_at}
+					matches={flowEvent.matches}
+					teams={flowEvent.teams}
 					rows={ratingPreview}
 					ceiling={previewCeiling}
 					canSetMvp={canSetMvp}
@@ -530,24 +536,20 @@ export function ChampionshipEvents({
 						);
 					}}
 					onCancel={closeFlow}
-					onConfirm={() => {
-						void (async () => {
-							try {
-								await endEvent.mutateAsync({
-									eventId: flowEvent.id,
-									presentPlayerIds: endIds.presentPlayerIds,
-									mvpPlayerIds: mvpPlayerIdsWhenAllowed(
-										canSetMvp,
-										mvpPlayerIds,
-									),
-								});
+					onConfirm={() =>
+						endEvent
+							.mutateAsync({
+								eventId: flowEvent.id,
+								presentPlayerIds: endIds.presentPlayerIds,
+								mvpPlayerIds: mvpPlayerIdsWhenAllowed(
+									canSetMvp,
+									mvpPlayerIds,
+								),
+							})
+							.then(() => {
 								clearAttendanceDraft(flowEvent.id);
-								resetFlow();
-							} catch {
-								return;
-							}
-						})();
-					}}
+							})
+					}
 				/>
 			)}
 			{flow === "mvp" && flowEvent && (
