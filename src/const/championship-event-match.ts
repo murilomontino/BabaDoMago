@@ -3,7 +3,11 @@ import type {
 	ChampionshipEventMatch,
 	ChampionshipEventMatchPlayer,
 } from "../types/championship-event.ts";
-import { CHAMPIONSHIP_EVENT, EVENT_ACTION } from "./championship-event.ts";
+import {
+	CHAMPIONSHIP_EVENT,
+	EVENT_ACTION,
+	eventTeamsSharePlayers,
+} from "./championship-event.ts";
 import type { EventTeamColor } from "./event-team-color.ts";
 import { PLAYER_LABEL, playerVisibleName } from "./player-name.ts";
 
@@ -84,6 +88,23 @@ export type MatchClockAction =
 
 export const MATCH_CLOCK_STORAGE_KEY = "babaDoMago-match-clock" as const;
 
+export const MATCH_CLOCK_FLUSH_RETRY = {
+	attempts: 5,
+	baseMs: 500,
+	maxMs: 8_000,
+	pollMs: 15_000,
+} as const;
+
+export const MATCH_CLOCK_FLUSH_ERROR = {
+	fallback: "Falha ao sincronizar o cronômetro",
+} as const;
+
+export function matchClockRetryDelayMs(attempt: number): number {
+	const safeAttempt = Math.max(0, attempt);
+	const delay = MATCH_CLOCK_FLUSH_RETRY.baseMs * 2 ** safeAttempt;
+	return Math.min(delay, MATCH_CLOCK_FLUSH_RETRY.maxMs);
+}
+
 export const MATCH_CLOCK_DEBUG_ENV = {
 	key: "VITE_MATCH_CLOCK_DEBUG",
 	on: "true",
@@ -95,12 +116,46 @@ export const MATCH_CLOCK_DEBUG_LABEL = {
 	empty: "Fila vazia.",
 	hold: "Segurar sync",
 	release: "Liberar sync",
-	pending: "Pending",
+	pending: "Fila",
+	count: "Itens",
+	network: "Rede",
+	online: "Online",
+	offline: "Offline",
+	deferred: "Limpeza adiada",
+	yes: "Sim",
 	startedAt: "started_at",
 	pausedAt: "paused_at",
 	accumulated: "pause_accumulated_seconds",
+	error: "Erro",
+	attempt: "Tentativa",
 	close: "Fechar",
 } as const;
+
+export function matchClockDebugEnabled(
+	dev: boolean,
+	envValue: string | undefined,
+): boolean {
+	if (dev) {
+		return true;
+	}
+
+	return envValue === MATCH_CLOCK_DEBUG_ENV.on;
+}
+
+export function matchClockDebugOnlineLabel(online: boolean): string {
+	if (online) {
+		return MATCH_CLOCK_DEBUG_LABEL.online;
+	}
+
+	return MATCH_CLOCK_DEBUG_LABEL.offline;
+}
+
+export function matchClockDebugQueueItemLabel(
+	action: MatchClockAction,
+	index: number,
+): string {
+	return `${index + 1}. ${EVENT_MATCH_CLOCK_LABEL[action]} (${action})`;
+}
 
 export type MatchClockSnapshot = {
 	started_at: string | null;
@@ -121,6 +176,22 @@ export function matchClockSnapshotFromFields(
 		pause_accumulated_seconds: fields.pause_accumulated_seconds,
 		pending: [],
 	};
+}
+
+export function hasMatchClockPending(
+	snapshot: MatchClockSnapshot | undefined,
+): boolean {
+	return Boolean(snapshot && snapshot.pending.length > 0);
+}
+
+export function canClearMatchClock(
+	snapshot: MatchClockSnapshot | undefined,
+): boolean {
+	return !hasMatchClockPending(snapshot);
+}
+
+export function isMatchClockOnline(online: boolean | undefined): boolean {
+	return online !== false;
 }
 
 export function hasMatchClockLocal(
@@ -244,6 +315,20 @@ export const EVENT_MATCH_REOPEN_LABEL = {
 	cancel: "Cancelar",
 } as const;
 
+export const EVENT_MATCH_DELETE_LABEL = {
+	title: "Excluir partida",
+	hint: "A partida some da lista. Estatísticas voltam atrás.",
+	confirm: "Excluir partida",
+	cancel: "Cancelar",
+} as const;
+
+export const EVENT_MATCH_DISCARD_LABEL = {
+	title: "Excluir partida",
+	hint: "Esta partida não conta na rodada. Nada fica gravado.",
+	confirm: "Excluir",
+	cancel: "Cancelar",
+} as const;
+
 export const EVENT_MATCH_END_LABEL = {
 	title: "Encerrar partida",
 	nextTitle: "Próxima partida",
@@ -262,6 +347,49 @@ export const EVENT_MATCH_SUBSTITUTION_LABEL = {
 
 export function eventMatchSubstitutionTitle(playerName: string): string {
 	return `Contar estatísticas de ${playerName}?`;
+}
+
+export const EVENT_MATCH_SWAP_TEAM_LABEL = {
+	title: "Trocar time",
+	hint: "Placar volta a 0x0. Relógio continua.",
+	confirm: "Trocar",
+	cancel: "Cancelar",
+	empty: "Nenhum time disponível",
+} as const;
+
+export const EVENT_MATCH_REMOVE_PLAYER_LABEL = {
+	hint: "A vaga fica vazia.",
+	confirm: "Remover",
+	cancel: "Cancelar",
+} as const;
+
+export function eventMatchRemovePlayerTitle(playerName: string): string {
+	return `Remover ${playerName}?`;
+}
+
+export function matchTeamSwapCandidates<
+	T extends { id: number; players: readonly { player_id: number }[] },
+>(teams: readonly T[], outgoingId: number, stayingId: number): T[] {
+	const staying = teams.find((team) => team.id === stayingId);
+	if (!staying) {
+		return [];
+	}
+
+	return teams.filter((team) => {
+		if (team.id === outgoingId) {
+			return false;
+		}
+
+		if (team.id === stayingId) {
+			return false;
+		}
+
+		if (eventTeamsSharePlayers(staying.players, team.players)) {
+			return false;
+		}
+
+		return true;
+	});
 }
 
 export const EVENT_GOAL_KIND = {

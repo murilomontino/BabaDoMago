@@ -168,6 +168,8 @@ export const EVENT_ACTION = {
 	copyMatchLink: "Copiar link",
 	markGoal: "Marcar gol",
 	swapPlayer: "Trocar",
+	swapTeam: "Trocar time",
+	removePlayer: "Remover",
 	fillSlot: "Adicionar",
 	setGoalkeeper: "Goleiro",
 	addTeam: "Adicionar time",

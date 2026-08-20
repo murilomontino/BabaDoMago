@@ -12,6 +12,7 @@ import {
 	PLAYER_PROFILE_LABEL,
 	PLAYER_RATING_HISTORY_CHART,
 	type PlayerRatingHistoryChartPoint,
+	playerRatingHistoryChartTickLabel,
 } from "@/const/player-profile";
 
 type PlayerRatingHistoryChartProps = {
@@ -19,8 +20,20 @@ type PlayerRatingHistoryChartProps = {
 	ceiling: number;
 };
 
-function chartDateLabel(value: unknown): string {
-	return formatEventStartsAt(String(value)).date;
+type ChartTooltipPayload = {
+	payload?: PlayerRatingHistoryChartPoint;
+};
+
+function chartTooltipLabel(
+	_label: unknown,
+	payload: readonly ChartTooltipPayload[] | undefined,
+): string {
+	const startsAt = payload?.[0]?.payload?.startsAt;
+	if (!startsAt) {
+		return "";
+	}
+
+	return formatEventStartsAt(startsAt).date;
 }
 
 export function PlayerRatingHistoryChart({
@@ -42,14 +55,17 @@ export function PlayerRatingHistoryChart({
 					margin={{ top: 8, right: 12, bottom: 0, left: 0 }}
 				>
 					<XAxis
-						dataKey={PLAYER_RATING_HISTORY_CHART.dateKey}
+						dataKey={PLAYER_RATING_HISTORY_CHART.indexKey}
 						tick={{ fontSize: 12 }}
-						tickFormatter={chartDateLabel}
+						interval={0}
+						tickFormatter={(value) =>
+							playerRatingHistoryChartTickLabel(points, Number(value))
+						}
 					/>
 					<YAxis domain={[0, ceiling]} tick={{ fontSize: 12 }} width={36} />
 					<Tooltip
 						formatter={(value) => formatEventRating(Number(value))}
-						labelFormatter={chartDateLabel}
+						labelFormatter={chartTooltipLabel}
 					/>
 					<Line
 						type="linear"

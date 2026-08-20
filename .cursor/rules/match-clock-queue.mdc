@@ -1,0 +1,28 @@
+---
+description: Cronômetro da partida aplica pause/start/resume na hora; a fila de sync não trava o tick nem o botão.
+alwaysApply: true
+---
+
+# Cronômetro local, fila só sincroniza
+
+Pause, start e resume **não esperam o servidor**. A UI aplica o relógio no reducer na hora; `pending` é fila de sync. A saga **não** pode travar o tick, o botão, nem o `busy` da partida.
+
+## Fluxo
+
+1. Clique → `dispatch(requestMatchClock)` → extraReducer `applyMatchClockAction` muda `started_at` / `paused_at` / `pause_accumulated_seconds` e **empilha** a ação em `pending`.
+2. Display usa `mergeMatchClock(server, local)`. Snapshot local vence enquanto existir (`hasMatchClockLocal`: `started_at` ou `pending.length > 0`).
+3. `useMatchClock` tica só o snapshot mesclado. Flush atrasado, offline, retry ou `holdSet` **não** param o relógio.
+4. `actionChannel` serial manda `pending[0]` (`flushMatchClockWorker`). Offline: a saga **espera** reconexão (`online`, `pageshow`, `visibility`) e **não** tira a ação da fila. Online: RPC; sucesso → `shiftPending`. Falha → backoff e tenta de novo. Poll a cada `pollMs`, replay no `REHYDRATE`.
+5. `clearMatchClock` com `pending` só marca `deferredClear`. A fila só some depois do drain. Erro de sync some da UI enquanto houver `pending`.
+
+Fonte única: `src/const/championship-event-match.ts`. Slice: `src/store/match-clock/slice.ts`. Fila: `src/store/match-clock/flush-worker.ts`. Watchers: `src/store/match-clock/saga.ts`. Persistência: `redux-persist` com `MATCH_CLOCK_STORAGE_KEY` (`clocks` + `deferredClear`).
+
+## O que não fazer
+
+- Não meter flush/saga pending em `busy`.
+- Não `await` flush antes de pintar pause/resume.
+- Não trocar o display pelo relógio do servidor enquanto houver snapshot local.
+- Não limpar o store com `pending` ainda na fila (nem no `ended_at`; `deferredClear` espera o drain).
+- Ação inválida no snapshot é no-op (ex.: pause duas vezes não entra de novo em `pending`).
+
+Debug no `yarn dev`: botão da fila na partida. Produção só com `VITE_MATCH_CLOCK_DEBUG=true`.

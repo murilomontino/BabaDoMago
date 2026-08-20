@@ -1,10 +1,13 @@
-import { ArrowLeftRight, ChevronDown, Pause, Play } from "lucide-react";
+import { ArrowLeftRight, ChevronDown, Pause, Play, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AddEventTeamModal } from "@/components/add-event-team-modal";
 import { Button } from "@/components/button";
 import { ChampionshipEventBenchModal } from "@/components/championship-event-bench-modal";
 import { ChampionshipEventGoalModal } from "@/components/championship-event-goal-modal";
+import { ChampionshipEventRemovePlayerModal } from "@/components/championship-event-remove-player-modal";
 import { ChampionshipEventSubstitutionModal } from "@/components/championship-event-substitution-modal";
+import { ChampionshipEventSwapTeamModal } from "@/components/championship-event-swap-team-modal";
+import { DeleteEventMatchModal } from "@/components/delete-event-match-modal";
 import { EndEventMatchModal } from "@/components/end-event-match-modal";
 import {
 	EVENT_TEAM_CHIP_TIP,
@@ -34,11 +37,12 @@ import {
 import {
 	attendanceGoalkeeperIds,
 	EVENT_ACTION,
+	EVENT_CARD_LONG_PRESS,
 	EVENT_TEAM_MESSAGE,
 	EVENT_TEAM_POSITION_LABEL,
 	eventTeamPlayerPosition,
-	eventTeamSourcePlayers,
 	eventTeamSlotPosition,
+	eventTeamSourcePlayers,
 	eventTeamsSharePlayers,
 } from "@/const/championship-event";
 import {
@@ -46,6 +50,7 @@ import {
 	clampMatchDurationMinutes,
 	EVENT_GOAL_LABEL,
 	EVENT_MATCH_CLOCK_LABEL,
+	EVENT_MATCH_DISCARD_LABEL,
 	EVENT_MATCH_DURATION,
 	EVENT_MATCH_END_INTENT,
 	EVENT_MATCH_LABEL,
@@ -68,6 +73,7 @@ import {
 	matchScore,
 	matchTeamSlots,
 	matchTeamStarName,
+	matchTeamSwapCandidates,
 	matchWinnerTeamId,
 	mergeMatchClock,
 	parseMatchDurationMinutesInput,
@@ -75,6 +81,8 @@ import {
 	sortBenchForSlot,
 	toggleMatchTeamSelection,
 } from "@/const/championship-event-match";
+import { MATCH_OPS_LABEL } from "@/const/championship-event-match-ops";
+import { resolveEventPlayers } from "@/const/championship-event-roster";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
 import {
 	type EventTeamColor,
@@ -82,21 +90,20 @@ import {
 	eventTeamName,
 	usedEventTeamColors,
 } from "@/const/event-team-color";
-import { resolveEventPlayers } from "@/const/championship-event-roster";
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
-import {
-	matchClockFromStore,
-	useMatchClockStore,
-} from "@/hooks/match-clock-store";
 import { useMatchClock } from "@/hooks/use-match-clock";
+import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
 import {
 	signalGoal,
 	signalMatchStart,
 	signalMatchTimeUp,
 	unlockMatchAudio,
 } from "@/lib/match-feedback";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { selectMatchClockSnapshot } from "@/store/match-clock/selectors";
+import { clearMatchClock } from "@/store/match-clock/slice";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type {
 	ChampionshipEvent,
@@ -129,6 +136,24 @@ function slotActionTitle(
 	}
 
 	return EVENT_ACTION.fillSlot;
+}
+
+function swapCandidatesForOutgoing(
+	outgoingId: number | null,
+	teamAId: number,
+	teamBId: number,
+	candidatesA: readonly ChampionshipEventTeam[],
+	candidatesB: readonly ChampionshipEventTeam[],
+): readonly ChampionshipEventTeam[] {
+	if (outgoingId === teamAId) {
+		return candidatesA;
+	}
+
+	if (outgoingId === teamBId) {
+		return candidatesB;
+	}
+
+	return [];
 }
 
 function pickOrderFromIndex(pickIndex: number): number | null {
@@ -227,38 +252,28 @@ type ChampionshipEventPlayProps = {
 	event: ChampionshipEvent;
 	match: ChampionshipEventMatch | null;
 	players: readonly ChampionshipPlayer[];
-	starting: boolean;
-	startError: string | null;
-	savingPlayer: boolean;
-	playerError: string | null;
-	savingGoal: boolean;
-	goalError: string | null;
-	undoing: boolean;
-	undoError: string | null;
-	ending: boolean;
-	endError: string | null;
+	opsError: string | null;
+	pendingOps: number;
 	clockError: string | null;
-	onStart: (
-		teamAId: number,
-		teamBId: number,
-		durationMinutes: number,
-	) => Promise<void>;
+	onStart: (teamAId: number, teamBId: number, durationMinutes: number) => void;
 	onSetPlayer: (
 		teamId: number,
 		slot: number,
 		playerId: number | null,
 		includeStats?: boolean,
-	) => Promise<void>;
-	onSetGoalkeeper: (teamId: number, playerId: number) => Promise<void>;
+	) => void;
+	onSetGoalkeeper: (teamId: number, playerId: number) => void;
 	onAddGoal: (values: {
 		scorerPlayerId: number;
 		assistPlayerId: number | null;
 		isOwnGoal: boolean;
 		elapsedSeconds: number | null;
-	}) => Promise<void>;
-	onUndoGoal: (goalId: number) => Promise<void>;
-	onEnd: () => Promise<void>;
-	onNext: () => Promise<void>;
+	}) => void;
+	onUndoGoal: (goalId: number) => void;
+	onEnd: () => void;
+	onNext: () => void;
+	onSwapTeam: (outgoingTeamId: number, incomingTeamId: number) => void;
+	onDiscard: () => void;
 	onStartClock: () => void;
 	onPause: () => void;
 	onResume: () => void;
@@ -267,9 +282,7 @@ type ChampionshipEventPlayProps = {
 		color: EventTeamColor | null;
 		playerIds: number[];
 		goalkeeperId: number;
-	}) => Promise<void>;
-	savingTeam: boolean;
-	teamError: string | null;
+	}) => void;
 };
 
 const TEAM_CARD_LONG_PRESS_MS = 500;
@@ -474,6 +487,114 @@ function TeamPick({
 const MATCH_PLAY_SLOT_CLASS =
 	"flex min-h-0 flex-1 items-center gap-1 rounded-md bg-surface-muted px-1 py-0.5 text-fg";
 
+function MatchPlayerGoalButton({
+	player,
+	row,
+	disabled,
+	onMarkGoal,
+	onRemovePlayer,
+}: {
+	player: ChampionshipPlayer;
+	row: ChampionshipEventMatchPlayer;
+	disabled: boolean;
+	onMarkGoal: (player: ChampionshipEventMatchPlayer) => void;
+	onRemovePlayer: (player: ChampionshipEventMatchPlayer) => void;
+}) {
+	const timerRef = useRef<number | null>(null);
+	const originRef = useRef<{ x: number; y: number } | null>(null);
+	const skipClickRef = useRef(false);
+	const openedRef = useRef(false);
+
+	function clearTimer() {
+		if (timerRef.current === null) {
+			return;
+		}
+
+		window.clearTimeout(timerRef.current);
+		timerRef.current = null;
+	}
+
+	function openRemove() {
+		if (openedRef.current) {
+			return;
+		}
+
+		openedRef.current = true;
+		skipClickRef.current = true;
+		clearTimer();
+		onRemovePlayer(row);
+	}
+
+	return (
+		<button
+			type="button"
+			className="inline-flex min-h-7 min-w-0 flex-1 items-center justify-between gap-1 self-stretch rounded-md px-1.5 hover:bg-black/10 disabled:opacity-50"
+			aria-label={EVENT_ACTION.markGoal}
+			disabled={disabled}
+			onClick={() => {
+				if (skipClickRef.current) {
+					skipClickRef.current = false;
+					return;
+				}
+
+				onMarkGoal(row);
+			}}
+			onPointerDown={(event) => {
+				if (disabled) {
+					return;
+				}
+
+				if (event.button !== 0) {
+					return;
+				}
+
+				openedRef.current = false;
+				skipClickRef.current = false;
+				originRef.current = { x: event.clientX, y: event.clientY };
+				clearTimer();
+				timerRef.current = window.setTimeout(() => {
+					openRemove();
+				}, EVENT_CARD_LONG_PRESS.ms);
+			}}
+			onPointerMove={(event) => {
+				const origin = originRef.current;
+				if (!origin || timerRef.current === null) {
+					return;
+				}
+
+				const movedX = Math.abs(event.clientX - origin.x);
+				const movedY = Math.abs(event.clientY - origin.y);
+				if (
+					movedX < EVENT_CARD_LONG_PRESS.movePx &&
+					movedY < EVENT_CARD_LONG_PRESS.movePx
+				) {
+					return;
+				}
+
+				clearTimer();
+			}}
+			onPointerUp={clearTimer}
+			onPointerCancel={clearTimer}
+			onContextMenu={(event) => {
+				event.preventDefault();
+				if (disabled) {
+					return;
+				}
+
+				openRemove();
+			}}
+		>
+			<span className="flex min-w-0 flex-1 items-center gap-1.5">
+				<EventTeamPlayerAvatar player={player} />
+				<span className="min-w-0 flex-1 truncate text-left text-xs font-medium">
+					{playerVisibleName(player)}
+				</span>
+			</span>
+			<GoalIcon className="size-4 shrink-0" />
+		</button>
+	);
+}
+
 function MatchTeamBlock({
 	color,
 	sortOrder,
@@ -483,6 +604,8 @@ function MatchTeamBlock({
 	onMarkGoal,
 	onSetGoalkeeper,
 	onEditSlot,
+	onSwapTeam,
+	onRemovePlayer,
 }: {
 	color: EventTeamColor | null;
 	sortOrder: number;
@@ -492,6 +615,8 @@ function MatchTeamBlock({
 	onMarkGoal: (player: ChampionshipEventMatchPlayer) => void;
 	onSetGoalkeeper: (player: ChampionshipEventMatchPlayer) => void;
 	onEditSlot: (slot: number) => void;
+	onSwapTeam?: () => void;
+	onRemovePlayer: (player: ChampionshipEventMatchPlayer) => void;
 }) {
 	const style = eventTeamColorStyle(color);
 
@@ -501,9 +626,22 @@ function MatchTeamBlock({
 			style={style}
 		>
 			<EventTeamColorDot color={color} />
-			<p className="mb-1 shrink-0 pr-5 text-xs font-medium">
-				{eventTeamName(color, sortOrder)}
-			</p>
+			<div className="mb-1 flex shrink-0 items-center gap-1 pr-5">
+				<p className="min-w-0 flex-1 text-xs font-medium">
+					{eventTeamName(color, sortOrder)}
+				</p>
+				{onSwapTeam && (
+					<Button
+						variant={BUTTON_VARIANT.ghost}
+						className="h-7 shrink-0 px-1.5"
+						aria-label={EVENT_ACTION.swapTeam}
+						disabled={disabled}
+						onClick={onSwapTeam}
+					>
+						<ArrowLeftRight className="size-4" />
+					</Button>
+				)}
+			</div>
 			<ul className="flex min-h-0 flex-1 flex-col gap-0.5">
 				{Array.from({ length: slots.length }, (_, index) => index).map(
 					(slot) => {
@@ -518,21 +656,13 @@ function MatchTeamBlock({
 									{EVENT_TEAM_POSITION_LABEL[position]}
 								</span>
 								{row && player && (
-									<button
-										type="button"
-										className="inline-flex min-h-7 min-w-0 flex-1 items-center justify-between gap-1 self-stretch rounded-md px-1.5 hover:bg-black/10 disabled:opacity-50"
-										aria-label={EVENT_ACTION.markGoal}
+									<MatchPlayerGoalButton
+										player={player}
+										row={row}
 										disabled={disabled}
-										onClick={() => onMarkGoal(row)}
-									>
-										<span className="flex min-w-0 flex-1 items-center gap-1.5">
-											<EventTeamPlayerAvatar player={player} />
-											<span className="min-w-0 flex-1 truncate text-left text-xs font-medium">
-												{playerVisibleName(player)}
-											</span>
-										</span>
-										<GoalIcon className="size-4 shrink-0" />
-									</button>
+										onMarkGoal={onMarkGoal}
+										onRemovePlayer={onRemovePlayer}
+									/>
 								)}
 								{!player && (
 									<p className="min-w-0 flex-1 truncate text-xs text-fg-muted">
@@ -628,18 +758,27 @@ function matchClockBarAction(
 	return MATCH_CLOCK_ACTION.pause;
 }
 
+function firstPlayError(...messages: Array<string | null>): string | null {
+	const found = messages.find((message) => message !== null);
+	if (found === undefined) {
+		return null;
+	}
+
+	return found;
+}
+
 function MatchClockBar({
 	match,
-	busy,
 	onStartClock,
 	onPause,
 	onResume,
+	onDiscard,
 }: {
 	match: ChampionshipEventMatch;
-	busy: boolean;
 	onStartClock: () => void;
 	onPause: () => void;
 	onResume: () => void;
+	onDiscard: () => void;
 }) {
 	const elapsedSeconds = useMatchClock(match);
 	const started = matchClockIsStarted(match);
@@ -661,10 +800,6 @@ function MatchClockBar({
 	}, [match.id, timeUp]);
 
 	function handleClick() {
-		if (busy) {
-			return;
-		}
-
 		unlockMatchAudio();
 
 		switch (action) {
@@ -686,26 +821,38 @@ function MatchClockBar({
 	}
 
 	return (
-		<button
-			type="button"
-			disabled={busy}
-			aria-label={EVENT_MATCH_CLOCK_LABEL[action]}
-			onClick={handleClick}
-			className="flex w-full shrink-0 flex-col items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 disabled:opacity-50"
-		>
-			<span
-				className={`w-full text-center text-4xl font-semibold tabular-nums tracking-tight ${timeUp ? "text-danger" : "text-fg"}`}
+		<div className="relative w-full shrink-0">
+			<button
+				type="button"
+				aria-label={EVENT_MATCH_CLOCK_LABEL[action]}
+				onClick={handleClick}
+				className="flex w-full flex-col items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 disabled:opacity-50"
 			>
-				{formatMatchClock(elapsedSeconds)}
-			</span>
-			<span
-				className={`inline-flex items-center gap-2 text-sm font-medium ${playing ? "text-pitch-fg" : "text-fg-muted"}`}
+				<span
+					className={`w-full text-center text-4xl font-semibold tabular-nums tracking-tight ${timeUp ? "text-danger" : "text-fg"}`}
+				>
+					{formatMatchClock(elapsedSeconds)}
+				</span>
+				<span
+					className={`inline-flex items-center gap-2 text-sm font-medium ${playing ? "text-pitch-fg" : "text-fg-muted"}`}
+				>
+					{playing && <Play className="size-4" />}
+					{!playing && <Pause className="size-4" />}
+					{EVENT_MATCH_CLOCK_LABEL[action]}
+				</span>
+			</button>
+			<button
+				type="button"
+				aria-label={EVENT_ACTION.removeMatch}
+				className="absolute top-2 right-2 inline-flex size-8 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-muted hover:text-danger-fg disabled:opacity-50"
+				onClick={(event) => {
+					event.stopPropagation();
+					onDiscard();
+				}}
 			>
-				{playing && <Play className="size-4" />}
-				{!playing && <Pause className="size-4" />}
-				{EVENT_MATCH_CLOCK_LABEL[action]}
-			</span>
-		</button>
+				<X className="size-4" />
+			</button>
+		</div>
 	);
 }
 
@@ -713,16 +860,8 @@ export function ChampionshipEventPlay({
 	event,
 	match,
 	players,
-	starting,
-	startError,
-	savingPlayer,
-	playerError,
-	savingGoal,
-	goalError,
-	undoing,
-	undoError,
-	ending,
-	endError,
+	opsError,
+	pendingOps,
 	clockError,
 	onStart,
 	onSetPlayer,
@@ -731,12 +870,12 @@ export function ChampionshipEventPlay({
 	onUndoGoal,
 	onEnd,
 	onNext,
+	onSwapTeam,
+	onDiscard,
 	onStartClock,
 	onPause,
 	onResume,
 	onUpdateTeam,
-	savingTeam,
-	teamError,
 }: ChampionshipEventPlayProps) {
 	const rosterById = new Map(players.map((player) => [player.id, player]));
 	const teamById = new Map(event.teams.map((team) => [team.id, team]));
@@ -759,22 +898,33 @@ export function ChampionshipEventPlay({
 	const [ownGoalTeamId, setOwnGoalTeamId] = useState<number | null>(null);
 	const resumeOnCloseRef = useRef(false);
 	const goalElapsedRef = useRef(0);
-	const localClock = useMatchClockStore((state) =>
-		matchClockFromStore(state.clocks, match?.id ?? null),
+	const dispatch = useAppDispatch();
+	const localClock = useAppSelector((state) =>
+		selectMatchClockSnapshot(state, match?.id ?? null),
 	);
+
+	const pendingCount = localClock?.pending.length ?? 0;
 
 	useEffect(() => {
 		if (!match?.ended_at) {
 			return;
 		}
 
-		useMatchClockStore.getState().clear(match.id);
-	}, [match?.ended_at, match?.id]);
+		if (pendingCount > 0) {
+			return;
+		}
+
+		dispatch(clearMatchClock(match.id));
+	}, [dispatch, match?.ended_at, match?.id, pendingCount]);
 	const [endIntent, setEndIntent] = useState<EventMatchEndIntent | null>(null);
 	const [teamToEdit, setTeamToEdit] = useState<ChampionshipEventTeam | null>(
 		null,
 	);
-	const busy = starting || savingPlayer || savingGoal || undoing || ending;
+	const [swapOutgoingId, setSwapOutgoingId] = useState<number | null>(null);
+	const [removeTarget, setRemoveTarget] =
+		useState<ChampionshipEventMatchPlayer | null>(null);
+	const [discardOpen, setDiscardOpen] = useState(false);
+	const syncing = pendingOps > 0;
 	const canStartSelected = canConfirmMatchTeams(selected);
 	const selectedTeamA = event.teams.find((team) => team.id === selected[0]);
 	const selectedTeamB = event.teams.find((team) => team.id === selected[1]);
@@ -807,17 +957,9 @@ export function ChampionshipEventPlay({
 									ceiling={ceiling}
 									presentRatings={presentRatings}
 									onSelect={() => {
-										if (starting) {
-											return;
-										}
-
 										setSelected(toggleMatchTeamSelection(selected, team.id));
 									}}
 									onLongPress={() => {
-										if (starting) {
-											return;
-										}
-
 										setTeamToEdit(team);
 									}}
 								/>
@@ -826,8 +968,8 @@ export function ChampionshipEventPlay({
 					})}
 				</ul>
 				<div className="shrink-0 space-y-2 pt-2">
-					{(startError || sharedPlayersError) && (
-						<p className={ERROR_CLASS}>{startError ?? sharedPlayersError}</p>
+					{(opsError || sharedPlayersError) && (
+						<p className={ERROR_CLASS}>{opsError ?? sharedPlayersError}</p>
 					)}
 					<div className="flex flex-wrap items-center gap-2">
 						<span className="text-sm font-medium text-fg-muted">
@@ -898,9 +1040,7 @@ export function ChampionshipEventPlay({
 					<div className="grid gap-2 md:flex md:justify-end">
 						<Button
 							className="w-full md:w-auto"
-							disabled={
-								starting || !canStartSelected || Boolean(sharedPlayersError)
-							}
+							disabled={!canStartSelected || Boolean(sharedPlayersError)}
 							onClick={() => {
 								const teamAId = selected[0];
 								const teamBId = selected[1];
@@ -916,7 +1056,6 @@ export function ChampionshipEventPlay({
 						<Button
 							variant={BUTTON_VARIANT.ghost}
 							className="h-14 text-base w-full md:w-auto"
-							disabled={busy}
 							onClick={() => {
 								void onEnd();
 							}}
@@ -937,25 +1076,16 @@ export function ChampionshipEventPlay({
 							color: teamToEdit.color,
 							players: eventTeamSourcePlayers(teamToEdit),
 						}}
-						isPending={savingTeam}
-						errorMessage={teamError}
+						errorMessage={opsError}
 						onCancel={() => {
-							if (savingTeam) {
-								return;
-							}
-
 							setTeamToEdit(null);
 						}}
 						onAdd={async (values) => {
-							try {
-								await onUpdateTeam({
-									teamId: teamToEdit.id,
-									...values,
-								});
-								setTeamToEdit(null);
-							} catch {
-								return;
-							}
+							onUpdateTeam({
+								teamId: teamToEdit.id,
+								...values,
+							});
+							setTeamToEdit(null);
 						}}
 					/>
 				)}
@@ -1014,6 +1144,24 @@ export function ChampionshipEventPlay({
 	const slotTitle = slotActionTitle(match, slotTarget, event.players_per_team);
 	const clockMatch = mergeMatchClock(match, localClock);
 	const goalModalOpen = goalTarget !== null || ownGoalTeamId !== null;
+	const swapCandidatesA = matchTeamSwapCandidates(
+		event.teams,
+		match.team_a_id,
+		match.team_b_id,
+	);
+	const swapCandidatesB = matchTeamSwapCandidates(
+		event.teams,
+		match.team_b_id,
+		match.team_a_id,
+	);
+	const swapCandidates = swapCandidatesForOutgoing(
+		swapOutgoingId,
+		match.team_a_id,
+		match.team_b_id,
+		swapCandidatesA,
+		swapCandidatesB,
+	);
+	const playError = firstPlayError(opsError, clockError);
 
 	function beginGoalClockHold() {
 		const running =
@@ -1047,41 +1195,31 @@ export function ChampionshipEventPlay({
 					event.players_per_team,
 				)}
 				rosterById={rosterById}
-				disabled={busy}
+				disabled={goalModalOpen}
 				onMarkGoal={(player) => {
-					if (busy) {
-						return;
-					}
-
 					beginGoalClockHold();
 					setGoalTarget({ teamId: match.team_a_id, player });
 				}}
 				onSetGoalkeeper={(player) => {
-					if (busy) {
-						return;
-					}
-
 					void onSetGoalkeeper(match.team_a_id, player.player_id);
 				}}
 				onEditSlot={(slot) => {
-					if (busy) {
-						return;
-					}
-
 					setSlotTarget({ teamId: match.team_a_id, slot });
+				}}
+				onSwapTeam={handlerWhenAllowed(swapCandidatesA.length > 0, () => {
+					setSwapOutgoingId(match.team_a_id);
+				})}
+				onRemovePlayer={(player) => {
+					setRemoveTarget(player);
 				}}
 			/>
 			<div className="flex shrink-0 flex-col gap-2">
 				<div className={MATCH_GOAL_TIMELINE_GRID_CLASS}>
 					<div className="flex min-w-0 items-center gap-1">
 						<OwnGoalButton
-							disabled={busy}
+							disabled={goalModalOpen}
 							labelPosition={OWN_GOAL_LABEL_POSITION.end}
 							onClick={() => {
-								if (busy) {
-									return;
-								}
-
 								beginGoalClockHold();
 								setOwnGoalTeamId(match.team_a_id);
 							}}
@@ -1108,13 +1246,9 @@ export function ChampionshipEventPlay({
 							{starB}
 						</p>
 						<OwnGoalButton
-							disabled={busy}
+							disabled={goalModalOpen}
 							labelPosition={OWN_GOAL_LABEL_POSITION.start}
 							onClick={() => {
-								if (busy) {
-									return;
-								}
-
 								beginGoalClockHold();
 								setOwnGoalTeamId(match.team_b_id);
 							}}
@@ -1123,27 +1257,33 @@ export function ChampionshipEventPlay({
 				</div>
 				<MatchClockBar
 					match={clockMatch}
-					busy={busy || goalModalOpen}
 					onStartClock={() => {
-						if (busy || goalModalOpen) {
+						if (goalModalOpen) {
 							return;
 						}
 
 						void onStartClock();
 					}}
 					onPause={() => {
-						if (busy || goalModalOpen) {
+						if (goalModalOpen) {
 							return;
 						}
 
 						void onPause();
 					}}
 					onResume={() => {
-						if (busy || goalModalOpen) {
+						if (goalModalOpen) {
 							return;
 						}
 
 						void onResume();
+					}}
+					onDiscard={() => {
+						if (goalModalOpen) {
+							return;
+						}
+
+						setDiscardOpen(true);
 					}}
 				/>
 				<div className="max-h-16 overflow-y-auto">
@@ -1151,12 +1291,7 @@ export function ChampionshipEventPlay({
 						<MatchGoalTimeline
 							goals={match.goals}
 							teamAPlayerIds={teamAIds}
-							undoDisabled={busy}
 							onUndoGoal={(goalId) => {
-								if (busy) {
-									return;
-								}
-
 								void onUndoGoal(goalId);
 							}}
 							playerName={(playerId) => {
@@ -1178,45 +1313,35 @@ export function ChampionshipEventPlay({
 					event.players_per_team,
 				)}
 				rosterById={rosterById}
-				disabled={busy}
+				disabled={goalModalOpen}
 				onMarkGoal={(player) => {
-					if (busy) {
-						return;
-					}
-
 					beginGoalClockHold();
 					setGoalTarget({ teamId: match.team_b_id, player });
 				}}
 				onSetGoalkeeper={(player) => {
-					if (busy) {
-						return;
-					}
-
 					void onSetGoalkeeper(match.team_b_id, player.player_id);
 				}}
 				onEditSlot={(slot) => {
-					if (busy) {
-						return;
-					}
-
 					setSlotTarget({ teamId: match.team_b_id, slot });
 				}}
+				onSwapTeam={handlerWhenAllowed(swapCandidatesB.length > 0, () => {
+					setSwapOutgoingId(match.team_b_id);
+				})}
+				onRemovePlayer={(player) => {
+					setRemoveTarget(player);
+				}}
 			/>
-			{(playerError || goalError || undoError || endError || clockError) && (
-				<p className={`shrink-0 ${ERROR_CLASS}`}>
-					{playerError || goalError || undoError || endError || clockError}
+			{playError && <p className={`shrink-0 ${ERROR_CLASS}`}>{playError}</p>}
+			{syncing && (
+				<p className="shrink-0 text-sm text-fg-muted">
+					{MATCH_OPS_LABEL.syncing}
 				</p>
 			)}
 			<div className="grid shrink-0 grid-cols-2 gap-2">
 				<Button
 					variant={BUTTON_VARIANT.ghost}
 					className="h-14 text-base"
-					disabled={busy}
 					onClick={() => {
-						if (busy) {
-							return;
-						}
-
 						setEndIntent(EVENT_MATCH_END_INTENT.end);
 					}}
 				>
@@ -1224,12 +1349,7 @@ export function ChampionshipEventPlay({
 				</Button>
 				<Button
 					className="h-14 text-base"
-					disabled={busy}
 					onClick={() => {
-						if (busy) {
-							return;
-						}
-
 						setEndIntent(EVENT_MATCH_END_INTENT.next);
 					}}
 				>
@@ -1252,13 +1372,7 @@ export function ChampionshipEventPlay({
 					).map((row) =>
 						resolvePlayer(row.player_id, row.display_name, rosterById),
 					)}
-					isPending={savingGoal}
-					errorMessage={goalError}
 					onCancel={() => {
-						if (savingGoal) {
-							return;
-						}
-
 						setGoalTarget(null);
 						void endGoalClockHold();
 					}}
@@ -1284,13 +1398,7 @@ export function ChampionshipEventPlay({
 					players={ownGoalPlayers}
 					ceiling={ceiling}
 					emptyMessage={EVENT_MATCH_LABEL.emptyTeam}
-					isPending={savingGoal}
-					errorMessage={goalError}
 					onCancel={() => {
-						if (savingGoal) {
-							return;
-						}
-
 						setOwnGoalTeamId(null);
 						void endGoalClockHold();
 					}}
@@ -1315,16 +1423,10 @@ export function ChampionshipEventPlay({
 						slotTarget.slot,
 						(playerId) =>
 							rosterById.get(playerId)?.is_goalkeeper === true ||
-								volunteerGoalkeeperIdSet.has(playerId),
+							volunteerGoalkeeperIdSet.has(playerId),
 					)}
 					ceiling={ceiling}
-					isPending={savingPlayer}
-					errorMessage={playerError}
 					onCancel={() => {
-						if (savingPlayer) {
-							return;
-						}
-
 						setSlotTarget(null);
 					}}
 					onSelect={async (playerId) => {
@@ -1358,29 +1460,56 @@ export function ChampionshipEventPlay({
 			{pendingSwap && (
 				<ChampionshipEventSubstitutionModal
 					playerName={pendingSwap.outgoingName}
-					isPending={savingPlayer}
-					errorMessage={playerError}
 					onCancel={() => {
-						if (savingPlayer) {
-							return;
-						}
-
 						setPendingSwap(null);
 					}}
 					onConfirm={(includeStats) => {
 						void (async () => {
-							try {
-								await onSetPlayer(
-									pendingSwap.teamId,
-									pendingSwap.slot,
-									pendingSwap.incomingPlayerId,
-									includeStats,
-								);
-								setPendingSwap(null);
-							} catch {
+							await onSetPlayer(
+								pendingSwap.teamId,
+								pendingSwap.slot,
+								pendingSwap.incomingPlayerId,
+								includeStats,
+							);
+							setPendingSwap(null);
+						})();
+					}}
+				/>
+			)}
+			{removeTarget && (
+				<ChampionshipEventRemovePlayerModal
+					playerName={playerVisibleName(
+						resolvePlayer(
+							removeTarget.player_id,
+							removeTarget.display_name,
+							rosterById,
+						),
+					)}
+					onCancel={() => {
+						setRemoveTarget(null);
+					}}
+					onConfirm={() => {
+						void (async () => {
+							if (removeTarget.slot === null) {
 								return;
 							}
+
+							await onSetPlayer(removeTarget.team_id, removeTarget.slot, null);
+							setRemoveTarget(null);
 						})();
+					}}
+				/>
+			)}
+			{swapOutgoingId !== null && (
+				<ChampionshipEventSwapTeamModal
+					candidates={swapCandidates}
+					errorMessage={opsError}
+					onCancel={() => {
+						setSwapOutgoingId(null);
+					}}
+					onConfirm={(incomingTeamId) => {
+						onSwapTeam(swapOutgoingId, incomingTeamId);
+						setSwapOutgoingId(null);
 					}}
 				/>
 			)}
@@ -1389,41 +1518,46 @@ export function ChampionshipEventPlay({
 					intent={endIntent}
 					scoreLabel={formatMatchScore(score.teamA, score.teamB)}
 					winnerLabel={winnerLabel}
-					isPending={ending}
-					errorMessage={endError}
+					errorMessage={opsError}
 					onCancel={() => {
-						if (ending) {
-							return;
-						}
-
 						setEndIntent(null);
 					}}
 					onConfirm={() => {
-						void (async () => {
-							try {
-								switch (endIntent) {
-									case EVENT_MATCH_END_INTENT.end:
-										useMatchClockStore.getState().clear(match.id);
-										await onEnd();
-										break;
-									case EVENT_MATCH_END_INTENT.next:
-										useMatchClockStore.getState().clear(match.id);
-										await onNext();
-										break;
-									default: {
-										const _exhaustive: never = endIntent;
-										return _exhaustive;
-									}
-								}
-								setEndIntent(null);
-							} catch {
-								return;
+						switch (endIntent) {
+							case EVENT_MATCH_END_INTENT.end:
+								onEnd();
+								break;
+							case EVENT_MATCH_END_INTENT.next:
+								onNext();
+								break;
+							default: {
+								const _exhaustive: never = endIntent;
+								return _exhaustive;
 							}
-						})();
+						}
+						setEndIntent(null);
 					}}
 				/>
 			)}
-			{isMatchClockDebugVisible() && <MatchClockDebug matchId={match.id} />}
+			{discardOpen && (
+				<DeleteEventMatchModal
+					title={EVENT_MATCH_DISCARD_LABEL.title}
+					hint={EVENT_MATCH_DISCARD_LABEL.hint}
+					confirm={EVENT_MATCH_DISCARD_LABEL.confirm}
+					cancel={EVENT_MATCH_DISCARD_LABEL.cancel}
+					errorMessage={opsError}
+					onCancel={() => {
+						setDiscardOpen(false);
+					}}
+					onConfirm={() => {
+						onDiscard();
+						setDiscardOpen(false);
+					}}
+				/>
+			)}
+			{isMatchClockDebugVisible() && (
+				<MatchClockDebug matchId={match.id} eventId={event.id} />
+			)}
 		</div>
 	);
 }

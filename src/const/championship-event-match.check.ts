@@ -2,9 +2,10 @@ import type {
 	ChampionshipEventGoal,
 	ChampionshipEventMatchPlayer,
 } from "../types/championship-event.ts";
-import { CHAMPIONSHIP_EVENT } from "./championship-event.ts";
+import { CHAMPIONSHIP_EVENT, EVENT_ACTION } from "./championship-event.ts";
 import {
 	applyMatchClockAction,
+	canClearMatchClock,
 	canConfirmMatchTeams,
 	canOpenEventHistoryMatch,
 	clampMatchDurationMinutes,
@@ -12,24 +13,31 @@ import {
 	EVENT_GOAL_KIND,
 	EVENT_GOAL_LABEL,
 	EVENT_MATCH_CLOCK_LABEL,
+	EVENT_MATCH_DELETE_LABEL,
+	EVENT_MATCH_DISCARD_LABEL,
 	EVENT_MATCH_DURATION,
 	EVENT_MATCH_END_INTENT,
 	EVENT_MATCH_END_LABEL,
 	EVENT_MATCH_ICON,
 	EVENT_MATCH_ICON_LEGEND,
 	EVENT_MATCH_LABEL,
+	EVENT_MATCH_REMOVE_PLAYER_LABEL,
 	EVENT_MATCH_REOPEN_LABEL,
 	EVENT_MATCH_STATUS,
 	EVENT_MATCH_SUBSTITUTION_LABEL,
+	EVENT_MATCH_SWAP_TEAM_LABEL,
 	EVENT_MATCH_TEAM_PREVIEW,
 	eventGoalScorerHint,
 	eventMatchEndConfirmLabel,
 	eventMatchEndTitle,
+	eventMatchRemovePlayerTitle,
 	eventMatchStatus,
 	eventMatchSubstitutionTitle,
 	formatGoalTimelineLine,
 	formatMatchClock,
 	formatMatchScore,
+	hasMatchClockPending,
+	isMatchClockOnline,
 	isMatchDurationPreset,
 	isMatchSlotGoalkeeper,
 	isMatchTimeUp,
@@ -39,13 +47,19 @@ import {
 	MATCH_CLOCK_ACTION,
 	MATCH_CLOCK_DEBUG_ENV,
 	MATCH_CLOCK_DEBUG_LABEL,
+	MATCH_CLOCK_FLUSH_ERROR,
+	MATCH_CLOCK_FLUSH_RETRY,
 	MATCH_CLOCK_STORAGE_KEY,
 	matchAssistCandidates,
 	matchBenchPlayerIds,
+	matchClockDebugEnabled,
+	matchClockDebugOnlineLabel,
+	matchClockDebugQueueItemLabel,
 	matchClockElapsedSeconds,
 	matchClockIsPaused,
 	matchClockIsStarted,
 	matchClockNowMs,
+	matchClockRetryDelayMs,
 	matchClockSnapshotFromFields,
 	matchDurationSeconds,
 	matchEndWinnerLabel,
@@ -59,6 +73,7 @@ import {
 	matchTeamScore,
 	matchTeamSlots,
 	matchTeamStarName,
+	matchTeamSwapCandidates,
 	matchWinnerColor,
 	matchWinnerTeam,
 	matchWinnerTeamId,
@@ -570,6 +585,67 @@ check(
 );
 check(EVENT_MATCH_REOPEN_LABEL.title, "Editar partida", "reopen title");
 check(EVENT_MATCH_REOPEN_LABEL.hint.includes("edição"), true, "reopen hint");
+check(EVENT_MATCH_DELETE_LABEL.hint.includes("lista"), true, "delete hint");
+check(
+	EVENT_MATCH_DISCARD_LABEL.hint.includes("não conta"),
+	true,
+	"discard hint",
+);
+check(
+	EVENT_MATCH_DISCARD_LABEL.title,
+	EVENT_ACTION.removeMatch,
+	"discard title",
+);
+check(EVENT_MATCH_SWAP_TEAM_LABEL.title, "Trocar time", "swap team title");
+check(EVENT_MATCH_SWAP_TEAM_LABEL.hint.includes("0x0"), true, "swap team hint");
+check(
+	eventMatchRemovePlayerTitle("João"),
+	"Remover João?",
+	"remove player title",
+);
+check(
+	EVENT_MATCH_REMOVE_PLAYER_LABEL.confirm,
+	"Remover",
+	"remove player confirm",
+);
+check(
+	EVENT_ACTION.removePlayer,
+	EVENT_MATCH_REMOVE_PLAYER_LABEL.confirm,
+	"remove player action",
+);
+check(
+	EVENT_ACTION.swapTeam,
+	EVENT_MATCH_SWAP_TEAM_LABEL.title,
+	"swap team action",
+);
+check(
+	String(
+		matchTeamSwapCandidates(
+			[
+				{ id: 1, players: [{ player_id: 1 }] },
+				{ id: 2, players: [{ player_id: 2 }] },
+				{ id: 3, players: [{ player_id: 3 }] },
+				{ id: 4, players: [{ player_id: 2 }] },
+			],
+			1,
+			2,
+		).map((team) => team.id),
+	),
+	"3",
+	"swap candidates skip opponent and shared",
+);
+check(
+	matchTeamSwapCandidates(
+		[
+			{ id: 1, players: [{ player_id: 1 }] },
+			{ id: 2, players: [{ player_id: 2 }] },
+		],
+		1,
+		2,
+	).length,
+	0,
+	"swap candidates empty with two teams",
+);
 check(EVENT_MATCH_TEAM_PREVIEW.players, 2, "team preview");
 check(EVENT_MATCH_LABEL.showMore, "Ver mais", "show more");
 check(EVENT_MATCH_LABEL.showLess, "Ver menos", "show less");
@@ -633,6 +709,22 @@ check(MATCH_CLOCK_STORAGE_KEY, "babaDoMago-match-clock", "clock storage key");
 check(MATCH_CLOCK_DEBUG_ENV.key, "VITE_MATCH_CLOCK_DEBUG", "clock debug env");
 check(MATCH_CLOCK_DEBUG_ENV.on, "true", "clock debug on");
 check(MATCH_CLOCK_DEBUG_LABEL.empty, "Fila vazia.", "clock debug empty");
+check(MATCH_CLOCK_DEBUG_LABEL.pending, "Fila", "clock debug pending");
+check(MATCH_CLOCK_DEBUG_LABEL.network, "Rede", "clock debug network");
+check(matchClockDebugEnabled(true, undefined), true, "debug on in dev");
+check(matchClockDebugEnabled(false, undefined), false, "debug off in prod");
+check(
+	matchClockDebugEnabled(false, MATCH_CLOCK_DEBUG_ENV.on),
+	true,
+	"debug on via env",
+);
+check(matchClockDebugOnlineLabel(true), "Online", "debug online label");
+check(matchClockDebugOnlineLabel(false), "Offline", "debug offline label");
+check(
+	matchClockDebugQueueItemLabel(MATCH_CLOCK_ACTION.pause, 0),
+	"1. Pausar (pause)",
+	"debug queue item",
+);
 check(matchClockElapsedSeconds(clockBase, startMs), 0, "elapsed at start");
 check(
 	matchClockElapsedSeconds(clockBase, startMs + 10_000),
@@ -776,5 +868,32 @@ check(
 	null,
 	"ended ignores local",
 );
+check(MATCH_CLOCK_FLUSH_RETRY.attempts, 5, "flush retry attempts");
+check(MATCH_CLOCK_FLUSH_RETRY.baseMs, 500, "flush retry base");
+check(MATCH_CLOCK_FLUSH_RETRY.maxMs, 8_000, "flush retry max");
+check(MATCH_CLOCK_FLUSH_RETRY.pollMs, 15_000, "flush poll");
+check(matchClockRetryDelayMs(0), 500, "retry delay 0");
+check(matchClockRetryDelayMs(1), 1_000, "retry delay 1");
+check(matchClockRetryDelayMs(2), 2_000, "retry delay 2");
+check(matchClockRetryDelayMs(3), 4_000, "retry delay 3");
+check(matchClockRetryDelayMs(4), 8_000, "retry delay 4");
+check(matchClockRetryDelayMs(5), 8_000, "retry delay clamp");
+check(matchClockRetryDelayMs(-1), 500, "retry delay negative");
+check(
+	MATCH_CLOCK_FLUSH_ERROR.fallback,
+	"Falha ao sincronizar o cronômetro",
+	"flush error fallback",
+);
+check(MATCH_CLOCK_DEBUG_LABEL.error, "Erro", "clock debug error");
+check(MATCH_CLOCK_DEBUG_LABEL.attempt, "Tentativa", "clock debug attempt");
+check(isMatchClockOnline(false), false, "offline");
+check(isMatchClockOnline(true), true, "online");
+check(isMatchClockOnline(undefined), true, "unknown online");
+check(hasMatchClockPending(undefined), false, "empty snapshot not pending");
+check(hasMatchClockPending(seeded), false, "seeded not pending");
+check(hasMatchClockPending(pausedLocal), true, "pause is pending");
+check(canClearMatchClock(undefined), true, "clear missing snapshot");
+check(canClearMatchClock(seeded), true, "clear idle snapshot");
+check(canClearMatchClock(pausedLocal), false, "keep pending snapshot");
 
 console.log("championship-event-match ok");

@@ -787,6 +787,14 @@ export type Database = {
 				};
 				Returns: Json;
 			};
+			swap_championship_event_match_team: {
+				Args: {
+					match_id: number;
+					outgoing_team_id: number;
+					incoming_team_id: number;
+				};
+				Returns: Json;
+			};
 			start_championship_event_match:
 				| {
 						Args: {

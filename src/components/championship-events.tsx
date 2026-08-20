@@ -541,10 +541,7 @@ export function ChampionshipEvents({
 							.mutateAsync({
 								eventId: flowEvent.id,
 								presentPlayerIds: endIds.presentPlayerIds,
-								mvpPlayerIds: mvpPlayerIdsWhenAllowed(
-									canSetMvp,
-									mvpPlayerIds,
-								),
+								mvpPlayerIds: mvpPlayerIdsWhenAllowed(canSetMvp, mvpPlayerIds),
 							})
 							.then(() => {
 								clearAttendanceDraft(flowEvent.id);

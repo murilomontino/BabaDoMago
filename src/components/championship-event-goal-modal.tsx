@@ -15,8 +15,8 @@ import type { ChampionshipPlayer } from "@/types/championship";
 type ChampionshipEventGoalModalProps = {
 	scorerName: string;
 	candidates: readonly ChampionshipPlayer[];
-	isPending: boolean;
-	errorMessage: string | null;
+	isPending?: boolean;
+	errorMessage?: string | null;
 	onCancel: () => void;
 	onConfirm: (values: {
 		kind: EventGoalKind;
@@ -27,8 +27,8 @@ type ChampionshipEventGoalModalProps = {
 export function ChampionshipEventGoalModal({
 	scorerName,
 	candidates,
-	isPending,
-	errorMessage,
+	isPending = false,
+	errorMessage = null,
 	onCancel,
 	onConfirm,
 }: ChampionshipEventGoalModalProps) {

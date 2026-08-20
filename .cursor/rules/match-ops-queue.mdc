@@ -1,0 +1,30 @@
+---
+description: Ações da tela de jogo aplicam na hora; a fila de sync é por evento e não trava picker, placar nem Encerrar.
+alwaysApply: true
+---
+
+# Partida local, fila só sincroniza
+
+Abrir partida, editar time no picker, gol, substituição, goleiro, trocar time, encerrar, próxima e descartar **não esperam o servidor**. A UI aplica o overlay `applyPlayOps(event, ops)` na hora; `queues[eventId]` é um FIFO único. A saga **não** pode travar o picker, o placar, Encerrar, Próxima nem Descarte.
+
+## Fluxo
+
+1. Clique → `dispatch(requestMatchOp(eventId, draft))` → extraReducer empilha o `MatchOp` em `queues[eventId]`.
+2. Display usa `applyPlayOps(event, ops)` e depois `openEventMatch`. Overlay vence o dado do servidor enquanto houver fila. Detalhe da rodada aplica o mesmo overlay. Refetch e realtime não apagam o que ainda não subiu.
+3. `startMatch` usa `localId` negativo como id da partida. RPC devolve o id do servidor; **antes** de `opSettled` a saga dispara `matchIdRemapped` (fila + relógio) e `matchClockFlushRequested` com o id real.
+4. Relógio **não** chama RPC com `matchId < 0`: espera o mapa `localMatchMap` ou o start FIFO.
+5. `actionChannel` serial manda `ops[0]` (`flushMatchOpsWorker`). Offline: a saga **espera** reconexão (`online`, `pageshow`, `visibility`) e **não** tira o item da fila. Online: RPC; sucesso → `invalidate` depois `opSettled`. Recusa de regra de negócio (`isFatalMatchOpMessage`) ou esgotar `MATCH_CLOCK_FLUSH_RETRY.attempts` → `opDropped` (dead-letter) e segue a fila. Falha de rede → backoff e tenta de novo. Poll a cada `pollMs`, replay no `REHYDRATE`.
+6. Gol local usa `localId` negativo. Desfazer esse gol cancela o `addGoal` na fila, salvo se já estiver `inFlightId`.
+7. Encerrar, próxima e descarte entram no fim da fila e **não** bloqueiam a UI. Encerrar navega na hora.
+
+Fonte única: `src/const/championship-event-match-ops.ts`. Slice: `src/store/match-ops/slice.ts`. Fila: `src/store/match-ops/flush-worker.ts`. Watchers: `src/store/match-ops/saga.ts`. Persistência: `redux-persist` com `MATCH_OPS_STORAGE_KEY` (`queues` + `seq` + `localMatchMap`). Fila antiga por `matchId` não migra.
+
+## O que não fazer
+
+- Não meter flush/saga pending em `busy`.
+- Não `await` flush antes de pintar gol, start, swap, encerrar, descarte ou editar time.
+- Não escrever o overlay no cache do React Query.
+- Não chamar RPC de relógio com id negativo.
+- Não inventar Elo, K-factor ou ajuste de nota aqui.
+
+Debug no `yarn dev`: botão da fila na partida. Produção só com `VITE_MATCH_CLOCK_DEBUG=true`.
