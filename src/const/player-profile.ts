@@ -23,6 +23,8 @@ export const PLAYER_RATING_HISTORY_CHART = {
 	height: 192,
 	ratingKey: "rating",
 	indexKey: "x",
+	labelOffset: 8,
+	labelFontSize: 12,
 } as const;
 
 export const PLAYER_PROFILE_HISTORY_COLUMN = {

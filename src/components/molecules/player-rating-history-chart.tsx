@@ -1,4 +1,5 @@
 import {
+	LabelList,
 	Line,
 	LineChart,
 	ResponsiveContainer,
@@ -36,6 +37,10 @@ function chartTooltipLabel(
 	return formatEventStartsAt(startsAt).date;
 }
 
+function chartPointRatingLabel(value: unknown): string {
+	return formatEventRating(Number(value));
+}
+
 export function PlayerRatingHistoryChart({
 	points,
 	ceiling,
@@ -52,7 +57,7 @@ export function PlayerRatingHistoryChart({
 			>
 				<LineChart
 					data={[...points]}
-					margin={{ top: 8, right: 12, bottom: 0, left: 0 }}
+					margin={{ top: 24, right: 16, bottom: 0, left: 0 }}
 				>
 					<XAxis
 						dataKey={PLAYER_RATING_HISTORY_CHART.indexKey}
@@ -74,7 +79,16 @@ export function PlayerRatingHistoryChart({
 						stroke="currentColor"
 						dot
 						isAnimationActive={false}
-					/>
+					>
+						<LabelList
+							dataKey={PLAYER_RATING_HISTORY_CHART.ratingKey}
+							position="top"
+							offset={PLAYER_RATING_HISTORY_CHART.labelOffset}
+							fontSize={PLAYER_RATING_HISTORY_CHART.labelFontSize}
+							fill="currentColor"
+							formatter={chartPointRatingLabel}
+						/>
+					</Line>
 				</LineChart>
 			</ResponsiveContainer>
 		</div>

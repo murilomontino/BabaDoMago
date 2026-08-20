@@ -182,8 +182,9 @@ function shareChartBlockHeight(pointCount: number): number {
 		return 0;
 	}
 
-	const { gap, chartHeight, chartTitle, chartXLabel } = PLAYER_PROFILE_SHARE;
-	return gap * 2 + chartTitle + chartHeight + chartXLabel;
+	const { gap, chartHeight, chartTitle, chartLabelGap, chartXLabel } =
+		PLAYER_PROFILE_SHARE;
+	return gap * 2 + chartTitle + chartLabelGap + chartHeight + chartXLabel;
 }
 
 function drawRatingChart(
@@ -198,7 +199,8 @@ function drawRatingChart(
 		return;
 	}
 
-	const { chartHeight, chartAxis, chartTitle } = PLAYER_PROFILE_SHARE;
+	const { chartHeight, chartAxis, chartTitle, chartLabelGap } =
+		PLAYER_PROFILE_SHARE;
 	context.fillStyle = PLAYER_PROFILE_SHARE_COLOR.fg;
 	context.font = "600 22px system-ui, sans-serif";
 	context.textAlign = "left";
@@ -206,7 +208,7 @@ function drawRatingChart(
 	context.fillText(PLAYER_PROFILE_SHARE_LABEL.chart, x, y);
 
 	const plotX = x + chartAxis;
-	const plotY = y + chartTitle;
+	const plotY = y + chartTitle + chartLabelGap;
 	const plotW = width - chartAxis;
 	const ticks = [0, ceiling / 2, ceiling];
 	for (const tick of ticks) {
@@ -236,6 +238,7 @@ function drawRatingChart(
 			x: plotX + t * plotW,
 			y: plotY + chartHeight * (1 - ratio),
 			startsAt: point.startsAt,
+			rating: point.rating,
 		};
 	});
 	const first = points[0];
@@ -273,6 +276,16 @@ function drawRatingChart(
 		context.strokeStyle = PLAYER_PROFILE_SHARE_COLOR.surface;
 		context.lineWidth = 2;
 		context.stroke();
+
+		context.fillStyle = PLAYER_PROFILE_SHARE_COLOR.fg;
+		context.font = "600 16px system-ui, sans-serif";
+		context.textAlign = "center";
+		context.textBaseline = "bottom";
+		context.fillText(
+			formatEventRating(point.rating),
+			point.x,
+			point.y - 10,
+		);
 	}
 
 	context.fillStyle = PLAYER_PROFILE_SHARE_COLOR.fgMuted;
