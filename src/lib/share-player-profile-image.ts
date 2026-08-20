@@ -281,11 +281,7 @@ function drawRatingChart(
 		context.font = "600 16px system-ui, sans-serif";
 		context.textAlign = "center";
 		context.textBaseline = "bottom";
-		context.fillText(
-			formatEventRating(point.rating),
-			point.x,
-			point.y - 10,
-		);
+		context.fillText(formatEventRating(point.rating), point.x, point.y - 10);
 	}
 
 	context.fillStyle = PLAYER_PROFILE_SHARE_COLOR.fgMuted;

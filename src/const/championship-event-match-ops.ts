@@ -123,6 +123,9 @@ export const MATCH_OPS_LABEL = {
 	discardMatch: "Descartar",
 } as const;
 
+export const MATCH_OPS_SYNCING_CLASS =
+	"pointer-events-none absolute inset-x-0 top-2 z-10 flex justify-center text-fg-muted";
+
 const FATAL_MATCH_OP_MESSAGES = new Set<string>(
 	Object.values(EVENT_ERROR_MESSAGE),
 );
