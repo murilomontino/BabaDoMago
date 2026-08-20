@@ -17,6 +17,12 @@ export const ICON_BUTTON_SIZE_CLASS = {
 		"h-11 w-full min-w-0 justify-center gap-1.5 px-2 text-xs font-medium md:size-10 md:gap-0 md:p-0",
 } as const;
 
+export const SECTION_ACTION_HEADER_CLASS =
+	"mb-1 flex flex-col gap-2 md:flex-row md:items-center";
+
+export const SECTION_ACTION_GROUP_CLASS =
+	"grid w-full min-w-0 grid-cols-2 gap-1 [&>button]:min-w-0 [&>button]:w-full md:ml-auto md:flex md:w-auto md:[&>button]:w-auto";
+
 const BUTTON_BASE = `inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition disabled:opacity-50 ${BUTTON_ICON_CLASS}`;
 
 export const BUTTON_CLASS: Record<ButtonVariant, string> = {

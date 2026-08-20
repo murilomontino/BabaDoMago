@@ -95,7 +95,12 @@ import {
 } from "@/const/event-recap-share";
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
-import { CHIP_CLASS, ERROR_CLASS } from "@/const/ui";
+import {
+	CHIP_CLASS,
+	ERROR_CLASS,
+	SECTION_ACTION_GROUP_CLASS,
+	SECTION_ACTION_HEADER_CLASS,
+} from "@/const/ui";
 import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
 import { shareEventTeamsImage } from "@/lib/share-event-teams-image";
 import { shareEventRecapImage } from "@/lib/share-event-recap-image";
@@ -479,11 +484,11 @@ export function ChampionshipEventRoundTab({
 			)}
 			{!showTeamBuilder && (
 				<div>
-					<div className="mb-1 flex items-center gap-2">
+					<div className={SECTION_ACTION_HEADER_CLASS}>
 						<p className="text-xs font-medium uppercase tracking-wide text-fg-muted">
 							{EVENT_BUILDER_STEP_LABEL.teams}
 						</p>
-						<div className="ml-auto flex items-center gap-1">
+						<div className={SECTION_ACTION_GROUP_CLASS}>
 							{showShareTeams && (
 								<IconTooltipButton
 									showLabel
@@ -702,11 +707,11 @@ export function ChampionshipEventRoundTab({
 						</div>
 					)}
 					<div>
-						<div className="mb-1 flex items-center gap-2">
+						<div className={SECTION_ACTION_HEADER_CLASS}>
 							<p className="text-xs font-medium uppercase tracking-wide text-fg-muted">
 								{EVENT_SECTION_LABEL.attendance}
 							</p>
-							<div className="ml-auto flex items-center gap-1">
+							<div className={SECTION_ACTION_GROUP_CLASS}>
 								{canSetMvp && ended && event.attendance.length > 0 && (
 									<IconTooltipButton
 										showLabel
