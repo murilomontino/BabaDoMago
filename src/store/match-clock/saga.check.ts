@@ -4,13 +4,15 @@ import {
 	MATCH_CLOCK_FLUSH_ERROR,
 } from "../../const/championship-event-match.ts";
 import {
-	createMatchClockReconnectChannel,
+	createReconnectChannel,
+	readOnline,
+	waitForOnline,
+} from "../online-channel.ts";
+import {
 	flushMatchClockWorker,
 	flushPendingAction,
 	invalidateMatchClockQueries,
-	readMatchClockOnline,
 	runMatchClockRpc,
-	waitForMatchClockOnline,
 } from "./flush-worker.ts";
 import { selectMatchClockHeld } from "./selectors.ts";
 import { flushAttemptSet, flushFailed, shiftPending } from "./slice.ts";
@@ -62,32 +64,24 @@ checkJson(
 	"empty pending stops",
 );
 
-const onlineWait = waitForMatchClockOnline();
-checkJson(
-	onlineWait.next().value,
-	call(readMatchClockOnline),
-	"wait checks online",
-);
+const onlineWait = waitForOnline();
+checkJson(onlineWait.next().value, call(readOnline), "wait checks online");
 checkJson(
 	onlineWait.next(true),
 	{ value: undefined, done: true },
 	"online proceeds",
 );
 
-const offlineWait = waitForMatchClockOnline();
+const offlineWait = waitForOnline();
 offlineWait.next();
 checkJson(
 	offlineWait.next(false).value,
-	call(createMatchClockReconnectChannel),
+	call(createReconnectChannel),
 	"offline waits reconnect",
 );
 
 const pauseFlush = flushPendingAction(7, MATCH_CLOCK_ACTION.pause);
-checkJson(
-	pauseFlush.next().value,
-	call(waitForMatchClockOnline),
-	"waits to be online",
-);
+checkJson(pauseFlush.next().value, call(waitForOnline), "waits to be online");
 checkJson(
 	pauseFlush.next().value,
 	call(runMatchClockRpc, 7, MATCH_CLOCK_ACTION.pause),
@@ -111,12 +105,12 @@ checkJson(afterFail.value, put(flushFailed("offline")), "keeps error");
 checkJson(retryFlush.next().value, put(flushAttemptSet(1)), "records retry");
 checkJson(
 	retryFlush.next().value,
-	call(readMatchClockOnline),
+	call(readOnline),
 	"rechecks online after fail",
 );
 checkJson(
 	retryFlush.next(false).value,
-	call(waitForMatchClockOnline),
+	call(waitForOnline),
 	"offline waits instead of dropping",
 );
 

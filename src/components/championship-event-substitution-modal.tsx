@@ -8,16 +8,16 @@ import { BUTTON_VARIANT, ERROR_CLASS, MODAL_CLASS } from "@/const/ui";
 
 type ChampionshipEventSubstitutionModalProps = {
 	playerName: string;
-	isPending: boolean;
-	errorMessage: string | null;
+	isPending?: boolean;
+	errorMessage?: string | null;
 	onCancel: () => void;
 	onConfirm: (includeStats: boolean) => void;
 };
 
 export function ChampionshipEventSubstitutionModal({
 	playerName,
-	isPending,
-	errorMessage,
+	isPending = false,
+	errorMessage = null,
 	onCancel,
 	onConfirm,
 }: ChampionshipEventSubstitutionModalProps) {

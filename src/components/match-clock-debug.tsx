@@ -9,6 +9,10 @@ import {
 	matchClockDebugOnlineLabel,
 	matchClockDebugQueueItemLabel,
 } from "@/const/championship-event-match";
+import {
+	MATCH_OPS_LABEL,
+	matchOpDebugLabel,
+} from "@/const/championship-event-match-ops";
 import { BUTTON_VARIANT, MODAL_CLASS, SAFE_AREA_FAB_CLASS } from "@/const/ui";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
@@ -19,6 +23,11 @@ import {
 	selectMatchClockSnapshot,
 } from "@/store/match-clock/selectors";
 import { holdSet } from "@/store/match-clock/slice";
+import {
+	selectMatchOps,
+	selectMatchOpsError,
+	selectMatchOpsFlushAttempt,
+} from "@/store/match-ops/selectors";
 
 type MatchClockDebugProps = {
 	matchId: number;
@@ -74,6 +83,10 @@ export function MatchClockDebug({ matchId }: MatchClockDebugProps) {
 		selectMatchClockSnapshot(state, matchId),
 	);
 	const pending = snapshot?.pending ?? [];
+	const matchOps = useAppSelector((state) => selectMatchOps(state, matchId));
+	const opsError = useAppSelector(selectMatchOpsError);
+	const opsFlushAttempt = useAppSelector(selectMatchOpsFlushAttempt);
+	const pendingCount = pending.length + matchOps.length;
 
 	function close() {
 		setOpen(false);
@@ -88,15 +101,15 @@ export function MatchClockDebug({ matchId }: MatchClockDebugProps) {
 			<button
 				type="button"
 				aria-label={MATCH_CLOCK_DEBUG_LABEL.open}
-				className={`fixed z-[60] inline-flex size-12 items-center justify-center rounded-full border border-line bg-surface text-fg shadow-md ${SAFE_AREA_FAB_CLASS}`}
+				className={`relative fixed z-[60] inline-flex size-12 items-center justify-center rounded-full border border-line bg-surface text-fg shadow-md ${SAFE_AREA_FAB_CLASS}`}
 				onClick={() => {
 					setOpen(true);
 				}}
 			>
 				<ListOrdered className="size-5" />
-				{pending.length > 0 && (
+				{pendingCount > 0 && (
 					<span className="absolute -top-1 -right-1 min-w-5 rounded-full bg-danger px-1 text-center text-[10px] font-semibold text-danger-fg">
-						{pending.length}
+						{pendingCount}
 					</span>
 				)}
 			</button>
@@ -180,6 +193,45 @@ export function MatchClockDebug({ matchId }: MatchClockDebugProps) {
 									.map((action, index) =>
 										matchClockDebugQueueItemLabel(action, index),
 									)
+									.join("\n")}
+							</p>
+						)}
+						<p className="mb-1 text-xs font-medium text-fg">
+							{MATCH_OPS_LABEL.queue}
+						</p>
+						<div className="mb-3 space-y-1 text-xs text-fg-muted">
+							<div>
+								<dt className="font-medium text-fg">
+									{MATCH_CLOCK_DEBUG_LABEL.count}
+								</dt>
+								<dd>{matchOps.length}</dd>
+							</div>
+							{opsError && (
+								<div>
+									<dt className="font-medium text-fg">
+										{MATCH_CLOCK_DEBUG_LABEL.error}
+									</dt>
+									<dd className="break-all">{opsError}</dd>
+								</div>
+							)}
+							{opsFlushAttempt > 0 && (
+								<div>
+									<dt className="font-medium text-fg">
+										{MATCH_CLOCK_DEBUG_LABEL.attempt}
+									</dt>
+									<dd>{opsFlushAttempt}</dd>
+								</div>
+							)}
+						</div>
+						{matchOps.length === 0 && (
+							<p className="mb-3 text-sm text-fg-muted">
+								{MATCH_CLOCK_DEBUG_LABEL.empty}
+							</p>
+						)}
+						{matchOps.length > 0 && (
+							<p className="mb-3 whitespace-pre-line text-sm text-fg">
+								{matchOps
+									.map((op, index) => matchOpDebugLabel(op, index))
 									.join("\n")}
 							</p>
 						)}

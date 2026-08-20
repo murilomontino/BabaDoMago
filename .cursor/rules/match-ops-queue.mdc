@@ -1,0 +1,28 @@
+---
+description: Gol, substituição e goleiro aplicam na hora; a fila de sync não trava o placar nem os botões da partida.
+alwaysApply: true
+---
+
+# Partida local, fila só sincroniza
+
+Substituir jogador, trocar goleiro, marcar gol e desfazer gol **não esperam o servidor**. A UI aplica o overlay `applyMatchOps(server, ops)` na hora; `queues[matchId]` é fila de sync. A saga **não** pode travar gol, substituição, goleiro nem o `busy` da partida.
+
+## Fluxo
+
+1. Clique → `dispatch(requestMatchOp)` → extraReducer empilha o `MatchOp` em `queues[matchId]`.
+2. Display usa `applyMatchOps(openEventMatch(event.matches), ops)`. Overlay vence o dado do servidor enquanto houver fila. Refetch e realtime não apagam o que ainda não subiu.
+3. `actionChannel` serial manda `ops[0]` (`flushMatchOpsWorker`). Offline: a saga **espera** reconexão (`online`, `pageshow`, `visibility`) e **não** tira o item da fila. Online: RPC; sucesso → `invalidate` depois `opSettled`. Recusa de regra de negócio (`isFatalMatchOpMessage`) ou esgotar `MATCH_CLOCK_FLUSH_RETRY.attempts` → `opDropped` (dead-letter) e segue a fila. Falha de rede → backoff e tenta de novo. Poll a cada `pollMs`, replay no `REHYDRATE`.
+4. Gol local usa `localId` negativo. Desfazer esse gol cancela o `addGoal` na fila, salvo se já estiver `inFlightId`.
+5. Encerrar, próxima e descarte ficam bloqueados enquanto houver fila (`pendingOps > 0`). Encerrar com gol pendente recusaria no servidor e a fila iria para dead-letter.
+
+Fonte única: `src/const/championship-event-match-ops.ts`. Slice: `src/store/match-ops/slice.ts`. Fila: `src/store/match-ops/flush-worker.ts`. Watchers: `src/store/match-ops/saga.ts`. Persistência: `redux-persist` com `MATCH_OPS_STORAGE_KEY` (`queues` + `seq`).
+
+## O que não fazer
+
+- Não meter flush/saga pending em `busy` (salvo encerrar, próxima e descarte).
+- Não `await` flush antes de pintar gol, substituição ou goleiro.
+- Não escrever o overlay no cache do React Query.
+- Não encerrar a partida com fila pendente.
+- Não inventar Elo, K-factor ou ajuste de nota aqui.
+
+Debug no `yarn dev`: botão da fila na partida. Produção só com `VITE_MATCH_CLOCK_DEBUG=true`.

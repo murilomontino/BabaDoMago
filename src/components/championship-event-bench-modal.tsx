@@ -18,8 +18,8 @@ type ChampionshipEventBenchModalProps = {
 	players: readonly ChampionshipPlayer[];
 	ceiling: number;
 	emptyMessage?: string;
-	isPending: boolean;
-	errorMessage: string | null;
+	isPending?: boolean;
+	errorMessage?: string | null;
 	onCancel: () => void;
 	onSelect: (playerId: number) => Promise<void>;
 };
@@ -29,8 +29,8 @@ export function ChampionshipEventBenchModal({
 	players,
 	ceiling,
 	emptyMessage = "Ninguém no banco.",
-	isPending,
-	errorMessage,
+	isPending = false,
+	errorMessage = null,
 	onCancel,
 	onSelect,
 }: ChampionshipEventBenchModalProps) {

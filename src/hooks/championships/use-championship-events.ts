@@ -7,7 +7,6 @@ import type {
 import type { EventTeamColor } from "@/const/event-team-color";
 import { supabase } from "@/lib/supabase";
 import {
-	addChampionshipEventGoal,
 	addChampionshipEventTeam,
 	createChampionshipEvent,
 	deleteChampionshipEvent,
@@ -24,12 +23,9 @@ import {
 	saveChampionshipEventAttendanceStats,
 	saveChampionshipEventTeams,
 	saveChampionshipPlayerEventStats,
-	setChampionshipEventMatchGoalkeeper,
-	setChampionshipEventMatchPlayer,
 	setChampionshipEventMvps,
 	startChampionshipEventMatch,
 	swapChampionshipEventMatchTeam,
-	undoChampionshipEventGoal,
 	updateChampionshipEventTeam,
 	upsertChampionshipEventRsvp,
 } from "@/services/championship-events";
@@ -312,57 +308,6 @@ export function useAddChampionshipEventMatch(_championshipId: number) {
 	return useStartChampionshipEventMatch(_championshipId);
 }
 
-export function useSetChampionshipEventMatchPlayer(_championshipId: number) {
-	const queryClient = useQueryClient();
-
-	return useMutation({
-		mutationFn: ({
-			matchId,
-			teamId,
-			slot,
-			playerId,
-			includeStats,
-		}: {
-			matchId: number;
-			teamId: number;
-			slot: number;
-			playerId: number | null;
-			includeStats?: boolean;
-		}) =>
-			setChampionshipEventMatchPlayer(
-				matchId,
-				teamId,
-				slot,
-				playerId,
-				includeStats,
-			),
-		onSuccess: async () => {
-			await invalidateChampionshipEventQueries(queryClient);
-		},
-	});
-}
-
-export function useSetChampionshipEventMatchGoalkeeper(
-	_championshipId: number,
-) {
-	const queryClient = useQueryClient();
-
-	return useMutation({
-		mutationFn: ({
-			matchId,
-			teamId,
-			playerId,
-		}: {
-			matchId: number;
-			teamId: number;
-			playerId: number;
-		}) => setChampionshipEventMatchGoalkeeper(matchId, teamId, playerId),
-		onSuccess: async () => {
-			await invalidateChampionshipEventQueries(queryClient);
-		},
-	});
-}
-
 export function useSwapChampionshipEventMatchTeam(_championshipId: number) {
 	const queryClient = useQueryClient();
 
@@ -377,48 +322,6 @@ export function useSwapChampionshipEventMatchTeam(_championshipId: number) {
 			incomingTeamId: number;
 		}) =>
 			swapChampionshipEventMatchTeam(matchId, outgoingTeamId, incomingTeamId),
-		onSuccess: async () => {
-			await invalidateChampionshipEventQueries(queryClient);
-		},
-	});
-}
-
-export function useAddChampionshipEventGoal(_championshipId: number) {
-	const queryClient = useQueryClient();
-
-	return useMutation({
-		mutationFn: ({
-			matchId,
-			scorerPlayerId,
-			assistPlayerId,
-			isOwnGoal,
-			elapsedSeconds,
-		}: {
-			matchId: number;
-			scorerPlayerId: number;
-			assistPlayerId: number | null;
-			isOwnGoal: boolean;
-			elapsedSeconds: number | null;
-		}) =>
-			addChampionshipEventGoal(
-				matchId,
-				scorerPlayerId,
-				assistPlayerId,
-				isOwnGoal,
-				elapsedSeconds,
-			),
-		onSuccess: async () => {
-			await invalidateChampionshipEventQueries(queryClient);
-		},
-	});
-}
-
-export function useUndoChampionshipEventGoal(_championshipId: number) {
-	const queryClient = useQueryClient();
-
-	return useMutation({
-		mutationFn: ({ matchId, goalId }: { matchId: number; goalId: number }) =>
-			undoChampionshipEventGoal(matchId, goalId),
 		onSuccess: async () => {
 			await invalidateChampionshipEventQueries(queryClient);
 		},

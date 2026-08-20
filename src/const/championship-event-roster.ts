@@ -90,11 +90,7 @@ export function playersFromEventAttendance(
 			draws: row.draws,
 			matches: row.matches,
 			mvps: mvpCount(row.is_mvp),
-			rating: eventAttendanceDisplayRating(
-				inRoster,
-				player.rating,
-				row.rating,
-			),
+			rating: eventAttendanceDisplayRating(inRoster, player.rating, row.rating),
 		};
 	});
 }

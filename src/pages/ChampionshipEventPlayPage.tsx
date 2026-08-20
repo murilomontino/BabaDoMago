@@ -15,20 +15,18 @@ import {
 	openEventMatch,
 	shouldStartEventMatch,
 } from "@/const/championship-event-match";
+import { applyMatchOps, MATCH_OP } from "@/const/championship-event-match-ops";
+import { playerVisibleName } from "@/const/player-name";
 import { ROUTES } from "@/const/routes";
 import { SKELETON_LABEL } from "@/const/skeleton";
 import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
 import {
-	useAddChampionshipEventGoal,
 	useChampionshipEvent,
 	useChampionshipEventRealtime,
 	useDeleteChampionshipEventMatch,
 	useEndChampionshipEventMatch,
-	useSetChampionshipEventMatchGoalkeeper,
-	useSetChampionshipEventMatchPlayer,
 	useStartChampionshipEventMatch,
 	useSwapChampionshipEventMatchTeam,
-	useUndoChampionshipEventGoal,
 	useUpdateChampionshipEventTeam,
 } from "@/hooks/championships/use-championship-events";
 import { useChampionship } from "@/hooks/championships/use-championships";
@@ -38,6 +36,12 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { requestMatchClock } from "@/store/match-clock/actions";
 import { selectMatchClockUiError } from "@/store/match-clock/selectors";
 import { useFlushMatchClock } from "@/store/match-clock/use-flush-match-clock";
+import { requestMatchOp } from "@/store/match-ops/actions";
+import {
+	selectMatchOps,
+	selectMatchOpsError,
+} from "@/store/match-ops/selectors";
+import { useFlushMatchOps } from "@/store/match-ops/use-flush-match-ops";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type { ChampionshipEventMatch } from "@/types/championship-event";
 
@@ -60,6 +64,22 @@ function startMatchErrorMessage(startMatch: {
 	return message;
 }
 
+function matchOpDisplayName(
+	playerId: number | null,
+	players: readonly ChampionshipPlayer[],
+): string {
+	if (playerId === null) {
+		return "";
+	}
+
+	const player = players.find((row) => row.id === playerId);
+	if (!player) {
+		return "";
+	}
+
+	return playerVisibleName(player);
+}
+
 export function ChampionshipEventPlayPage() {
 	const { championshipId: championshipIdParam, eventId: eventIdParam } =
 		useParams({
@@ -72,10 +92,6 @@ export function ChampionshipEventPlayPage() {
 	const eventQuery = useChampionshipEvent(championshipId, eventId);
 	const startMatch = useStartChampionshipEventMatch(championshipId);
 	const updateTeam = useUpdateChampionshipEventTeam(championshipId);
-	const setPlayer = useSetChampionshipEventMatchPlayer(championshipId);
-	const setGoalkeeper = useSetChampionshipEventMatchGoalkeeper(championshipId);
-	const addGoal = useAddChampionshipEventGoal(championshipId);
-	const undoGoal = useUndoChampionshipEventGoal(championshipId);
 	const endMatch = useEndChampionshipEventMatch(championshipId);
 	const swapTeam = useSwapChampionshipEventMatchTeam(championshipId);
 	const deleteMatch = useDeleteChampionshipEventMatch(championshipId);
@@ -85,7 +101,12 @@ export function ChampionshipEventPlayPage() {
 	const openMatchId =
 		openEventMatch<ChampionshipEventMatch>(eventQuery.data?.matches ?? [])
 			?.id ?? null;
+	const matchOps = useAppSelector((state) =>
+		selectMatchOps(state, openMatchId),
+	);
+	const opsError = useAppSelector(selectMatchOpsError);
 	useFlushMatchClock(openMatchId);
+	useFlushMatchOps(openMatchId);
 	useWakeLock(openMatchId !== null);
 
 	if (championshipQuery.isPending || eventQuery.isPending) {
@@ -113,7 +134,10 @@ export function ChampionshipEventPlayPage() {
 	}
 
 	const event = eventQuery.data;
-	const openMatch = openEventMatch<ChampionshipEventMatch>(event.matches);
+	const openMatch = applyMatchOps(
+		openEventMatch<ChampionshipEventMatch>(event.matches),
+		matchOps,
+	);
 	const canStart = canStartEventMatch({
 		ended: event.ended_at !== null,
 		teamCount: eventMatchTeamCount(event.teams),
@@ -147,15 +171,8 @@ export function ChampionshipEventPlayPage() {
 						players={activePlayers}
 						starting={startMatch.isPending}
 						startError={startMatchErrorMessage(startMatch)}
-						savingPlayer={setPlayer.isPending || setGoalkeeper.isPending}
-						playerError={
-							mutationErrorMessage(setPlayer) ??
-							mutationErrorMessage(setGoalkeeper)
-						}
-						savingGoal={addGoal.isPending}
-						goalError={mutationErrorMessage(addGoal)}
-						undoing={undoGoal.isPending}
-						undoError={mutationErrorMessage(undoGoal)}
+						opsError={opsError}
+						pendingOps={matchOps.length}
 						ending={endMatch.isPending}
 						endError={mutationErrorMessage(endMatch)}
 						swapping={swapTeam.isPending}
@@ -209,44 +226,53 @@ export function ChampionshipEventPlayPage() {
 								return;
 							}
 
-							await setPlayer.mutateAsync({
-								matchId: openMatch.id,
-								teamId,
-								slot,
-								playerId,
-								includeStats,
-							});
+							dispatch(
+								requestMatchOp(openMatch.id, {
+									kind: MATCH_OP.setPlayer,
+									teamId,
+									slot,
+									playerId,
+									displayName: matchOpDisplayName(playerId, activePlayers),
+									includeStats: includeStats === true,
+								}),
+							);
 						}}
 						onSetGoalkeeper={async (teamId, playerId) => {
 							if (!openMatch) {
 								return;
 							}
 
-							await setGoalkeeper.mutateAsync({
-								matchId: openMatch.id,
-								teamId,
-								playerId,
-							});
+							dispatch(
+								requestMatchOp(openMatch.id, {
+									kind: MATCH_OP.setGoalkeeper,
+									teamId,
+									playerId,
+								}),
+							);
 						}}
 						onAddGoal={async (values) => {
 							if (!openMatch) {
 								return;
 							}
 
-							await addGoal.mutateAsync({
-								matchId: openMatch.id,
-								...values,
-							});
+							dispatch(
+								requestMatchOp(openMatch.id, {
+									kind: MATCH_OP.addGoal,
+									...values,
+								}),
+							);
 						}}
 						onUndoGoal={async (goalId) => {
 							if (!openMatch) {
 								return;
 							}
 
-							await undoGoal.mutateAsync({
-								matchId: openMatch.id,
-								goalId,
-							});
+							dispatch(
+								requestMatchOp(openMatch.id, {
+									kind: MATCH_OP.undoGoal,
+									goalId,
+								}),
+							);
 						}}
 						onEnd={async () => {
 							if (!openMatch) {

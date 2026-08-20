@@ -12,7 +12,9 @@ import {
 import storage from "redux-persist/lib/storage";
 import createSagaMiddleware from "redux-saga";
 import { MATCH_CLOCK_STORAGE_KEY } from "@/const/championship-event-match";
+import { MATCH_OPS_STORAGE_KEY } from "@/const/championship-event-match-ops";
 import { matchClockReducer } from "@/store/match-clock/slice";
+import { matchOpsReducer } from "@/store/match-ops/slice";
 import { rootSaga } from "@/store/root-saga";
 
 const matchClockPersistConfig = {
@@ -21,8 +23,15 @@ const matchClockPersistConfig = {
 	whitelist: ["clocks", "deferredClear"],
 };
 
+const matchOpsPersistConfig = {
+	key: MATCH_OPS_STORAGE_KEY,
+	storage,
+	whitelist: ["queues", "seq"],
+};
+
 const rootReducer = combineReducers({
 	matchClock: persistReducer(matchClockPersistConfig, matchClockReducer),
+	matchOps: persistReducer(matchOpsPersistConfig, matchOpsReducer),
 });
 
 const sagaMiddleware = createSagaMiddleware();

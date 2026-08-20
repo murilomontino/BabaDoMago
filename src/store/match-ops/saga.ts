@@ -14,17 +14,16 @@ import {
 } from "redux-saga/effects";
 import { MATCH_CLOCK_FLUSH_RETRY } from "@/const/championship-event-match";
 import {
-	matchClockFlushRequested,
-	matchClockRequested,
-} from "@/store/match-clock/actions";
-import { flushMatchClockWorker } from "@/store/match-clock/flush-worker";
-import { selectPendingMatchClockIds } from "@/store/match-clock/selectors";
-import { holdSet } from "@/store/match-clock/slice";
+	matchOpRequested,
+	matchOpsFlushRequested,
+} from "@/store/match-ops/actions";
+import { flushMatchOpsWorker } from "@/store/match-ops/flush-worker";
+import { selectPendingMatchOpIds } from "@/store/match-ops/selectors";
 import { createReconnectChannel } from "@/store/online-channel";
 
 function* flushAllPending(): SagaIterator {
-	const ids: number[] = yield select(selectPendingMatchClockIds);
-	yield all(ids.map((matchId) => put(matchClockFlushRequested({ matchId }))));
+	const ids: number[] = yield select(selectPendingMatchOpIds);
+	yield all(ids.map((matchId) => put(matchOpsFlushRequested({ matchId }))));
 }
 
 function* watchOnline(): SagaIterator {
@@ -42,7 +41,7 @@ function* watchOnline(): SagaIterator {
 function* watchPendingPoll(): SagaIterator {
 	for (;;) {
 		yield delay(MATCH_CLOCK_FLUSH_RETRY.pollMs);
-		const ids: number[] = yield select(selectPendingMatchClockIds);
+		const ids: number[] = yield select(selectPendingMatchOpIds);
 		if (ids.length === 0) {
 			continue;
 		}
@@ -51,31 +50,22 @@ function* watchPendingPoll(): SagaIterator {
 	}
 }
 
-function* onHoldSet(action: ReturnType<typeof holdSet>): SagaIterator {
-	if (action.payload.held) {
-		return;
-	}
-
-	yield put(matchClockFlushRequested({ matchId: action.payload.matchId }));
-}
-
-function* watchMatchClockFlush(): SagaIterator {
+function* watchMatchOpsFlush(): SagaIterator {
 	const channel = yield actionChannel(
-		[matchClockRequested.type, matchClockFlushRequested.type],
+		[matchOpRequested.type, matchOpsFlushRequested.type],
 		buffers.expanding(),
 	);
 	for (;;) {
 		const action: { payload: { matchId: number } } = yield take(channel);
-		yield call(flushMatchClockWorker, action.payload.matchId);
+		yield call(flushMatchOpsWorker, action.payload.matchId);
 	}
 }
 
-export function* matchClockSaga(): SagaIterator {
+export function* matchOpsSaga(): SagaIterator {
 	yield all([
-		fork(watchMatchClockFlush),
+		fork(watchMatchOpsFlush),
 		fork(watchOnline),
 		fork(watchPendingPoll),
-		takeEvery(holdSet, onHoldSet),
 		takeEvery(REHYDRATE, flushAllPending),
 	]);
 }

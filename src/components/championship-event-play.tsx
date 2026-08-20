@@ -81,6 +81,7 @@ import {
 	sortBenchForSlot,
 	toggleMatchTeamSelection,
 } from "@/const/championship-event-match";
+import { MATCH_OPS_LABEL } from "@/const/championship-event-match-ops";
 import { resolveEventPlayers } from "@/const/championship-event-roster";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
 import {
@@ -253,12 +254,8 @@ type ChampionshipEventPlayProps = {
 	players: readonly ChampionshipPlayer[];
 	starting: boolean;
 	startError: string | null;
-	savingPlayer: boolean;
-	playerError: string | null;
-	savingGoal: boolean;
-	goalError: string | null;
-	undoing: boolean;
-	undoError: string | null;
+	opsError: string | null;
+	pendingOps: number;
 	ending: boolean;
 	endError: string | null;
 	clockError: string | null;
@@ -775,9 +772,19 @@ function matchClockBarAction(
 	return MATCH_CLOCK_ACTION.pause;
 }
 
+function firstPlayError(...messages: Array<string | null>): string | null {
+	const found = messages.find((message) => message !== null);
+	if (found === undefined) {
+		return null;
+	}
+
+	return found;
+}
+
 function MatchClockBar({
 	match,
 	busy,
+	syncing,
 	onStartClock,
 	onPause,
 	onResume,
@@ -785,6 +792,7 @@ function MatchClockBar({
 }: {
 	match: ChampionshipEventMatch;
 	busy: boolean;
+	syncing: boolean;
 	onStartClock: () => void;
 	onPause: () => void;
 	onResume: () => void;
@@ -859,11 +867,11 @@ function MatchClockBar({
 			<button
 				type="button"
 				aria-label={EVENT_ACTION.removeMatch}
-				disabled={busy}
+				disabled={busy || syncing}
 				className="absolute top-2 right-2 inline-flex size-8 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-muted hover:text-danger-fg disabled:opacity-50"
 				onClick={(event) => {
 					event.stopPropagation();
-					if (busy) {
+					if (busy || syncing) {
 						return;
 					}
 
@@ -882,12 +890,8 @@ export function ChampionshipEventPlay({
 	players,
 	starting,
 	startError,
-	savingPlayer,
-	playerError,
-	savingGoal,
-	goalError,
-	undoing,
-	undoError,
+	opsError,
+	pendingOps,
 	ending,
 	endError,
 	clockError,
@@ -958,14 +962,9 @@ export function ChampionshipEventPlay({
 	const [removeTarget, setRemoveTarget] =
 		useState<ChampionshipEventMatchPlayer | null>(null);
 	const [discardOpen, setDiscardOpen] = useState(false);
-	const busy =
-		starting ||
-		savingPlayer ||
-		savingGoal ||
-		undoing ||
-		ending ||
-		swapping ||
-		deleting;
+	const busy = starting || ending || swapping || deleting;
+	const syncing = pendingOps > 0;
+	const endingBlocked = busy || syncing;
 	const canStartSelected = canConfirmMatchTeams(selected);
 	const selectedTeamA = event.teams.find((team) => team.id === selected[0]);
 	const selectedTeamB = event.teams.find((team) => team.id === selected[1]);
@@ -1222,6 +1221,13 @@ export function ChampionshipEventPlay({
 		swapCandidatesA,
 		swapCandidatesB,
 	);
+	const playError = firstPlayError(
+		opsError,
+		endError,
+		clockError,
+		swapError,
+		discardError,
+	);
 
 	function beginGoalClockHold() {
 		const running =
@@ -1346,6 +1352,7 @@ export function ChampionshipEventPlay({
 				<MatchClockBar
 					match={clockMatch}
 					busy={busy || goalModalOpen}
+					syncing={syncing}
 					onStartClock={() => {
 						if (busy || goalModalOpen) {
 							return;
@@ -1368,7 +1375,7 @@ export function ChampionshipEventPlay({
 						void onResume();
 					}}
 					onDiscard={() => {
-						if (busy || goalModalOpen) {
+						if (busy || goalModalOpen || syncing) {
 							return;
 						}
 
@@ -1445,30 +1452,19 @@ export function ChampionshipEventPlay({
 					setRemoveTarget(player);
 				}}
 			/>
-			{(playerError ||
-				goalError ||
-				undoError ||
-				endError ||
-				clockError ||
-				swapError ||
-				discardError) && (
-				<p className={`shrink-0 ${ERROR_CLASS}`}>
-					{playerError ||
-						goalError ||
-						undoError ||
-						endError ||
-						clockError ||
-						swapError ||
-						discardError}
+			{playError && <p className={`shrink-0 ${ERROR_CLASS}`}>{playError}</p>}
+			{syncing && (
+				<p className="shrink-0 text-sm text-fg-muted">
+					{MATCH_OPS_LABEL.syncing}
 				</p>
 			)}
 			<div className="grid shrink-0 grid-cols-2 gap-2">
 				<Button
 					variant={BUTTON_VARIANT.ghost}
 					className="h-14 text-base"
-					disabled={busy}
+					disabled={endingBlocked}
 					onClick={() => {
-						if (busy) {
+						if (endingBlocked) {
 							return;
 						}
 
@@ -1479,9 +1475,9 @@ export function ChampionshipEventPlay({
 				</Button>
 				<Button
 					className="h-14 text-base"
-					disabled={busy}
+					disabled={endingBlocked}
 					onClick={() => {
-						if (busy) {
+						if (endingBlocked) {
 							return;
 						}
 
@@ -1507,13 +1503,7 @@ export function ChampionshipEventPlay({
 					).map((row) =>
 						resolvePlayer(row.player_id, row.display_name, rosterById),
 					)}
-					isPending={savingGoal}
-					errorMessage={goalError}
 					onCancel={() => {
-						if (savingGoal) {
-							return;
-						}
-
 						setGoalTarget(null);
 						void endGoalClockHold();
 					}}
@@ -1539,13 +1529,7 @@ export function ChampionshipEventPlay({
 					players={ownGoalPlayers}
 					ceiling={ceiling}
 					emptyMessage={EVENT_MATCH_LABEL.emptyTeam}
-					isPending={savingGoal}
-					errorMessage={goalError}
 					onCancel={() => {
-						if (savingGoal) {
-							return;
-						}
-
 						setOwnGoalTeamId(null);
 						void endGoalClockHold();
 					}}
@@ -1573,13 +1557,7 @@ export function ChampionshipEventPlay({
 							volunteerGoalkeeperIdSet.has(playerId),
 					)}
 					ceiling={ceiling}
-					isPending={savingPlayer}
-					errorMessage={playerError}
 					onCancel={() => {
-						if (savingPlayer) {
-							return;
-						}
-
 						setSlotTarget(null);
 					}}
 					onSelect={async (playerId) => {
@@ -1613,28 +1591,18 @@ export function ChampionshipEventPlay({
 			{pendingSwap && (
 				<ChampionshipEventSubstitutionModal
 					playerName={pendingSwap.outgoingName}
-					isPending={savingPlayer}
-					errorMessage={playerError}
 					onCancel={() => {
-						if (savingPlayer) {
-							return;
-						}
-
 						setPendingSwap(null);
 					}}
 					onConfirm={(includeStats) => {
 						void (async () => {
-							try {
-								await onSetPlayer(
-									pendingSwap.teamId,
-									pendingSwap.slot,
-									pendingSwap.incomingPlayerId,
-									includeStats,
-								);
-								setPendingSwap(null);
-							} catch {
-								return;
-							}
+							await onSetPlayer(
+								pendingSwap.teamId,
+								pendingSwap.slot,
+								pendingSwap.incomingPlayerId,
+								includeStats,
+							);
+							setPendingSwap(null);
 						})();
 					}}
 				/>
@@ -1648,13 +1616,7 @@ export function ChampionshipEventPlay({
 							rosterById,
 						),
 					)}
-					isPending={savingPlayer}
-					errorMessage={playerError}
 					onCancel={() => {
-						if (savingPlayer) {
-							return;
-						}
-
 						setRemoveTarget(null);
 					}}
 					onConfirm={() => {
@@ -1663,16 +1625,8 @@ export function ChampionshipEventPlay({
 								return;
 							}
 
-							try {
-								await onSetPlayer(
-									removeTarget.team_id,
-									removeTarget.slot,
-									null,
-								);
-								setRemoveTarget(null);
-							} catch {
-								return;
-							}
+							await onSetPlayer(removeTarget.team_id, removeTarget.slot, null);
+							setRemoveTarget(null);
 						})();
 					}}
 				/>

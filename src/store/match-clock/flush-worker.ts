@@ -1,13 +1,12 @@
-import type { EventChannel, SagaIterator } from "redux-saga";
-import { buffers, eventChannel } from "redux-saga";
-import { call, delay, put, select, take } from "redux-saga/effects";
+import type { SagaIterator } from "redux-saga";
+import { call, delay, put, select } from "redux-saga/effects";
 import {
-	isMatchClockOnline,
 	MATCH_CLOCK_FLUSH_ERROR,
 	type MatchClockAction,
 	matchClockRetryDelayMs,
 } from "../../const/championship-event-match.ts";
 import { caughtErrorMessage } from "../../lib/error-message.ts";
+import { readOnline, waitForOnline } from "../online-channel.ts";
 import { selectMatchClockHeld, selectMatchClockSnapshot } from "./selectors.ts";
 import {
 	flushAttemptSet,
@@ -29,53 +28,6 @@ export async function invalidateMatchClockQueries(): Promise<void> {
 	await invalidateBoundMatchClockQueries();
 }
 
-export function readMatchClockOnline(): boolean {
-	return isMatchClockOnline(globalThis.navigator?.onLine);
-}
-
-export function createMatchClockReconnectChannel(): EventChannel<true> {
-	return eventChannel((emit) => {
-		function emitOnline() {
-			emit(true);
-		}
-
-		function onVisibility() {
-			if (document.visibilityState !== "visible") {
-				return;
-			}
-
-			emitOnline();
-		}
-
-		window.addEventListener("online", emitOnline);
-		window.addEventListener("pageshow", emitOnline);
-		document.addEventListener("visibilitychange", onVisibility);
-		return () => {
-			window.removeEventListener("online", emitOnline);
-			window.removeEventListener("pageshow", emitOnline);
-			document.removeEventListener("visibilitychange", onVisibility);
-		};
-	}, buffers.sliding(1));
-}
-
-export function* waitForMatchClockOnline(): SagaIterator {
-	for (;;) {
-		const online: boolean = yield call(readMatchClockOnline);
-		if (online) {
-			return;
-		}
-
-		const channel: EventChannel<true> = yield call(
-			createMatchClockReconnectChannel,
-		);
-		try {
-			yield take(channel);
-		} finally {
-			channel.close();
-		}
-	}
-}
-
 function selectMatchClockById(matchId: number) {
 	return (state: MatchClockRootState) =>
 		selectMatchClockSnapshot(state, matchId);
@@ -86,7 +38,7 @@ export function* flushPendingAction(
 	action: MatchClockAction,
 ): SagaIterator<boolean> {
 	for (let attempt = 0; ; attempt += 1) {
-		yield call(waitForMatchClockOnline);
+		yield call(waitForOnline);
 		try {
 			yield call(runMatchClockRpc, matchId, action);
 			yield put(shiftPending(matchId));
@@ -101,7 +53,7 @@ export function* flushPendingAction(
 				),
 			);
 			yield put(flushAttemptSet(attempt + 1));
-			const online: boolean = yield call(readMatchClockOnline);
+			const online: boolean = yield call(readOnline);
 			if (!online) {
 				continue;
 			}
