@@ -8,11 +8,14 @@ import {
 	MATCH_CLOCK_DEBUG_LABEL,
 } from "@/const/championship-event-match";
 import { BUTTON_VARIANT, MODAL_CLASS } from "@/const/ui";
-import { useMatchClockStore } from "@/hooks/match-clock-store";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
-	isMatchClockFlushHeld,
-	setMatchClockFlushHeld,
-} from "@/hooks/match-clock-sync";
+	selectMatchClockError,
+	selectMatchClockFlushAttempt,
+	selectMatchClockHeld,
+	selectMatchClockSnapshot,
+} from "@/store/match-clock/selectors";
+import { holdSet } from "@/store/match-clock/slice";
 
 type MatchClockDebugProps = {
 	matchId: number;
@@ -35,8 +38,13 @@ function clockField(value: string | number | null): string {
 
 export function MatchClockDebug({ matchId }: MatchClockDebugProps) {
 	const [open, setOpen] = useState(false);
-	const [held, setHeld] = useState(isMatchClockFlushHeld);
-	const snapshot = useMatchClockStore((state) => state.clocks[String(matchId)]);
+	const dispatch = useAppDispatch();
+	const held = useAppSelector(selectMatchClockHeld);
+	const error = useAppSelector(selectMatchClockError);
+	const flushAttempt = useAppSelector(selectMatchClockFlushAttempt);
+	const snapshot = useAppSelector((state) =>
+		selectMatchClockSnapshot(state, matchId),
+	);
 	const pending = snapshot?.pending ?? [];
 
 	function close() {
@@ -44,9 +52,7 @@ export function MatchClockDebug({ matchId }: MatchClockDebugProps) {
 	}
 
 	function toggleHold() {
-		const next = !held;
-		setHeld(next);
-		setMatchClockFlushHeld(next, matchId);
+		dispatch(holdSet({ held: !held, matchId }));
 	}
 
 	return (
@@ -90,6 +96,22 @@ export function MatchClockDebug({ matchId }: MatchClockDebugProps) {
 								</dt>
 								<dd>{clockField(snapshot?.pause_accumulated_seconds ?? 0)}</dd>
 							</div>
+							{error && (
+								<div>
+									<dt className="font-medium text-fg">
+										{MATCH_CLOCK_DEBUG_LABEL.error}
+									</dt>
+									<dd className="break-all">{error}</dd>
+								</div>
+							)}
+							{flushAttempt > 0 && (
+								<div>
+									<dt className="font-medium text-fg">
+										{MATCH_CLOCK_DEBUG_LABEL.attempt}
+									</dt>
+									<dd>{flushAttempt}</dd>
+								</div>
+							)}
 						</dl>
 						<p className="mb-1 text-xs font-medium text-fg">
 							{MATCH_CLOCK_DEBUG_LABEL.pending}

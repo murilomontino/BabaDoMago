@@ -90,10 +90,6 @@ import {
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
-import {
-	matchClockFromStore,
-	useMatchClockStore,
-} from "@/hooks/match-clock-store";
 import { useMatchClock } from "@/hooks/use-match-clock";
 import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
 import {
@@ -102,6 +98,9 @@ import {
 	signalMatchTimeUp,
 	unlockMatchAudio,
 } from "@/lib/match-feedback";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { selectMatchClockSnapshot } from "@/store/match-clock/selectors";
+import { clearMatchClock } from "@/store/match-clock/slice";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type {
 	ChampionshipEvent,
@@ -905,17 +904,24 @@ export function ChampionshipEventPlay({
 	const [ownGoalTeamId, setOwnGoalTeamId] = useState<number | null>(null);
 	const resumeOnCloseRef = useRef(false);
 	const goalElapsedRef = useRef(0);
-	const localClock = useMatchClockStore((state) =>
-		matchClockFromStore(state.clocks, match?.id ?? null),
+	const dispatch = useAppDispatch();
+	const localClock = useAppSelector((state) =>
+		selectMatchClockSnapshot(state, match?.id ?? null),
 	);
+
+	const pendingCount = localClock?.pending.length ?? 0;
 
 	useEffect(() => {
 		if (!match?.ended_at) {
 			return;
 		}
 
-		useMatchClockStore.getState().clear(match.id);
-	}, [match?.ended_at, match?.id]);
+		if (pendingCount > 0) {
+			return;
+		}
+
+		dispatch(clearMatchClock(match.id));
+	}, [dispatch, match?.ended_at, match?.id, pendingCount]);
 	const [endIntent, setEndIntent] = useState<EventMatchEndIntent | null>(null);
 	const [teamToEdit, setTeamToEdit] = useState<ChampionshipEventTeam | null>(
 		null,
@@ -1670,11 +1676,11 @@ export function ChampionshipEventPlay({
 							try {
 								switch (endIntent) {
 									case EVENT_MATCH_END_INTENT.end:
-										useMatchClockStore.getState().clear(match.id);
+										dispatch(clearMatchClock(match.id));
 										await onEnd();
 										break;
 									case EVENT_MATCH_END_INTENT.next:
-										useMatchClockStore.getState().clear(match.id);
+										dispatch(clearMatchClock(match.id));
 										await onNext();
 										break;
 									default: {

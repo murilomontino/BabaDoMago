@@ -11,6 +11,7 @@ import {
 	isMatchAlreadyOpenError,
 } from "@/const/championship-event";
 import {
+	MATCH_CLOCK_ACTION,
 	openEventMatch,
 	shouldStartEventMatch,
 } from "@/const/championship-event-match";
@@ -22,20 +23,20 @@ import {
 	useChampionshipEvent,
 	useChampionshipEventRealtime,
 	useEndChampionshipEventMatch,
-	usePauseChampionshipEventMatch,
-	useResumeChampionshipEventMatch,
 	useSetChampionshipEventMatchGoalkeeper,
 	useSetChampionshipEventMatchPlayer,
-	useStartChampionshipEventClock,
 	useStartChampionshipEventMatch,
 	useSwapChampionshipEventMatchTeam,
 	useUndoChampionshipEventGoal,
 	useUpdateChampionshipEventTeam,
 } from "@/hooks/championships/use-championship-events";
 import { useChampionship } from "@/hooks/championships/use-championships";
-import { useFlushMatchClock } from "@/hooks/match-clock-sync";
 import { useWakeLock } from "@/hooks/use-wake-lock";
 import { mutationErrorMessage } from "@/lib/error-message";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { requestMatchClock } from "@/store/match-clock/actions";
+import { selectMatchClockUiError } from "@/store/match-clock/selectors";
+import { useFlushMatchClock } from "@/store/match-clock/use-flush-match-clock";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type { ChampionshipEventMatch } from "@/types/championship-event";
 
@@ -74,11 +75,10 @@ export function ChampionshipEventPlayPage() {
 	const setGoalkeeper = useSetChampionshipEventMatchGoalkeeper(championshipId);
 	const addGoal = useAddChampionshipEventGoal(championshipId);
 	const undoGoal = useUndoChampionshipEventGoal(championshipId);
-	const startClock = useStartChampionshipEventClock(championshipId);
-	const pauseMatch = usePauseChampionshipEventMatch(championshipId);
-	const resumeMatch = useResumeChampionshipEventMatch(championshipId);
 	const endMatch = useEndChampionshipEventMatch(championshipId);
 	const swapTeam = useSwapChampionshipEventMatchTeam(championshipId);
+	const dispatch = useAppDispatch();
+	const clockError = useAppSelector(selectMatchClockUiError);
 	useChampionshipEventRealtime(championshipId, eventId);
 	const openMatchId =
 		openEventMatch<ChampionshipEventMatch>(eventQuery.data?.matches ?? [])
@@ -158,11 +158,7 @@ export function ChampionshipEventPlayPage() {
 						endError={mutationErrorMessage(endMatch)}
 						swapping={swapTeam.isPending}
 						swapError={mutationErrorMessage(swapTeam)}
-						clockError={
-							mutationErrorMessage(startClock) ??
-							mutationErrorMessage(pauseMatch) ??
-							mutationErrorMessage(resumeMatch)
-						}
+						clockError={clockError}
 						onStart={async (teamAId, teamBId, durationMinutes) => {
 							const { data } = await eventQuery.refetch();
 							const matches = data?.matches ?? event.matches;
@@ -280,30 +276,39 @@ export function ChampionshipEventPlayPage() {
 								return;
 							}
 
-							void startClock.mutate({
-								matchId: openMatch.id,
-								seed: openMatch,
-							});
+							dispatch(
+								requestMatchClock(
+									openMatch.id,
+									MATCH_CLOCK_ACTION.start,
+									openMatch,
+								),
+							);
 						}}
 						onPause={() => {
 							if (!openMatch) {
 								return;
 							}
 
-							void pauseMatch.mutate({
-								matchId: openMatch.id,
-								seed: openMatch,
-							});
+							dispatch(
+								requestMatchClock(
+									openMatch.id,
+									MATCH_CLOCK_ACTION.pause,
+									openMatch,
+								),
+							);
 						}}
 						onResume={() => {
 							if (!openMatch) {
 								return;
 							}
 
-							void resumeMatch.mutate({
-								matchId: openMatch.id,
-								seed: openMatch,
-							});
+							dispatch(
+								requestMatchClock(
+									openMatch.id,
+									MATCH_CLOCK_ACTION.resume,
+									openMatch,
+								),
+							);
 						}}
 					/>
 				</div>

@@ -88,6 +88,23 @@ export type MatchClockAction =
 
 export const MATCH_CLOCK_STORAGE_KEY = "babaDoMago-match-clock" as const;
 
+export const MATCH_CLOCK_FLUSH_RETRY = {
+	attempts: 5,
+	baseMs: 500,
+	maxMs: 8_000,
+	pollMs: 15_000,
+} as const;
+
+export const MATCH_CLOCK_FLUSH_ERROR = {
+	fallback: "Falha ao sincronizar o cronômetro",
+} as const;
+
+export function matchClockRetryDelayMs(attempt: number): number {
+	const safeAttempt = Math.max(0, attempt);
+	const delay = MATCH_CLOCK_FLUSH_RETRY.baseMs * 2 ** safeAttempt;
+	return Math.min(delay, MATCH_CLOCK_FLUSH_RETRY.maxMs);
+}
+
 export const MATCH_CLOCK_DEBUG_ENV = {
 	key: "VITE_MATCH_CLOCK_DEBUG",
 	on: "true",
@@ -103,6 +120,8 @@ export const MATCH_CLOCK_DEBUG_LABEL = {
 	startedAt: "started_at",
 	pausedAt: "paused_at",
 	accumulated: "pause_accumulated_seconds",
+	error: "Erro",
+	attempt: "Tentativa",
 	close: "Fechar",
 } as const;
 
@@ -125,6 +144,22 @@ export function matchClockSnapshotFromFields(
 		pause_accumulated_seconds: fields.pause_accumulated_seconds,
 		pending: [],
 	};
+}
+
+export function hasMatchClockPending(
+	snapshot: MatchClockSnapshot | undefined,
+): boolean {
+	return Boolean(snapshot && snapshot.pending.length > 0);
+}
+
+export function canClearMatchClock(
+	snapshot: MatchClockSnapshot | undefined,
+): boolean {
+	return !hasMatchClockPending(snapshot);
+}
+
+export function isMatchClockOnline(online: boolean | undefined): boolean {
+	return online !== false;
 }
 
 export function hasMatchClockLocal(

@@ -4,14 +4,7 @@ import type {
 	EventAttendanceStatsDraft,
 	PlayerEventStatsDraft,
 } from "@/const/championship-event";
-import {
-	MATCH_CLOCK_ACTION,
-	type MatchClockAction,
-	type MatchClockFields,
-} from "@/const/championship-event-match";
 import type { EventTeamColor } from "@/const/event-team-color";
-import { useMatchClockStore } from "@/hooks/match-clock-store";
-import { enqueueMatchClockFlush } from "@/hooks/match-clock-sync";
 import { supabase } from "@/lib/supabase";
 import {
 	addChampionshipEventGoal,
@@ -430,39 +423,6 @@ export function useUndoChampionshipEventGoal(_championshipId: number) {
 			await invalidateChampionshipEventQueries(queryClient);
 		},
 	});
-}
-
-function useMatchClockMutation(action: MatchClockAction) {
-	const queryClient = useQueryClient();
-
-	return useMutation({
-		mutationFn: async ({
-			matchId,
-		}: {
-			matchId: number;
-			seed: MatchClockFields;
-		}) => {
-			await enqueueMatchClockFlush(matchId);
-		},
-		onMutate: ({ matchId, seed }) => {
-			useMatchClockStore.getState().apply(matchId, action, Date.now(), seed);
-		},
-		onSuccess: async () => {
-			await invalidateChampionshipEventQueries(queryClient);
-		},
-	});
-}
-
-export function useStartChampionshipEventClock(_championshipId: number) {
-	return useMatchClockMutation(MATCH_CLOCK_ACTION.start);
-}
-
-export function usePauseChampionshipEventMatch(_championshipId: number) {
-	return useMatchClockMutation(MATCH_CLOCK_ACTION.pause);
-}
-
-export function useResumeChampionshipEventMatch(_championshipId: number) {
-	return useMatchClockMutation(MATCH_CLOCK_ACTION.resume);
 }
 
 export function useEndChampionshipEventMatch(_championshipId: number) {

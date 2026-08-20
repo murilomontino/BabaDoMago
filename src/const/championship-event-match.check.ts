@@ -5,6 +5,7 @@ import type {
 import { CHAMPIONSHIP_EVENT, EVENT_ACTION } from "./championship-event.ts";
 import {
 	applyMatchClockAction,
+	canClearMatchClock,
 	canConfirmMatchTeams,
 	canOpenEventHistoryMatch,
 	clampMatchDurationMinutes,
@@ -33,6 +34,8 @@ import {
 	formatGoalTimelineLine,
 	formatMatchClock,
 	formatMatchScore,
+	hasMatchClockPending,
+	isMatchClockOnline,
 	isMatchDurationPreset,
 	isMatchSlotGoalkeeper,
 	isMatchTimeUp,
@@ -42,6 +45,8 @@ import {
 	MATCH_CLOCK_ACTION,
 	MATCH_CLOCK_DEBUG_ENV,
 	MATCH_CLOCK_DEBUG_LABEL,
+	MATCH_CLOCK_FLUSH_ERROR,
+	MATCH_CLOCK_FLUSH_RETRY,
 	MATCH_CLOCK_STORAGE_KEY,
 	matchAssistCandidates,
 	matchBenchPlayerIds,
@@ -49,6 +54,7 @@ import {
 	matchClockIsPaused,
 	matchClockIsStarted,
 	matchClockNowMs,
+	matchClockRetryDelayMs,
 	matchClockSnapshotFromFields,
 	matchDurationSeconds,
 	matchEndWinnerLabel,
@@ -830,5 +836,32 @@ check(
 	null,
 	"ended ignores local",
 );
+check(MATCH_CLOCK_FLUSH_RETRY.attempts, 5, "flush retry attempts");
+check(MATCH_CLOCK_FLUSH_RETRY.baseMs, 500, "flush retry base");
+check(MATCH_CLOCK_FLUSH_RETRY.maxMs, 8_000, "flush retry max");
+check(MATCH_CLOCK_FLUSH_RETRY.pollMs, 15_000, "flush poll");
+check(matchClockRetryDelayMs(0), 500, "retry delay 0");
+check(matchClockRetryDelayMs(1), 1_000, "retry delay 1");
+check(matchClockRetryDelayMs(2), 2_000, "retry delay 2");
+check(matchClockRetryDelayMs(3), 4_000, "retry delay 3");
+check(matchClockRetryDelayMs(4), 8_000, "retry delay 4");
+check(matchClockRetryDelayMs(5), 8_000, "retry delay clamp");
+check(matchClockRetryDelayMs(-1), 500, "retry delay negative");
+check(
+	MATCH_CLOCK_FLUSH_ERROR.fallback,
+	"Falha ao sincronizar o cronômetro",
+	"flush error fallback",
+);
+check(MATCH_CLOCK_DEBUG_LABEL.error, "Erro", "clock debug error");
+check(MATCH_CLOCK_DEBUG_LABEL.attempt, "Tentativa", "clock debug attempt");
+check(isMatchClockOnline(false), false, "offline");
+check(isMatchClockOnline(true), true, "online");
+check(isMatchClockOnline(undefined), true, "unknown online");
+check(hasMatchClockPending(undefined), false, "empty snapshot not pending");
+check(hasMatchClockPending(seeded), false, "seeded not pending");
+check(hasMatchClockPending(pausedLocal), true, "pause is pending");
+check(canClearMatchClock(undefined), true, "clear missing snapshot");
+check(canClearMatchClock(seeded), true, "clear idle snapshot");
+check(canClearMatchClock(pausedLocal), false, "keep pending snapshot");
 
 console.log("championship-event-match ok");
