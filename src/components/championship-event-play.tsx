@@ -1106,7 +1106,6 @@ export function ChampionshipEventPlay({
 						<Button
 							variant={BUTTON_VARIANT.ghost}
 							className="h-14 text-base w-full md:w-auto"
-							disabled={busy}
 							onClick={() => {
 								void onEnd();
 							}}
