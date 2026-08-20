@@ -315,6 +315,20 @@ export const EVENT_MATCH_REOPEN_LABEL = {
 	cancel: "Cancelar",
 } as const;
 
+export const EVENT_MATCH_DELETE_LABEL = {
+	title: "Excluir partida",
+	hint: "A partida some da lista. Estatísticas voltam atrás.",
+	confirm: "Excluir partida",
+	cancel: "Cancelar",
+} as const;
+
+export const EVENT_MATCH_DISCARD_LABEL = {
+	title: "Excluir partida",
+	hint: "Esta partida não conta na rodada. Nada fica gravado.",
+	confirm: "Excluir",
+	cancel: "Cancelar",
+} as const;
+
 export const EVENT_MATCH_END_LABEL = {
 	title: "Encerrar partida",
 	nextTitle: "Próxima partida",

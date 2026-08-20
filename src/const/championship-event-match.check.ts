@@ -13,6 +13,8 @@ import {
 	EVENT_GOAL_KIND,
 	EVENT_GOAL_LABEL,
 	EVENT_MATCH_CLOCK_LABEL,
+	EVENT_MATCH_DELETE_LABEL,
+	EVENT_MATCH_DISCARD_LABEL,
 	EVENT_MATCH_DURATION,
 	EVENT_MATCH_END_INTENT,
 	EVENT_MATCH_END_LABEL,
@@ -583,6 +585,17 @@ check(
 );
 check(EVENT_MATCH_REOPEN_LABEL.title, "Editar partida", "reopen title");
 check(EVENT_MATCH_REOPEN_LABEL.hint.includes("edição"), true, "reopen hint");
+check(EVENT_MATCH_DELETE_LABEL.hint.includes("lista"), true, "delete hint");
+check(
+	EVENT_MATCH_DISCARD_LABEL.hint.includes("não conta"),
+	true,
+	"discard hint",
+);
+check(
+	EVENT_MATCH_DISCARD_LABEL.title,
+	EVENT_ACTION.removeMatch,
+	"discard title",
+);
 check(EVENT_MATCH_SWAP_TEAM_LABEL.title, "Trocar time", "swap team title");
 check(EVENT_MATCH_SWAP_TEAM_LABEL.hint.includes("0x0"), true, "swap team hint");
 check(

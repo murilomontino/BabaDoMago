@@ -69,7 +69,10 @@ import {
 	teamHasMatches,
 	writeAttendanceDraft,
 } from "@/const/championship-event";
-import { isOpenMatch } from "@/const/championship-event-match";
+import {
+	EVENT_MATCH_DELETE_LABEL,
+	isOpenMatch,
+} from "@/const/championship-event-match";
 import {
 	resolveEventPlayers,
 	resolveRosterPlayer,
@@ -80,6 +83,10 @@ import {
 	eventMvpPickCandidates,
 } from "@/const/event-mvp";
 import {
+	EVENT_RECAP_SHARE_LABEL,
+	eventRecapShareRatingChangesFromAttendance,
+} from "@/const/event-recap-share";
+import {
 	type EventTeamColor,
 	eventTeamColorStyle,
 	eventTeamName,
@@ -89,10 +96,6 @@ import {
 	EVENT_TEAM_SHARE_LABEL,
 	eventTeamsShareCards,
 } from "@/const/event-team-share";
-import {
-	EVENT_RECAP_SHARE_LABEL,
-	eventRecapShareRatingChangesFromAttendance,
-} from "@/const/event-recap-share";
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import {
@@ -102,8 +105,8 @@ import {
 	SECTION_ACTION_HEADER_CLASS,
 } from "@/const/ui";
 import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
-import { shareEventTeamsImage } from "@/lib/share-event-teams-image";
 import { shareEventRecapImage } from "@/lib/share-event-recap-image";
+import { shareEventTeamsImage } from "@/lib/share-event-teams-image";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type {
 	ChampionshipEvent,
@@ -416,8 +419,9 @@ export function ChampionshipEventRoundTab({
 		}
 	}
 
-	const recapRatingChanges =
-		eventRecapShareRatingChangesFromAttendance(event.attendance);
+	const recapRatingChanges = eventRecapShareRatingChangesFromAttendance(
+		event.attendance,
+	);
 	const showShareRecap = event.ended_at !== null;
 
 	async function handleShareRecap() {
@@ -997,6 +1001,10 @@ export function ChampionshipEventRoundTab({
 			)}
 			{matchToRemove && (
 				<DeleteEventMatchModal
+					title={EVENT_MATCH_DELETE_LABEL.title}
+					hint={EVENT_MATCH_DELETE_LABEL.hint}
+					confirm={EVENT_MATCH_DELETE_LABEL.confirm}
+					cancel={EVENT_MATCH_DELETE_LABEL.cancel}
 					isPending={deletingMatch}
 					errorMessage={deleteMatchError}
 					onCancel={() => {

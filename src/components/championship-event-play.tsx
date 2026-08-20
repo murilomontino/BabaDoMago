@@ -1,4 +1,4 @@
-import { ArrowLeftRight, ChevronDown, Pause, Play } from "lucide-react";
+import { ArrowLeftRight, ChevronDown, Pause, Play, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AddEventTeamModal } from "@/components/add-event-team-modal";
 import { Button } from "@/components/button";
@@ -7,6 +7,7 @@ import { ChampionshipEventGoalModal } from "@/components/championship-event-goal
 import { ChampionshipEventRemovePlayerModal } from "@/components/championship-event-remove-player-modal";
 import { ChampionshipEventSubstitutionModal } from "@/components/championship-event-substitution-modal";
 import { ChampionshipEventSwapTeamModal } from "@/components/championship-event-swap-team-modal";
+import { DeleteEventMatchModal } from "@/components/delete-event-match-modal";
 import { EndEventMatchModal } from "@/components/end-event-match-modal";
 import {
 	EVENT_TEAM_CHIP_TIP,
@@ -49,6 +50,7 @@ import {
 	clampMatchDurationMinutes,
 	EVENT_GOAL_LABEL,
 	EVENT_MATCH_CLOCK_LABEL,
+	EVENT_MATCH_DISCARD_LABEL,
 	EVENT_MATCH_DURATION,
 	EVENT_MATCH_END_INTENT,
 	EVENT_MATCH_LABEL,
@@ -284,6 +286,9 @@ type ChampionshipEventPlayProps = {
 	swapping: boolean;
 	swapError: string | null;
 	onSwapTeam: (outgoingTeamId: number, incomingTeamId: number) => Promise<void>;
+	deleting: boolean;
+	discardError: string | null;
+	onDiscard: () => Promise<void>;
 	onStartClock: () => void;
 	onPause: () => void;
 	onResume: () => void;
@@ -776,12 +781,14 @@ function MatchClockBar({
 	onStartClock,
 	onPause,
 	onResume,
+	onDiscard,
 }: {
 	match: ChampionshipEventMatch;
 	busy: boolean;
 	onStartClock: () => void;
 	onPause: () => void;
 	onResume: () => void;
+	onDiscard: () => void;
 }) {
 	const elapsedSeconds = useMatchClock(match);
 	const started = matchClockIsStarted(match);
@@ -828,26 +835,44 @@ function MatchClockBar({
 	}
 
 	return (
-		<button
-			type="button"
-			disabled={busy}
-			aria-label={EVENT_MATCH_CLOCK_LABEL[action]}
-			onClick={handleClick}
-			className="flex w-full shrink-0 flex-col items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 disabled:opacity-50"
-		>
-			<span
-				className={`w-full text-center text-4xl font-semibold tabular-nums tracking-tight ${timeUp ? "text-danger" : "text-fg"}`}
+		<div className="relative w-full shrink-0">
+			<button
+				type="button"
+				disabled={busy}
+				aria-label={EVENT_MATCH_CLOCK_LABEL[action]}
+				onClick={handleClick}
+				className="flex w-full flex-col items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 disabled:opacity-50"
 			>
-				{formatMatchClock(elapsedSeconds)}
-			</span>
-			<span
-				className={`inline-flex items-center gap-2 text-sm font-medium ${playing ? "text-pitch-fg" : "text-fg-muted"}`}
+				<span
+					className={`w-full text-center text-4xl font-semibold tabular-nums tracking-tight ${timeUp ? "text-danger" : "text-fg"}`}
+				>
+					{formatMatchClock(elapsedSeconds)}
+				</span>
+				<span
+					className={`inline-flex items-center gap-2 text-sm font-medium ${playing ? "text-pitch-fg" : "text-fg-muted"}`}
+				>
+					{playing && <Play className="size-4" />}
+					{!playing && <Pause className="size-4" />}
+					{EVENT_MATCH_CLOCK_LABEL[action]}
+				</span>
+			</button>
+			<button
+				type="button"
+				aria-label={EVENT_ACTION.removeMatch}
+				disabled={busy}
+				className="absolute top-2 right-2 inline-flex size-8 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-muted hover:text-danger-fg disabled:opacity-50"
+				onClick={(event) => {
+					event.stopPropagation();
+					if (busy) {
+						return;
+					}
+
+					onDiscard();
+				}}
 			>
-				{playing && <Play className="size-4" />}
-				{!playing && <Pause className="size-4" />}
-				{EVENT_MATCH_CLOCK_LABEL[action]}
-			</span>
-		</button>
+				<X className="size-4" />
+			</button>
+		</div>
 	);
 }
 
@@ -876,6 +901,9 @@ export function ChampionshipEventPlay({
 	swapping,
 	swapError,
 	onSwapTeam,
+	deleting,
+	discardError,
+	onDiscard,
 	onStartClock,
 	onPause,
 	onResume,
@@ -929,8 +957,15 @@ export function ChampionshipEventPlay({
 	const [swapOutgoingId, setSwapOutgoingId] = useState<number | null>(null);
 	const [removeTarget, setRemoveTarget] =
 		useState<ChampionshipEventMatchPlayer | null>(null);
+	const [discardOpen, setDiscardOpen] = useState(false);
 	const busy =
-		starting || savingPlayer || savingGoal || undoing || ending || swapping;
+		starting ||
+		savingPlayer ||
+		savingGoal ||
+		undoing ||
+		ending ||
+		swapping ||
+		deleting;
 	const canStartSelected = canConfirmMatchTeams(selected);
 	const selectedTeamA = event.teams.find((team) => team.id === selected[0]);
 	const selectedTeamB = event.teams.find((team) => team.id === selected[1]);
@@ -1332,6 +1367,13 @@ export function ChampionshipEventPlay({
 
 						void onResume();
 					}}
+					onDiscard={() => {
+						if (busy || goalModalOpen) {
+							return;
+						}
+
+						setDiscardOpen(true);
+					}}
 				/>
 				<div className="max-h-16 overflow-y-auto">
 					<div className={MATCH_GOAL_TIMELINE_GRID_CLASS}>
@@ -1408,14 +1450,16 @@ export function ChampionshipEventPlay({
 				undoError ||
 				endError ||
 				clockError ||
-				swapError) && (
+				swapError ||
+				discardError) && (
 				<p className={`shrink-0 ${ERROR_CLASS}`}>
 					{playerError ||
 						goalError ||
 						undoError ||
 						endError ||
 						clockError ||
-						swapError}
+						swapError ||
+						discardError}
 				</p>
 			)}
 			<div className="grid shrink-0 grid-cols-2 gap-2">
@@ -1689,6 +1733,34 @@ export function ChampionshipEventPlay({
 									}
 								}
 								setEndIntent(null);
+							} catch {
+								return;
+							}
+						})();
+					}}
+				/>
+			)}
+			{discardOpen && (
+				<DeleteEventMatchModal
+					title={EVENT_MATCH_DISCARD_LABEL.title}
+					hint={EVENT_MATCH_DISCARD_LABEL.hint}
+					confirm={EVENT_MATCH_DISCARD_LABEL.confirm}
+					cancel={EVENT_MATCH_DISCARD_LABEL.cancel}
+					isPending={deleting}
+					errorMessage={discardError}
+					onCancel={() => {
+						if (deleting) {
+							return;
+						}
+
+						setDiscardOpen(false);
+					}}
+					onConfirm={() => {
+						void (async () => {
+							try {
+								dispatch(clearMatchClock(match.id));
+								await onDiscard();
+								setDiscardOpen(false);
 							} catch {
 								return;
 							}

@@ -22,6 +22,7 @@ import {
 	useAddChampionshipEventGoal,
 	useChampionshipEvent,
 	useChampionshipEventRealtime,
+	useDeleteChampionshipEventMatch,
 	useEndChampionshipEventMatch,
 	useSetChampionshipEventMatchGoalkeeper,
 	useSetChampionshipEventMatchPlayer,
@@ -77,6 +78,7 @@ export function ChampionshipEventPlayPage() {
 	const undoGoal = useUndoChampionshipEventGoal(championshipId);
 	const endMatch = useEndChampionshipEventMatch(championshipId);
 	const swapTeam = useSwapChampionshipEventMatchTeam(championshipId);
+	const deleteMatch = useDeleteChampionshipEventMatch(championshipId);
 	const dispatch = useAppDispatch();
 	const clockError = useAppSelector(selectMatchClockUiError);
 	useChampionshipEventRealtime(championshipId, eventId);
@@ -158,6 +160,8 @@ export function ChampionshipEventPlayPage() {
 						endError={mutationErrorMessage(endMatch)}
 						swapping={swapTeam.isPending}
 						swapError={mutationErrorMessage(swapTeam)}
+						deleting={deleteMatch.isPending}
+						discardError={mutationErrorMessage(deleteMatch)}
 						clockError={clockError}
 						onStart={async (teamAId, teamBId, durationMinutes) => {
 							const { data } = await eventQuery.refetch();
@@ -270,6 +274,13 @@ export function ChampionshipEventPlayPage() {
 								outgoingTeamId,
 								incomingTeamId,
 							});
+						}}
+						onDiscard={async () => {
+							if (!openMatch) {
+								return;
+							}
+
+							await deleteMatch.mutateAsync(openMatch.id);
 						}}
 						onStartClock={() => {
 							if (!openMatch) {
