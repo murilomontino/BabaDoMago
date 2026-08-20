@@ -5,6 +5,7 @@ import {
 	playerProfileDelta,
 	playerProfileHistory,
 	playerRatingHistoryChartSeries,
+	playerRatingHistoryChartTickLabel,
 	ratingsForProfileCeiling,
 } from "./player-profile.ts";
 
@@ -194,13 +195,31 @@ check(capped[0]?.ratingTo === 100, "cap 100");
 
 const nowIso = "2026-08-14T13:00:00.000Z";
 const series = playerRatingHistoryChartSeries(history, 51, nowIso);
-check(series.length === 3, "chart rounds plus current");
-check(series[0]?.startsAt === endedOlder.starts_at, "chart oldest first");
-check(series[0]?.rating === 49.5, "chart older to");
-check(series[1]?.startsAt === endedNewer.starts_at, "chart last round");
-check(series[1]?.rating === 50.7, "chart last round to");
-check(series[2]?.startsAt === nowIso, "chart current date");
-check(series[2]?.rating === 51, "chart current rating");
+check(series.length === 4, "chart from plus rounds plus current");
+check(series[0]?.x === 0, "chart from index");
+check(series[0]?.startsAt === endedOlder.starts_at, "chart oldest from date");
+check(series[0]?.rating === 50, "chart oldest from");
+check(series[1]?.x === 1, "chart oldest to index");
+check(series[1]?.startsAt === endedOlder.starts_at, "chart oldest first");
+check(series[1]?.rating === 49.5, "chart older to");
+check(series[2]?.x === 2, "chart last round index");
+check(series[2]?.startsAt === endedNewer.starts_at, "chart last round");
+check(series[2]?.rating === 50.7, "chart last round to");
+check(series[3]?.x === 3, "chart current index");
+check(series[3]?.startsAt === nowIso, "chart current date");
+check(series[3]?.rating === 51, "chart current rating");
+check(
+	playerRatingHistoryChartTickLabel(series, 0) === "",
+	"hide duplicate from tick",
+);
+check(
+	playerRatingHistoryChartTickLabel(series, 1) === "01/08/2026",
+	"oldest to tick",
+);
+check(
+	playerRatingHistoryChartTickLabel(series, 2) === "08/08/2026",
+	"newer to tick",
+);
 check(
 	playerRatingHistoryChartSeries([], 51, nowIso).length === 0,
 	"chart empty",

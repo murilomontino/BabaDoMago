@@ -1,4 +1,7 @@
-import { compareStartsAtNewestFirst } from "./championship-event.ts";
+import {
+	compareStartsAtNewestFirst,
+	formatEventStartsAt,
+} from "./championship-event.ts";
 import { mvpCount } from "./event-mvp.ts";
 import { applyEventRatingDelta } from "./event-rating-adjustment.ts";
 import { rosterSafeCount } from "./roster-stats.ts";
@@ -18,8 +21,8 @@ export const PLAYER_PROFILE_LABEL = {
 
 export const PLAYER_RATING_HISTORY_CHART = {
 	height: 192,
-	dateKey: "startsAt",
 	ratingKey: "rating",
+	indexKey: "x",
 } as const;
 
 export const PLAYER_PROFILE_HISTORY_COLUMN = {
@@ -131,6 +134,7 @@ export type PlayerProfileHistoryRow = {
 export type PlayerRatingHistoryChartPoint = {
 	startsAt: string;
 	rating: number;
+	x: number;
 };
 
 export function playerProfileDelta(value: unknown): number {
@@ -209,25 +213,50 @@ export function playerRatingHistoryChartSeries(
 	currentRating: number,
 	nowIso: string,
 ): PlayerRatingHistoryChartPoint[] {
-	const points = history
-		.slice()
-		.reverse()
-		.map((row) => ({
-			startsAt: row.startsAt,
-			rating: row.ratingTo,
-		}));
+	if (history.length === 0) {
+		return [];
+	}
 
-	if (points.length === 0) {
+	const chronological = history.slice().reverse();
+	const oldest = chronological[0];
+	if (!oldest) {
 		return [];
 	}
 
 	return [
-		...points,
 		{
+			x: 0,
+			startsAt: oldest.startsAt,
+			rating: oldest.ratingFrom,
+		},
+		...chronological.map((row, index) => ({
+			x: index + 1,
+			startsAt: row.startsAt,
+			rating: row.ratingTo,
+		})),
+		{
+			x: chronological.length + 1,
 			startsAt: nowIso,
 			rating: playerProfileDelta(currentRating),
 		},
 	];
+}
+
+export function playerRatingHistoryChartTickLabel(
+	points: readonly PlayerRatingHistoryChartPoint[],
+	x: number,
+): string {
+	const current = points[x];
+	if (!current) {
+		return "";
+	}
+
+	const next = points[x + 1];
+	if (next && next.startsAt === current.startsAt) {
+		return "";
+	}
+
+	return formatEventStartsAt(current.startsAt).date;
 }
 
 export function ratingsForProfileCeiling(

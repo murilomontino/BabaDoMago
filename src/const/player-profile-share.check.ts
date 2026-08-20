@@ -86,11 +86,13 @@ check(card.stats[0]?.abbr, "G");
 check(card.stats[0]?.value, "4");
 check(card.stats[2]?.abbr, "GS");
 check(card.stats[2]?.value, "3");
-check(card.chart.length, 2);
+check(card.chart.length, 3);
 check(card.chart[0]?.startsAt, history[0]?.startsAt);
-check(card.chart[0]?.rating, 8);
-check(card.chart[1]?.startsAt, nowIso);
+check(card.chart[0]?.rating, 7);
+check(card.chart[1]?.startsAt, history[0]?.startsAt);
 check(card.chart[1]?.rating, 8);
+check(card.chart[2]?.startsAt, nowIso);
+check(card.chart[2]?.rating, 8);
 check(PLAYER_PROFILE_SHARE_LABEL.chart, "Evolução");
 check(
 	playerProfileShareFileName({
