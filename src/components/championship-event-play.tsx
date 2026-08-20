@@ -1,4 +1,11 @@
-import { ArrowLeftRight, ChevronDown, Pause, Play, X } from "lucide-react";
+import {
+	ArrowLeftRight,
+	ChevronDown,
+	LoaderCircle,
+	Pause,
+	Play,
+	X,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AddEventTeamModal } from "@/components/add-event-team-modal";
 import { Button } from "@/components/button";
@@ -81,7 +88,10 @@ import {
 	sortBenchForSlot,
 	toggleMatchTeamSelection,
 } from "@/const/championship-event-match";
-import { MATCH_OPS_LABEL } from "@/const/championship-event-match-ops";
+import {
+	MATCH_OPS_LABEL,
+	MATCH_OPS_SYNCING_CLASS,
+} from "@/const/championship-event-match-ops";
 import { resolveEventPlayers } from "@/const/championship-event-roster";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
 import {
@@ -94,6 +104,7 @@ import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
 import { useMatchClock } from "@/hooks/use-match-clock";
+import { useOnline } from "@/hooks/use-online";
 import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
 import {
 	signalGoal,
@@ -767,6 +778,15 @@ function firstPlayError(...messages: Array<string | null>): string | null {
 	return found;
 }
 
+function MatchOpsSyncingBanner() {
+	return (
+		<div className={MATCH_OPS_SYNCING_CLASS} role="status">
+			<LoaderCircle className="size-5 animate-spin" aria-hidden />
+			<span className="sr-only">{MATCH_OPS_LABEL.syncing}</span>
+		</div>
+	);
+}
+
 function MatchClockBar({
 	match,
 	onStartClock,
@@ -924,7 +944,8 @@ export function ChampionshipEventPlay({
 	const [removeTarget, setRemoveTarget] =
 		useState<ChampionshipEventMatchPlayer | null>(null);
 	const [discardOpen, setDiscardOpen] = useState(false);
-	const syncing = pendingOps > 0;
+	const online = useOnline();
+	const showSyncing = pendingOps > 0 && online;
 	const canStartSelected = canConfirmMatchTeams(selected);
 	const selectedTeamA = event.teams.find((team) => team.id === selected[0]);
 	const selectedTeamB = event.teams.find((team) => team.id === selected[1]);
@@ -939,7 +960,8 @@ export function ChampionshipEventPlay({
 
 	if (!match) {
 		return (
-			<div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+			<div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden relative">
+				{showSyncing && <MatchOpsSyncingBanner />}
 				<p className="mb-2 shrink-0 text-sm font-medium text-fg">
 					{EVENT_MATCH_LABEL.selectTeams}
 				</p>
@@ -1185,7 +1207,8 @@ export function ChampionshipEventPlay({
 	}
 
 	return (
-		<div className="flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+		<div className="relative flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+			{showSyncing && <MatchOpsSyncingBanner />}
 			<MatchTeamBlock
 				color={teamA.color}
 				sortOrder={teamA.sort_order}
@@ -1332,11 +1355,6 @@ export function ChampionshipEventPlay({
 				}}
 			/>
 			{playError && <p className={`shrink-0 ${ERROR_CLASS}`}>{playError}</p>}
-			{syncing && (
-				<p className="shrink-0 text-sm text-fg-muted">
-					{MATCH_OPS_LABEL.syncing}
-				</p>
-			)}
 			<div className="grid shrink-0 grid-cols-2 gap-2">
 				<Button
 					variant={BUTTON_VARIANT.ghost}

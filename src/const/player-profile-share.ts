@@ -29,6 +29,7 @@ export const PLAYER_PROFILE_SHARE = {
 	chartHeight: 260,
 	chartAxis: 56,
 	chartTitle: 28,
+	chartLabelGap: 22,
 	chartXLabel: 28,
 	filePrefix: "perfil",
 	mimePng: "image/png",

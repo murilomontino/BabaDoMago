@@ -1,9 +1,6 @@
-import { ListOrdered } from "lucide-react";
-import { useEffect, useState } from "react";
 import { AppDialog } from "@/components/atoms/app-dialog";
 import { Button } from "@/components/button";
 import {
-	isMatchClockOnline,
 	MATCH_CLOCK_DEBUG_LABEL,
 	matchClockDebugEnabled,
 	matchClockDebugOnlineLabel,
@@ -14,6 +11,7 @@ import {
 	matchOpDebugLabel,
 } from "@/const/championship-event-match-ops";
 import { BUTTON_VARIANT, MODAL_CLASS, SAFE_AREA_FAB_CLASS } from "@/const/ui";
+import { useOnline } from "@/hooks/use-online";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
 	selectMatchClockDeferredClear,
@@ -28,6 +26,8 @@ import {
 	selectMatchOpsError,
 	selectMatchOpsFlushAttempt,
 } from "@/store/match-ops/selectors";
+import { ListOrdered } from "lucide-react";
+import { useState } from "react";
 
 type MatchClockDebugProps = {
 	matchId: number;
@@ -49,31 +49,10 @@ function clockField(value: string | number | null): string {
 	return String(value);
 }
 
-function useMatchClockOnline(): boolean {
-	const [online, setOnline] = useState(() =>
-		isMatchClockOnline(globalThis.navigator?.onLine),
-	);
-
-	useEffect(() => {
-		function sync() {
-			setOnline(isMatchClockOnline(globalThis.navigator?.onLine));
-		}
-
-		window.addEventListener("online", sync);
-		window.addEventListener("offline", sync);
-		return () => {
-			window.removeEventListener("online", sync);
-			window.removeEventListener("offline", sync);
-		};
-	}, []);
-
-	return online;
-}
-
 export function MatchClockDebug({ matchId, eventId }: MatchClockDebugProps) {
 	const [open, setOpen] = useState(false);
 	const dispatch = useAppDispatch();
-	const online = useMatchClockOnline();
+	const online = useOnline();
 	const held = useAppSelector(selectMatchClockHeld);
 	const error = useAppSelector(selectMatchClockError);
 	const flushAttempt = useAppSelector(selectMatchClockFlushAttempt);
