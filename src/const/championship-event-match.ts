@@ -3,7 +3,11 @@ import type {
 	ChampionshipEventMatch,
 	ChampionshipEventMatchPlayer,
 } from "../types/championship-event.ts";
-import { CHAMPIONSHIP_EVENT, EVENT_ACTION } from "./championship-event.ts";
+import {
+	CHAMPIONSHIP_EVENT,
+	EVENT_ACTION,
+	eventTeamsSharePlayers,
+} from "./championship-event.ts";
 import type { EventTeamColor } from "./event-team-color.ts";
 import { PLAYER_LABEL, playerVisibleName } from "./player-name.ts";
 
@@ -262,6 +266,49 @@ export const EVENT_MATCH_SUBSTITUTION_LABEL = {
 
 export function eventMatchSubstitutionTitle(playerName: string): string {
 	return `Contar estatísticas de ${playerName}?`;
+}
+
+export const EVENT_MATCH_SWAP_TEAM_LABEL = {
+	title: "Trocar time",
+	hint: "Placar volta a 0x0. Relógio continua.",
+	confirm: "Trocar",
+	cancel: "Cancelar",
+	empty: "Nenhum time disponível",
+} as const;
+
+export const EVENT_MATCH_REMOVE_PLAYER_LABEL = {
+	hint: "A vaga fica vazia.",
+	confirm: "Remover",
+	cancel: "Cancelar",
+} as const;
+
+export function eventMatchRemovePlayerTitle(playerName: string): string {
+	return `Remover ${playerName}?`;
+}
+
+export function matchTeamSwapCandidates<
+	T extends { id: number; players: readonly { player_id: number }[] },
+>(teams: readonly T[], outgoingId: number, stayingId: number): T[] {
+	const staying = teams.find((team) => team.id === stayingId);
+	if (!staying) {
+		return [];
+	}
+
+	return teams.filter((team) => {
+		if (team.id === outgoingId) {
+			return false;
+		}
+
+		if (team.id === stayingId) {
+			return false;
+		}
+
+		if (eventTeamsSharePlayers(staying.players, team.players)) {
+			return false;
+		}
+
+		return true;
+	});
 }
 
 export const EVENT_GOAL_KIND = {

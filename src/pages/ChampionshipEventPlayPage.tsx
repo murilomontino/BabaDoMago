@@ -28,6 +28,7 @@ import {
 	useSetChampionshipEventMatchPlayer,
 	useStartChampionshipEventClock,
 	useStartChampionshipEventMatch,
+	useSwapChampionshipEventMatchTeam,
 	useUndoChampionshipEventGoal,
 	useUpdateChampionshipEventTeam,
 } from "@/hooks/championships/use-championship-events";
@@ -35,8 +36,8 @@ import { useChampionship } from "@/hooks/championships/use-championships";
 import { useFlushMatchClock } from "@/hooks/match-clock-sync";
 import { useWakeLock } from "@/hooks/use-wake-lock";
 import { mutationErrorMessage } from "@/lib/error-message";
-import type { ChampionshipEventMatch } from "@/types/championship-event";
 import type { ChampionshipPlayer } from "@/types/championship";
+import type { ChampionshipEventMatch } from "@/types/championship-event";
 
 const PLAY_SHELL_CLASS =
 	"flex h-dvh flex-col overflow-hidden overscroll-contain select-none touch-manipulation pt-[max(0.75rem,env(safe-area-inset-top))] pr-[max(0.75rem,env(safe-area-inset-right))] pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))]";
@@ -77,10 +78,11 @@ export function ChampionshipEventPlayPage() {
 	const pauseMatch = usePauseChampionshipEventMatch(championshipId);
 	const resumeMatch = useResumeChampionshipEventMatch(championshipId);
 	const endMatch = useEndChampionshipEventMatch(championshipId);
+	const swapTeam = useSwapChampionshipEventMatchTeam(championshipId);
 	useChampionshipEventRealtime(championshipId, eventId);
 	const openMatchId =
-		openEventMatch<ChampionshipEventMatch>(eventQuery.data?.matches ?? [])?.id ??
-		null;
+		openEventMatch<ChampionshipEventMatch>(eventQuery.data?.matches ?? [])
+			?.id ?? null;
 	useFlushMatchClock(openMatchId);
 	useWakeLock(openMatchId !== null);
 
@@ -154,6 +156,8 @@ export function ChampionshipEventPlayPage() {
 						undoError={mutationErrorMessage(undoGoal)}
 						ending={endMatch.isPending}
 						endError={mutationErrorMessage(endMatch)}
+						swapping={swapTeam.isPending}
+						swapError={mutationErrorMessage(swapTeam)}
 						clockError={
 							mutationErrorMessage(startClock) ??
 							mutationErrorMessage(pauseMatch) ??
@@ -186,9 +190,7 @@ export function ChampionshipEventPlayPage() {
 							}
 						}}
 						savingTeam={updateTeam.isPending}
-						teamError={
-							(updateTeam.isError && updateTeam.error.message) || null
-						}
+						teamError={(updateTeam.isError && updateTeam.error.message) || null}
 						onUpdateTeam={async ({
 							teamId,
 							color,
@@ -261,6 +263,17 @@ export function ChampionshipEventPlayPage() {
 							}
 
 							await endMatch.mutateAsync(openMatch.id);
+						}}
+						onSwapTeam={async (outgoingTeamId, incomingTeamId) => {
+							if (!openMatch) {
+								return;
+							}
+
+							await swapTeam.mutateAsync({
+								matchId: openMatch.id,
+								outgoingTeamId,
+								incomingTeamId,
+							});
 						}}
 						onStartClock={() => {
 							if (!openMatch) {

@@ -2,7 +2,7 @@ import type {
 	ChampionshipEventGoal,
 	ChampionshipEventMatchPlayer,
 } from "../types/championship-event.ts";
-import { CHAMPIONSHIP_EVENT } from "./championship-event.ts";
+import { CHAMPIONSHIP_EVENT, EVENT_ACTION } from "./championship-event.ts";
 import {
 	applyMatchClockAction,
 	canConfirmMatchTeams,
@@ -18,13 +18,16 @@ import {
 	EVENT_MATCH_ICON,
 	EVENT_MATCH_ICON_LEGEND,
 	EVENT_MATCH_LABEL,
+	EVENT_MATCH_REMOVE_PLAYER_LABEL,
 	EVENT_MATCH_REOPEN_LABEL,
 	EVENT_MATCH_STATUS,
 	EVENT_MATCH_SUBSTITUTION_LABEL,
+	EVENT_MATCH_SWAP_TEAM_LABEL,
 	EVENT_MATCH_TEAM_PREVIEW,
 	eventGoalScorerHint,
 	eventMatchEndConfirmLabel,
 	eventMatchEndTitle,
+	eventMatchRemovePlayerTitle,
 	eventMatchStatus,
 	eventMatchSubstitutionTitle,
 	formatGoalTimelineLine,
@@ -59,6 +62,7 @@ import {
 	matchTeamScore,
 	matchTeamSlots,
 	matchTeamStarName,
+	matchTeamSwapCandidates,
 	matchWinnerColor,
 	matchWinnerTeam,
 	matchWinnerTeamId,
@@ -570,6 +574,56 @@ check(
 );
 check(EVENT_MATCH_REOPEN_LABEL.title, "Editar partida", "reopen title");
 check(EVENT_MATCH_REOPEN_LABEL.hint.includes("edição"), true, "reopen hint");
+check(EVENT_MATCH_SWAP_TEAM_LABEL.title, "Trocar time", "swap team title");
+check(EVENT_MATCH_SWAP_TEAM_LABEL.hint.includes("0x0"), true, "swap team hint");
+check(
+	eventMatchRemovePlayerTitle("João"),
+	"Remover João?",
+	"remove player title",
+);
+check(
+	EVENT_MATCH_REMOVE_PLAYER_LABEL.confirm,
+	"Remover",
+	"remove player confirm",
+);
+check(
+	EVENT_ACTION.removePlayer,
+	EVENT_MATCH_REMOVE_PLAYER_LABEL.confirm,
+	"remove player action",
+);
+check(
+	EVENT_ACTION.swapTeam,
+	EVENT_MATCH_SWAP_TEAM_LABEL.title,
+	"swap team action",
+);
+check(
+	String(
+		matchTeamSwapCandidates(
+			[
+				{ id: 1, players: [{ player_id: 1 }] },
+				{ id: 2, players: [{ player_id: 2 }] },
+				{ id: 3, players: [{ player_id: 3 }] },
+				{ id: 4, players: [{ player_id: 2 }] },
+			],
+			1,
+			2,
+		).map((team) => team.id),
+	),
+	"3",
+	"swap candidates skip opponent and shared",
+);
+check(
+	matchTeamSwapCandidates(
+		[
+			{ id: 1, players: [{ player_id: 1 }] },
+			{ id: 2, players: [{ player_id: 2 }] },
+		],
+		1,
+		2,
+	).length,
+	0,
+	"swap candidates empty with two teams",
+);
 check(EVENT_MATCH_TEAM_PREVIEW.players, 2, "team preview");
 check(EVENT_MATCH_LABEL.showMore, "Ver mais", "show more");
 check(EVENT_MATCH_LABEL.showLess, "Ver menos", "show less");

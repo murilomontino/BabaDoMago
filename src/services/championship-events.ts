@@ -722,6 +722,22 @@ export async function setChampionshipEventMatchGoalkeeper(
 	}
 }
 
+export async function swapChampionshipEventMatchTeam(
+	matchId: number,
+	outgoingTeamId: number,
+	incomingTeamId: number,
+): Promise<void> {
+	const { error } = await supabase.rpc("swap_championship_event_match_team", {
+		match_id: matchId,
+		outgoing_team_id: outgoingTeamId,
+		incoming_team_id: incomingTeamId,
+	});
+
+	if (error) {
+		throwEventError(error);
+	}
+}
+
 export async function addChampionshipEventGoal(
 	matchId: number,
 	scorerPlayerId: number,

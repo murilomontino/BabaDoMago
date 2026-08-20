@@ -35,6 +35,7 @@ import {
 	setChampionshipEventMatchPlayer,
 	setChampionshipEventMvps,
 	startChampionshipEventMatch,
+	swapChampionshipEventMatchTeam,
 	undoChampionshipEventGoal,
 	updateChampionshipEventTeam,
 	upsertChampionshipEventRsvp,
@@ -363,6 +364,26 @@ export function useSetChampionshipEventMatchGoalkeeper(
 			teamId: number;
 			playerId: number;
 		}) => setChampionshipEventMatchGoalkeeper(matchId, teamId, playerId),
+		onSuccess: async () => {
+			await invalidateChampionshipEventQueries(queryClient);
+		},
+	});
+}
+
+export function useSwapChampionshipEventMatchTeam(_championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({
+			matchId,
+			outgoingTeamId,
+			incomingTeamId,
+		}: {
+			matchId: number;
+			outgoingTeamId: number;
+			incomingTeamId: number;
+		}) =>
+			swapChampionshipEventMatchTeam(matchId, outgoingTeamId, incomingTeamId),
 		onSuccess: async () => {
 			await invalidateChampionshipEventQueries(queryClient);
 		},
