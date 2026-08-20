@@ -25,4 +25,4 @@ Fonte única: `src/const/championship-event-match.ts`. Slice: `src/store/match-c
 - Não limpar o store com `pending` ainda na fila (nem no `ended_at`; `deferredClear` espera o drain).
 - Ação inválida no snapshot é no-op (ex.: pause duas vezes não entra de novo em `pending`).
 
-Debug (`VITE_MATCH_CLOCK_DEBUG=true`): “Segurar sync” enfileira e o cronômetro continua.
+Debug no `yarn dev`: botão da fila na partida. Produção só com `VITE_MATCH_CLOCK_DEBUG=true`.

@@ -38,6 +38,13 @@ export function selectMatchClockFlushAttempt(
 	return state.matchClock.flushAttempt;
 }
 
+export function selectMatchClockDeferredClear(
+	state: MatchClockRootState,
+	matchId: number,
+): boolean {
+	return Boolean(state.matchClock.deferredClear[String(matchId)]);
+}
+
 export function selectPendingMatchClockIds(
 	state: MatchClockRootState,
 ): number[] {

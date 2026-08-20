@@ -1,15 +1,18 @@
 import { ListOrdered } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppDialog } from "@/components/atoms/app-dialog";
 import { Button } from "@/components/button";
 import {
-	EVENT_MATCH_CLOCK_LABEL,
-	MATCH_CLOCK_DEBUG_ENV,
+	isMatchClockOnline,
 	MATCH_CLOCK_DEBUG_LABEL,
+	matchClockDebugEnabled,
+	matchClockDebugOnlineLabel,
+	matchClockDebugQueueItemLabel,
 } from "@/const/championship-event-match";
-import { BUTTON_VARIANT, MODAL_CLASS } from "@/const/ui";
+import { BUTTON_VARIANT, MODAL_CLASS, SAFE_AREA_FAB_CLASS } from "@/const/ui";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
+	selectMatchClockDeferredClear,
 	selectMatchClockError,
 	selectMatchClockFlushAttempt,
 	selectMatchClockHeld,
@@ -22,9 +25,9 @@ type MatchClockDebugProps = {
 };
 
 export function isMatchClockDebugVisible(): boolean {
-	return (
-		import.meta.env.DEV &&
-		import.meta.env.VITE_MATCH_CLOCK_DEBUG === MATCH_CLOCK_DEBUG_ENV.on
+	return matchClockDebugEnabled(
+		import.meta.env.DEV,
+		import.meta.env.VITE_MATCH_CLOCK_DEBUG,
 	);
 }
 
@@ -36,12 +39,37 @@ function clockField(value: string | number | null): string {
 	return String(value);
 }
 
+function useMatchClockOnline(): boolean {
+	const [online, setOnline] = useState(() =>
+		isMatchClockOnline(globalThis.navigator?.onLine),
+	);
+
+	useEffect(() => {
+		function sync() {
+			setOnline(isMatchClockOnline(globalThis.navigator?.onLine));
+		}
+
+		window.addEventListener("online", sync);
+		window.addEventListener("offline", sync);
+		return () => {
+			window.removeEventListener("online", sync);
+			window.removeEventListener("offline", sync);
+		};
+	}, []);
+
+	return online;
+}
+
 export function MatchClockDebug({ matchId }: MatchClockDebugProps) {
 	const [open, setOpen] = useState(false);
 	const dispatch = useAppDispatch();
+	const online = useMatchClockOnline();
 	const held = useAppSelector(selectMatchClockHeld);
 	const error = useAppSelector(selectMatchClockError);
 	const flushAttempt = useAppSelector(selectMatchClockFlushAttempt);
+	const deferredClear = useAppSelector((state) =>
+		selectMatchClockDeferredClear(state, matchId),
+	);
 	const snapshot = useAppSelector((state) =>
 		selectMatchClockSnapshot(state, matchId),
 	);
@@ -60,12 +88,17 @@ export function MatchClockDebug({ matchId }: MatchClockDebugProps) {
 			<button
 				type="button"
 				aria-label={MATCH_CLOCK_DEBUG_LABEL.open}
-				className="fixed right-3 bottom-20 z-50 inline-flex size-12 items-center justify-center rounded-full border border-line bg-surface text-fg shadow-md"
+				className={`fixed z-[60] inline-flex size-12 items-center justify-center rounded-full border border-line bg-surface text-fg shadow-md ${SAFE_AREA_FAB_CLASS}`}
 				onClick={() => {
 					setOpen(true);
 				}}
 			>
 				<ListOrdered className="size-5" />
+				{pending.length > 0 && (
+					<span className="absolute -top-1 -right-1 min-w-5 rounded-full bg-danger px-1 text-center text-[10px] font-semibold text-danger-fg">
+						{pending.length}
+					</span>
+				)}
 			</button>
 			{open && (
 				<AppDialog onClose={close}>
@@ -74,6 +107,12 @@ export function MatchClockDebug({ matchId }: MatchClockDebugProps) {
 							{MATCH_CLOCK_DEBUG_LABEL.title}
 						</h2>
 						<dl className="mb-3 space-y-1 text-xs text-fg-muted">
+							<div>
+								<dt className="font-medium text-fg">
+									{MATCH_CLOCK_DEBUG_LABEL.network}
+								</dt>
+								<dd>{matchClockDebugOnlineLabel(online)}</dd>
+							</div>
 							<div>
 								<dt className="font-medium text-fg">
 									{MATCH_CLOCK_DEBUG_LABEL.startedAt}
@@ -96,6 +135,20 @@ export function MatchClockDebug({ matchId }: MatchClockDebugProps) {
 								</dt>
 								<dd>{clockField(snapshot?.pause_accumulated_seconds ?? 0)}</dd>
 							</div>
+							<div>
+								<dt className="font-medium text-fg">
+									{MATCH_CLOCK_DEBUG_LABEL.count}
+								</dt>
+								<dd>{pending.length}</dd>
+							</div>
+							{deferredClear && (
+								<div>
+									<dt className="font-medium text-fg">
+										{MATCH_CLOCK_DEBUG_LABEL.deferred}
+									</dt>
+									<dd>{MATCH_CLOCK_DEBUG_LABEL.yes}</dd>
+								</div>
+							)}
 							{error && (
 								<div>
 									<dt className="font-medium text-fg">
@@ -122,10 +175,12 @@ export function MatchClockDebug({ matchId }: MatchClockDebugProps) {
 							</p>
 						)}
 						{pending.length > 0 && (
-							<p className="mb-3 text-sm text-fg">
+							<p className="mb-3 whitespace-pre-line text-sm text-fg">
 								{pending
-									.map((action) => EVENT_MATCH_CLOCK_LABEL[action])
-									.join(" → ")}
+									.map((action, index) =>
+										matchClockDebugQueueItemLabel(action, index),
+									)
+									.join("\n")}
 							</p>
 						)}
 						<div className="flex justify-end gap-2">

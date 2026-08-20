@@ -116,7 +116,13 @@ export const MATCH_CLOCK_DEBUG_LABEL = {
 	empty: "Fila vazia.",
 	hold: "Segurar sync",
 	release: "Liberar sync",
-	pending: "Pending",
+	pending: "Fila",
+	count: "Itens",
+	network: "Rede",
+	online: "Online",
+	offline: "Offline",
+	deferred: "Limpeza adiada",
+	yes: "Sim",
 	startedAt: "started_at",
 	pausedAt: "paused_at",
 	accumulated: "pause_accumulated_seconds",
@@ -124,6 +130,32 @@ export const MATCH_CLOCK_DEBUG_LABEL = {
 	attempt: "Tentativa",
 	close: "Fechar",
 } as const;
+
+export function matchClockDebugEnabled(
+	dev: boolean,
+	envValue: string | undefined,
+): boolean {
+	if (dev) {
+		return true;
+	}
+
+	return envValue === MATCH_CLOCK_DEBUG_ENV.on;
+}
+
+export function matchClockDebugOnlineLabel(online: boolean): string {
+	if (online) {
+		return MATCH_CLOCK_DEBUG_LABEL.online;
+	}
+
+	return MATCH_CLOCK_DEBUG_LABEL.offline;
+}
+
+export function matchClockDebugQueueItemLabel(
+	action: MatchClockAction,
+	index: number,
+): string {
+	return `${index + 1}. ${EVENT_MATCH_CLOCK_LABEL[action]} (${action})`;
+}
 
 export type MatchClockSnapshot = {
 	started_at: string | null;

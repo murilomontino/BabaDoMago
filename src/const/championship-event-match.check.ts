@@ -50,6 +50,9 @@ import {
 	MATCH_CLOCK_STORAGE_KEY,
 	matchAssistCandidates,
 	matchBenchPlayerIds,
+	matchClockDebugEnabled,
+	matchClockDebugOnlineLabel,
+	matchClockDebugQueueItemLabel,
 	matchClockElapsedSeconds,
 	matchClockIsPaused,
 	matchClockIsStarted,
@@ -693,6 +696,22 @@ check(MATCH_CLOCK_STORAGE_KEY, "babaDoMago-match-clock", "clock storage key");
 check(MATCH_CLOCK_DEBUG_ENV.key, "VITE_MATCH_CLOCK_DEBUG", "clock debug env");
 check(MATCH_CLOCK_DEBUG_ENV.on, "true", "clock debug on");
 check(MATCH_CLOCK_DEBUG_LABEL.empty, "Fila vazia.", "clock debug empty");
+check(MATCH_CLOCK_DEBUG_LABEL.pending, "Fila", "clock debug pending");
+check(MATCH_CLOCK_DEBUG_LABEL.network, "Rede", "clock debug network");
+check(matchClockDebugEnabled(true, undefined), true, "debug on in dev");
+check(matchClockDebugEnabled(false, undefined), false, "debug off in prod");
+check(
+	matchClockDebugEnabled(false, MATCH_CLOCK_DEBUG_ENV.on),
+	true,
+	"debug on via env",
+);
+check(matchClockDebugOnlineLabel(true), "Online", "debug online label");
+check(matchClockDebugOnlineLabel(false), "Offline", "debug offline label");
+check(
+	matchClockDebugQueueItemLabel(MATCH_CLOCK_ACTION.pause, 0),
+	"1. Pausar (pause)",
+	"debug queue item",
+);
 check(matchClockElapsedSeconds(clockBase, startMs), 0, "elapsed at start");
 check(
 	matchClockElapsedSeconds(clockBase, startMs + 10_000),
