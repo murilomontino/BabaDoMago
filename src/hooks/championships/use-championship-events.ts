@@ -4,6 +4,11 @@ import type {
 	EventAttendanceStatsDraft,
 	PlayerEventStatsDraft,
 } from "@/const/championship-event";
+import {
+	clampMatchDurationMinutes,
+	EVENT_MATCH_DURATION,
+	matchDurationSeconds,
+} from "@/const/championship-event-match";
 import type { EventTeamColor } from "@/const/event-team-color";
 import { supabase } from "@/lib/supabase";
 import {
@@ -297,7 +302,16 @@ export function useStartChampionshipEventMatch(_championshipId: number) {
 			teamBId: number;
 			durationMinutes?: number;
 		}) =>
-			startChampionshipEventMatch(eventId, teamAId, teamBId, durationMinutes),
+			startChampionshipEventMatch(
+				eventId,
+				teamAId,
+				teamBId,
+				matchDurationSeconds(
+					clampMatchDurationMinutes(
+						durationMinutes ?? EVENT_MATCH_DURATION.defaultMinutes,
+					),
+				),
+			),
 		onSuccess: async () => {
 			await invalidateChampionshipEventQueries(queryClient);
 		},

@@ -252,40 +252,28 @@ type ChampionshipEventPlayProps = {
 	event: ChampionshipEvent;
 	match: ChampionshipEventMatch | null;
 	players: readonly ChampionshipPlayer[];
-	starting: boolean;
-	startError: string | null;
 	opsError: string | null;
 	pendingOps: number;
-	ending: boolean;
-	endError: string | null;
 	clockError: string | null;
-	onStart: (
-		teamAId: number,
-		teamBId: number,
-		durationMinutes: number,
-	) => Promise<void>;
+	onStart: (teamAId: number, teamBId: number, durationMinutes: number) => void;
 	onSetPlayer: (
 		teamId: number,
 		slot: number,
 		playerId: number | null,
 		includeStats?: boolean,
-	) => Promise<void>;
-	onSetGoalkeeper: (teamId: number, playerId: number) => Promise<void>;
+	) => void;
+	onSetGoalkeeper: (teamId: number, playerId: number) => void;
 	onAddGoal: (values: {
 		scorerPlayerId: number;
 		assistPlayerId: number | null;
 		isOwnGoal: boolean;
 		elapsedSeconds: number | null;
-	}) => Promise<void>;
-	onUndoGoal: (goalId: number) => Promise<void>;
-	onEnd: () => Promise<void>;
-	onNext: () => Promise<void>;
-	swapping: boolean;
-	swapError: string | null;
-	onSwapTeam: (outgoingTeamId: number, incomingTeamId: number) => Promise<void>;
-	deleting: boolean;
-	discardError: string | null;
-	onDiscard: () => Promise<void>;
+	}) => void;
+	onUndoGoal: (goalId: number) => void;
+	onEnd: () => void;
+	onNext: () => void;
+	onSwapTeam: (outgoingTeamId: number, incomingTeamId: number) => void;
+	onDiscard: () => void;
 	onStartClock: () => void;
 	onPause: () => void;
 	onResume: () => void;
@@ -294,9 +282,7 @@ type ChampionshipEventPlayProps = {
 		color: EventTeamColor | null;
 		playerIds: number[];
 		goalkeeperId: number;
-	}) => Promise<void>;
-	savingTeam: boolean;
-	teamError: string | null;
+	}) => void;
 };
 
 const TEAM_CARD_LONG_PRESS_MS = 500;
@@ -783,16 +769,12 @@ function firstPlayError(...messages: Array<string | null>): string | null {
 
 function MatchClockBar({
 	match,
-	busy,
-	syncing,
 	onStartClock,
 	onPause,
 	onResume,
 	onDiscard,
 }: {
 	match: ChampionshipEventMatch;
-	busy: boolean;
-	syncing: boolean;
 	onStartClock: () => void;
 	onPause: () => void;
 	onResume: () => void;
@@ -818,10 +800,6 @@ function MatchClockBar({
 	}, [match.id, timeUp]);
 
 	function handleClick() {
-		if (busy) {
-			return;
-		}
-
 		unlockMatchAudio();
 
 		switch (action) {
@@ -846,7 +824,6 @@ function MatchClockBar({
 		<div className="relative w-full shrink-0">
 			<button
 				type="button"
-				disabled={busy}
 				aria-label={EVENT_MATCH_CLOCK_LABEL[action]}
 				onClick={handleClick}
 				className="flex w-full flex-col items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 disabled:opacity-50"
@@ -867,14 +844,9 @@ function MatchClockBar({
 			<button
 				type="button"
 				aria-label={EVENT_ACTION.removeMatch}
-				disabled={busy || syncing}
 				className="absolute top-2 right-2 inline-flex size-8 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-muted hover:text-danger-fg disabled:opacity-50"
 				onClick={(event) => {
 					event.stopPropagation();
-					if (busy || syncing) {
-						return;
-					}
-
 					onDiscard();
 				}}
 			>
@@ -888,12 +860,8 @@ export function ChampionshipEventPlay({
 	event,
 	match,
 	players,
-	starting,
-	startError,
 	opsError,
 	pendingOps,
-	ending,
-	endError,
 	clockError,
 	onStart,
 	onSetPlayer,
@@ -902,18 +870,12 @@ export function ChampionshipEventPlay({
 	onUndoGoal,
 	onEnd,
 	onNext,
-	swapping,
-	swapError,
 	onSwapTeam,
-	deleting,
-	discardError,
 	onDiscard,
 	onStartClock,
 	onPause,
 	onResume,
 	onUpdateTeam,
-	savingTeam,
-	teamError,
 }: ChampionshipEventPlayProps) {
 	const rosterById = new Map(players.map((player) => [player.id, player]));
 	const teamById = new Map(event.teams.map((team) => [team.id, team]));
@@ -962,9 +924,7 @@ export function ChampionshipEventPlay({
 	const [removeTarget, setRemoveTarget] =
 		useState<ChampionshipEventMatchPlayer | null>(null);
 	const [discardOpen, setDiscardOpen] = useState(false);
-	const busy = starting || ending || swapping || deleting;
 	const syncing = pendingOps > 0;
-	const endingBlocked = busy || syncing;
 	const canStartSelected = canConfirmMatchTeams(selected);
 	const selectedTeamA = event.teams.find((team) => team.id === selected[0]);
 	const selectedTeamB = event.teams.find((team) => team.id === selected[1]);
@@ -997,17 +957,9 @@ export function ChampionshipEventPlay({
 									ceiling={ceiling}
 									presentRatings={presentRatings}
 									onSelect={() => {
-										if (starting) {
-											return;
-										}
-
 										setSelected(toggleMatchTeamSelection(selected, team.id));
 									}}
 									onLongPress={() => {
-										if (starting) {
-											return;
-										}
-
 										setTeamToEdit(team);
 									}}
 								/>
@@ -1016,8 +968,8 @@ export function ChampionshipEventPlay({
 					})}
 				</ul>
 				<div className="shrink-0 space-y-2 pt-2">
-					{(startError || sharedPlayersError) && (
-						<p className={ERROR_CLASS}>{startError ?? sharedPlayersError}</p>
+					{(opsError || sharedPlayersError) && (
+						<p className={ERROR_CLASS}>{opsError ?? sharedPlayersError}</p>
 					)}
 					<div className="flex flex-wrap items-center gap-2">
 						<span className="text-sm font-medium text-fg-muted">
@@ -1088,9 +1040,7 @@ export function ChampionshipEventPlay({
 					<div className="grid gap-2 md:flex md:justify-end">
 						<Button
 							className="w-full md:w-auto"
-							disabled={
-								starting || !canStartSelected || Boolean(sharedPlayersError)
-							}
+							disabled={!canStartSelected || Boolean(sharedPlayersError)}
 							onClick={() => {
 								const teamAId = selected[0];
 								const teamBId = selected[1];
@@ -1126,25 +1076,16 @@ export function ChampionshipEventPlay({
 							color: teamToEdit.color,
 							players: eventTeamSourcePlayers(teamToEdit),
 						}}
-						isPending={savingTeam}
-						errorMessage={teamError}
+						errorMessage={opsError}
 						onCancel={() => {
-							if (savingTeam) {
-								return;
-							}
-
 							setTeamToEdit(null);
 						}}
 						onAdd={async (values) => {
-							try {
-								await onUpdateTeam({
-									teamId: teamToEdit.id,
-									...values,
-								});
-								setTeamToEdit(null);
-							} catch {
-								return;
-							}
+							onUpdateTeam({
+								teamId: teamToEdit.id,
+								...values,
+							});
+							setTeamToEdit(null);
 						}}
 					/>
 				)}
@@ -1220,13 +1161,7 @@ export function ChampionshipEventPlay({
 		swapCandidatesA,
 		swapCandidatesB,
 	);
-	const playError = firstPlayError(
-		opsError,
-		endError,
-		clockError,
-		swapError,
-		discardError,
-	);
+	const playError = firstPlayError(opsError, clockError);
 
 	function beginGoalClockHold() {
 		const running =
@@ -1260,41 +1195,21 @@ export function ChampionshipEventPlay({
 					event.players_per_team,
 				)}
 				rosterById={rosterById}
-				disabled={busy}
+				disabled={goalModalOpen}
 				onMarkGoal={(player) => {
-					if (busy) {
-						return;
-					}
-
 					beginGoalClockHold();
 					setGoalTarget({ teamId: match.team_a_id, player });
 				}}
 				onSetGoalkeeper={(player) => {
-					if (busy) {
-						return;
-					}
-
 					void onSetGoalkeeper(match.team_a_id, player.player_id);
 				}}
 				onEditSlot={(slot) => {
-					if (busy) {
-						return;
-					}
-
 					setSlotTarget({ teamId: match.team_a_id, slot });
 				}}
 				onSwapTeam={handlerWhenAllowed(swapCandidatesA.length > 0, () => {
-					if (busy) {
-						return;
-					}
-
 					setSwapOutgoingId(match.team_a_id);
 				})}
 				onRemovePlayer={(player) => {
-					if (busy) {
-						return;
-					}
-
 					setRemoveTarget(player);
 				}}
 			/>
@@ -1302,13 +1217,9 @@ export function ChampionshipEventPlay({
 				<div className={MATCH_GOAL_TIMELINE_GRID_CLASS}>
 					<div className="flex min-w-0 items-center gap-1">
 						<OwnGoalButton
-							disabled={busy}
+							disabled={goalModalOpen}
 							labelPosition={OWN_GOAL_LABEL_POSITION.end}
 							onClick={() => {
-								if (busy) {
-									return;
-								}
-
 								beginGoalClockHold();
 								setOwnGoalTeamId(match.team_a_id);
 							}}
@@ -1335,13 +1246,9 @@ export function ChampionshipEventPlay({
 							{starB}
 						</p>
 						<OwnGoalButton
-							disabled={busy}
+							disabled={goalModalOpen}
 							labelPosition={OWN_GOAL_LABEL_POSITION.start}
 							onClick={() => {
-								if (busy) {
-									return;
-								}
-
 								beginGoalClockHold();
 								setOwnGoalTeamId(match.team_b_id);
 							}}
@@ -1350,31 +1257,29 @@ export function ChampionshipEventPlay({
 				</div>
 				<MatchClockBar
 					match={clockMatch}
-					busy={busy || goalModalOpen}
-					syncing={syncing}
 					onStartClock={() => {
-						if (busy || goalModalOpen) {
+						if (goalModalOpen) {
 							return;
 						}
 
 						void onStartClock();
 					}}
 					onPause={() => {
-						if (busy || goalModalOpen) {
+						if (goalModalOpen) {
 							return;
 						}
 
 						void onPause();
 					}}
 					onResume={() => {
-						if (busy || goalModalOpen) {
+						if (goalModalOpen) {
 							return;
 						}
 
 						void onResume();
 					}}
 					onDiscard={() => {
-						if (busy || goalModalOpen || syncing) {
+						if (goalModalOpen) {
 							return;
 						}
 
@@ -1386,12 +1291,7 @@ export function ChampionshipEventPlay({
 						<MatchGoalTimeline
 							goals={match.goals}
 							teamAPlayerIds={teamAIds}
-							undoDisabled={busy}
 							onUndoGoal={(goalId) => {
-								if (busy) {
-									return;
-								}
-
 								void onUndoGoal(goalId);
 							}}
 							playerName={(playerId) => {
@@ -1413,41 +1313,21 @@ export function ChampionshipEventPlay({
 					event.players_per_team,
 				)}
 				rosterById={rosterById}
-				disabled={busy}
+				disabled={goalModalOpen}
 				onMarkGoal={(player) => {
-					if (busy) {
-						return;
-					}
-
 					beginGoalClockHold();
 					setGoalTarget({ teamId: match.team_b_id, player });
 				}}
 				onSetGoalkeeper={(player) => {
-					if (busy) {
-						return;
-					}
-
 					void onSetGoalkeeper(match.team_b_id, player.player_id);
 				}}
 				onEditSlot={(slot) => {
-					if (busy) {
-						return;
-					}
-
 					setSlotTarget({ teamId: match.team_b_id, slot });
 				}}
 				onSwapTeam={handlerWhenAllowed(swapCandidatesB.length > 0, () => {
-					if (busy) {
-						return;
-					}
-
 					setSwapOutgoingId(match.team_b_id);
 				})}
 				onRemovePlayer={(player) => {
-					if (busy) {
-						return;
-					}
-
 					setRemoveTarget(player);
 				}}
 			/>
@@ -1461,12 +1341,7 @@ export function ChampionshipEventPlay({
 				<Button
 					variant={BUTTON_VARIANT.ghost}
 					className="h-14 text-base"
-					disabled={endingBlocked}
 					onClick={() => {
-						if (endingBlocked) {
-							return;
-						}
-
 						setEndIntent(EVENT_MATCH_END_INTENT.end);
 					}}
 				>
@@ -1474,12 +1349,7 @@ export function ChampionshipEventPlay({
 				</Button>
 				<Button
 					className="h-14 text-base"
-					disabled={endingBlocked}
 					onClick={() => {
-						if (endingBlocked) {
-							return;
-						}
-
 						setEndIntent(EVENT_MATCH_END_INTENT.next);
 					}}
 				>
@@ -1633,24 +1503,13 @@ export function ChampionshipEventPlay({
 			{swapOutgoingId !== null && (
 				<ChampionshipEventSwapTeamModal
 					candidates={swapCandidates}
-					isPending={swapping}
-					errorMessage={swapError}
+					errorMessage={opsError}
 					onCancel={() => {
-						if (swapping) {
-							return;
-						}
-
 						setSwapOutgoingId(null);
 					}}
 					onConfirm={(incomingTeamId) => {
-						void (async () => {
-							try {
-								await onSwapTeam(swapOutgoingId, incomingTeamId);
-								setSwapOutgoingId(null);
-							} catch {
-								return;
-							}
-						})();
+						onSwapTeam(swapOutgoingId, incomingTeamId);
+						setSwapOutgoingId(null);
 					}}
 				/>
 			)}
@@ -1659,37 +1518,24 @@ export function ChampionshipEventPlay({
 					intent={endIntent}
 					scoreLabel={formatMatchScore(score.teamA, score.teamB)}
 					winnerLabel={winnerLabel}
-					isPending={ending}
-					errorMessage={endError}
+					errorMessage={opsError}
 					onCancel={() => {
-						if (ending) {
-							return;
-						}
-
 						setEndIntent(null);
 					}}
 					onConfirm={() => {
-						void (async () => {
-							try {
-								switch (endIntent) {
-									case EVENT_MATCH_END_INTENT.end:
-										dispatch(clearMatchClock(match.id));
-										await onEnd();
-										break;
-									case EVENT_MATCH_END_INTENT.next:
-										dispatch(clearMatchClock(match.id));
-										await onNext();
-										break;
-									default: {
-										const _exhaustive: never = endIntent;
-										return _exhaustive;
-									}
-								}
-								setEndIntent(null);
-							} catch {
-								return;
+						switch (endIntent) {
+							case EVENT_MATCH_END_INTENT.end:
+								onEnd();
+								break;
+							case EVENT_MATCH_END_INTENT.next:
+								onNext();
+								break;
+							default: {
+								const _exhaustive: never = endIntent;
+								return _exhaustive;
 							}
-						})();
+						}
+						setEndIntent(null);
 					}}
 				/>
 			)}
@@ -1699,29 +1545,19 @@ export function ChampionshipEventPlay({
 					hint={EVENT_MATCH_DISCARD_LABEL.hint}
 					confirm={EVENT_MATCH_DISCARD_LABEL.confirm}
 					cancel={EVENT_MATCH_DISCARD_LABEL.cancel}
-					isPending={deleting}
-					errorMessage={discardError}
+					errorMessage={opsError}
 					onCancel={() => {
-						if (deleting) {
-							return;
-						}
-
 						setDiscardOpen(false);
 					}}
 					onConfirm={() => {
-						void (async () => {
-							try {
-								dispatch(clearMatchClock(match.id));
-								await onDiscard();
-								setDiscardOpen(false);
-							} catch {
-								return;
-							}
-						})();
+						onDiscard();
+						setDiscardOpen(false);
 					}}
 				/>
 			)}
-			{isMatchClockDebugVisible() && <MatchClockDebug matchId={match.id} />}
+			{isMatchClockDebugVisible() && (
+				<MatchClockDebug matchId={match.id} eventId={event.id} />
+			)}
 		</div>
 	);
 }

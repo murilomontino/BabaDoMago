@@ -23,7 +23,7 @@ import { createReconnectChannel } from "@/store/online-channel";
 
 function* flushAllPending(): SagaIterator {
 	const ids: number[] = yield select(selectPendingMatchOpIds);
-	yield all(ids.map((matchId) => put(matchOpsFlushRequested({ matchId }))));
+	yield all(ids.map((eventId) => put(matchOpsFlushRequested({ eventId }))));
 }
 
 function* watchOnline(): SagaIterator {
@@ -56,8 +56,8 @@ function* watchMatchOpsFlush(): SagaIterator {
 		buffers.expanding(),
 	);
 	for (;;) {
-		const action: { payload: { matchId: number } } = yield take(channel);
-		yield call(flushMatchOpsWorker, action.payload.matchId);
+		const action: { payload: { eventId: number } } = yield take(channel);
+		yield call(flushMatchOpsWorker, action.payload.eventId);
 	}
 }
 

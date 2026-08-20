@@ -7,7 +7,7 @@ type DeleteEventMatchModalProps = {
 	hint: string;
 	confirm: string;
 	cancel: string;
-	isPending: boolean;
+	isPending?: boolean;
 	errorMessage: string | null;
 	onCancel: () => void;
 	onConfirm: () => void;
@@ -18,7 +18,7 @@ export function DeleteEventMatchModal({
 	hint,
 	confirm,
 	cancel,
-	isPending,
+	isPending = false,
 	errorMessage,
 	onCancel,
 	onConfirm,

@@ -12,6 +12,7 @@ import {
 	eventStatus,
 	formatEventStartsAt,
 } from "@/const/championship-event";
+import { applyPlayOps } from "@/const/championship-event-match-ops";
 import {
 	CHAMPIONSHIP_ROLE,
 	canInvite,
@@ -50,6 +51,8 @@ import {
 } from "@/hooks/championships/use-championships";
 import { mutationErrorMessage } from "@/lib/error-message";
 import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
+import { useAppSelector } from "@/store/hooks";
+import { selectMatchOps } from "@/store/match-ops/selectors";
 
 export function ChampionshipEventDetailPage() {
 	const { championshipId: championshipIdParam, eventId: eventIdParam } =
@@ -81,6 +84,7 @@ export function ChampionshipEventDetailPage() {
 	const deleteEvent = useDeleteChampionshipEvent(championshipId);
 	const addPlayer = useAddManualPlayer(championshipId);
 	useChampionshipEventRealtime(championshipId, eventId);
+	const matchOps = useAppSelector((state) => selectMatchOps(state, eventId));
 	const attendanceCounts = useMemo(
 		() => countPlayerAttendance(eventsQuery.data ?? []),
 		[eventsQuery.data],
@@ -124,7 +128,7 @@ export function ChampionshipEventDetailPage() {
 		);
 	}
 
-	const event = eventQuery.data;
+	const event = applyPlayOps(eventQuery.data, matchOps);
 	const when = formatEventStartsAt(event.starts_at);
 	const status = eventStatus(event.ended_at);
 

@@ -31,6 +31,7 @@ import {
 
 type MatchClockDebugProps = {
 	matchId: number;
+	eventId: number;
 };
 
 export function isMatchClockDebugVisible(): boolean {
@@ -69,7 +70,7 @@ function useMatchClockOnline(): boolean {
 	return online;
 }
 
-export function MatchClockDebug({ matchId }: MatchClockDebugProps) {
+export function MatchClockDebug({ matchId, eventId }: MatchClockDebugProps) {
 	const [open, setOpen] = useState(false);
 	const dispatch = useAppDispatch();
 	const online = useMatchClockOnline();
@@ -83,7 +84,7 @@ export function MatchClockDebug({ matchId }: MatchClockDebugProps) {
 		selectMatchClockSnapshot(state, matchId),
 	);
 	const pending = snapshot?.pending ?? [];
-	const matchOps = useAppSelector((state) => selectMatchOps(state, matchId));
+	const matchOps = useAppSelector((state) => selectMatchOps(state, eventId));
 	const opsError = useAppSelector(selectMatchOpsError);
 	const opsFlushAttempt = useAppSelector(selectMatchOpsFlushAttempt);
 	const pendingCount = pending.length + matchOps.length;

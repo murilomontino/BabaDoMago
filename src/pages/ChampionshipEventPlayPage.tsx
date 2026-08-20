@@ -8,14 +8,13 @@ import {
 	canStartEventMatch,
 	EVENT_ACTION,
 	eventMatchTeamCount,
-	isMatchAlreadyOpenError,
 } from "@/const/championship-event";
 import {
 	MATCH_CLOCK_ACTION,
+	matchDurationSeconds,
 	openEventMatch,
-	shouldStartEventMatch,
 } from "@/const/championship-event-match";
-import { applyMatchOps, MATCH_OP } from "@/const/championship-event-match-ops";
+import { applyPlayOps, MATCH_OP } from "@/const/championship-event-match-ops";
 import { playerVisibleName } from "@/const/player-name";
 import { ROUTES } from "@/const/routes";
 import { SKELETON_LABEL } from "@/const/skeleton";
@@ -23,18 +22,13 @@ import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
 import {
 	useChampionshipEvent,
 	useChampionshipEventRealtime,
-	useDeleteChampionshipEventMatch,
-	useEndChampionshipEventMatch,
-	useStartChampionshipEventMatch,
-	useSwapChampionshipEventMatchTeam,
-	useUpdateChampionshipEventTeam,
 } from "@/hooks/championships/use-championship-events";
 import { useChampionship } from "@/hooks/championships/use-championships";
 import { useWakeLock } from "@/hooks/use-wake-lock";
-import { mutationErrorMessage } from "@/lib/error-message";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { requestMatchClock } from "@/store/match-clock/actions";
 import { selectMatchClockUiError } from "@/store/match-clock/selectors";
+import { clearMatchClock } from "@/store/match-clock/slice";
 import { useFlushMatchClock } from "@/store/match-clock/use-flush-match-clock";
 import { requestMatchOp } from "@/store/match-ops/actions";
 import {
@@ -47,22 +41,6 @@ import type { ChampionshipEventMatch } from "@/types/championship-event";
 
 const PLAY_SHELL_CLASS =
 	"flex h-dvh flex-col overflow-hidden overscroll-contain select-none touch-manipulation pt-[max(0.75rem,env(safe-area-inset-top))] pr-[max(0.75rem,env(safe-area-inset-right))] pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))]";
-
-function startMatchErrorMessage(startMatch: {
-	isError: boolean;
-	error: { message: string } | null;
-}): string | null {
-	const message = mutationErrorMessage(startMatch);
-	if (!message) {
-		return null;
-	}
-
-	if (isMatchAlreadyOpenError(message)) {
-		return null;
-	}
-
-	return message;
-}
 
 function matchOpDisplayName(
 	playerId: number | null,
@@ -90,24 +68,19 @@ export function ChampionshipEventPlayPage() {
 	const navigate = useNavigate();
 	const championshipQuery = useChampionship(championshipId);
 	const eventQuery = useChampionshipEvent(championshipId, eventId);
-	const startMatch = useStartChampionshipEventMatch(championshipId);
-	const updateTeam = useUpdateChampionshipEventTeam(championshipId);
-	const endMatch = useEndChampionshipEventMatch(championshipId);
-	const swapTeam = useSwapChampionshipEventMatchTeam(championshipId);
-	const deleteMatch = useDeleteChampionshipEventMatch(championshipId);
 	const dispatch = useAppDispatch();
 	const clockError = useAppSelector(selectMatchClockUiError);
-	useChampionshipEventRealtime(championshipId, eventId);
-	const openMatchId =
-		openEventMatch<ChampionshipEventMatch>(eventQuery.data?.matches ?? [])
-			?.id ?? null;
-	const matchOps = useAppSelector((state) =>
-		selectMatchOps(state, openMatchId),
-	);
+	const matchOps = useAppSelector((state) => selectMatchOps(state, eventId));
 	const opsError = useAppSelector(selectMatchOpsError);
-	useFlushMatchClock(openMatchId);
-	useFlushMatchOps(openMatchId);
-	useWakeLock(openMatchId !== null);
+	useChampionshipEventRealtime(championshipId, eventId);
+	const playEvent = eventQuery.data
+		? applyPlayOps(eventQuery.data, matchOps)
+		: null;
+	const openMatch =
+		openEventMatch<ChampionshipEventMatch>(playEvent?.matches ?? []) ?? null;
+	useFlushMatchClock(openMatch?.id ?? null);
+	useFlushMatchOps(eventId);
+	useWakeLock(openMatch !== null);
 
 	if (championshipQuery.isPending || eventQuery.isPending) {
 		return <ChampionshipEventPlayPageSkeleton />;
@@ -133,11 +106,11 @@ export function ChampionshipEventPlayPage() {
 		);
 	}
 
-	const event = eventQuery.data;
-	const openMatch = applyMatchOps(
-		openEventMatch<ChampionshipEventMatch>(event.matches),
-		matchOps,
-	);
+	if (!playEvent) {
+		return <ChampionshipEventPlayPageSkeleton />;
+	}
+
+	const event = playEvent;
 	const canStart = canStartEventMatch({
 		ended: event.ended_at !== null,
 		teamCount: eventMatchTeamCount(event.teams),
@@ -169,66 +142,45 @@ export function ChampionshipEventPlayPage() {
 						event={event}
 						match={openMatch}
 						players={activePlayers}
-						starting={startMatch.isPending}
-						startError={startMatchErrorMessage(startMatch)}
 						opsError={opsError}
 						pendingOps={matchOps.length}
-						ending={endMatch.isPending}
-						endError={mutationErrorMessage(endMatch)}
-						swapping={swapTeam.isPending}
-						swapError={mutationErrorMessage(swapTeam)}
-						deleting={deleteMatch.isPending}
-						discardError={mutationErrorMessage(deleteMatch)}
 						clockError={clockError}
-						onStart={async (teamAId, teamBId, durationMinutes) => {
-							const { data } = await eventQuery.refetch();
-							const matches = data?.matches ?? event.matches;
-							if (!shouldStartEventMatch(matches)) {
-								return;
-							}
-
-							try {
-								await startMatch.mutateAsync({
+						onStart={(teamAId, teamBId, durationMinutes) => {
+							dispatch(
+								requestMatchOp(event.id, {
+									kind: MATCH_OP.startMatch,
 									eventId: event.id,
 									teamAId,
 									teamBId,
-									durationMinutes,
-								});
-							} catch (error) {
-								if (
-									!(error instanceof Error) ||
-									!isMatchAlreadyOpenError(error.message)
-								) {
-									throw error;
-								}
-
-								startMatch.reset();
-								await eventQuery.refetch();
-							}
+									durationSeconds: matchDurationSeconds(durationMinutes),
+								}),
+							);
 						}}
-						savingTeam={updateTeam.isPending}
-						teamError={(updateTeam.isError && updateTeam.error.message) || null}
-						onUpdateTeam={async ({
-							teamId,
-							color,
-							playerIds,
-							goalkeeperId,
-						}) => {
-							await updateTeam.mutateAsync({
-								teamId,
-								color,
-								playerIds,
-								goalkeeperId,
-							});
+						onUpdateTeam={({ teamId, color, playerIds, goalkeeperId }) => {
+							dispatch(
+								requestMatchOp(event.id, {
+									kind: MATCH_OP.updateTeam,
+									teamId,
+									color,
+									playerIds,
+									goalkeeperId,
+									members: playerIds.map((playerId) => ({
+										playerId,
+										displayName: matchOpDisplayName(playerId, activePlayers),
+										isGoalkeeper: playerId === goalkeeperId,
+									})),
+								}),
+							);
 						}}
-						onSetPlayer={async (teamId, slot, playerId, includeStats) => {
+						onSetPlayer={(teamId, slot, playerId, includeStats) => {
 							if (!openMatch) {
 								return;
 							}
 
 							dispatch(
-								requestMatchOp(openMatch.id, {
+								requestMatchOp(event.id, {
 									kind: MATCH_OP.setPlayer,
+									matchId: openMatch.id,
 									teamId,
 									slot,
 									playerId,
@@ -237,76 +189,98 @@ export function ChampionshipEventPlayPage() {
 								}),
 							);
 						}}
-						onSetGoalkeeper={async (teamId, playerId) => {
+						onSetGoalkeeper={(teamId, playerId) => {
 							if (!openMatch) {
 								return;
 							}
 
 							dispatch(
-								requestMatchOp(openMatch.id, {
+								requestMatchOp(event.id, {
 									kind: MATCH_OP.setGoalkeeper,
+									matchId: openMatch.id,
 									teamId,
 									playerId,
 								}),
 							);
 						}}
-						onAddGoal={async (values) => {
+						onAddGoal={(values) => {
 							if (!openMatch) {
 								return;
 							}
 
 							dispatch(
-								requestMatchOp(openMatch.id, {
+								requestMatchOp(event.id, {
 									kind: MATCH_OP.addGoal,
+									matchId: openMatch.id,
 									...values,
 								}),
 							);
 						}}
-						onUndoGoal={async (goalId) => {
+						onUndoGoal={(goalId) => {
 							if (!openMatch) {
 								return;
 							}
 
 							dispatch(
-								requestMatchOp(openMatch.id, {
+								requestMatchOp(event.id, {
 									kind: MATCH_OP.undoGoal,
+									matchId: openMatch.id,
 									goalId,
 								}),
 							);
 						}}
-						onEnd={async () => {
-							if (!openMatch) {
-								await goToEvent();
-								return;
+						onEnd={() => {
+							if (openMatch) {
+								dispatch(
+									requestMatchOp(event.id, {
+										kind: MATCH_OP.endMatch,
+										matchId: openMatch.id,
+									}),
+								);
+								dispatch(clearMatchClock(openMatch.id));
 							}
 
-							await endMatch.mutateAsync(openMatch.id);
-							await goToEvent();
+							void goToEvent();
 						}}
-						onNext={async () => {
+						onNext={() => {
 							if (!openMatch) {
 								return;
 							}
 
-							await endMatch.mutateAsync(openMatch.id);
+							dispatch(
+								requestMatchOp(event.id, {
+									kind: MATCH_OP.endMatch,
+									matchId: openMatch.id,
+								}),
+							);
+							dispatch(clearMatchClock(openMatch.id));
 						}}
-						onSwapTeam={async (outgoingTeamId, incomingTeamId) => {
+						onSwapTeam={(outgoingTeamId, incomingTeamId) => {
 							if (!openMatch) {
 								return;
 							}
 
-							await swapTeam.mutateAsync({
-								matchId: openMatch.id,
-								outgoingTeamId,
-								incomingTeamId,
-							});
+							dispatch(
+								requestMatchOp(event.id, {
+									kind: MATCH_OP.swapTeam,
+									matchId: openMatch.id,
+									outgoingTeamId,
+									incomingTeamId,
+								}),
+							);
 						}}
-						onDiscard={async () => {
+						onDiscard={() => {
 							if (!openMatch) {
 								return;
 							}
 
-							await deleteMatch.mutateAsync(openMatch.id);
+							dispatch(
+								requestMatchOp(event.id, {
+									kind: MATCH_OP.discardMatch,
+									matchId: openMatch.id,
+								}),
+							);
+							dispatch(clearMatchClock(openMatch.id));
 						}}
 						onStartClock={() => {
 							if (!openMatch) {

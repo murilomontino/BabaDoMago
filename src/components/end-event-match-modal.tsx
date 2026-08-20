@@ -13,7 +13,7 @@ type EndEventMatchModalProps = {
 	intent: EventMatchEndIntent;
 	scoreLabel: string;
 	winnerLabel: string;
-	isPending: boolean;
+	isPending?: boolean;
 	errorMessage: string | null;
 	onCancel: () => void;
 	onConfirm: () => void;
@@ -23,7 +23,7 @@ export function EndEventMatchModal({
 	intent,
 	scoreLabel,
 	winnerLabel,
-	isPending,
+	isPending = false,
 	errorMessage,
 	onCancel,
 	onConfirm,

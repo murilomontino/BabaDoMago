@@ -51,7 +51,7 @@ type AddEventTeamModalProps = {
 		color: EventTeamColor | null;
 		players: readonly { player_id: number; is_goalkeeper: boolean }[];
 	};
-	isPending: boolean;
+	isPending?: boolean;
 	errorMessage: string | null;
 	onCancel: () => void;
 	onAdd: (values: {
@@ -67,7 +67,7 @@ export function AddEventTeamModal({
 	goalkeeperIds = [],
 	usedColors,
 	initialTeam,
-	isPending,
+	isPending = false,
 	errorMessage,
 	onCancel,
 	onAdd,

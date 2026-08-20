@@ -5,20 +5,20 @@ export const EMPTY_MATCH_OPS: MatchOp[] = [];
 
 export function selectMatchOps(
 	state: MatchOpsRootState,
-	matchId: number | null,
+	eventId: number | null,
 ): readonly MatchOp[] {
-	if (matchId === null) {
+	if (eventId === null) {
 		return EMPTY_MATCH_OPS;
 	}
 
-	return state.matchOps.queues[String(matchId)] ?? EMPTY_MATCH_OPS;
+	return state.matchOps.queues[String(eventId)] ?? EMPTY_MATCH_OPS;
 }
 
 export function selectMatchOpsCount(
 	state: MatchOpsRootState,
-	matchId: number | null,
+	eventId: number | null,
 ): number {
-	return selectMatchOps(state, matchId).length;
+	return selectMatchOps(state, eventId).length;
 }
 
 export function selectMatchOpsError(state: MatchOpsRootState): string | null {
@@ -43,4 +43,27 @@ export function selectPendingMatchOpIds(state: MatchOpsRootState): number[] {
 
 		return [Number(id)];
 	});
+}
+
+export function selectMappedMatchId(
+	state: MatchOpsRootState,
+	localMatchId: number,
+): number | null {
+	const mapped = state.matchOps.localMatchMap[String(localMatchId)];
+	if (mapped === undefined) {
+		return null;
+	}
+
+	return mapped;
+}
+
+export function selectClockRpcMatchId(
+	state: MatchOpsRootState,
+	matchId: number,
+): number | null {
+	if (matchId >= 0) {
+		return matchId;
+	}
+
+	return selectMappedMatchId(state, matchId);
 }

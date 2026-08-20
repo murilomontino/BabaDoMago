@@ -26,7 +26,7 @@ const matchClockPersistConfig = {
 const matchOpsPersistConfig = {
 	key: MATCH_OPS_STORAGE_KEY,
 	storage,
-	whitelist: ["queues", "seq"],
+	whitelist: ["queues", "seq", "localMatchMap"],
 };
 
 const rootReducer = combineReducers({

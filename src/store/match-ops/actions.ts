@@ -2,7 +2,7 @@ import { createAction } from "@reduxjs/toolkit";
 import type { MatchOpDraft } from "../../const/championship-event-match-ops.ts";
 
 export type MatchOpRequestedPayload = {
-	matchId: number;
+	eventId: number;
 	draft: MatchOpDraft;
 	nowMs: number;
 };
@@ -10,13 +10,19 @@ export type MatchOpRequestedPayload = {
 export const matchOpRequested =
 	createAction<MatchOpRequestedPayload>("matchOps/requested");
 
-export const matchOpsFlushRequested = createAction<{ matchId: number }>(
+export const matchOpsFlushRequested = createAction<{ eventId: number }>(
 	"matchOps/flushRequested",
 );
 
-export function requestMatchOp(matchId: number, draft: MatchOpDraft) {
+export const matchIdRemapped = createAction<{
+	eventId: number;
+	localMatchId: number;
+	serverMatchId: number;
+}>("matchOps/matchIdRemapped");
+
+export function requestMatchOp(eventId: number, draft: MatchOpDraft) {
 	return matchOpRequested({
-		matchId,
+		eventId,
 		draft,
 		nowMs: Date.now(),
 	});

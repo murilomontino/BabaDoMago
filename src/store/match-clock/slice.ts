@@ -6,6 +6,7 @@ import {
 	type MatchClockSnapshot,
 	shiftMatchClockPending,
 } from "../../const/championship-event-match.ts";
+import { matchIdRemapped } from "../match-ops/actions.ts";
 import { matchClockRequested } from "./actions.ts";
 
 export type MatchClockState = {
@@ -36,6 +37,26 @@ function omitKey<T>(record: Record<string, T>, key: string): Record<string, T> {
 	return Object.fromEntries(
 		Object.entries(record).filter(([id]) => id !== key),
 	);
+}
+
+function remapClockRecord<T>(
+	record: Record<string, T>,
+	localMatchId: number,
+	serverMatchId: number,
+): void {
+	const from = clockKey(localMatchId);
+	const to = clockKey(serverMatchId);
+	if (from === to) {
+		return;
+	}
+
+	const value = record[from];
+	if (value === undefined) {
+		return;
+	}
+
+	record[to] = value;
+	delete record[from];
 }
 
 const matchClockSlice = createSlice({
@@ -95,6 +116,11 @@ const matchClockSlice = createSlice({
 			state.clocks[key] = applyMatchClockAction(base, clockAction, nowMs);
 			state.error = null;
 			state.flushAttempt = 0;
+		});
+		builder.addCase(matchIdRemapped, (state, action) => {
+			const { localMatchId, serverMatchId } = action.payload;
+			remapClockRecord(state.clocks, localMatchId, serverMatchId);
+			remapClockRecord(state.deferredClear, localMatchId, serverMatchId);
 		});
 	},
 });

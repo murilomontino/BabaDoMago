@@ -1,17 +1,22 @@
 import type {
+	ChampionshipEvent,
 	ChampionshipEventGoal,
 	ChampionshipEventMatchPlayer,
+	ChampionshipEventTeam,
+	ChampionshipEventTeamPlayer,
 } from "../types/championship-event.ts";
 import { EVENT_ERROR_MESSAGE } from "./championship-event.ts";
 import {
 	applyMatchOp,
 	applyMatchOps,
+	applyPlayOps,
 	buildMatchOp,
 	isFatalMatchOpMessage,
 	MATCH_OP,
 	type MatchOp,
 	pendingLocalGoalOpId,
 } from "./championship-event-match-ops.ts";
+import { EVENT_TEAM_COLOR } from "./event-team-color.ts";
 
 function check(actual: unknown, expected: unknown, message: string): void {
 	if (actual !== expected) {
@@ -69,6 +74,7 @@ const baseMatch = {
 const setPlayerOp = buildMatchOp(
 	{
 		kind: MATCH_OP.setPlayer,
+		matchId: 7,
 		teamId: 10,
 		slot: 1,
 		playerId: 102,
@@ -94,6 +100,7 @@ check(incoming?.display_name, "Duda", "incoming keeps display name");
 const keeperSwapIn = buildMatchOp(
 	{
 		kind: MATCH_OP.setPlayer,
+		matchId: 7,
 		teamId: 10,
 		slot: 0,
 		playerId: 103,
@@ -116,6 +123,7 @@ const duplicate = applyMatchOp(
 	buildMatchOp(
 		{
 			kind: MATCH_OP.setPlayer,
+			matchId: 7,
 			teamId: 10,
 			slot: 1,
 			playerId: 100,
@@ -148,6 +156,7 @@ const blockedRemove = applyMatchOp(
 	buildMatchOp(
 		{
 			kind: MATCH_OP.setPlayer,
+			matchId: 7,
 			teamId: 10,
 			slot: 1,
 			playerId: null,
@@ -165,6 +174,7 @@ const swapped = applyMatchOp(
 	buildMatchOp(
 		{
 			kind: MATCH_OP.setGoalkeeper,
+			matchId: 7,
 			teamId: 10,
 			playerId: 101,
 		},
@@ -188,6 +198,7 @@ const filledKeeper = applyMatchOp(
 	buildMatchOp(
 		{
 			kind: MATCH_OP.setGoalkeeper,
+			matchId: 7,
 			teamId: 10,
 			playerId: 101,
 		},
@@ -206,6 +217,7 @@ const ownGoal = applyMatchOp(
 	buildMatchOp(
 		{
 			kind: MATCH_OP.addGoal,
+			matchId: 7,
 			scorerPlayerId: 101,
 			assistPlayerId: 100,
 			isOwnGoal: true,
@@ -224,6 +236,7 @@ const scored = applyMatchOp(
 	buildMatchOp(
 		{
 			kind: MATCH_OP.addGoal,
+			matchId: 7,
 			scorerPlayerId: 101,
 			assistPlayerId: 100,
 			isOwnGoal: false,
@@ -238,6 +251,7 @@ const undone = applyMatchOp(
 	buildMatchOp(
 		{
 			kind: MATCH_OP.undoGoal,
+			matchId: 7,
 			goalId: -8,
 		},
 		9,
@@ -255,6 +269,7 @@ const queued: MatchOp[] = [
 	buildMatchOp(
 		{
 			kind: MATCH_OP.addGoal,
+			matchId: 7,
 			scorerPlayerId: 102,
 			assistPlayerId: null,
 			isOwnGoal: false,
@@ -273,5 +288,239 @@ check(
 	"translated business error is fatal",
 );
 check(isFatalMatchOpMessage("Failed to fetch"), false, "network is not fatal");
+
+function teamPlayer(
+	partial: Pick<
+		ChampionshipEventTeamPlayer,
+		"id" | "player_id" | "display_name"
+	> &
+		Partial<ChampionshipEventTeamPlayer>,
+): ChampionshipEventTeamPlayer {
+	return {
+		event_id: 1,
+		team_id: 10,
+		is_goalkeeper: false,
+		...partial,
+	};
+}
+
+function eventTeam(
+	partial: Pick<ChampionshipEventTeam, "id" | "players"> &
+		Partial<ChampionshipEventTeam>,
+): ChampionshipEventTeam {
+	return {
+		event_id: 1,
+		color: EVENT_TEAM_COLOR.white,
+		sort_order: 1,
+		is_active: true,
+		template_player_ids: partial.players.map((player) => player.player_id),
+		template_goalkeeper_id:
+			partial.players.find((player) => player.is_goalkeeper)?.player_id ?? 0,
+		...partial,
+	};
+}
+
+const teamA = eventTeam({
+	id: 10,
+	sort_order: 1,
+	players: [
+		teamPlayer({
+			id: 1,
+			player_id: 100,
+			display_name: "Ana",
+			is_goalkeeper: true,
+		}),
+		teamPlayer({ id: 2, player_id: 101, display_name: "Beto" }),
+	],
+});
+const teamB = eventTeam({
+	id: 20,
+	sort_order: 2,
+	color: EVENT_TEAM_COLOR.black,
+	players: [
+		teamPlayer({
+			id: 3,
+			team_id: 20,
+			player_id: 200,
+			display_name: "Caio",
+			is_goalkeeper: true,
+		}),
+	],
+});
+const teamC = eventTeam({
+	id: 30,
+	sort_order: 3,
+	color: EVENT_TEAM_COLOR.red,
+	players: [
+		teamPlayer({
+			id: 4,
+			team_id: 30,
+			player_id: 300,
+			display_name: "Duda",
+			is_goalkeeper: true,
+		}),
+	],
+});
+
+const baseEvent: ChampionshipEvent = {
+	id: 1,
+	championship_id: 1,
+	starts_at: "2026-08-20T12:00:00.000Z",
+	players_per_team: 5,
+	skip_guest_goalkeeper_matches: false,
+	ended_at: null,
+	attendance: [],
+	rsvps: [],
+	teams: [teamA, teamB, teamC],
+	matches: [],
+};
+
+const started = applyPlayOps(baseEvent, [
+	buildMatchOp(
+		{
+			kind: MATCH_OP.startMatch,
+			eventId: 1,
+			teamAId: 10,
+			teamBId: 20,
+			durationSeconds: 420,
+		},
+		11,
+		nowMs,
+	),
+]);
+const localMatch = started.matches[0];
+check(started.matches.length, 1, "start appends match");
+check(localMatch?.id, -11, "start uses localId as match id");
+check(localMatch?.ended_at, null, "start leaves match open");
+check(localMatch?.duration_seconds, 420, "start copies duration");
+check(localMatch?.pause_accumulated_seconds, 0, "start clock is idle");
+check(localMatch?.goals.length, 0, "start has no goals");
+const startedAna = localMatch?.players.find(
+	(player) => player.player_id === 100,
+);
+const startedBeto = localMatch?.players.find(
+	(player) => player.player_id === 101,
+);
+const startedCaio = localMatch?.players.find(
+	(player) => player.player_id === 200,
+);
+check(startedAna?.slot, 0, "start keeper occupies slot 0");
+check(startedAna?.is_goalkeeper, true, "start keeper flag");
+check(startedBeto?.slot, 1, "start field player occupies slot 1");
+check(startedCaio?.team_id, 20, "start copies team B players");
+
+const startNoop = applyPlayOps(started, [
+	buildMatchOp(
+		{
+			kind: MATCH_OP.startMatch,
+			eventId: 1,
+			teamAId: 10,
+			teamBId: 30,
+			durationSeconds: 300,
+		},
+		12,
+		nowMs,
+	),
+]);
+check(startNoop, started, "start with open match is noop");
+
+const swappedEvent = applyPlayOps(started, [
+	buildMatchOp(
+		{
+			kind: MATCH_OP.swapTeam,
+			matchId: -11,
+			outgoingTeamId: 20,
+			incomingTeamId: 30,
+		},
+		13,
+		nowMs,
+	),
+]);
+const swappedMatch = swappedEvent.matches[0];
+check(swappedMatch?.team_b_id, 30, "swap replaces outgoing team");
+check(swappedMatch?.team_a_id, 10, "swap keeps staying team");
+check(swappedMatch?.goals.length, 0, "swap clears goals");
+check(
+	swappedMatch?.players.some((player) => player.player_id === 200),
+	false,
+	"swap removes outgoing roster",
+);
+check(
+	swappedMatch?.players.some((player) => player.player_id === 300),
+	true,
+	"swap inserts incoming roster",
+);
+check(
+	swappedMatch?.players.some((player) => player.player_id === 100),
+	true,
+	"swap keeps staying roster",
+);
+
+const endedEvent = applyPlayOps(started, [
+	buildMatchOp(
+		{
+			kind: MATCH_OP.addGoal,
+			matchId: -11,
+			scorerPlayerId: 101,
+			assistPlayerId: null,
+			isOwnGoal: false,
+			elapsedSeconds: 8,
+		},
+		14,
+		nowMs,
+	),
+	buildMatchOp(
+		{
+			kind: MATCH_OP.endMatch,
+			matchId: -11,
+		},
+		15,
+		nowMs,
+	),
+]);
+const endedMatch = endedEvent.matches[0];
+check(endedMatch?.ended_at, "2026-08-20T12:00:00.000Z", "end fills ended_at");
+check(endedMatch?.winner_team_id, 10, "end sets winner from score");
+
+const discarded = applyPlayOps(started, [
+	buildMatchOp(
+		{
+			kind: MATCH_OP.discardMatch,
+			matchId: -11,
+		},
+		16,
+		nowMs,
+	),
+]);
+check(discarded.matches.length, 0, "discard removes the match");
+
+const edited = applyPlayOps(started, [
+	buildMatchOp(
+		{
+			kind: MATCH_OP.updateTeam,
+			teamId: 10,
+			color: EVENT_TEAM_COLOR.blue,
+			playerIds: [100],
+			goalkeeperId: 100,
+			members: [
+				{
+					playerId: 100,
+					displayName: "Ana",
+					isGoalkeeper: true,
+				},
+			],
+		},
+		17,
+		nowMs,
+	),
+]);
+const editedTeam = edited.teams.find((team) => team.id === 10);
+check(editedTeam?.color, EVENT_TEAM_COLOR.blue, "updateTeam changes color");
+check(editedTeam?.players.length, 1, "updateTeam replaces members");
+check(
+	edited.matches[0]?.players.length,
+	started.matches[0]?.players.length,
+	"updateTeam leaves match players",
+);
 
 console.log("championship-event-match-ops ok");

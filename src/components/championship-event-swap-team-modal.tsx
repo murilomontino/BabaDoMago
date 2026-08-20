@@ -12,7 +12,7 @@ import type { ChampionshipEventTeam } from "@/types/championship-event";
 
 type ChampionshipEventSwapTeamModalProps = {
 	candidates: readonly ChampionshipEventTeam[];
-	isPending: boolean;
+	isPending?: boolean;
 	errorMessage: string | null;
 	onCancel: () => void;
 	onConfirm: (incomingTeamId: number) => void;
@@ -20,7 +20,7 @@ type ChampionshipEventSwapTeamModalProps = {
 
 export function ChampionshipEventSwapTeamModal({
 	candidates,
-	isPending,
+	isPending = false,
 	errorMessage,
 	onCancel,
 	onConfirm,

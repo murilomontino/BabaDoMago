@@ -4,12 +4,14 @@ import {
 	MATCH_OP,
 	type MatchOp,
 	pendingLocalGoalOpId,
+	remapOpMatchId,
 } from "../../const/championship-event-match-ops.ts";
-import { matchOpRequested } from "./actions.ts";
+import { matchIdRemapped, matchOpRequested } from "./actions.ts";
 
 export type MatchOpsState = {
 	queues: Record<string, MatchOp[]>;
 	seq: number;
+	localMatchMap: Record<string, number>;
 	inFlightId: string | null;
 	error: string | null;
 	flushAttempt: number;
@@ -22,13 +24,14 @@ export type MatchOpsRootState = {
 export const MATCH_OPS_INITIAL_STATE: MatchOpsState = {
 	queues: {},
 	seq: 0,
+	localMatchMap: {},
 	inFlightId: null,
 	error: null,
 	flushAttempt: 0,
 };
 
-function queueKey(matchId: number): string {
-	return String(matchId);
+function queueKey(eventId: number): string {
+	return String(eventId);
 }
 
 function omitKey<T>(record: Record<string, T>, key: string): Record<string, T> {
@@ -69,9 +72,9 @@ const matchOpsSlice = createSlice({
 		},
 		opDropped: (
 			state,
-			action: PayloadAction<{ matchId: number; message: string }>,
+			action: PayloadAction<{ eventId: number; message: string }>,
 		) => {
-			state.queues = shiftQueue(state.queues, queueKey(action.payload.matchId));
+			state.queues = shiftQueue(state.queues, queueKey(action.payload.eventId));
 			state.inFlightId = null;
 			state.error = action.payload.message;
 			state.flushAttempt = 0;
@@ -94,8 +97,8 @@ const matchOpsSlice = createSlice({
 	},
 	extraReducers: (builder) => {
 		builder.addCase(matchOpRequested, (state, action) => {
-			const { matchId, draft, nowMs } = action.payload;
-			const key = queueKey(matchId);
+			const { eventId, draft, nowMs } = action.payload;
+			const key = queueKey(eventId);
 			const queue = state.queues[key] ?? [];
 
 			if (draft.kind === MATCH_OP.undoGoal && draft.goalId < 0) {
@@ -123,6 +126,19 @@ const matchOpsSlice = createSlice({
 			state.queues[key] = [...queue, op];
 			state.error = null;
 			state.flushAttempt = 0;
+		});
+		builder.addCase(matchIdRemapped, (state, action) => {
+			const { eventId, localMatchId, serverMatchId } = action.payload;
+			state.localMatchMap[String(localMatchId)] = serverMatchId;
+			const key = queueKey(eventId);
+			const queue = state.queues[key];
+			if (!queue) {
+				return;
+			}
+
+			state.queues[key] = queue.map((op) =>
+				remapOpMatchId(op, localMatchId, serverMatchId),
+			);
 		});
 	},
 });

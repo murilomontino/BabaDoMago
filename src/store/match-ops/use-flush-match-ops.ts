@@ -2,14 +2,14 @@ import { useEffect } from "react";
 import { useAppDispatch } from "@/store/hooks";
 import { matchOpsFlushRequested } from "@/store/match-ops/actions";
 
-export function useFlushMatchOps(matchId: number | null): void {
+export function useFlushMatchOps(eventId: number | null): void {
 	const dispatch = useAppDispatch();
 
 	useEffect(() => {
-		if (matchId === null) {
+		if (eventId === null) {
 			return;
 		}
 
-		dispatch(matchOpsFlushRequested({ matchId }));
-	}, [dispatch, matchId]);
+		dispatch(matchOpsFlushRequested({ eventId }));
+	}, [dispatch, eventId]);
 }

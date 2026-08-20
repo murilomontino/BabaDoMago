@@ -2,10 +2,13 @@ import type { SagaIterator } from "redux-saga";
 import { call, delay, put, select } from "redux-saga/effects";
 import {
 	MATCH_CLOCK_FLUSH_ERROR,
+	MATCH_CLOCK_FLUSH_RETRY,
 	type MatchClockAction,
 	matchClockRetryDelayMs,
 } from "../../const/championship-event-match.ts";
 import { caughtErrorMessage } from "../../lib/error-message.ts";
+import { selectClockRpcMatchId } from "../match-ops/selectors.ts";
+import type { MatchOpsRootState } from "../match-ops/slice.ts";
 import { readOnline, waitForOnline } from "../online-channel.ts";
 import { selectMatchClockHeld, selectMatchClockSnapshot } from "./selectors.ts";
 import {
@@ -14,6 +17,8 @@ import {
 	type MatchClockRootState,
 	shiftPending,
 } from "./slice.ts";
+
+type ClockFlushRootState = MatchClockRootState & MatchOpsRootState;
 
 export async function runMatchClockRpc(
 	matchId: number,
@@ -33,15 +38,29 @@ function selectMatchClockById(matchId: number) {
 		selectMatchClockSnapshot(state, matchId);
 }
 
+function selectRpcMatchId(matchId: number) {
+	return (state: ClockFlushRootState) => selectClockRpcMatchId(state, matchId);
+}
+
 export function* flushPendingAction(
 	matchId: number,
 	action: MatchClockAction,
 ): SagaIterator<boolean> {
 	for (let attempt = 0; ; attempt += 1) {
 		yield call(waitForOnline);
+		let rpcMatchId = matchId;
+		if (matchId < 0) {
+			const mapped: number | null = yield select(selectRpcMatchId(matchId));
+			if (mapped === null) {
+				continue;
+			}
+
+			rpcMatchId = mapped;
+		}
+
 		try {
-			yield call(runMatchClockRpc, matchId, action);
-			yield put(shiftPending(matchId));
+			yield call(runMatchClockRpc, rpcMatchId, action);
+			yield put(shiftPending(rpcMatchId));
 			yield put(flushFailed(null));
 			yield put(flushAttemptSet(0));
 			yield call(invalidateMatchClockQueries);
@@ -70,15 +89,27 @@ export function* flushMatchClockWorker(matchId: number): SagaIterator {
 			return;
 		}
 
+		let lookupId = matchId;
+		if (matchId < 0) {
+			const mapped: number | null = yield select(selectRpcMatchId(matchId));
+			if (mapped === null) {
+				yield call(waitForOnline);
+				yield delay(MATCH_CLOCK_FLUSH_RETRY.baseMs);
+				continue;
+			}
+
+			lookupId = mapped;
+		}
+
 		const snapshot: ReturnType<typeof selectMatchClockSnapshot> = yield select(
-			selectMatchClockById(matchId),
+			selectMatchClockById(lookupId),
 		);
 		const action = snapshot?.pending[0];
 		if (!action) {
 			return;
 		}
 
-		const flushed: boolean = yield call(flushPendingAction, matchId, action);
+		const flushed: boolean = yield call(flushPendingAction, lookupId, action);
 		if (!flushed) {
 			return;
 		}

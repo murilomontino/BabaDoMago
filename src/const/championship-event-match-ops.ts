@@ -1,23 +1,47 @@
 import type {
+	ChampionshipEvent,
 	ChampionshipEventGoal,
 	ChampionshipEventMatch,
 	ChampionshipEventMatchPlayer,
+	ChampionshipEventTeam,
+	ChampionshipEventTeamPlayer,
 } from "../types/championship-event.ts";
-import { EVENT_ERROR_MESSAGE } from "./championship-event.ts";
-import { isMatchSlotGoalkeeper } from "./championship-event-match.ts";
+import {
+	EVENT_ERROR_MESSAGE,
+	eventTeamsSharePlayers,
+} from "./championship-event.ts";
+import {
+	isMatchSlotGoalkeeper,
+	matchScore,
+	matchWinnerTeamId,
+	openEventMatch,
+} from "./championship-event-match.ts";
+import type { EventTeamColor } from "./event-team-color.ts";
 
 export const MATCH_OP = {
 	setPlayer: "setPlayer",
 	setGoalkeeper: "setGoalkeeper",
 	addGoal: "addGoal",
 	undoGoal: "undoGoal",
+	startMatch: "startMatch",
+	updateTeam: "updateTeam",
+	swapTeam: "swapTeam",
+	endMatch: "endMatch",
+	discardMatch: "discardMatch",
 } as const;
 
 export type MatchOpKind = (typeof MATCH_OP)[keyof typeof MATCH_OP];
 
+export type MatchOpTeamMember = {
+	playerId: number;
+	displayName: string;
+	isGoalkeeper: boolean;
+};
+
 export type MatchOpDraft =
 	| {
 			kind: typeof MATCH_OP.setPlayer;
+			matchId: number;
 			teamId: number;
 			slot: number;
 			playerId: number | null;
@@ -26,11 +50,13 @@ export type MatchOpDraft =
 	  }
 	| {
 			kind: typeof MATCH_OP.setGoalkeeper;
+			matchId: number;
 			teamId: number;
 			playerId: number;
 	  }
 	| {
 			kind: typeof MATCH_OP.addGoal;
+			matchId: number;
 			scorerPlayerId: number;
 			assistPlayerId: number | null;
 			isOwnGoal: boolean;
@@ -38,7 +64,37 @@ export type MatchOpDraft =
 	  }
 	| {
 			kind: typeof MATCH_OP.undoGoal;
+			matchId: number;
 			goalId: number;
+	  }
+	| {
+			kind: typeof MATCH_OP.startMatch;
+			eventId: number;
+			teamAId: number;
+			teamBId: number;
+			durationSeconds: number;
+	  }
+	| {
+			kind: typeof MATCH_OP.updateTeam;
+			teamId: number;
+			color: EventTeamColor | null;
+			playerIds: number[];
+			goalkeeperId: number;
+			members: MatchOpTeamMember[];
+	  }
+	| {
+			kind: typeof MATCH_OP.swapTeam;
+			matchId: number;
+			outgoingTeamId: number;
+			incomingTeamId: number;
+	  }
+	| {
+			kind: typeof MATCH_OP.endMatch;
+			matchId: number;
+	  }
+	| {
+			kind: typeof MATCH_OP.discardMatch;
+			matchId: number;
 	  };
 
 export type MatchOp = MatchOpDraft & {
@@ -47,7 +103,7 @@ export type MatchOp = MatchOpDraft & {
 	createdAt: string;
 };
 
-export const MATCH_OPS_STORAGE_KEY = "babaDoMago-match-ops" as const;
+export const MATCH_OPS_STORAGE_KEY = "babaDoMago-match-ops-event" as const;
 
 export const MATCH_OPS_FLUSH_ERROR = {
 	fallback: "Falha ao sincronizar a partida",
@@ -60,6 +116,11 @@ export const MATCH_OPS_LABEL = {
 	setGoalkeeper: "Goleiro",
 	addGoal: "Gol",
 	undoGoal: "Desfazer gol",
+	startMatch: "Abrir partida",
+	updateTeam: "Editar time",
+	swapTeam: "Trocar time",
+	endMatch: "Encerrar",
+	discardMatch: "Descartar",
 } as const;
 
 const FATAL_MATCH_OP_MESSAGES = new Set<string>(
@@ -110,6 +171,25 @@ export function pendingLocalGoalOpId(
 	return pending.id;
 }
 
+export function remapOpMatchId(
+	op: MatchOp,
+	localMatchId: number,
+	serverMatchId: number,
+): MatchOp {
+	if (!("matchId" in op)) {
+		return op;
+	}
+
+	if (op.matchId !== localMatchId) {
+		return op;
+	}
+
+	return {
+		...op,
+		matchId: serverMatchId,
+	};
+}
+
 export function applyMatchOps<T extends MatchOpsTarget>(
 	match: T | null,
 	ops: readonly MatchOp[],
@@ -125,6 +205,17 @@ export function applyMatchOps<T extends MatchOpsTarget>(
 	return ops.reduce((current, op) => applyMatchOp(current, op), match);
 }
 
+export function applyPlayOps(
+	event: ChampionshipEvent,
+	ops: readonly MatchOp[],
+): ChampionshipEvent {
+	if (ops.length === 0) {
+		return event;
+	}
+
+	return ops.reduce(applyPlayOp, event);
+}
+
 export function applyMatchOp<T extends MatchOpsTarget>(
 	match: T,
 	op: MatchOp,
@@ -138,11 +229,420 @@ export function applyMatchOp<T extends MatchOpsTarget>(
 			return applyAddGoal(match, op);
 		case MATCH_OP.undoGoal:
 			return applyUndoGoal(match, op);
+		case MATCH_OP.startMatch:
+		case MATCH_OP.updateTeam:
+		case MATCH_OP.swapTeam:
+		case MATCH_OP.endMatch:
+		case MATCH_OP.discardMatch:
+			return match;
 		default: {
 			const _exhaustive: never = op;
 			return _exhaustive;
 		}
 	}
+}
+
+function applyPlayOp(event: ChampionshipEvent, op: MatchOp): ChampionshipEvent {
+	switch (op.kind) {
+		case MATCH_OP.updateTeam:
+			return applyUpdateTeam(event, op);
+		case MATCH_OP.startMatch:
+			return applyStartMatch(event, op);
+		case MATCH_OP.swapTeam:
+			return applySwapTeam(event, op);
+		case MATCH_OP.endMatch:
+			return applyEndMatch(event, op);
+		case MATCH_OP.discardMatch:
+			return applyDiscardMatch(event, op);
+		case MATCH_OP.setPlayer:
+		case MATCH_OP.setGoalkeeper:
+		case MATCH_OP.addGoal:
+		case MATCH_OP.undoGoal:
+			return applyQueuedMatchOp(event, op);
+		default: {
+			const _exhaustive: never = op;
+			return _exhaustive;
+		}
+	}
+}
+
+function applyQueuedMatchOp(
+	event: ChampionshipEvent,
+	op: Extract<
+		MatchOp,
+		{
+			kind:
+				| typeof MATCH_OP.setPlayer
+				| typeof MATCH_OP.setGoalkeeper
+				| typeof MATCH_OP.addGoal
+				| typeof MATCH_OP.undoGoal;
+		}
+	>,
+): ChampionshipEvent {
+	const match = findMatchForPlayOp(event.matches, op.matchId);
+	if (!match) {
+		return event;
+	}
+
+	const next = applyMatchOp(match, op);
+	if (next === match) {
+		return event;
+	}
+
+	return {
+		...event,
+		matches: event.matches.map((row) => {
+			if (row.id !== match.id) {
+				return row;
+			}
+
+			return next;
+		}),
+	};
+}
+
+function applyUpdateTeam(
+	event: ChampionshipEvent,
+	op: Extract<MatchOp, { kind: typeof MATCH_OP.updateTeam }>,
+): ChampionshipEvent {
+	const exists = event.teams.some((team) => team.id === op.teamId);
+	if (!exists) {
+		return event;
+	}
+
+	return {
+		...event,
+		teams: event.teams.map((team) => overlayUpdatedTeam(team, event.id, op)),
+	};
+}
+
+function overlayUpdatedTeam(
+	team: ChampionshipEventTeam,
+	eventId: number,
+	op: Extract<MatchOp, { kind: typeof MATCH_OP.updateTeam }>,
+): ChampionshipEventTeam {
+	if (team.id !== op.teamId) {
+		return team;
+	}
+
+	return {
+		...team,
+		color: op.color,
+		template_player_ids: op.playerIds,
+		template_goalkeeper_id: op.goalkeeperId,
+		players: op.members.map((member, index) =>
+			overlayTeamPlayer(eventId, op.teamId, op.localId, member, index),
+		),
+	};
+}
+
+function overlayTeamPlayer(
+	eventId: number,
+	teamId: number,
+	localId: number,
+	member: MatchOpTeamMember,
+	index: number,
+): ChampionshipEventTeamPlayer {
+	return {
+		id: localId * 100 - index,
+		event_id: eventId,
+		team_id: teamId,
+		player_id: member.playerId,
+		display_name: member.displayName,
+		is_goalkeeper: member.isGoalkeeper,
+	};
+}
+
+function applyStartMatch(
+	event: ChampionshipEvent,
+	op: Extract<MatchOp, { kind: typeof MATCH_OP.startMatch }>,
+): ChampionshipEvent {
+	if (event.ended_at !== null) {
+		return event;
+	}
+
+	if (openEventMatch(event.matches)) {
+		return event;
+	}
+
+	if (op.teamAId === op.teamBId) {
+		return event;
+	}
+
+	const teamA = event.teams.find((team) => team.id === op.teamAId);
+	const teamB = event.teams.find((team) => team.id === op.teamBId);
+	if (!teamA || !teamB) {
+		return event;
+	}
+
+	if (eventTeamsSharePlayers(teamA.players, teamB.players)) {
+		return event;
+	}
+
+	const teamAPlayers = matchPlayersFromTeam(
+		teamA,
+		op.localId,
+		event.id,
+		op.localId * 100,
+	);
+	const teamBPlayers = matchPlayersFromTeam(
+		teamB,
+		op.localId,
+		event.id,
+		op.localId * 100 - teamAPlayers.length,
+	);
+
+	const match: ChampionshipEventMatch = {
+		id: op.localId,
+		event_id: event.id,
+		team_a_id: op.teamAId,
+		team_b_id: op.teamBId,
+		created_at: op.createdAt,
+		ended_at: null,
+		winner_team_id: null,
+		duration_seconds: op.durationSeconds,
+		started_at: null,
+		paused_at: null,
+		pause_accumulated_seconds: 0,
+		players: [...teamAPlayers, ...teamBPlayers],
+		goals: [],
+	};
+
+	return {
+		...event,
+		matches: [...event.matches, match],
+	};
+}
+
+function applySwapTeam(
+	event: ChampionshipEvent,
+	op: Extract<MatchOp, { kind: typeof MATCH_OP.swapTeam }>,
+): ChampionshipEvent {
+	const match = findMatchForPlayOp(event.matches, op.matchId);
+	if (!match) {
+		return event;
+	}
+
+	if (match.ended_at !== null) {
+		return event;
+	}
+
+	if (op.outgoingTeamId === op.incomingTeamId) {
+		return event;
+	}
+
+	const stayingTeamId = stayingMatchTeamId(
+		match.team_a_id,
+		match.team_b_id,
+		op.outgoingTeamId,
+	);
+	if (stayingTeamId === null) {
+		return event;
+	}
+
+	if (op.incomingTeamId === stayingTeamId) {
+		return event;
+	}
+
+	const incoming = event.teams.find((team) => team.id === op.incomingTeamId);
+	if (!incoming) {
+		return event;
+	}
+
+	const stayingTeam = event.teams.find((team) => team.id === stayingTeamId);
+	if (!stayingTeam) {
+		return event;
+	}
+
+	if (eventTeamsSharePlayers(incoming.players, stayingTeam.players)) {
+		return event;
+	}
+
+	const stayingPlayers = match.players.filter(
+		(player) => player.team_id === stayingTeamId,
+	);
+	if (eventTeamsSharePlayers(stayingPlayers, incoming.players)) {
+		return event;
+	}
+
+	const incomingPlayers = matchPlayersFromTeam(
+		incoming,
+		match.id,
+		event.id,
+		op.localId * 100,
+	);
+	const nextTeamIds = swappedMatchTeamIds(
+		match.team_a_id,
+		match.team_b_id,
+		op.outgoingTeamId,
+		op.incomingTeamId,
+	);
+
+	const next: ChampionshipEventMatch = {
+		...match,
+		team_a_id: nextTeamIds.teamAId,
+		team_b_id: nextTeamIds.teamBId,
+		goals: [],
+		players: [...stayingPlayers, ...incomingPlayers],
+	};
+
+	return {
+		...event,
+		matches: event.matches.map((row) => {
+			if (row.id !== match.id) {
+				return row;
+			}
+
+			return next;
+		}),
+	};
+}
+
+function applyEndMatch(
+	event: ChampionshipEvent,
+	op: Extract<MatchOp, { kind: typeof MATCH_OP.endMatch }>,
+): ChampionshipEvent {
+	const match = findMatchForPlayOp(event.matches, op.matchId);
+	if (!match) {
+		return event;
+	}
+
+	if (match.ended_at !== null) {
+		return event;
+	}
+
+	const teamAIds = new Set(
+		match.players
+			.filter((player) => player.team_id === match.team_a_id)
+			.map((player) => player.player_id),
+	);
+	const score = matchScore(match.goals, teamAIds);
+	const next: ChampionshipEventMatch = {
+		...match,
+		ended_at: op.createdAt,
+		winner_team_id: matchWinnerTeamId(
+			match.team_a_id,
+			match.team_b_id,
+			score.teamA,
+			score.teamB,
+		),
+	};
+
+	return {
+		...event,
+		matches: event.matches.map((row) => {
+			if (row.id !== match.id) {
+				return row;
+			}
+
+			return next;
+		}),
+	};
+}
+
+function applyDiscardMatch(
+	event: ChampionshipEvent,
+	op: Extract<MatchOp, { kind: typeof MATCH_OP.discardMatch }>,
+): ChampionshipEvent {
+	const match = findMatchForPlayOp(event.matches, op.matchId);
+	if (!match) {
+		return event;
+	}
+
+	return {
+		...event,
+		matches: event.matches.filter((row) => row.id !== match.id),
+	};
+}
+
+function findMatchForPlayOp(
+	matches: readonly ChampionshipEventMatch[],
+	matchId: number,
+): ChampionshipEventMatch | undefined {
+	const exact = matches.find((match) => match.id === matchId);
+	if (exact) {
+		return exact;
+	}
+
+	if (matchId < 0) {
+		return undefined;
+	}
+
+	return openEventMatch(matches) ?? undefined;
+}
+
+function stayingMatchTeamId(
+	teamAId: number,
+	teamBId: number,
+	outgoingTeamId: number,
+): number | null {
+	if (teamAId === outgoingTeamId) {
+		return teamBId;
+	}
+
+	if (teamBId === outgoingTeamId) {
+		return teamAId;
+	}
+
+	return null;
+}
+
+function swappedMatchTeamIds(
+	teamAId: number,
+	teamBId: number,
+	outgoingTeamId: number,
+	incomingTeamId: number,
+): { teamAId: number; teamBId: number } {
+	if (teamAId === outgoingTeamId) {
+		return {
+			teamAId: incomingTeamId,
+			teamBId,
+		};
+	}
+
+	return {
+		teamAId,
+		teamBId: incomingTeamId,
+	};
+}
+
+function matchPlayersFromTeam(
+	team: ChampionshipEventTeam,
+	matchId: number,
+	eventId: number,
+	idSeed: number,
+): ChampionshipEventMatchPlayer[] {
+	let fieldIndex = 0;
+	return team.players.map((player, index) => {
+		const slot = matchSlotForTeamPlayer(player.is_goalkeeper, fieldIndex);
+		if (!player.is_goalkeeper) {
+			fieldIndex += 1;
+		}
+
+		return {
+			id: idSeed - index,
+			match_id: matchId,
+			event_id: eventId,
+			team_id: team.id,
+			player_id: player.player_id,
+			display_name: player.display_name,
+			is_goalkeeper: player.is_goalkeeper,
+			slot,
+			is_substituted: false,
+			include_stats: true,
+		};
+	});
+}
+
+function matchSlotForTeamPlayer(
+	isGoalkeeper: boolean,
+	fieldIndex: number,
+): number {
+	if (isGoalkeeper) {
+		return 0;
+	}
+
+	return fieldIndex + 1;
 }
 
 function applySetPlayer<T extends MatchOpsTarget>(
