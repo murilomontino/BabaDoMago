@@ -69,7 +69,7 @@ export function IconTooltipButton({
 		>
 			{icon}
 			{expandOnMobile && <span className="truncate md:hidden">{label}</span>}
-			{showLabel && <span>{label}</span>}
+			{showLabel && <span className="min-w-0 truncate">{label}</span>}
 		</button>
 	);
 }

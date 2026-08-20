@@ -47,6 +47,18 @@ export function resolveEventPlayers(
 	);
 }
 
+export function eventAttendanceDisplayRating(
+	inRoster: boolean,
+	rosterRating: number,
+	attendanceRating: number,
+): number {
+	if (!inRoster) {
+		return attendanceRating;
+	}
+
+	return rosterRating;
+}
+
 export function playersFromEventAttendance(
 	attendance: readonly {
 		player_id: number;
@@ -64,17 +76,25 @@ export function playersFromEventAttendance(
 	}[],
 	byId: ReadonlyMap<number, ChampionshipPlayer>,
 ): ChampionshipPlayer[] {
-	return attendance.map((row) => ({
-		...resolveRosterPlayer(row.player_id, row.display_name, byId),
-		goals: row.goals,
-		assists: row.assists,
-		assisted_goals: row.assisted_goals,
-		own_goals: row.own_goals,
-		wins: row.wins,
-		losses: row.losses,
-		draws: row.draws,
-		matches: row.matches,
-		mvps: mvpCount(row.is_mvp),
-		rating: row.rating,
-	}));
+	return attendance.map((row) => {
+		const inRoster = byId.has(row.player_id);
+		const player = resolveRosterPlayer(row.player_id, row.display_name, byId);
+		return {
+			...player,
+			goals: row.goals,
+			assists: row.assists,
+			assisted_goals: row.assisted_goals,
+			own_goals: row.own_goals,
+			wins: row.wins,
+			losses: row.losses,
+			draws: row.draws,
+			matches: row.matches,
+			mvps: mvpCount(row.is_mvp),
+			rating: eventAttendanceDisplayRating(
+				inRoster,
+				player.rating,
+				row.rating,
+			),
+		};
+	});
 }

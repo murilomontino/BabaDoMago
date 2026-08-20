@@ -1,5 +1,6 @@
 import type { ChampionshipPlayer } from "../types/championship.ts";
 import {
+	eventAttendanceDisplayRating,
 	fallbackRosterPlayer,
 	playersFromEventAttendance,
 	resolveEventPlayers,
@@ -65,12 +66,14 @@ const fromAttendance = playersFromEventAttendance(
 	],
 	byId,
 )[0];
+check(eventAttendanceDisplayRating(true, 8, 3.5), 8);
+check(eventAttendanceDisplayRating(false, 0, 2.7), 2.7);
 check(fromAttendance?.display_name, "Ana");
 check(fromAttendance?.goals, 2);
 check(fromAttendance?.assists, 1);
 check(fromAttendance?.assisted_goals, 3);
 check(fromAttendance?.mvps, 1);
-check(fromAttendance?.rating, 3.5);
+check(fromAttendance?.rating, 8);
 
 const missing = playersFromEventAttendance(
 	[

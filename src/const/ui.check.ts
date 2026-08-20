@@ -10,6 +10,8 @@ import {
 	SAFE_AREA_BANNER_CLASS,
 	SAFE_AREA_CLASS,
 	SAFE_AREA_FAB_CLASS,
+	SECTION_ACTION_GROUP_CLASS,
+	SECTION_ACTION_HEADER_CLASS,
 } from "./ui.ts";
 
 function check(condition: boolean, message: string) {
@@ -53,5 +55,17 @@ check(
 	"page shell vertical comes from safe area",
 );
 check(SAFE_AREA_BANNER_CLASS.includes("md:bottom-"), "banner clears the fab");
+check(
+	SECTION_ACTION_HEADER_CLASS.includes("flex-col"),
+	"section header stacks on mobile",
+);
+check(
+	SECTION_ACTION_GROUP_CLASS.includes("grid-cols-2"),
+	"section actions two columns",
+);
+check(
+	SECTION_ACTION_GROUP_CLASS.includes("min-w-0"),
+	"section actions allow shrink",
+);
 
 console.log("ui ok");
