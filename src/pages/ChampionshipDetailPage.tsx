@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useNavigate, useParams, useRouterState } from "@tanstack/react-router";
 import { Users } from "lucide-react";
 import { type FormEvent, lazy, Suspense, useState } from "react";
 import { AppDialog } from "@/components/atoms/app-dialog";
@@ -108,7 +108,8 @@ export function ChampionshipDetailPage() {
 	const championshipId = Number(championshipIdParam);
 	const { user } = useAuth();
 	const navigate = useNavigate();
-	const { data, isPending, isError, error } = useChampionship(championshipId);
+	const { data, isPending, isError, error, isFetching, fetchStatus, status } =
+		useChampionship(championshipId);
 	const addPlayer = useAddManualPlayer(championshipId);
 	const claimPlayer = useClaimPlayer();
 	const unlinkPlayer = useUnlinkPlayer();
@@ -148,6 +149,7 @@ export function ChampionshipDetailPage() {
 		useState<ChampionshipPlayer | null>(null);
 	const [tab, setTab] = useChampionshipTab();
 	const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+	const routerStatus = useRouterState({ select: (state) => state.status });
 
 	const currentPlayer = data?.players.find(
 		(player) => !player.deleted_at && player.user_id === user?.id,
@@ -201,7 +203,67 @@ export function ChampionshipDetailPage() {
 
 	const tabs = championshipTabs(permissions.viewManagement);
 
+	// #region agent log
+	fetch("http://127.0.0.1:7501/ingest/7aa36caa-8689-4af1-a425-f57dce975cbd", {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			"X-Debug-Session-Id": "c0754f",
+		},
+		body: JSON.stringify({
+			sessionId: "c0754f",
+			runId: "pre-fix",
+			hypothesisId: "A",
+			location: "ChampionshipDetailPage.tsx:render",
+			message: "championship detail render",
+			data: {
+				selectedTab,
+				requestedTab,
+				isSettingsOpen,
+				isPending,
+				isFetching,
+				fetchStatus,
+				status,
+				hasData: Boolean(data),
+				playerCount: data?.players.length ?? 0,
+				eventsPending: eventsQuery.isPending,
+				eventsFetching: eventsQuery.isFetching,
+				eventsStatus: eventsQuery.status,
+				eventsFetchStatus: eventsQuery.fetchStatus,
+				hasUser: Boolean(user),
+				championshipId,
+				routerStatus,
+			},
+			timestamp: Date.now(),
+		}),
+	}).catch(() => {});
+	// #endregion
+
 	function handleTabChange(id: ChampionshipTab) {
+		// #region agent log
+		fetch("http://127.0.0.1:7501/ingest/7aa36caa-8689-4af1-a425-f57dce975cbd", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Debug-Session-Id": "c0754f",
+			},
+			body: JSON.stringify({
+				sessionId: "c0754f",
+				runId: "pre-fix",
+				hypothesisId: "C",
+				location: "ChampionshipDetailPage.tsx:handleTabChange",
+				message: "tab change requested",
+				data: {
+					from: selectedTab,
+					to: id,
+					routerStatus,
+					isPending,
+					eventsPending: eventsQuery.isPending,
+				},
+				timestamp: Date.now(),
+			}),
+		}).catch(() => {});
+		// #endregion
 		setIsSettingsOpen(false);
 		void setTab(id);
 	}

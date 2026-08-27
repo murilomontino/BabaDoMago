@@ -31,6 +31,27 @@ export function useQueryRefresh(queryKey: QueryKey) {
 		return queryClient.invalidateQueries({ queryKey });
 	}, [queryClient, queryKey]);
 
+	// #region agent log
+	if (fetchingCount > 0) {
+		fetch("http://127.0.0.1:7501/ingest/7aa36caa-8689-4af1-a425-f57dce975cbd", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Debug-Session-Id": "c0754f",
+			},
+			body: JSON.stringify({
+				sessionId: "c0754f",
+				runId: "pre-fix",
+				hypothesisId: "D",
+				location: "use-query-refresh.ts:useQueryRefresh",
+				message: "query refresh fetching",
+				data: { queryKey, fetchingCount },
+				timestamp: Date.now(),
+			}),
+		}).catch(() => {});
+	}
+	// #endregion
+
 	return {
 		refresh,
 		isRefreshing: fetchingCount > 0,

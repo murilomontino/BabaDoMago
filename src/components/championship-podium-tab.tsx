@@ -38,9 +38,12 @@ import {
 } from "@/const/podium";
 import {
 	PODIUM_SHARE_LABEL,
+	PODIUM_SHARE_MODE,
+	type PodiumShareMode,
 	podiumShareCardFromSynergyPairs,
 	podiumShareCardsFromPlayers,
 	podiumShareContext,
+	podiumSharingLabel,
 } from "@/const/podium-share";
 import { SKELETON_LABEL } from "@/const/skeleton";
 import {
@@ -53,7 +56,10 @@ import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
 import { CHAMPIONSHIP_EVENTS_QUERY_KEY } from "@/hooks/championships/championships-query-keys";
 import { usePodiumYear } from "@/hooks/use-podium-year";
 import { includeDefined } from "@/lib/include-when";
-import { sharePodiumImages } from "@/lib/share-podium-image";
+import {
+	sharePodiumSeparateImages,
+	sharePodiumStackedImage,
+} from "@/lib/share-podium-image";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type { ChampionshipEvent } from "@/types/championship-event";
 
@@ -93,7 +99,7 @@ export function ChampionshipPodiumTab({
 	const [semester, setSemester] = useState<PodiumSemester | null>(null);
 	const [months, setMonths] = useState<PodiumMonth[]>([]);
 	const [yearParam, setYearParam] = usePodiumYear();
-	const [isSharing, setIsSharing] = useState<"one" | "all" | null>(null);
+	const [isSharing, setIsSharing] = useState<PodiumShareMode | null>(null);
 	const [shareError, setShareError] = useState<string | null>(null);
 	const currentMonth = podiumCurrentMonth();
 	const includeSynergy = !eventStartsAt;
@@ -181,15 +187,31 @@ export function ChampionshipPodiumTab({
 		return [...playerCards, synergyCard];
 	}, [podiumPlayers, synergyCard]);
 
-	async function handleShare(cards: typeof currentCards, mode: "one" | "all") {
+	async function handleShare(
+		cards: typeof currentCards,
+		mode: PodiumShareMode,
+	) {
 		setIsSharing(mode);
 		setShareError(null);
+		const parts = {
+			championshipName,
+			context: podiumShareContext(eventStartsAt, year, semester, months),
+			generatedAt: new Date().toISOString(),
+		};
 		try {
-			await sharePodiumImages(cards, ceiling, {
-				championshipName,
-				context: podiumShareContext(eventStartsAt, year, semester, months),
-				generatedAt: new Date().toISOString(),
-			});
+			switch (mode) {
+				case PODIUM_SHARE_MODE.all:
+					await sharePodiumStackedImage(cards, ceiling, parts);
+					return;
+				case PODIUM_SHARE_MODE.one:
+				case PODIUM_SHARE_MODE.separate:
+					await sharePodiumSeparateImages(cards, ceiling, parts);
+					return;
+				default: {
+					const _exhaustive: never = mode;
+					return _exhaustive;
+				}
+			}
 		} catch {
 			setShareError(PODIUM_SHARE_LABEL.shareFailed);
 		} finally {
@@ -324,15 +346,19 @@ export function ChampionshipPodiumTab({
 								variant={BUTTON_VARIANT.secondary}
 								disabled={isSharing !== null}
 								onClick={() => {
-									void handleShare(currentCards, "one");
+									void handleShare(currentCards, PODIUM_SHARE_MODE.one);
 								}}
 							>
-								{isSharing === "one" && (
+								{isSharing === PODIUM_SHARE_MODE.one && (
 									<LoaderCircle className="size-4 animate-spin" aria-hidden />
 								)}
-								{isSharing !== "one" && <Share2 className="size-4" />}
-								{isSharing === "one" && PODIUM_SHARE_LABEL.sharing}
-								{isSharing !== "one" && PODIUM_SHARE_LABEL.shareOne}
+								{isSharing !== PODIUM_SHARE_MODE.one && (
+									<Share2 className="size-4" />
+								)}
+								{isSharing === PODIUM_SHARE_MODE.one &&
+									podiumSharingLabel(PODIUM_SHARE_MODE.one)}
+								{isSharing !== PODIUM_SHARE_MODE.one &&
+									PODIUM_SHARE_LABEL.shareOne}
 							</Button>
 						)}
 						{allCards.length > 0 && (
@@ -340,15 +366,39 @@ export function ChampionshipPodiumTab({
 								variant={BUTTON_VARIANT.secondary}
 								disabled={isSharing !== null}
 								onClick={() => {
-									void handleShare(allCards, "all");
+									void handleShare(allCards, PODIUM_SHARE_MODE.all);
 								}}
 							>
-								{isSharing === "all" && (
+								{isSharing === PODIUM_SHARE_MODE.all && (
 									<LoaderCircle className="size-4 animate-spin" aria-hidden />
 								)}
-								{isSharing !== "all" && <Share2 className="size-4" />}
-								{isSharing === "all" && PODIUM_SHARE_LABEL.sharing}
-								{isSharing !== "all" && PODIUM_SHARE_LABEL.shareAll}
+								{isSharing !== PODIUM_SHARE_MODE.all && (
+									<Share2 className="size-4" />
+								)}
+								{isSharing === PODIUM_SHARE_MODE.all &&
+									podiumSharingLabel(PODIUM_SHARE_MODE.all)}
+								{isSharing !== PODIUM_SHARE_MODE.all &&
+									PODIUM_SHARE_LABEL.shareAll}
+							</Button>
+						)}
+						{allCards.length > 1 && (
+							<Button
+								variant={BUTTON_VARIANT.secondary}
+								disabled={isSharing !== null}
+								onClick={() => {
+									void handleShare(allCards, PODIUM_SHARE_MODE.separate);
+								}}
+							>
+								{isSharing === PODIUM_SHARE_MODE.separate && (
+									<LoaderCircle className="size-4 animate-spin" aria-hidden />
+								)}
+								{isSharing !== PODIUM_SHARE_MODE.separate && (
+									<Share2 className="size-4" />
+								)}
+								{isSharing === PODIUM_SHARE_MODE.separate &&
+									podiumSharingLabel(PODIUM_SHARE_MODE.separate)}
+								{isSharing !== PODIUM_SHARE_MODE.separate &&
+									PODIUM_SHARE_LABEL.shareAllSeparate}
 							</Button>
 						)}
 					</div>

@@ -9,6 +9,8 @@ import {
 } from "./podium.ts";
 import {
 	PODIUM_SHARE,
+	PODIUM_SHARE_LABEL,
+	PODIUM_SHARE_MODE,
 	podiumShareAllFileName,
 	podiumShareAllText,
 	podiumShareCardFromStandings,
@@ -18,6 +20,7 @@ import {
 	podiumSharePeriodSlug,
 	podiumSharePlacesInDisplayOrder,
 	podiumShareText,
+	podiumSharingLabel,
 } from "./podium-share.ts";
 import { ROSTER_COLUMN, toRosterRow } from "./roster-stats.ts";
 
@@ -112,6 +115,14 @@ check(
 	"podio-baba-do-mago-tudo-temporada-2026-14-08-2026.png",
 );
 check(PODIUM_SHARE.fileAll, "tudo");
+check(PODIUM_SHARE_LABEL.shareAllSeparate, "Compartilhar tudo separado");
+check(PODIUM_SHARE_LABEL.sharingMany, "Gerando imagens...");
+check(podiumSharingLabel(PODIUM_SHARE_MODE.one), PODIUM_SHARE_LABEL.sharing);
+check(podiumSharingLabel(PODIUM_SHARE_MODE.all), PODIUM_SHARE_LABEL.sharing);
+check(
+	podiumSharingLabel(PODIUM_SHARE_MODE.separate),
+	PODIUM_SHARE_LABEL.sharingMany,
+);
 
 const bruno = toRosterRow(player(2, "Bruno", { goals: 4, rating: 8 }));
 const ana = toRosterRow(

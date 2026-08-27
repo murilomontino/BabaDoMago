@@ -1,5 +1,5 @@
 import { Copy, LoaderCircle, Share2, Users } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/button";
 import { ChampionshipRoster } from "@/components/championship-roster";
 import { SectionCard } from "@/components/section-card";
@@ -112,6 +112,48 @@ export function ChampionshipRosterTab({
 	);
 	const showShare = visiblePlayers.length > 0;
 	const showActions = showShare || canInvite;
+
+	// #region agent log
+	useEffect(() => {
+		fetch("http://127.0.0.1:7501/ingest/7aa36caa-8689-4af1-a425-f57dce975cbd", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Debug-Session-Id": "c0754f",
+			},
+			body: JSON.stringify({
+				sessionId: "c0754f",
+				runId: "pre-fix",
+				hypothesisId: "E",
+				location: "championship-roster-tab.tsx:mount",
+				message: "roster tab mounted",
+				data: { playerCount: players.length },
+				timestamp: Date.now(),
+			}),
+		}).catch(() => {});
+		return () => {
+			fetch(
+				"http://127.0.0.1:7501/ingest/7aa36caa-8689-4af1-a425-f57dce975cbd",
+				{
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+						"X-Debug-Session-Id": "c0754f",
+					},
+					body: JSON.stringify({
+						sessionId: "c0754f",
+						runId: "pre-fix",
+						hypothesisId: "E",
+						location: "championship-roster-tab.tsx:unmount",
+						message: "roster tab unmounted",
+						data: {},
+						timestamp: Date.now(),
+					}),
+				},
+			).catch(() => {});
+		};
+	}, [players.length]);
+	// #endregion
 
 	function handleSortingChange(next: RosterShareSort | null) {
 		setSorting((current) => {

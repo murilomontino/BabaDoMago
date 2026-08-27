@@ -269,6 +269,30 @@ export function ChampionshipEvents({
 	}
 
 	if (eventsQuery.isPending) {
+		// #region agent log
+		fetch("http://127.0.0.1:7501/ingest/7aa36caa-8689-4af1-a425-f57dce975cbd", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Debug-Session-Id": "c0754f",
+			},
+			body: JSON.stringify({
+				sessionId: "c0754f",
+				runId: "pre-fix",
+				hypothesisId: "C",
+				location: "championship-events.tsx:pending",
+				message: "events tab showing skeleton",
+				data: {
+					isPending: eventsQuery.isPending,
+					isFetching: eventsQuery.isFetching,
+					fetchStatus: eventsQuery.fetchStatus,
+					status: eventsQuery.status,
+					championshipId,
+				},
+				timestamp: Date.now(),
+			}),
+		}).catch(() => {});
+		// #endregion
 		return <ChampionshipEventsSkeleton />;
 	}
 

@@ -18,7 +18,7 @@ import {
 	podiumShareFileName,
 	podiumSharePlacesInDisplayOrder,
 } from "@/const/podium-share";
-import { shareOrDownload, tryShareFiles } from "@/lib/share-file";
+import { shareOrDownload } from "@/lib/share-file";
 
 const SHARE_SCALE = 2;
 const STAR_VIEWBOX = 24;
@@ -361,39 +361,46 @@ async function fileFromCard(
 	});
 }
 
-export async function sharePodiumImages(
+function requirePodiumCards(
 	cards: readonly PodiumShareCard[],
-	ceiling: number,
-	parts: PodiumShareFileParts,
-): Promise<void> {
+): readonly PodiumShareCard[] {
 	if (cards.length === 0) {
 		throw new Error(PODIUM_SHARE_LABEL.shareFailed);
 	}
 
-	const files = await Promise.all(
-		cards.map((card) => fileFromCard(card, ceiling, parts)),
-	);
-	const text = podiumShareAllText(cards);
-	const title = PODIUM_SHARE.title;
+	return cards;
+}
 
-	if (files.length === 1) {
-		await shareOrDownload({ files, text, title });
-		return;
-	}
-
-	const many = await tryShareFiles({ files, text, title });
-	if (many === "shared" || many === "aborted") {
-		return;
-	}
-
-	const stacked = await renderPodiumsPng(cards, ceiling);
+export async function sharePodiumStackedImage(
+	cards: readonly PodiumShareCard[],
+	ceiling: number,
+	parts: PodiumShareFileParts,
+): Promise<void> {
+	const ready = requirePodiumCards(cards);
+	const stacked = await renderPodiumsPng(ready, ceiling);
 	await shareOrDownload({
 		files: [
 			new File([stacked], podiumShareAllFileName(parts), {
 				type: PODIUM_SHARE.mimePng,
 			}),
 		],
-		text,
-		title,
+		text: podiumShareAllText(ready),
+		title: PODIUM_SHARE.title,
+	});
+}
+
+export async function sharePodiumSeparateImages(
+	cards: readonly PodiumShareCard[],
+	ceiling: number,
+	parts: PodiumShareFileParts,
+): Promise<void> {
+	const ready = requirePodiumCards(cards);
+	const files = await Promise.all(
+		ready.map((card) => fileFromCard(card, ceiling, parts)),
+	);
+	await shareOrDownload({
+		files,
+		text: podiumShareAllText(ready),
+		title: PODIUM_SHARE.title,
 	});
 }

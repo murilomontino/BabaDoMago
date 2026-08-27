@@ -604,6 +604,34 @@ export async function shareEventRecapImage(input: {
 	});
 
 	const blob = await renderRecapPng(input);
+	// #region agent log
+	fetch("http://127.0.0.1:7501/ingest/7aa36caa-8689-4af1-a425-f57dce975cbd", {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			"X-Debug-Session-Id": "4c2f81",
+		},
+		body: JSON.stringify({
+			sessionId: "4c2f81",
+			runId: "pre-fix",
+			hypothesisId: "E",
+			location: "share-event-recap-image.ts:shareEventRecapImage",
+			message: "final recap rating rows",
+			data: {
+				sample: data.ratingDeltaUp
+					.concat(data.ratingDeltaDown)
+					.slice(0, 8)
+					.map((row) => ({
+						playerId: row.playerId,
+						from: row.from,
+						to: row.to,
+						delta: row.delta,
+					})),
+			},
+			timestamp: Date.now(),
+		}),
+	}).catch(() => {});
+	// #endregion
 	const file = new File(
 		[blob],
 		eventRecapShareFileName({

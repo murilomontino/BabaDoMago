@@ -43,9 +43,28 @@ export const PODIUM_SHARE = {
 export const PODIUM_SHARE_LABEL = {
 	shareOne: "Compartilhar",
 	shareAll: "Compartilhar tudo",
+	shareAllSeparate: "Compartilhar tudo separado",
 	sharing: "Gerando imagem...",
+	sharingMany: "Gerando imagens...",
 	shareFailed: "Não foi possível compartilhar o pódio",
 } as const;
+
+export const PODIUM_SHARE_MODE = {
+	one: "one",
+	all: "all",
+	separate: "separate",
+} as const;
+
+export type PodiumShareMode =
+	(typeof PODIUM_SHARE_MODE)[keyof typeof PODIUM_SHARE_MODE];
+
+export function podiumSharingLabel(mode: PodiumShareMode): string {
+	if (mode === PODIUM_SHARE_MODE.separate) {
+		return PODIUM_SHARE_LABEL.sharingMany;
+	}
+
+	return PODIUM_SHARE_LABEL.sharing;
+}
 
 export const PODIUM_SHARE_COLOR = {
 	field: "#fafaf9",
