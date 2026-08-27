@@ -40,6 +40,7 @@ const RATING_RACE_FONT = {
 	subtitle: "700 16px system-ui, sans-serif",
 	meta: "400 13px system-ui, sans-serif",
 	axis: "400 12px system-ui, sans-serif",
+	name: "600 12px system-ui, sans-serif",
 	label: "700 14px system-ui, sans-serif",
 	initial: "600 16px system-ui, sans-serif",
 } as const;
@@ -302,7 +303,11 @@ function frameOptions(isFirst: boolean, palette: GifPalette) {
 }
 
 function plotX(): number {
-	return RATING_RACE_SHARE.padding + RATING_RACE_SHARE.axisWidth;
+	return (
+		RATING_RACE_SHARE.padding +
+		RATING_RACE_SHARE.nameWidth +
+		RATING_RACE_SHARE.axisWidth
+	);
 }
 
 function plotY(): number {
@@ -469,6 +474,7 @@ function drawRaceFrame(
 			input.ceiling,
 		);
 	}
+	drawLeaderNames(context, leaders);
 }
 
 function drawGrid(context: CanvasRenderingContext2D, ceiling: number) {
@@ -511,6 +517,70 @@ function drawXLabels(
 	if (current) {
 		context.textAlign = "right";
 		context.fillText(current, plotX() + plotWidth(), y);
+	}
+}
+
+function nameRowHeight(count: number): number {
+	if (count <= 0) {
+		return 22;
+	}
+
+	return Math.min(22, plotHeight() / count);
+}
+
+function fitText(
+	context: CanvasRenderingContext2D,
+	text: string,
+	maxWidth: number,
+): string {
+	if (context.measureText(text).width <= maxWidth) {
+		return text;
+	}
+
+	let truncated = text;
+	while (
+		truncated.length > 0 &&
+		context.measureText(`${truncated}…`).width > maxWidth
+	) {
+		truncated = truncated.slice(0, -1);
+	}
+
+	if (!truncated) {
+		return "…";
+	}
+
+	return `${truncated}…`;
+}
+
+function drawLeaderNames(
+	context: CanvasRenderingContext2D,
+	leaders: readonly RatingRaceLeader[],
+) {
+	const { padding, nameWidth } = RATING_RACE_SHARE;
+	const swatch = 8;
+	const gap = 6;
+	const row = nameRowHeight(leaders.length);
+	const textX = padding + swatch + gap;
+	const maxNameWidth = nameWidth - swatch - gap - 4;
+
+	context.font = RATING_RACE_FONT.name;
+	context.textAlign = "left";
+	context.textBaseline = "middle";
+
+	for (const [index, leader] of leaders.entries()) {
+		const y = plotY() + row * index + row / 2;
+		context.fillStyle = leader.series.color;
+		context.fillRect(padding, y - swatch / 2, swatch, swatch);
+		context.fillStyle = RATING_RACE_COLOR.fg;
+		context.fillText(
+			fitText(
+				context,
+				`${ratingRacePositionLabel(leader.position)} ${leader.series.name}`,
+				maxNameWidth,
+			),
+			textX,
+			y,
+		);
 	}
 }
 

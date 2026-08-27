@@ -13,6 +13,7 @@ export const RATING_RACE_SHARE = {
 	height: 600,
 	padding: 40,
 	headerHeight: 104,
+	nameWidth: 132,
 	axisWidth: 56,
 	rightGutter: 64,
 	xLabelHeight: 28,
