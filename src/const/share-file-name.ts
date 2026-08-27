@@ -3,6 +3,7 @@ import { formatEventStartsAt } from "./championship-event.ts";
 export const SHARE_FILE = {
 	png: "png",
 	gif: "gif",
+	mp4: "mp4",
 } as const;
 
 export type ShareFileExtension = (typeof SHARE_FILE)[keyof typeof SHARE_FILE];

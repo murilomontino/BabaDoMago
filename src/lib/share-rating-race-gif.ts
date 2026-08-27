@@ -1,4 +1,5 @@
 import { applyPalette, GIFEncoder, type GifPalette, quantize } from "gifenc";
+import { ArrayBufferTarget, Muxer } from "mp4-muxer";
 import { formatEventStartsAt } from "@/const/championship-event";
 import type {
 	ChampionshipRatingHistoryChartPoint,
@@ -18,6 +19,7 @@ import {
 	ratingRaceGifFileName,
 	ratingRaceLeaders,
 	ratingRaceLimitCaption,
+	ratingRaceMp4FileName,
 	ratingRacePositionLabel,
 	ratingRaceSeriesPath,
 } from "@/const/rating-race-share";
@@ -42,26 +44,23 @@ const RATING_RACE_FONT = {
 	initial: "600 16px system-ui, sans-serif",
 } as const;
 
+type RaceCanvasSetup = {
+	canvas: HTMLCanvasElement;
+	context: CanvasRenderingContext2D;
+	entries: RatingRaceEntry[];
+	avatars: ReadonlyMap<string, HTMLImageElement>;
+};
+
 export async function shareRatingRaceGif(
 	input: RatingRaceGifInput,
 ): Promise<void> {
-	if (input.series.length === 0) {
-		throw new Error(RATING_RACE_LABEL.failed);
-	}
-
-	const canvas = document.createElement("canvas");
-	canvas.width = RATING_RACE_SHARE.width;
-	canvas.height = RATING_RACE_SHARE.height;
-	const context = canvas.getContext("2d");
-	if (!context) {
-		throw new Error(RATING_RACE_LABEL.failed);
-	}
-
-	const entries = ratingRaceEntries(input.rows, input.series);
-	const avatars = await loadAvatarMap(
-		input.series.map((item) => item.avatarUrl),
+	const setup = await prepareRaceCanvas(input, RATING_RACE_LABEL.failed);
+	const blob = encodeRatingRaceGif(
+		setup.context,
+		input,
+		setup.entries,
+		setup.avatars,
 	);
-	const blob = encodeRatingRaceGif(context, input, entries, avatars);
 	const file = new File(
 		[blob],
 		ratingRaceGifFileName({
@@ -77,6 +76,58 @@ export async function shareRatingRaceGif(
 		title: RATING_RACE_LABEL.title,
 		text: ratingRaceShareText(input),
 	});
+}
+
+export async function shareRatingRaceVideo(
+	input: RatingRaceGifInput,
+): Promise<void> {
+	const setup = await prepareRaceCanvas(input, RATING_RACE_LABEL.failedVideo);
+	const blob = await encodeRatingRaceMp4(
+		setup.canvas,
+		setup.context,
+		input,
+		setup.entries,
+		setup.avatars,
+	);
+	const file = new File(
+		[blob],
+		ratingRaceMp4FileName({
+			championshipName: input.championshipName,
+			limit: input.limit,
+			generatedAt: input.generatedAt,
+		}),
+		{ type: RATING_RACE_SHARE.mimeMp4 },
+	);
+
+	await shareOrDownload({
+		files: [file],
+		title: RATING_RACE_LABEL.title,
+		text: ratingRaceShareText(input),
+	});
+}
+
+async function prepareRaceCanvas(
+	input: RatingRaceGifInput,
+	failedLabel: string,
+): Promise<RaceCanvasSetup> {
+	if (input.series.length === 0) {
+		throw new Error(failedLabel);
+	}
+
+	const canvas = document.createElement("canvas");
+	canvas.width = RATING_RACE_SHARE.width;
+	canvas.height = RATING_RACE_SHARE.height;
+	const context = canvas.getContext("2d");
+	if (!context) {
+		throw new Error(failedLabel);
+	}
+
+	const entries = ratingRaceEntries(input.rows, input.series);
+	const avatars = await loadAvatarMap(
+		input.series.map((item) => item.avatarUrl),
+	);
+
+	return { canvas, context, entries, avatars };
 }
 
 function encodeRatingRaceGif(
@@ -112,6 +163,122 @@ function encodeRatingRaceGif(
 
 	encoder.finish();
 	return gifBytesBlob(encoder.bytes());
+}
+
+async function encodeRatingRaceMp4(
+	canvas: HTMLCanvasElement,
+	context: CanvasRenderingContext2D,
+	input: RatingRaceGifInput,
+	entries: readonly RatingRaceEntry[],
+	avatars: ReadonlyMap<string, HTMLImageElement>,
+): Promise<Blob> {
+	// ponytail: encode síncrono no main thread, O(frames × pixels), pode travar a UI por 1-3s; upgrade é Web Worker + OffscreenCanvas.
+	const supported = await isRatingRaceMp4Supported();
+	if (!supported) {
+		throw new Error(RATING_RACE_LABEL.failedVideo);
+	}
+
+	const { width, height, frameDelayMs, mp4Codec, mp4Bitrate } =
+		RATING_RACE_SHARE;
+	const frames = ratingRaceFrames(input.rows.length);
+	const lastProgress = frames.at(-1) ?? 0;
+	drawRaceFrame(context, input, entries, avatars, lastProgress);
+
+	const timestampUs = frameDelayMs * 1000;
+	const target = new ArrayBufferTarget();
+	const muxer = new Muxer({
+		target,
+		video: {
+			codec: "avc",
+			width,
+			height,
+		},
+		fastStart: "in-memory",
+	});
+
+	let encodeError: Error | null = null;
+	const encoder = new VideoEncoder({
+		output: (chunk, meta) => {
+			muxer.addVideoChunk(chunk, meta);
+		},
+		error: (error) => {
+			encodeError = error;
+		},
+	});
+	encoder.configure({
+		codec: mp4Codec,
+		width,
+		height,
+		bitrate: mp4Bitrate,
+	});
+
+	for (const [index, progress] of frames.entries()) {
+		if (encodeError) {
+			encoder.close();
+			throw encodeError;
+		}
+
+		await waitForEncoderQueue(encoder);
+		drawRaceFrame(context, input, entries, avatars, progress);
+		const frame = new VideoFrame(canvas, {
+			timestamp: index * timestampUs,
+			duration: timestampUs,
+		});
+		encoder.encode(frame, { keyFrame: isMp4KeyFrame(index) });
+		frame.close();
+	}
+
+	await encoder.flush();
+	encoder.close();
+	if (encodeError) {
+		throw encodeError;
+	}
+
+	muxer.finalize();
+	return mp4BytesBlob(target.buffer);
+}
+
+async function isRatingRaceMp4Supported(): Promise<boolean> {
+	if (typeof VideoEncoder === "undefined") {
+		return false;
+	}
+
+	const result = await VideoEncoder.isConfigSupported({
+		codec: RATING_RACE_SHARE.mp4Codec,
+		width: RATING_RACE_SHARE.width,
+		height: RATING_RACE_SHARE.height,
+		bitrate: RATING_RACE_SHARE.mp4Bitrate,
+	});
+
+	return Boolean(result.supported);
+}
+
+function isMp4KeyFrame(index: number): boolean {
+	return index % RATING_RACE_SHARE.stepsPerRound === 0;
+}
+
+async function waitForEncoderQueue(encoder: VideoEncoder): Promise<void> {
+	if (encoder.encodeQueueSize < 8) {
+		return;
+	}
+
+	await new Promise<void>((resolve) => {
+		const onDequeue = () => {
+			if (encoder.encodeQueueSize >= 4) {
+				return;
+			}
+
+			encoder.removeEventListener("dequeue", onDequeue);
+			resolve();
+		};
+		encoder.addEventListener("dequeue", onDequeue);
+	});
+}
+
+function mp4BytesBlob(buffer: ArrayBuffer): Blob {
+	const copy = new Uint8Array(buffer.byteLength);
+	copy.set(new Uint8Array(buffer));
+	return new Blob([copy], { type: RATING_RACE_SHARE.mimeMp4 });
 }
 
 function gifBytesBlob(bytes: Uint8Array): Blob {

@@ -5,6 +5,7 @@ import {
 	ratingRaceGifFileName,
 	ratingRaceLeaders,
 	ratingRaceLimitCaption,
+	ratingRaceMp4FileName,
 	ratingRaceSeriesPath,
 	ratingRaceSeriesValues,
 	ratingRaceValueAt,
@@ -117,5 +118,13 @@ const fileName = ratingRaceGifFileName({
 });
 check(fileName.startsWith("corrida-nota"), "gif name prefix");
 check(fileName.endsWith(".gif"), "gif extension");
+
+const mp4Name = ratingRaceMp4FileName({
+	championshipName: "Baba",
+	limit: 10,
+	generatedAt: "2026-08-27T22:00:00.000Z",
+});
+check(mp4Name.startsWith("corrida-nota"), "mp4 name prefix");
+check(mp4Name.endsWith(".mp4"), "mp4 extension");
 
 console.log("rating-race-share ok");

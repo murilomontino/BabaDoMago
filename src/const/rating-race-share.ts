@@ -25,6 +25,9 @@ export const RATING_RACE_SHARE = {
 	maxColors: 256,
 	gifFormat: "rgb565",
 	mimeGif: "image/gif",
+	mimeMp4: "video/mp4",
+	mp4Codec: "avc1.42001f",
+	mp4Bitrate: 1_500_000,
 	filePrefix: "corrida-nota",
 } as const;
 
@@ -43,12 +46,23 @@ export const RATING_RACE_LABEL = {
 	generate: "Gerar GIF",
 	generating: "Gerando GIF...",
 	failed: "Não foi possível gerar o GIF",
+	generateVideo: "Gerar vídeo",
+	generatingVideo: "Gerando vídeo...",
+	failedVideo: "Não foi possível gerar o vídeo",
 	title: "Corrida da nota",
 	subtitle: "Evolução da nota",
 	limit: "Jogadores no GIF",
 	limitAll: "Todos",
 	topPrefix: "Top",
 } as const;
+
+export const RATING_RACE_SHARE_KIND = {
+	gif: "gif",
+	video: "video",
+} as const;
+
+export type RatingRaceShareKind =
+	(typeof RATING_RACE_SHARE_KIND)[keyof typeof RATING_RACE_SHARE_KIND];
 
 export const RATING_RACE_LIMIT = {
 	options: [3, 5, 10, 15, 20],
@@ -229,7 +243,7 @@ export function ratingRaceLimitCaption(limit: RatingRaceLimit): string {
 	return `${RATING_RACE_LABEL.topPrefix} ${limit}`;
 }
 
-export function ratingRaceGifFileName({
+function ratingRaceFileNameParts({
 	championshipName,
 	limit,
 	generatedAt,
@@ -237,16 +251,29 @@ export function ratingRaceGifFileName({
 	championshipName: string;
 	limit: RatingRaceLimit;
 	generatedAt: string;
+}): (string | null)[] {
+	return [
+		RATING_RACE_SHARE.filePrefix,
+		championshipName,
+		ratingRaceLimitCaption(limit),
+		shareFileDateStamp(generatedAt),
+	];
+}
+
+export function ratingRaceGifFileName(input: {
+	championshipName: string;
+	limit: RatingRaceLimit;
+	generatedAt: string;
 }): string {
-	return shareFileName(
-		[
-			RATING_RACE_SHARE.filePrefix,
-			championshipName,
-			ratingRaceLimitCaption(limit),
-			shareFileDateStamp(generatedAt),
-		],
-		SHARE_FILE.gif,
-	);
+	return shareFileName(ratingRaceFileNameParts(input), SHARE_FILE.gif);
+}
+
+export function ratingRaceMp4FileName(input: {
+	championshipName: string;
+	limit: RatingRaceLimit;
+	generatedAt: string;
+}): string {
+	return shareFileName(ratingRaceFileNameParts(input), SHARE_FILE.mp4);
 }
 
 export function ratingRacePositionLabel(position: number): string {

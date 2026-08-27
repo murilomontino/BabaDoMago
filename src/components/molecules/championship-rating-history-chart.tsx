@@ -1,4 +1,4 @@
-import { Film, LoaderCircle } from "lucide-react";
+import { Clapperboard, Film, LoaderCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
 	Line,
@@ -31,11 +31,17 @@ import {
 	parseRatingRaceLimit,
 	RATING_RACE_LABEL,
 	RATING_RACE_LIMIT,
+	RATING_RACE_SHARE_KIND,
 	type RatingRaceLimit,
+	type RatingRaceShareKind,
 	ratingRaceLimitValue,
 } from "@/const/rating-race-share";
 import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
-import { shareRatingRaceGif } from "@/lib/share-rating-race-gif";
+import {
+	type RatingRaceGifInput,
+	shareRatingRaceGif,
+	shareRatingRaceVideo,
+} from "@/lib/share-rating-race-gif";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type { ChampionshipEvent } from "@/types/championship-event";
 
@@ -57,6 +63,26 @@ type ChartSeriesDotProps = {
 	lastIndex?: number;
 };
 
+async function shareRaceByKind(
+	kind: RatingRaceShareKind,
+	input: RatingRaceGifInput,
+): Promise<void> {
+	if (kind === RATING_RACE_SHARE_KIND.video) {
+		await shareRatingRaceVideo(input);
+		return;
+	}
+
+	await shareRatingRaceGif(input);
+}
+
+function ratingRaceShareFailedLabel(kind: RatingRaceShareKind): string {
+	if (kind === RATING_RACE_SHARE_KIND.video) {
+		return RATING_RACE_LABEL.failedVideo;
+	}
+
+	return RATING_RACE_LABEL.failed;
+}
+
 export function ChampionshipRatingHistoryChart({
 	players,
 	events,
@@ -72,8 +98,8 @@ export function ChampionshipRatingHistoryChart({
 	const [limit, setLimit] = useState<RatingRaceLimit>(
 		RATING_RACE_LIMIT.default,
 	);
-	const [isGeneratingGif, setIsGeneratingGif] = useState(false);
-	const [gifError, setGifError] = useState<string | null>(null);
+	const [shareKind, setShareKind] = useState<RatingRaceShareKind | null>(null);
+	const [shareError, setShareError] = useState<string | null>(null);
 	const selectedIds = championshipRatingHistorySelection(selected, playerIds);
 	const visible = visibleChampionshipRatingHistorySeries(
 		chart.series,
@@ -89,22 +115,27 @@ export function ChampionshipRatingHistoryChart({
 		selectedIds,
 	);
 
-	async function handleGenerateGif() {
-		setIsGeneratingGif(true);
-		setGifError(null);
+	const isBusy = shareKind !== null;
+	const isGeneratingGif = shareKind === RATING_RACE_SHARE_KIND.gif;
+	const isGeneratingVideo = shareKind === RATING_RACE_SHARE_KIND.video;
+
+	async function handleShare(kind: RatingRaceShareKind) {
+		setShareKind(kind);
+		setShareError(null);
+		const input = {
+			championshipName,
+			rows: chart.rows,
+			series: visible,
+			ceiling,
+			limit,
+			generatedAt: new Date().toISOString(),
+		};
 		try {
-			await shareRatingRaceGif({
-				championshipName,
-				rows: chart.rows,
-				series: visible,
-				ceiling,
-				limit,
-				generatedAt: new Date().toISOString(),
-			});
+			await shareRaceByKind(kind, input);
 		} catch {
-			setGifError(RATING_RACE_LABEL.failed);
+			setShareError(ratingRaceShareFailedLabel(kind));
 		} finally {
-			setIsGeneratingGif(false);
+			setShareKind(null);
 		}
 	}
 
@@ -115,7 +146,7 @@ export function ChampionshipRatingHistoryChart({
 					{CHAMPIONSHIP_RATING_HISTORY_LABEL.title}
 				</h3>
 				{visible.length > 0 && (
-					<div className="flex flex-wrap items-end gap-2">
+					<div className="flex w-full flex-col gap-2 sm:w-auto">
 						<label className="block text-xs text-fg-muted">
 							{RATING_RACE_LABEL.limit}
 							<select
@@ -135,24 +166,40 @@ export function ChampionshipRatingHistoryChart({
 								</option>
 							</select>
 						</label>
-						<Button
-							variant={BUTTON_VARIANT.secondary}
-							disabled={isGeneratingGif}
-							onClick={() => {
-								void handleGenerateGif();
-							}}
-						>
-							{isGeneratingGif && (
-								<LoaderCircle className="size-4 animate-spin" aria-hidden />
-							)}
-							{!isGeneratingGif && <Film className="size-4" />}
-							{isGeneratingGif && RATING_RACE_LABEL.generating}
-							{!isGeneratingGif && RATING_RACE_LABEL.generate}
-						</Button>
+						<div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
+							<Button
+								variant={BUTTON_VARIANT.secondary}
+								disabled={isBusy}
+								onClick={() => {
+									void handleShare(RATING_RACE_SHARE_KIND.gif);
+								}}
+							>
+								{isGeneratingGif && (
+									<LoaderCircle className="size-4 animate-spin" aria-hidden />
+								)}
+								{!isGeneratingGif && <Film className="size-4" />}
+								{isGeneratingGif && RATING_RACE_LABEL.generating}
+								{!isGeneratingGif && RATING_RACE_LABEL.generate}
+							</Button>
+							<Button
+								variant={BUTTON_VARIANT.secondary}
+								disabled={isBusy}
+								onClick={() => {
+									void handleShare(RATING_RACE_SHARE_KIND.video);
+								}}
+							>
+								{isGeneratingVideo && (
+									<LoaderCircle className="size-4 animate-spin" aria-hidden />
+								)}
+								{!isGeneratingVideo && <Clapperboard className="size-4" />}
+								{isGeneratingVideo && RATING_RACE_LABEL.generatingVideo}
+								{!isGeneratingVideo && RATING_RACE_LABEL.generateVideo}
+							</Button>
+						</div>
 					</div>
 				)}
 			</div>
-			{gifError && <p className={ERROR_CLASS}>{gifError}</p>}
+			{shareError && <p className={ERROR_CLASS}>{shareError}</p>}
 			{emptyLabel && <p className="text-sm text-fg-muted">{emptyLabel}</p>}
 			{!emptyLabel && (
 				<>
