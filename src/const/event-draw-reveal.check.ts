@@ -12,12 +12,14 @@ import {
 	eventDrawRevealChannelName,
 	eventDrawRevealCountAfterStart,
 	eventDrawRevealDelayMs,
+	eventDrawRevealGridClass,
 	eventDrawRevealItemCount,
 	eventDrawRevealNextPlayerCount,
 	eventDrawRevealPageStatus,
 	eventDrawRevealPhase,
-	eventDrawRevealShouldTick,
+	eventDrawRevealRoundRobinSlots,
 	eventDrawRevealShareIsPrimary,
+	eventDrawRevealShouldTick,
 	eventDrawRevealShowControls,
 	eventDrawRevealShowShare,
 	eventDrawRevealSlotIsGoalkeeper,
@@ -53,6 +55,30 @@ const bruno = {
 	avatar_url: null,
 };
 
+const caio = {
+	id: 3,
+	nickname: "Caio",
+	display_name: "Caio",
+	rating: 5,
+	avatar_url: null,
+};
+
+const dana = {
+	id: 4,
+	nickname: "Dana",
+	display_name: "Dana",
+	rating: 4,
+	avatar_url: null,
+};
+
+const eva = {
+	id: 5,
+	nickname: "Eva",
+	display_name: "Eva",
+	rating: 8,
+	avatar_url: null,
+};
+
 const cards = eventDrawRevealCards(
 	eventTeamsShareCards(
 		[
@@ -79,29 +105,76 @@ const cards = eventDrawRevealCards(
 	),
 );
 
+const roundRobinCards = eventDrawRevealCards(
+	eventTeamsShareCards(
+		[
+			{
+				key: "a",
+				color: EVENT_TEAM_COLOR.red,
+				slots: ["1", "2"],
+				isActive: true,
+			},
+			{
+				key: "b",
+				color: EVENT_TEAM_COLOR.green,
+				slots: ["3"],
+				isActive: true,
+			},
+			{
+				key: "c",
+				color: EVENT_TEAM_COLOR.blue,
+				slots: ["4", "5"],
+				isActive: true,
+			},
+		],
+		[ana, bruno, caio, dana, eva],
+	),
+);
+
 check(cards.length, 2);
+check(roundRobinCards.length, 3);
+check(roundRobinCards[0]?.players.length, 2);
+check(roundRobinCards[1]?.players.length, 1);
+check(roundRobinCards[2]?.players.length, 2);
 check(
 	eventDrawRevealCardKey({ title: "A", color: "red", players: [] }),
 	"A:red",
 );
 check(eventDrawRevealCardKey({ title: "B", color: null, players: [] }), "B:");
-check(eventDrawRevealItemCount(cards), 5);
-check(eventDrawRevealVisibleCards(cards, 0).length, 0);
-check(eventDrawRevealVisibleCards(cards, 1)[0]?.players.length, 0);
-check(eventDrawRevealVisibleCards(cards, 2)[0]?.players.length, 1);
-check(eventDrawRevealVisibleCards(cards, 3)[0]?.players.length, 2);
-check(eventDrawRevealVisibleCards(cards, 3).length, 1);
-check(eventDrawRevealVisibleCards(cards, 4).length, 2);
-check(eventDrawRevealVisibleCards(cards, 4)[1]?.players.length, 0);
-check(eventDrawRevealVisibleCards(cards, 5)[1]?.players.length, 1);
-check(eventDrawRevealVisiblePlayerCount(cards, 1), 0);
-check(eventDrawRevealVisiblePlayerCount(cards, 3), 2);
-check(eventDrawRevealNextPlayerCount(cards, 1), 2);
-check(eventDrawRevealNextPlayerCount(cards, 3), 5);
-check(eventDrawRevealNextPlayerCount(cards, 4), 5);
-check(eventDrawRevealNextPlayerCount(cards, 5), 5);
+check(eventDrawRevealItemCount(roundRobinCards), 5);
+check(eventDrawRevealRoundRobinSlots(roundRobinCards).length, 5);
+check(eventDrawRevealRoundRobinSlots(roundRobinCards)[0]?.teamIndex, 0);
+check(eventDrawRevealRoundRobinSlots(roundRobinCards)[0]?.playerIndex, 0);
+check(eventDrawRevealRoundRobinSlots(roundRobinCards)[1]?.teamIndex, 1);
+check(eventDrawRevealRoundRobinSlots(roundRobinCards)[1]?.playerIndex, 0);
+check(eventDrawRevealRoundRobinSlots(roundRobinCards)[2]?.teamIndex, 2);
+check(eventDrawRevealRoundRobinSlots(roundRobinCards)[2]?.playerIndex, 0);
+check(eventDrawRevealRoundRobinSlots(roundRobinCards)[3]?.teamIndex, 0);
+check(eventDrawRevealRoundRobinSlots(roundRobinCards)[3]?.playerIndex, 1);
+check(eventDrawRevealRoundRobinSlots(roundRobinCards)[4]?.teamIndex, 2);
+check(eventDrawRevealRoundRobinSlots(roundRobinCards)[4]?.playerIndex, 1);
+check(eventDrawRevealVisibleCards(roundRobinCards, 0).length, 0);
+check(eventDrawRevealVisibleCards(roundRobinCards, 1).length, 3);
+check(eventDrawRevealVisibleCards(roundRobinCards, 1)[0]?.players.length, 1);
+check(eventDrawRevealVisibleCards(roundRobinCards, 1)[1]?.players.length, 0);
+check(eventDrawRevealVisibleCards(roundRobinCards, 1)[2]?.players.length, 0);
+check(eventDrawRevealVisibleCards(roundRobinCards, 3)[0]?.players.length, 1);
+check(eventDrawRevealVisibleCards(roundRobinCards, 3)[1]?.players.length, 1);
+check(eventDrawRevealVisibleCards(roundRobinCards, 3)[2]?.players.length, 1);
+check(eventDrawRevealVisibleCards(roundRobinCards, 4)[0]?.players.length, 2);
+check(eventDrawRevealVisibleCards(roundRobinCards, 4)[1]?.players.length, 1);
+check(eventDrawRevealVisibleCards(roundRobinCards, 4)[2]?.players.length, 1);
+check(eventDrawRevealVisibleCards(roundRobinCards, 5)[2]?.players.length, 2);
+check(eventDrawRevealVisiblePlayerCount(roundRobinCards, 1), 1);
+check(eventDrawRevealVisiblePlayerCount(roundRobinCards, 3), 3);
+check(eventDrawRevealNextPlayerCount(roundRobinCards, 1), 2);
+check(eventDrawRevealNextPlayerCount(roundRobinCards, 3), 4);
+check(eventDrawRevealNextPlayerCount(roundRobinCards, 4), 5);
+check(eventDrawRevealNextPlayerCount(roundRobinCards, 5), 5);
 check(eventDrawRevealCanNext(4, 5), true);
 check(eventDrawRevealCanNext(5, 5), false);
+check(eventDrawRevealGridClass(1), "grid-cols-1");
+check(eventDrawRevealGridClass(4), "grid-cols-2");
 
 check(
 	eventDrawRevealShouldTick({

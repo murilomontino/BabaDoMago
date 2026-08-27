@@ -89,7 +89,58 @@ export function eventDrawRevealCardKey(card: EventTeamShareCard): string {
 export function eventDrawRevealItemCount(
 	cards: readonly EventTeamShareCard[],
 ): number {
-	return cards.reduce((sum, card) => sum + 1 + card.players.length, 0);
+	return cards.reduce((sum, card) => sum + card.players.length, 0);
+}
+
+export type EventDrawRevealSlot = {
+	teamIndex: number;
+	playerIndex: number;
+};
+
+export function eventDrawRevealRoundRobinSlots(
+	cards: readonly EventTeamShareCard[],
+): EventDrawRevealSlot[] {
+	const maxPlayers = cards.reduce(
+		(max, card) => Math.max(max, card.players.length),
+		0,
+	);
+
+	return Array.from(
+		{ length: maxPlayers },
+		(_, playerIndex) => playerIndex,
+	).flatMap((playerIndex) =>
+		cards.flatMap((card, teamIndex) =>
+			eventDrawRevealSlotWhenPresent(card, teamIndex, playerIndex),
+		),
+	);
+}
+
+function eventDrawRevealSlotWhenPresent(
+	card: EventTeamShareCard,
+	teamIndex: number,
+	playerIndex: number,
+): EventDrawRevealSlot[] {
+	if (playerIndex >= card.players.length) {
+		return [];
+	}
+
+	return [{ teamIndex, playerIndex }];
+}
+
+function eventDrawRevealRevealedCountByTeam(
+	cards: readonly EventTeamShareCard[],
+	visibleCount: number,
+): number[] {
+	const counts = cards.map(() => 0);
+	const slots = eventDrawRevealRoundRobinSlots(cards).slice(
+		0,
+		Math.max(0, visibleCount),
+	);
+
+	return slots.reduce((acc, slot) => {
+		acc[slot.teamIndex] += 1;
+		return acc;
+	}, counts);
 }
 
 export function eventDrawRevealVisibleCards(
@@ -100,34 +151,22 @@ export function eventDrawRevealVisibleCards(
 		return [];
 	}
 
-	let remaining = visibleCount;
-	const visible: EventTeamShareCard[] = [];
+	const revealedByTeam = eventDrawRevealRevealedCountByTeam(
+		cards,
+		visibleCount,
+	);
 
-	for (const card of cards) {
-		if (remaining <= 0) {
-			break;
-		}
-
-		remaining -= 1;
-		const playerCount = Math.min(card.players.length, Math.max(0, remaining));
-		remaining -= playerCount;
-		visible.push({
-			...card,
-			players: card.players.slice(0, playerCount),
-		});
-	}
-
-	return visible;
+	return cards.map((card, teamIndex) => ({
+		...card,
+		players: card.players.slice(0, revealedByTeam[teamIndex] ?? 0),
+	}));
 }
 
 export function eventDrawRevealVisiblePlayerCount(
 	cards: readonly EventTeamShareCard[],
 	visibleCount: number,
 ): number {
-	return eventDrawRevealVisibleCards(cards, visibleCount).reduce(
-		(sum, card) => sum + card.players.length,
-		0,
-	);
+	return Math.min(Math.max(0, visibleCount), eventDrawRevealItemCount(cards));
 }
 
 export function eventDrawRevealNextPlayerCount(
@@ -139,14 +178,15 @@ export function eventDrawRevealNextPlayerCount(
 		return total;
 	}
 
-	const currentPlayers = eventDrawRevealVisiblePlayerCount(cards, visibleCount);
-	for (let next = visibleCount + 1; next <= total; next += 1) {
-		if (eventDrawRevealVisiblePlayerCount(cards, next) > currentPlayers) {
-			return next;
-		}
+	return visibleCount + 1;
+}
+
+export function eventDrawRevealGridClass(teamCount: number): string {
+	if (teamCount <= 1) {
+		return "grid-cols-1";
 	}
 
-	return total;
+	return "grid-cols-2";
 }
 
 export function eventDrawRevealCanNext(

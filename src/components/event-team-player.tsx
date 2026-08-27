@@ -14,6 +14,7 @@ import {
 	eventTeamName,
 } from "@/const/event-team-color";
 import { playerVisibleName } from "@/const/player-name";
+import { PLAYER_STAR_CLASS } from "@/const/player-rating";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 export const EVENT_TEAM_PLAYER_SLOT_CLASS =
@@ -177,6 +178,7 @@ type EventTeamPlayerRowProps = {
 	ceiling: number;
 	isGoalkeeperVolunteer?: boolean;
 	onRemove?: () => void;
+	starClassName?: string;
 };
 
 export function EventTeamPlayerRow({
@@ -184,6 +186,7 @@ export function EventTeamPlayerRow({
 	ceiling,
 	isGoalkeeperVolunteer = false,
 	onRemove,
+	starClassName = PLAYER_STAR_CLASS.default,
 }: EventTeamPlayerRowProps) {
 	const visibleName = playerVisibleName(player);
 
@@ -198,7 +201,11 @@ export function EventTeamPlayerRow({
 					{EVENT_TEAM_POSITION_LABEL.goalkeeper}
 				</span>
 			)}
-			<PlayerRating rating={player.rating} ceiling={ceiling} />
+			<PlayerRating
+				rating={player.rating}
+				ceiling={ceiling}
+				starClassName={starClassName}
+			/>
 			{onRemove && (
 				<EventTeamRemoveButton
 					label={`Remover ${visibleName}`}

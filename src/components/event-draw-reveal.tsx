@@ -21,6 +21,7 @@ import {
 	type EventDrawRevealPhase,
 	eventDrawRevealCanNext,
 	eventDrawRevealCardKey,
+	eventDrawRevealGridClass,
 	eventDrawRevealItemCount,
 	eventDrawRevealShareIsPrimary,
 	eventDrawRevealShowControls,
@@ -33,6 +34,7 @@ import {
 	EVENT_TEAM_SHARE_LABEL,
 	type EventTeamShareCard,
 } from "@/const/event-team-share";
+import { PLAYER_STAR_CLASS } from "@/const/player-rating";
 import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 
@@ -101,7 +103,7 @@ export function EventDrawReveal({
 	);
 
 	return (
-		<div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col gap-3 overflow-hidden sm:gap-4">
+		<div className="mx-auto flex min-h-0 w-full flex-1 flex-col gap-3 overflow-hidden sm:gap-4">
 			<header className="shrink-0 px-1 text-center">
 				<p className="text-sm font-medium text-fg-muted">{championshipName}</p>
 				<p className="text-xs text-fg-muted">
@@ -111,7 +113,9 @@ export function EventDrawReveal({
 					{EVENT_DRAW_REVEAL_LABEL.title}
 				</h1>
 			</header>
-			<ul className="scrollbar-thin grid min-h-0 flex-1 grid-cols-1 content-start gap-2 overflow-y-auto overscroll-contain">
+			<ul
+				className={`scrollbar-thin grid min-h-0 flex-1 content-start gap-2 overflow-y-auto overscroll-contain ${eventDrawRevealGridClass(cards.length)}`}
+			>
 				<AnimatePresence initial={false}>
 					{visibleCards.map((card) => {
 						const cardStyle = eventTeamColorStyle(card.color);
@@ -123,7 +127,7 @@ export function EventDrawReveal({
 								initial={revealEnterInitial(reduceMotion)}
 								animate={{ opacity: 1, y: 0 }}
 								transition={{ duration: EVENT_DRAW_REVEAL_MOTION.duration }}
-								className="relative rounded-lg border border-line bg-surface p-2 text-sm"
+								className="relative rounded-lg border border-line bg-surface p-1.5 text-sm"
 								style={cardStyle}
 							>
 								<div className="mb-1 flex items-center gap-1">
@@ -162,6 +166,7 @@ export function EventDrawReveal({
 													<EventTeamPlayerRow
 														player={player}
 														ceiling={ceiling}
+														starClassName={PLAYER_STAR_CLASS.compact}
 													/>
 												</motion.li>
 											);
