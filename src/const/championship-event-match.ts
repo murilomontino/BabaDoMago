@@ -543,9 +543,17 @@ export function matchTeamSlots(
 
 export function matchBenchPlayerIds(
 	presentIds: readonly number[],
-	matchPlayers: readonly { player_id: number }[],
+	matchPlayers: readonly { player_id: number; is_substituted?: boolean }[],
 ): number[] {
-	const taken = new Set(matchPlayers.map((player) => player.player_id));
+	const taken = new Set(
+		matchPlayers.flatMap((player) => {
+			if (player.is_substituted === true) {
+				return [];
+			}
+
+			return [player.player_id];
+		}),
+	);
 	return presentIds.filter((playerId) => !taken.has(playerId));
 }
 

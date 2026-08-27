@@ -15,7 +15,7 @@ import {
 	openEventMatch,
 } from "@/const/championship-event-match";
 import { applyPlayOps, MATCH_OP } from "@/const/championship-event-match-ops";
-import { playerVisibleName } from "@/const/player-name";
+import { matchOpDisplayName } from "@/const/player-name";
 import { ROUTES } from "@/const/routes";
 import { SKELETON_LABEL } from "@/const/skeleton";
 import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
@@ -41,22 +41,6 @@ import type { ChampionshipEventMatch } from "@/types/championship-event";
 
 const PLAY_SHELL_CLASS =
 	"flex h-dvh flex-col overflow-hidden overscroll-contain select-none touch-manipulation pt-[max(0.75rem,env(safe-area-inset-top))] pr-[max(0.75rem,env(safe-area-inset-right))] pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))]";
-
-function matchOpDisplayName(
-	playerId: number | null,
-	players: readonly ChampionshipPlayer[],
-): string {
-	if (playerId === null) {
-		return "";
-	}
-
-	const player = players.find((row) => row.id === playerId);
-	if (!player) {
-		return "";
-	}
-
-	return playerVisibleName(player);
-}
 
 export function ChampionshipEventPlayPage() {
 	const { championshipId: championshipIdParam, eventId: eventIdParam } =
@@ -166,7 +150,11 @@ export function ChampionshipEventPlayPage() {
 									goalkeeperId,
 									members: playerIds.map((playerId) => ({
 										playerId,
-										displayName: matchOpDisplayName(playerId, activePlayers),
+										displayName: matchOpDisplayName(
+											playerId,
+											activePlayers,
+											event.attendance,
+										),
 										isGoalkeeper: playerId === goalkeeperId,
 									})),
 								}),
@@ -184,7 +172,11 @@ export function ChampionshipEventPlayPage() {
 									teamId,
 									slot,
 									playerId,
-									displayName: matchOpDisplayName(playerId, activePlayers),
+									displayName: matchOpDisplayName(
+										playerId,
+										activePlayers,
+										event.attendance,
+									),
 									includeStats: includeStats === true,
 								}),
 							);

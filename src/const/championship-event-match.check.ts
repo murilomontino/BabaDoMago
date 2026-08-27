@@ -260,8 +260,18 @@ check(
 			[player({ player_id: 1, team_id: 1, slot: 0 }), substituted],
 		),
 	),
-	"9",
-	"bench excludes substituted",
+	"4,9",
+	"bench includes substituted",
+);
+check(
+	String(
+		matchBenchPlayerIds(
+			[1, 4, 9],
+			[player({ player_id: 1, team_id: 1, slot: 0 })],
+		),
+	),
+	"4,9",
+	"bench after remove",
 );
 const assistsSkipSub = matchAssistCandidates(
 	[
