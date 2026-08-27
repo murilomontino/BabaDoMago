@@ -12,6 +12,7 @@ import {
 	sameRosterShareSort,
 } from "@/const/roster-share";
 import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
+import { CHAMPIONSHIP_BY_ID_QUERY_KEY } from "@/hooks/championships/championships-query-keys";
 import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
 import { shareRosterImage } from "@/lib/share-roster-image";
 import type { ChampionshipPlayer } from "@/types/championship";
@@ -141,6 +142,7 @@ export function ChampionshipRosterTab({
 		<SectionCard
 			title="Elenco"
 			icon={<Users className="size-4 text-pitch-fg" />}
+			queryKey={CHAMPIONSHIP_BY_ID_QUERY_KEY}
 		>
 			{showActions && (
 				<div className="mb-4 flex flex-col gap-2 md:flex-row md:flex-wrap">

@@ -82,6 +82,7 @@ import {
 	CHIP_CLASS,
 	ERROR_CLASS,
 } from "@/const/ui";
+import { CHAMPIONSHIP_EVENTS_QUERY_KEY } from "@/hooks/championships/championships-query-keys";
 import { usePlayerProfileTab } from "@/hooks/use-player-profile-tab";
 import { sharePlayerProfileImage } from "@/lib/share-player-profile-image";
 import { enlargeAvatarUrl } from "@/lib/user-profile";
@@ -700,7 +701,10 @@ export function ChampionshipPlayerDetail({
 							<PlayerPartnersTable partners={partners} />
 						)}
 					</SectionCard>
-					<SectionCard title={PLAYER_PROFILE_LABEL.history}>
+					<SectionCard
+						title={PLAYER_PROFILE_LABEL.history}
+						queryKey={CHAMPIONSHIP_EVENTS_QUERY_KEY}
+					>
 						{historyPending && <PlayerHistorySkeleton />}
 						{historyError && <p className={ERROR_CLASS}>{historyError}</p>}
 						{!historyPending && !historyError && history.length === 0 && (

@@ -67,6 +67,7 @@ import {
 	ERROR_CLASS,
 	FIELD_CLASS,
 } from "@/const/ui";
+import { CHAMPIONSHIP_EVENTS_QUERY_KEY } from "@/hooks/championships/championships-query-keys";
 import {
 	useChampionshipEvents,
 	useCreateChampionshipEvent,
@@ -273,9 +274,15 @@ export function ChampionshipEvents({
 
 	if (eventsQuery.isError) {
 		return (
-			<p className={ERROR_CLASS}>
-				Erro ao carregar rodadas: {eventsQuery.error.message}
-			</p>
+			<SectionCard
+				title={CHAMPIONSHIP_TAB_LABEL.events}
+				icon={<CalendarDays className="size-4 text-pitch-fg" />}
+				queryKey={CHAMPIONSHIP_EVENTS_QUERY_KEY}
+			>
+				<p className={ERROR_CLASS}>
+					Erro ao carregar rodadas: {eventsQuery.error.message}
+				</p>
+			</SectionCard>
 		);
 	}
 
@@ -283,6 +290,7 @@ export function ChampionshipEvents({
 		<SectionCard
 			title={CHAMPIONSHIP_TAB_LABEL.events}
 			icon={<CalendarDays className="size-4 text-pitch-fg" />}
+			queryKey={CHAMPIONSHIP_EVENTS_QUERY_KEY}
 			action={
 				canManage &&
 				!isCreating && (
@@ -694,6 +702,7 @@ function ChampionshipEventsSkeleton() {
 			<SectionCard
 				title={CHAMPIONSHIP_TAB_LABEL.events}
 				icon={<CalendarDays className="size-4 text-pitch-fg" />}
+				queryKey={CHAMPIONSHIP_EVENTS_QUERY_KEY}
 			>
 				<ul className="space-y-2">
 					{SKELETON_LIST_ROWS.map((row) => (

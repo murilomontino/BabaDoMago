@@ -31,6 +31,7 @@ import {
 import { playerVisibleName } from "@/const/player-name";
 import { ROUTES } from "@/const/routes";
 import { ERROR_CLASS } from "@/const/ui";
+import { CHAMPIONSHIP_EVENTS_QUERY_KEY } from "@/hooks/championships/championships-query-keys";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type { ChampionshipEvent } from "@/types/championship-event";
 
@@ -183,6 +184,7 @@ export function ChampionshipManagementTab({
 			<SectionCard
 				title={MANAGEMENT_LABEL.alerts}
 				icon={<AlertTriangle className="size-4 text-pitch-fg" />}
+				queryKey={CHAMPIONSHIP_EVENTS_QUERY_KEY}
 			>
 				{alerts.length === 0 && (
 					<p className="text-sm text-fg-muted">{MANAGEMENT_LABEL.noAlerts}</p>
@@ -209,6 +211,7 @@ export function ChampionshipManagementTab({
 			<SectionCard
 				title={MANAGEMENT_LABEL.frequency}
 				icon={<Users className="size-4 text-pitch-fg" />}
+				queryKey={CHAMPIONSHIP_EVENTS_QUERY_KEY}
 			>
 				{frequency.length === 0 && (
 					<EmptyState

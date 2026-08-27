@@ -50,6 +50,7 @@ import {
 	TEAM_BALANCE_LABEL,
 } from "@/const/team-balance-stats";
 import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
+import { CHAMPIONSHIP_EVENTS_QUERY_KEY } from "@/hooks/championships/championships-query-keys";
 import { usePodiumYear } from "@/hooks/use-podium-year";
 import { includeDefined } from "@/lib/include-when";
 import { sharePodiumImages } from "@/lib/share-podium-image";
@@ -200,6 +201,7 @@ export function ChampionshipPodiumTab({
 		<SectionCard
 			title={PODIUM_LABEL.tab}
 			icon={<Trophy className="size-4 text-pitch-fg" />}
+			queryKey={CHAMPIONSHIP_EVENTS_QUERY_KEY}
 		>
 			{showPeriodFilters && (
 				<div className="mb-4 space-y-2">
