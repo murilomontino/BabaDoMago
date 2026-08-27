@@ -1,6 +1,7 @@
 import type { ChampionshipRatingHistorySeries } from "./championship-rating-history.ts";
 import {
 	parseRatingRaceLimit,
+	RATING_RACE_LIMIT_KIND,
 	ratingRaceFrames,
 	ratingRaceGifFileName,
 	ratingRaceLeaders,
@@ -78,13 +79,19 @@ const entries = [
 	{ series: ana, values: [1, 5] },
 	{ series: bruno, values: [2, 2] },
 ];
-const startLeaders = ratingRaceLeaders(entries, 0, 1);
+const top1 = { kind: RATING_RACE_LIMIT_KIND.top, count: 1 };
+const worst1 = { kind: RATING_RACE_LIMIT_KIND.worst, count: 1 };
+const top10 = { kind: RATING_RACE_LIMIT_KIND.top, count: 10 };
+const top99 = { kind: RATING_RACE_LIMIT_KIND.top, count: 99 };
+const worst10 = { kind: RATING_RACE_LIMIT_KIND.worst, count: 10 };
+
+const startLeaders = ratingRaceLeaders(entries, 0, top1);
 check(startLeaders.length === 1, "start top-1 has one leader");
 check(
 	startLeaders[0]?.series.playerId === bruno.playerId,
 	"bruno leads at start",
 );
-const endLeaders = ratingRaceLeaders(entries, 1, 1);
+const endLeaders = ratingRaceLeaders(entries, 1, top1);
 check(endLeaders.length === 1, "end top-1 has one leader");
 check(endLeaders[0]?.series.playerId === ana.playerId, "ana leads at end");
 
@@ -96,24 +103,58 @@ check(
 );
 
 check(
-	ratingRaceLeaders([{ series: ana, values: [null, 3] }], 0, 10).length === 0,
+	ratingRaceLeaders([{ series: ana, values: [null, 3] }], 0, top10).length ===
+		0,
 	"series without rating stays out",
 );
 check(
-	ratingRaceLeaders(entries, 0, 99).length === 2,
+	ratingRaceLeaders(entries, 0, top99).length === 2,
 	"limit larger than series count still works",
 );
 
-check(parseRatingRaceLimit("all") === null, "parse all");
-check(parseRatingRaceLimit("10") === 10, "parse 10");
-check(parseRatingRaceLimit("999") === 10, "unknown number falls back");
-check(parseRatingRaceLimit("abc") === 10, "invalid falls back");
-check(ratingRaceLimitCaption(10) === "Top 10", "caption top 10");
+const startWorst = ratingRaceLeaders(entries, 0, worst1);
+check(startWorst.length === 1, "start worst-1 has one leader");
+check(startWorst[0]?.series.playerId === ana.playerId, "ana is worst at start");
+const endWorst = ratingRaceLeaders(entries, 1, worst1);
+check(endWorst.length === 1, "end worst-1 has one leader");
+check(endWorst[0]?.series.playerId === bruno.playerId, "bruno is worst at end");
+
+const parsedAll = parseRatingRaceLimit("all");
+check(parsedAll === null, "parse all");
+const parsed10 = parseRatingRaceLimit("10");
+check(
+	parsed10?.kind === RATING_RACE_LIMIT_KIND.top && parsed10.count === 10,
+	"parse 10 as top",
+);
+const parsedTop10 = parseRatingRaceLimit("top-10");
+check(
+	parsedTop10?.kind === RATING_RACE_LIMIT_KIND.top && parsedTop10.count === 10,
+	"parse top-10",
+);
+const parsedWorst5 = parseRatingRaceLimit("worst-5");
+check(
+	parsedWorst5?.kind === RATING_RACE_LIMIT_KIND.worst &&
+		parsedWorst5.count === 5,
+	"parse worst-5",
+);
+const parsedUnknown = parseRatingRaceLimit("999");
+check(
+	parsedUnknown?.kind === RATING_RACE_LIMIT_KIND.top &&
+		parsedUnknown.count === 10,
+	"unknown number falls back",
+);
+const parsedAbc = parseRatingRaceLimit("abc");
+check(
+	parsedAbc?.kind === RATING_RACE_LIMIT_KIND.top && parsedAbc.count === 10,
+	"invalid falls back",
+);
+check(ratingRaceLimitCaption(top10) === "Top 10", "caption top 10");
+check(ratingRaceLimitCaption(worst10) === "Piores 10", "caption worst 10");
 check(ratingRaceLimitCaption(null) === "Todos", "caption all");
 
 const fileName = ratingRaceGifFileName({
 	championshipName: "Baba",
-	limit: 10,
+	limit: top10,
 	generatedAt: "2026-08-27T22:00:00.000Z",
 });
 check(fileName.startsWith("corrida-nota"), "gif name prefix");
@@ -121,10 +162,17 @@ check(fileName.endsWith(".gif"), "gif extension");
 
 const mp4Name = ratingRaceMp4FileName({
 	championshipName: "Baba",
-	limit: 10,
+	limit: top10,
 	generatedAt: "2026-08-27T22:00:00.000Z",
 });
 check(mp4Name.startsWith("corrida-nota"), "mp4 name prefix");
 check(mp4Name.endsWith(".mp4"), "mp4 extension");
+
+const worstName = ratingRaceGifFileName({
+	championshipName: "Baba",
+	limit: worst10,
+	generatedAt: "2026-08-27T22:00:00.000Z",
+});
+check(worstName.includes("piores-10"), "gif name includes worst caption");
 
 console.log("rating-race-share ok");

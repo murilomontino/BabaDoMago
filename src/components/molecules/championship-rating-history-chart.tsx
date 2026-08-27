@@ -31,9 +31,12 @@ import {
 	parseRatingRaceLimit,
 	RATING_RACE_LABEL,
 	RATING_RACE_LIMIT,
+	RATING_RACE_LIMIT_DEFAULT,
+	RATING_RACE_LIMIT_KIND,
 	RATING_RACE_SHARE_KIND,
 	type RatingRaceLimit,
 	type RatingRaceShareKind,
+	ratingRaceLimitCaption,
 	ratingRaceLimitValue,
 } from "@/const/rating-race-share";
 import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
@@ -96,7 +99,7 @@ export function ChampionshipRatingHistoryChart({
 	const playerIds = championshipRatingHistoryPlayerIds(chart.series);
 	const [selected, setSelected] = useState<ReadonlySet<number> | null>(null);
 	const [limit, setLimit] = useState<RatingRaceLimit>(
-		RATING_RACE_LIMIT.default,
+		RATING_RACE_LIMIT_DEFAULT,
 	);
 	const [shareKind, setShareKind] = useState<RatingRaceShareKind | null>(null);
 	const [shareError, setShareError] = useState<string | null>(null);
@@ -156,11 +159,38 @@ export function ChampionshipRatingHistoryChart({
 									setLimit(parseRatingRaceLimit(event.target.value));
 								}}
 							>
-								{RATING_RACE_LIMIT.options.map((option) => (
-									<option key={option} value={option}>
-										{option}
-									</option>
-								))}
+								<optgroup label={RATING_RACE_LABEL.limitTop}>
+									{RATING_RACE_LIMIT.options.map((option) => (
+										<option
+											key={`${RATING_RACE_LIMIT_KIND.top}-${option}`}
+											value={ratingRaceLimitValue({
+												kind: RATING_RACE_LIMIT_KIND.top,
+												count: option,
+											})}
+										>
+											{ratingRaceLimitCaption({
+												kind: RATING_RACE_LIMIT_KIND.top,
+												count: option,
+											})}
+										</option>
+									))}
+								</optgroup>
+								<optgroup label={RATING_RACE_LABEL.limitWorst}>
+									{RATING_RACE_LIMIT.options.map((option) => (
+										<option
+											key={`${RATING_RACE_LIMIT_KIND.worst}-${option}`}
+											value={ratingRaceLimitValue({
+												kind: RATING_RACE_LIMIT_KIND.worst,
+												count: option,
+											})}
+										>
+											{ratingRaceLimitCaption({
+												kind: RATING_RACE_LIMIT_KIND.worst,
+												count: option,
+											})}
+										</option>
+									))}
+								</optgroup>
 								<option value={RATING_RACE_LIMIT.all}>
 									{RATING_RACE_LABEL.limitAll}
 								</option>

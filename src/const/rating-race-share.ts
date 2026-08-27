@@ -54,7 +54,10 @@ export const RATING_RACE_LABEL = {
 	subtitle: "Evolução da nota",
 	limit: "Jogadores no GIF",
 	limitAll: "Todos",
+	limitTop: "Melhores",
+	limitWorst: "Piores",
 	topPrefix: "Top",
+	worstPrefix: "Piores",
 } as const;
 
 export const RATING_RACE_SHARE_KIND = {
@@ -65,13 +68,31 @@ export const RATING_RACE_SHARE_KIND = {
 export type RatingRaceShareKind =
 	(typeof RATING_RACE_SHARE_KIND)[keyof typeof RATING_RACE_SHARE_KIND];
 
+export const RATING_RACE_LIMIT_KIND = {
+	top: "top",
+	worst: "worst",
+} as const;
+
+export type RatingRaceLimitKind =
+	(typeof RATING_RACE_LIMIT_KIND)[keyof typeof RATING_RACE_LIMIT_KIND];
+
+export type RatingRaceLimitCount = {
+	kind: RatingRaceLimitKind;
+	count: number;
+};
+
+export type RatingRaceLimit = RatingRaceLimitCount | null;
+
 export const RATING_RACE_LIMIT = {
 	options: [3, 5, 10, 15, 20],
-	default: 10,
+	defaultCount: 10,
 	all: "all",
 } as const;
 
-export type RatingRaceLimit = number | null;
+export const RATING_RACE_LIMIT_DEFAULT: RatingRaceLimitCount = {
+	kind: RATING_RACE_LIMIT_KIND.top,
+	count: RATING_RACE_LIMIT.defaultCount,
+};
 
 export type RatingRacePoint = {
 	at: number;
@@ -207,11 +228,43 @@ export function ratingRaceLeaders(
 		.sort(compareRatingRaceLeaders)
 		.map((entry, index) => ({ ...entry, position: index + 1 }));
 
+	return applyRatingRaceLimit(ranked, limit);
+}
+
+function applyRatingRaceLimit(
+	ranked: RatingRaceLeader[],
+	limit: RatingRaceLimit,
+): RatingRaceLeader[] {
 	if (limit === null) {
 		return ranked;
 	}
 
-	return ranked.slice(0, limit);
+	switch (limit.kind) {
+		case RATING_RACE_LIMIT_KIND.top:
+			return ranked.slice(0, limit.count);
+		case RATING_RACE_LIMIT_KIND.worst:
+			return ranked.slice(-limit.count);
+		default: {
+			const _never: never = limit.kind;
+			return _never;
+		}
+	}
+}
+
+function knownRatingRaceLimitCount(value: number): number | undefined {
+	return RATING_RACE_LIMIT.options.find((option) => option === value);
+}
+
+function ratingRaceLimitFromCount(
+	raw: string,
+	kind: RatingRaceLimitKind,
+): RatingRaceLimitCount {
+	const known = knownRatingRaceLimitCount(Number(raw));
+	if (known === undefined) {
+		return { kind, count: RATING_RACE_LIMIT.defaultCount };
+	}
+
+	return { kind, count: known };
 }
 
 export function parseRatingRaceLimit(value: string): RatingRaceLimit {
@@ -219,13 +272,28 @@ export function parseRatingRaceLimit(value: string): RatingRaceLimit {
 		return null;
 	}
 
-	const parsed = Number(value);
-	const known = RATING_RACE_LIMIT.options.find((option) => option === parsed);
-	if (known === undefined) {
-		return RATING_RACE_LIMIT.default;
+	const parts = value.split("-");
+	if (parts.length === 1) {
+		return ratingRaceLimitFromCount(parts[0] ?? "", RATING_RACE_LIMIT_KIND.top);
 	}
 
-	return known;
+	const kindToken = parts[0];
+	const countToken = parts[1];
+	if (kindToken === RATING_RACE_LIMIT_KIND.worst) {
+		return ratingRaceLimitFromCount(
+			countToken ?? "",
+			RATING_RACE_LIMIT_KIND.worst,
+		);
+	}
+
+	if (kindToken === RATING_RACE_LIMIT_KIND.top) {
+		return ratingRaceLimitFromCount(
+			countToken ?? "",
+			RATING_RACE_LIMIT_KIND.top,
+		);
+	}
+
+	return RATING_RACE_LIMIT_DEFAULT;
 }
 
 export function ratingRaceLimitValue(limit: RatingRaceLimit): string {
@@ -233,7 +301,7 @@ export function ratingRaceLimitValue(limit: RatingRaceLimit): string {
 		return RATING_RACE_LIMIT.all;
 	}
 
-	return String(limit);
+	return `${limit.kind}-${limit.count}`;
 }
 
 export function ratingRaceLimitCaption(limit: RatingRaceLimit): string {
@@ -241,7 +309,11 @@ export function ratingRaceLimitCaption(limit: RatingRaceLimit): string {
 		return RATING_RACE_LABEL.limitAll;
 	}
 
-	return `${RATING_RACE_LABEL.topPrefix} ${limit}`;
+	if (limit.kind === RATING_RACE_LIMIT_KIND.worst) {
+		return `${RATING_RACE_LABEL.worstPrefix} ${limit.count}`;
+	}
+
+	return `${RATING_RACE_LABEL.topPrefix} ${limit.count}`;
 }
 
 function ratingRaceFileNameParts({
