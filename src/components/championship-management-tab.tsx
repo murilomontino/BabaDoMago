@@ -148,8 +148,9 @@ export function ChampionshipManagementTab({
 	eventsError,
 }: ChampionshipManagementTabProps) {
 	const summary = managementSummary(events);
-	const frequency = rankManagementFrequencyRows(
-		managementFrequencyRows(players, events),
+	const frequency = useMemo(
+		() => rankManagementFrequencyRows(managementFrequencyRows(players, events)),
+		[players, events],
 	);
 	const alerts = managementAlerts(events);
 

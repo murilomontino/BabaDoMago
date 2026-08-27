@@ -14,9 +14,9 @@ import {
 	type PodiumShareFileParts,
 	type PodiumSharePlace,
 	podiumShareAllFileName,
-	podiumShareAllText,
 	podiumShareFileName,
 	podiumSharePlacesInDisplayOrder,
+	podiumShareSheetText,
 } from "@/const/podium-share";
 import { shareOrDownload } from "@/lib/share-file";
 
@@ -134,14 +134,35 @@ function podiumBodyHeight(): number {
 
 function podiumImageHeight(cardCount: number): number {
 	if (cardCount === 0) {
-		return PODIUM_SHARE.padding * 2;
+		return PODIUM_SHARE.padding * 2 + PODIUM_SHARE.captionHeight;
 	}
 
 	return (
 		PODIUM_SHARE.padding * 2 +
+		PODIUM_SHARE.captionHeight +
 		cardCount * podiumBodyHeight() +
 		Math.max(0, cardCount - 1) * PODIUM_SHARE.gap
 	);
+}
+
+function drawShareCaption(
+	context: CanvasRenderingContext2D,
+	parts: PodiumShareFileParts,
+	width: number,
+	y: number,
+) {
+	const maxWidth = width - PODIUM_SHARE.padding * 2;
+	const x = width / 2;
+
+	context.textAlign = "center";
+	context.textBaseline = "top";
+	context.fillStyle = PODIUM_SHARE_COLOR.fgMuted;
+	context.font = "700 22px system-ui, sans-serif";
+	context.fillText(fitText(context, parts.championshipName, maxWidth), x, y);
+
+	context.fillStyle = PODIUM_SHARE_COLOR.fg;
+	context.font = "700 26px system-ui, sans-serif";
+	context.fillText(fitText(context, parts.periodLabel, maxWidth), x, y + 32);
 }
 
 function drawStars(
@@ -318,6 +339,7 @@ function drawPodiumCard(
 async function renderPodiumsPng(
 	cards: readonly PodiumShareCard[],
 	ceiling: number,
+	parts: PodiumShareFileParts,
 ): Promise<Blob> {
 	const avatars = await loadAvatars(cards);
 	const width = PODIUM_SHARE.width;
@@ -333,13 +355,15 @@ async function renderPodiumsPng(
 	context.scale(SHARE_SCALE, SHARE_SCALE);
 	context.fillStyle = PODIUM_SHARE_COLOR.field;
 	context.fillRect(0, 0, width, height);
+	drawShareCaption(context, parts, width, PODIUM_SHARE.padding);
 
 	const body = podiumBodyHeight();
+	const originY = PODIUM_SHARE.padding + PODIUM_SHARE.captionHeight;
 	for (const [index, card] of cards.entries()) {
 		drawPodiumCard(
 			context,
 			0,
-			PODIUM_SHARE.padding + index * (body + PODIUM_SHARE.gap),
+			originY + index * (body + PODIUM_SHARE.gap),
 			width,
 			card,
 			ceiling,
@@ -355,7 +379,7 @@ async function fileFromCard(
 	ceiling: number,
 	parts: PodiumShareFileParts,
 ): Promise<File> {
-	const blob = await renderPodiumsPng([card], ceiling);
+	const blob = await renderPodiumsPng([card], ceiling, parts);
 	return new File([blob], podiumShareFileName(card.metric, parts), {
 		type: PODIUM_SHARE.mimePng,
 	});
@@ -377,14 +401,14 @@ export async function sharePodiumStackedImage(
 	parts: PodiumShareFileParts,
 ): Promise<void> {
 	const ready = requirePodiumCards(cards);
-	const stacked = await renderPodiumsPng(ready, ceiling);
+	const stacked = await renderPodiumsPng(ready, ceiling, parts);
 	await shareOrDownload({
 		files: [
 			new File([stacked], podiumShareAllFileName(parts), {
 				type: PODIUM_SHARE.mimePng,
 			}),
 		],
-		text: podiumShareAllText(ready),
+		text: podiumShareSheetText(ready, parts),
 		title: PODIUM_SHARE.title,
 	});
 }
@@ -400,7 +424,7 @@ export async function sharePodiumSeparateImages(
 	);
 	await shareOrDownload({
 		files,
-		text: podiumShareAllText(ready),
+		text: podiumShareSheetText(ready, parts),
 		title: PODIUM_SHARE.title,
 	});
 }

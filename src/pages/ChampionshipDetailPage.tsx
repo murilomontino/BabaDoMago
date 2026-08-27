@@ -1,6 +1,14 @@
-import { useNavigate, useParams, useRouterState } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { Users } from "lucide-react";
-import { type FormEvent, lazy, Suspense, useState } from "react";
+import {
+	type FormEvent,
+	lazy,
+	Suspense,
+	useCallback,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { AppDialog } from "@/components/atoms/app-dialog";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { ChampionshipDetailHeader } from "@/components/championship-detail-header";
@@ -16,7 +24,7 @@ import { EditPlayerNicknameModal } from "@/components/edit-player-nickname-modal
 import { MergeChampionshipPlayersModal } from "@/components/merge-championship-players-modal";
 import { DataTableSkeleton } from "@/components/molecules/data-table-skeleton";
 import { SectionCard } from "@/components/section-card";
-import { Tabs } from "@/components/tabs";
+import { TabPanel, Tabs } from "@/components/tabs";
 import type { PlayerEventStatsDraft } from "@/const/championship-event";
 import { assertChampionshipLogoSource } from "@/const/championship-logo";
 import {
@@ -47,6 +55,7 @@ import {
 	CHAMPIONSHIP_TAB_LABEL,
 	type ChampionshipTab,
 	championshipTabs,
+	rememberChampionshipTab,
 	visibleChampionshipTab,
 } from "@/const/championship-tab";
 import {
@@ -108,8 +117,7 @@ export function ChampionshipDetailPage() {
 	const championshipId = Number(championshipIdParam);
 	const { user } = useAuth();
 	const navigate = useNavigate();
-	const { data, isPending, isError, error, isFetching, fetchStatus, status } =
-		useChampionship(championshipId);
+	const { data, isPending, isError, error } = useChampionship(championshipId);
 	const addPlayer = useAddManualPlayer(championshipId);
 	const claimPlayer = useClaimPlayer();
 	const unlinkPlayer = useUnlinkPlayer();
@@ -149,7 +157,7 @@ export function ChampionshipDetailPage() {
 		useState<ChampionshipPlayer | null>(null);
 	const [tab, setTab] = useChampionshipTab();
 	const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-	const routerStatus = useRouterState({ select: (state) => state.status });
+	const mountedTabsRef = useRef<Partial<Record<ChampionshipTab, boolean>>>({});
 
 	const currentPlayer = data?.players.find(
 		(player) => !player.deleted_at && player.user_id === user?.id,
@@ -183,14 +191,24 @@ export function ChampionshipDetailPage() {
 		requestedTab,
 		permissions.viewManagement,
 	);
-	const activePlayers = (data?.players ?? []).filter(
-		(player) => !player.deleted_at,
+	mountedTabsRef.current = rememberChampionshipTab(
+		mountedTabsRef.current,
+		selectedTab,
 	);
-	const rosterCeiling = championshipRatingCeiling(
-		activePlayers.map((player) => player.rating),
+
+	const players = data?.players;
+	const activePlayers = useMemo(
+		() => (players ?? []).filter((player) => !player.deleted_at),
+		[players],
 	);
-	const deactivatedPlayers = (data?.players ?? []).filter(
-		(player) => player.deleted_at,
+	const rosterCeiling = useMemo(
+		() =>
+			championshipRatingCeiling(activePlayers.map((player) => player.rating)),
+		[activePlayers],
+	);
+	const deactivatedPlayers = useMemo(
+		() => (players ?? []).filter((player) => player.deleted_at),
+		[players],
 	);
 	const canOpenSettings =
 		permissions.rename ||
@@ -203,110 +221,56 @@ export function ChampionshipDetailPage() {
 
 	const tabs = championshipTabs(permissions.viewManagement);
 
-	// #region agent log
-	fetch("http://127.0.0.1:7501/ingest/7aa36caa-8689-4af1-a425-f57dce975cbd", {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			"X-Debug-Session-Id": "c0754f",
-		},
-		body: JSON.stringify({
-			sessionId: "c0754f",
-			runId: "pre-fix",
-			hypothesisId: "A",
-			location: "ChampionshipDetailPage.tsx:render",
-			message: "championship detail render",
-			data: {
-				selectedTab,
-				requestedTab,
-				isSettingsOpen,
-				isPending,
-				isFetching,
-				fetchStatus,
-				status,
-				hasData: Boolean(data),
-				playerCount: data?.players.length ?? 0,
-				eventsPending: eventsQuery.isPending,
-				eventsFetching: eventsQuery.isFetching,
-				eventsStatus: eventsQuery.status,
-				eventsFetchStatus: eventsQuery.fetchStatus,
-				hasUser: Boolean(user),
-				championshipId,
-				routerStatus,
-			},
-			timestamp: Date.now(),
-		}),
-	}).catch(() => {});
-	// #endregion
-
 	function handleTabChange(id: ChampionshipTab) {
-		// #region agent log
-		fetch("http://127.0.0.1:7501/ingest/7aa36caa-8689-4af1-a425-f57dce975cbd", {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				"X-Debug-Session-Id": "c0754f",
-			},
-			body: JSON.stringify({
-				sessionId: "c0754f",
-				runId: "pre-fix",
-				hypothesisId: "C",
-				location: "ChampionshipDetailPage.tsx:handleTabChange",
-				message: "tab change requested",
-				data: {
-					from: selectedTab,
-					to: id,
-					routerStatus,
-					isPending,
-					eventsPending: eventsQuery.isPending,
-				},
-				timestamp: Date.now(),
-			}),
-		}).catch(() => {});
-		// #endregion
 		setIsSettingsOpen(false);
 		void setTab(id);
 	}
 
-	function applyRating(playerId: number, rating: number) {
-		updateRating.mutate(
-			{ playerId, rating },
-			{
-				onSuccess: () => {
-					setPendingRatingChange(null);
+	const applyRating = useCallback(
+		(playerId: number, rating: number) => {
+			updateRating.mutate(
+				{ playerId, rating },
+				{
+					onSuccess: () => {
+						setPendingRatingChange(null);
+					},
 				},
-			},
-		);
-	}
+			);
+		},
+		[updateRating.mutate],
+	);
 
-	function handleChangeRating(playerId: number, rating: number) {
-		if (!permissions.rating) {
-			return;
-		}
+	const handleChangeRating = useCallback(
+		(playerId: number, rating: number) => {
+			if (!permissions.rating) {
+				return;
+			}
 
-		const player = activePlayers.find((item) => item.id === playerId);
-		if (!player) {
-			return;
-		}
+			const player = activePlayers.find((item) => item.id === playerId);
+			if (!player) {
+				return;
+			}
 
-		if (player.rating === rating) {
-			return;
-		}
+			if (player.rating === rating) {
+				return;
+			}
 
-		updateRating.reset();
-		if (player.rating === PLAYER_RATING.min) {
-			applyRating(player.id, rating);
-			return;
-		}
+			updateRating.reset();
+			if (player.rating === PLAYER_RATING.min) {
+				applyRating(player.id, rating);
+				return;
+			}
 
-		setPendingRatingChange({
-			playerId: player.id,
-			playerName: playerVisibleName(player),
-			avatarUrl: player.avatar_url,
-			from: player.rating,
-			to: rating,
-		});
-	}
+			setPendingRatingChange({
+				playerId: player.id,
+				playerName: playerVisibleName(player),
+				avatarUrl: player.avatar_url,
+				from: player.rating,
+				to: rating,
+			});
+		},
+		[permissions.rating, activePlayers, updateRating.reset, applyRating],
+	);
 
 	function handleRatingCancel() {
 		if (updateRating.isPending) {
@@ -325,15 +289,18 @@ export function ChampionshipDetailPage() {
 		applyRating(pendingRatingChange.playerId, pendingRatingChange.to);
 	}
 
-	function handleEditNickname(playerId: number) {
-		const player = activePlayers.find((item) => item.id === playerId);
-		if (!player) {
-			return;
-		}
+	const handleEditNickname = useCallback(
+		(playerId: number) => {
+			const player = activePlayers.find((item) => item.id === playerId);
+			if (!player) {
+				return;
+			}
 
-		updateNickname.reset();
-		setPendingNicknamePlayer(player);
-	}
+			updateNickname.reset();
+			setPendingNicknamePlayer(player);
+		},
+		[activePlayers, updateNickname.reset],
+	);
 
 	function handleNicknameCancel() {
 		if (updateNickname.isPending) {
@@ -374,19 +341,22 @@ export function ChampionshipDetailPage() {
 		);
 	}
 
-	function handleEditEventStats(playerId: number) {
-		if (!permissions.overrideEnded) {
-			return;
-		}
+	const handleEditEventStats = useCallback(
+		(playerId: number) => {
+			if (!permissions.overrideEnded) {
+				return;
+			}
 
-		const player = activePlayers.find((item) => item.id === playerId);
-		if (!player) {
-			return;
-		}
+			const player = activePlayers.find((item) => item.id === playerId);
+			if (!player) {
+				return;
+			}
 
-		savePlayerEventStats.reset();
-		setPendingEventStatsPlayer(player);
-	}
+			savePlayerEventStats.reset();
+			setPendingEventStatsPlayer(player);
+		},
+		[permissions.overrideEnded, activePlayers, savePlayerEventStats.reset],
+	);
 
 	function handleEventStatsCancel() {
 		if (savePlayerEventStats.isPending) {
@@ -413,44 +383,55 @@ export function ChampionshipDetailPage() {
 		setPendingEventStatsPlayer(null);
 	}
 
-	function handleClaim(playerId: number) {
-		const player = activePlayers.find((item) => item.id === playerId);
-		if (!player) {
-			return;
-		}
+	const handleClaim = useCallback(
+		(playerId: number) => {
+			const player = activePlayers.find((item) => item.id === playerId);
+			if (!player) {
+				return;
+			}
 
-		if (!window.confirm(confirmClaimPlayerMessage(playerVisibleName(player)))) {
-			return;
-		}
+			if (
+				!window.confirm(confirmClaimPlayerMessage(playerVisibleName(player)))
+			) {
+				return;
+			}
 
-		claimPlayer.mutate(playerId);
-	}
+			claimPlayer.mutate(playerId);
+		},
+		[activePlayers, claimPlayer.mutate],
+	);
 
-	function handleUnlink(playerId: number) {
-		if (!permissions.unlink) {
-			return;
-		}
+	const handleUnlink = useCallback(
+		(playerId: number) => {
+			if (!permissions.unlink) {
+				return;
+			}
 
-		if (!window.confirm("Desconectar esta conta?")) {
-			return;
-		}
+			if (!window.confirm("Desconectar esta conta?")) {
+				return;
+			}
 
-		unlinkPlayer.mutate(playerId);
-	}
+			unlinkPlayer.mutate(playerId);
+		},
+		[permissions.unlink, unlinkPlayer.mutate],
+	);
 
-	function handleMerge(playerId: number) {
-		if (!permissions.merge) {
-			return;
-		}
+	const handleMerge = useCallback(
+		(playerId: number) => {
+			if (!permissions.merge) {
+				return;
+			}
 
-		const player = activePlayers.find((item) => item.id === playerId);
-		if (!player) {
-			return;
-		}
+			const player = activePlayers.find((item) => item.id === playerId);
+			if (!player) {
+				return;
+			}
 
-		mergePlayers.reset();
-		setPendingMergePlayer(player);
-	}
+			mergePlayers.reset();
+			setPendingMergePlayer(player);
+		},
+		[permissions.merge, activePlayers, mergePlayers.reset],
+	);
 
 	function handleMergeCancel() {
 		if (mergePlayers.isPending) {
@@ -472,17 +453,41 @@ export function ChampionshipDetailPage() {
 		);
 	}
 
-	function handleDeactivate(playerId: number) {
-		if (!permissions.deactivate) {
-			return;
-		}
+	const handleDeactivate = useCallback(
+		(playerId: number) => {
+			if (!permissions.deactivate) {
+				return;
+			}
 
-		if (!window.confirm("Desativar este jogador?")) {
-			return;
-		}
+			if (!window.confirm("Desativar este jogador?")) {
+				return;
+			}
 
-		deactivatePlayer.mutate(playerId);
-	}
+			deactivatePlayer.mutate(playerId);
+		},
+		[permissions.deactivate, deactivatePlayer.mutate],
+	);
+
+	const handleChangeRole = useCallback(
+		(playerId: number, role: AssignableChampionshipRole) => {
+			setPlayerRole.mutate({ playerId, role });
+		},
+		[setPlayerRole.mutate],
+	);
+
+	const handleChangeGoalkeeper = useCallback(
+		(playerId: number, isGoalkeeper: boolean) => {
+			setPlayerIsGoalkeeper.mutate({ playerId, isGoalkeeper });
+		},
+		[setPlayerIsGoalkeeper.mutate],
+	);
+
+	const handleAddPlayer = useCallback(
+		async (values: Parameters<typeof addPlayer.mutateAsync>[0]) => {
+			await addPlayer.mutateAsync(values);
+		},
+		[addPlayer.mutateAsync],
+	);
 
 	function handleReactivate(playerId: number) {
 		if (!permissions.reactivate) {
@@ -510,15 +515,18 @@ export function ChampionshipDetailPage() {
 		removePlayer.mutate(playerId);
 	}
 
-	async function handleCopyLink() {
-		if (!data?.is_visible) {
+	const isVisible = data?.is_visible;
+	const inviteCode = data?.invite_code;
+	const handleCopyLink = useCallback(() => {
+		if (!isVisible || !inviteCode) {
 			return;
 		}
 
-		const url = `${window.location.origin}${ROUTES.join.replace("$inviteCode", data.invite_code)}`;
-		await navigator.clipboard.writeText(url);
-		setCopied(true);
-	}
+		const url = `${window.location.origin}${ROUTES.join.replace("$inviteCode", inviteCode)}`;
+		void navigator.clipboard.writeText(url).then(() => {
+			setCopied(true);
+		});
+	}, [isVisible, inviteCode]);
 
 	function handleDeleteCancel() {
 		setIsDeleteOpen(false);
@@ -672,103 +680,107 @@ export function ChampionshipDetailPage() {
 			{!isSettingsOpen && (
 				<Tabs value={selectedTab} items={tabs} onChange={handleTabChange} />
 			)}
-			{!isSettingsOpen && selectedTab === CHAMPIONSHIP_TAB.roster && (
-				<ChampionshipRosterTab
-					players={activePlayers}
-					createdBy={data.created_by}
-					currentUserId={user?.id ?? null}
-					championshipName={data.name}
-					rosterCeiling={rosterCeiling}
-					copied={copied}
-					canInvite={permissions.invite}
-					canUpdateRating={permissions.rating}
-					canSetRoles={permissions.setRoles}
-					canUnlink={permissions.unlink}
-					canDeactivate={permissions.deactivate}
-					isAddingPlayer={addPlayer.isPending}
-					addPlayerError={mutationErrorMessage(addPlayer)}
-					claimingPlayerId={claimPlayer.variables ?? null}
-					claimError={mutationErrorMessage(claimPlayer)}
-					ratingPlayerId={pendingMutationId(updateRating)?.playerId ?? null}
-					ratingError={mutationErrorMessage(
-						updateRating,
-						Boolean(pendingRatingChange),
+			{!isSettingsOpen && (
+				<div className="relative">
+					{mountedTabsRef.current.roster && (
+						<TabPanel active={selectedTab === CHAMPIONSHIP_TAB.roster}>
+							<ChampionshipRosterTab
+								players={activePlayers}
+								createdBy={data.created_by}
+								currentUserId={user?.id ?? null}
+								championshipName={data.name}
+								rosterCeiling={rosterCeiling}
+								copied={copied}
+								canInvite={permissions.invite}
+								canUpdateRating={permissions.rating}
+								canSetRoles={permissions.setRoles}
+								canUnlink={permissions.unlink}
+								canDeactivate={permissions.deactivate}
+								isAddingPlayer={addPlayer.isPending}
+								addPlayerError={mutationErrorMessage(addPlayer)}
+								claimingPlayerId={claimPlayer.variables ?? null}
+								claimError={mutationErrorMessage(claimPlayer)}
+								ratingPlayerId={
+									pendingMutationId(updateRating)?.playerId ?? null
+								}
+								ratingError={mutationErrorMessage(
+									updateRating,
+									Boolean(pendingRatingChange),
+								)}
+								nicknamePlayerId={
+									pendingNicknamePlayer?.id ??
+									pendingMutationId(updateNickname)?.playerId ??
+									null
+								}
+								roleError={mutationErrorMessage(setPlayerRole)}
+								goalkeeperError={mutationErrorMessage(setPlayerIsGoalkeeper)}
+								unlinkingPlayerId={pendingMutationId(unlinkPlayer)}
+								unlinkError={mutationErrorMessage(unlinkPlayer)}
+								canMerge={permissions.merge}
+								mergeError={mutationErrorMessage(
+									mergePlayers,
+									Boolean(pendingMergePlayer),
+								)}
+								deactivatingPlayerId={pendingMutationId(deactivatePlayer)}
+								deactivateError={mutationErrorMessage(deactivatePlayer)}
+								onCopyLink={handleCopyLink}
+								onAddPlayer={handleAddPlayer}
+								onClaim={handleClaim}
+								onChangeRating={handleChangeRating}
+								onEditNickname={handleEditNickname}
+								onEditEventStats={handlerWhenAllowed(
+									permissions.overrideEnded,
+									handleEditEventStats,
+								)}
+								eventStatsPlayerId={
+									pendingEventStatsPlayer?.id ??
+									pendingMutationId(savePlayerEventStats)?.playerId ??
+									null
+								}
+								onChangeRole={handleChangeRole}
+								onChangeGoalkeeper={handleChangeGoalkeeper}
+								onUnlink={handleUnlink}
+								onMerge={handleMerge}
+								onDeactivate={handleDeactivate}
+							/>
+						</TabPanel>
 					)}
-					nicknamePlayerId={
-						pendingNicknamePlayer?.id ??
-						pendingMutationId(updateNickname)?.playerId ??
-						null
-					}
-					roleError={mutationErrorMessage(setPlayerRole)}
-					goalkeeperError={mutationErrorMessage(setPlayerIsGoalkeeper)}
-					unlinkingPlayerId={pendingMutationId(unlinkPlayer)}
-					unlinkError={mutationErrorMessage(unlinkPlayer)}
-					canMerge={permissions.merge}
-					mergeError={mutationErrorMessage(
-						mergePlayers,
-						Boolean(pendingMergePlayer),
+					{mountedTabsRef.current.events && (
+						<TabPanel active={selectedTab === CHAMPIONSHIP_TAB.events}>
+							<ChampionshipEvents
+								championshipId={championshipId}
+								championshipName={data.name}
+								eventTime={data.event_time}
+								eventWeekday={data.event_weekday}
+								location={data.location}
+								players={activePlayers}
+								canManage={permissions.manageEvent}
+								canSetMvp={permissions.setMvp}
+							/>
+						</TabPanel>
 					)}
-					deactivatingPlayerId={pendingMutationId(deactivatePlayer)}
-					deactivateError={mutationErrorMessage(deactivatePlayer)}
-					onCopyLink={() => {
-						void handleCopyLink();
-					}}
-					onAddPlayer={async (values) => {
-						await addPlayer.mutateAsync(values);
-					}}
-					onClaim={handleClaim}
-					onChangeRating={handleChangeRating}
-					onEditNickname={handleEditNickname}
-					onEditEventStats={handlerWhenAllowed(
-						permissions.overrideEnded,
-						handleEditEventStats,
+					{mountedTabsRef.current.podium && (
+						<TabPanel active={selectedTab === CHAMPIONSHIP_TAB.podium}>
+							<ChampionshipPodiumTab
+								players={activePlayers}
+								championshipName={data.name}
+								events={eventsQuery.data ?? []}
+							/>
+						</TabPanel>
 					)}
-					eventStatsPlayerId={
-						pendingEventStatsPlayer?.id ??
-						pendingMutationId(savePlayerEventStats)?.playerId ??
-						null
-					}
-					onChangeRole={(playerId, role: AssignableChampionshipRole) =>
-						setPlayerRole.mutate({ playerId, role })
-					}
-					onChangeGoalkeeper={(playerId, isGoalkeeper) => {
-						setPlayerIsGoalkeeper.mutate({ playerId, isGoalkeeper });
-					}}
-					onUnlink={handleUnlink}
-					onMerge={handleMerge}
-					onDeactivate={handleDeactivate}
-				/>
+					{mountedTabsRef.current.management && permissions.viewManagement && (
+						<TabPanel active={selectedTab === CHAMPIONSHIP_TAB.management}>
+							<ChampionshipManagementTab
+								championshipId={championshipId}
+								players={activePlayers}
+								events={eventsQuery.data ?? []}
+								eventsPending={eventsQuery.isPending}
+								eventsError={mutationErrorMessage(eventsQuery)}
+							/>
+						</TabPanel>
+					)}
+				</div>
 			)}
-			{!isSettingsOpen && selectedTab === CHAMPIONSHIP_TAB.events && (
-				<ChampionshipEvents
-					championshipId={championshipId}
-					championshipName={data.name}
-					eventTime={data.event_time}
-					eventWeekday={data.event_weekday}
-					location={data.location}
-					players={activePlayers}
-					canManage={permissions.manageEvent}
-					canSetMvp={permissions.setMvp}
-				/>
-			)}
-			{!isSettingsOpen && selectedTab === CHAMPIONSHIP_TAB.podium && (
-				<ChampionshipPodiumTab
-					players={activePlayers}
-					championshipName={data.name}
-					events={eventsQuery.data ?? []}
-				/>
-			)}
-			{!isSettingsOpen &&
-				selectedTab === CHAMPIONSHIP_TAB.management &&
-				permissions.viewManagement && (
-					<ChampionshipManagementTab
-						championshipId={championshipId}
-						players={activePlayers}
-						events={eventsQuery.data ?? []}
-						eventsPending={eventsQuery.isPending}
-						eventsError={mutationErrorMessage(eventsQuery)}
-					/>
-				)}
 			{isSettingsOpen && (
 				<ChampionshipSettingsTab
 					name={data.name}

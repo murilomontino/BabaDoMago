@@ -15,6 +15,14 @@
 	--color-danger: #dc2626;
 	--color-danger-soft: #fef2f2;
 	--color-danger-fg: #b91c1c;
+
+	--animate-tab-panel: tab-panel 200ms ease-out;
+
+	@keyframes tab-panel {
+		from {
+			opacity: 0;
+		}
+	}
 }
 
 html {

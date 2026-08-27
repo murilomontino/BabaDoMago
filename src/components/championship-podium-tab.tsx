@@ -43,6 +43,7 @@ import {
 	podiumShareCardFromSynergyPairs,
 	podiumShareCardsFromPlayers,
 	podiumShareContext,
+	podiumSharePeriodCaption,
 	podiumSharingLabel,
 } from "@/const/podium-share";
 import { SKELETON_LABEL } from "@/const/skeleton";
@@ -196,6 +197,12 @@ export function ChampionshipPodiumTab({
 		const parts = {
 			championshipName,
 			context: podiumShareContext(eventStartsAt, year, semester, months),
+			periodLabel: podiumSharePeriodCaption(
+				eventStartsAt,
+				year,
+				semester,
+				months,
+			),
 			generatedAt: new Date().toISOString(),
 		};
 		try {

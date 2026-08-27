@@ -88,6 +88,10 @@ type ChampionshipRosterProps = {
 	}) => Promise<void>;
 };
 
+function rosterRowId(row: RosterRow): string {
+	return String(row.id);
+}
+
 function rosterPlayerCellProps(
 	player: ChampionshipPlayer,
 	shared: Omit<RosterPlayerCellProps, "player">,
@@ -521,7 +525,7 @@ export function ChampionshipRoster({
 				<DataTable
 					data={rows}
 					columns={columns}
-					getRowId={(row) => String(row.id)}
+					getRowId={rosterRowId}
 					hideableColumns={ROSTER_STAT_COLUMN_OPTIONS}
 					initialColumnVisibility={ROSTER_DEFAULT_COLUMN_VISIBILITY}
 					legendItems={ROSTER_LEGEND_ITEMS}

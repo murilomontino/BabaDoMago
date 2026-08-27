@@ -1,24 +1,10 @@
-import { useSyncExternalStore } from "react";
 import { Tooltip } from "react-tooltip";
 import "react-tooltip/dist/react-tooltip.css";
 import { TOOLTIP_ENABLED_QUERY, TOOLTIP_ID } from "@/const/tooltip";
-
-function subscribeTooltipEnabled(onStoreChange: () => void) {
-	const media = window.matchMedia(TOOLTIP_ENABLED_QUERY);
-	media.addEventListener("change", onStoreChange);
-	return () => media.removeEventListener("change", onStoreChange);
-}
-
-function getTooltipEnabled() {
-	return window.matchMedia(TOOLTIP_ENABLED_QUERY).matches;
-}
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 export function AppTooltip() {
-	const enabled = useSyncExternalStore(
-		subscribeTooltipEnabled,
-		getTooltipEnabled,
-		() => false,
-	);
+	const enabled = useMediaQuery(TOOLTIP_ENABLED_QUERY);
 
 	return (
 		<Tooltip

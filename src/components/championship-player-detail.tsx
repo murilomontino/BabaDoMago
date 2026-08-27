@@ -450,9 +450,11 @@ function PlayerHistoryTable({
 		[],
 	);
 
+	const rows = useMemo(() => [...history], [history]);
+
 	return (
 		<DataTable
-			data={[...history]}
+			data={rows}
 			columns={columns}
 			getRowId={(row) => String(row.eventId)}
 			hideableColumns={ROSTER_OPTIONAL_COLUMN_OPTIONS}
@@ -528,9 +530,11 @@ function PlayerPartnersTable({
 		[],
 	);
 
+	const rows = useMemo(() => [...partners], [partners]);
+
 	return (
 		<DataTable
-			data={[...partners]}
+			data={rows}
 			columns={columns}
 			getRowId={(row) => String(row.partner.id)}
 			hideableColumns={SYNERGY_STAT_COLUMN_OPTIONS}

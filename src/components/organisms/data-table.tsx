@@ -11,11 +11,18 @@ import {
 } from "@tanstack/react-table";
 import { ArrowDownWideNarrow, ArrowUpNarrowWide } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { memo, type ReactNode, useEffect, useId } from "react";
+import {
+	memo,
+	type ReactNode,
+	useDeferredValue,
+	useEffect,
+	useId,
+} from "react";
 import { SortableHeader } from "@/components/atoms/sortable-header";
 import { ColumnVisibilityPanel } from "@/components/molecules/column-visibility-panel";
 import { TableLegend } from "@/components/molecules/table-legend";
 import {
+	DATA_TABLE_DESKTOP_QUERY,
 	DATA_TABLE_EXTRA_PRESENT,
 	DATA_TABLE_MOBILE_ACTIONS,
 	DATA_TABLE_MOBILE_PRIMARY,
@@ -30,6 +37,9 @@ import {
 } from "@/const/data-table";
 import { TOOLTIP_ID } from "@/const/tooltip";
 import { BUTTON_ICON_CLASS, FIELD_CLASS } from "@/const/ui";
+import { useMediaQuery } from "@/hooks/use-media-query";
+
+const EMPTY_TABLE_DATA: never[] = [];
 
 const TABLE_CELL_ALIGN = {
 	left: "text-left",
@@ -280,11 +290,14 @@ function DataTableInner<TData extends RowData>({
 	animateRowExit = false,
 }: DataTableProps<TData>) {
 	const sortSelectId = useId();
+	const isDesktop = useMediaQuery(DATA_TABLE_DESKTOP_QUERY);
 	const reduceMotion = useReducedMotion() === true;
+	// Linhas entram no render seguinte para o clique pintar sem esperar a lista.
+	const rows = useDeferredValue(data, EMPTY_TABLE_DATA);
 	const table = useTable(
 		{
 			features: dataTableFeatures,
-			data,
+			data: rows,
 			columns,
 			getRowId,
 			initialState: {
@@ -418,166 +431,173 @@ function DataTableInner<TData extends RowData>({
 			<div className="mb-3">
 				<TableLegend items={legend} />
 			</div>
-			<ul className="divide-y divide-line md:hidden">
-				{leadingRowCells && <ExtraMobileRow cells={leadingRowCells} />}
-				<DataTableRowPresence animate={animateRowExit}>
-					{table.getRowModel().rows.map((row) => {
-						const { primary, stats, actions } = splitMobileTableCells(
-							row.getVisibleCells(),
-						);
+			{!isDesktop && (
+				<ul className="divide-y divide-line md:hidden">
+					{leadingRowCells && <ExtraMobileRow cells={leadingRowCells} />}
+					<DataTableRowPresence animate={animateRowExit}>
+						{table.getRowModel().rows.map((row) => {
+							const { primary, stats, actions } = splitMobileTableCells(
+								row.getVisibleCells(),
+							);
 
-						return (
-							<DataTableExitRow
-								key={row.id}
-								as="li"
-								animate={animateRowExit}
-								reduceMotion={reduceMotion}
-								className={dataTableRowClassName(
-									"py-3",
-									Boolean(onRowClick),
-									getRowClassName?.(row.original),
-								)}
-								onClick={dataTableRowClickHandler(onRowClick, row.original)}
-								onKeyDown={dataTableRowKeyDownHandler(onRowClick, row.original)}
-							>
-								<div className="flex min-w-0 items-center justify-between gap-3">
-									{primary.map((cell) => (
-										<div
-											key={cell.id}
-											className={
-												cell.column.id === DATA_TABLE_MOBILE_PRIMARY.player
-													? "min-w-0 flex-1"
-													: "shrink-0"
-											}
-										>
-											<table.FlexRender cell={cell} />
-										</div>
-									))}
-								</div>
-								{stats.length > 0 && (
-									<div className="mt-2 overflow-x-auto">
-										<table className="w-full border-collapse text-sm">
-											<thead>
-												<tr>
-													{stats.map((cell) => {
-														const label = mobileTableCellAbbr(
-															cell.column.id,
-															legendItems,
-															cell.column.columnDef.meta?.title,
-														);
-
-														return (
-															<th
-																key={cell.id}
-																title={cell.column.columnDef.meta?.title}
-																className="px-1 py-1 text-center text-xs font-semibold uppercase tracking-wide text-fg-muted"
-															>
-																{label}
-															</th>
-														);
-													})}
-												</tr>
-											</thead>
-											<tbody>
-												<tr>
-													{stats.map((cell) => (
-														<td
-															key={cell.id}
-															className="whitespace-nowrap px-1 py-1 text-center tabular-nums"
-														>
-															<table.FlexRender cell={cell} />
-														</td>
-													))}
-												</tr>
-											</tbody>
-										</table>
-									</div>
-								)}
-								{actions.length > 0 && (
-									<div className="mt-2 w-full">
-										{actions.map((cell) => (
-											<div key={cell.id}>
-												<table.FlexRender cell={cell} />
-											</div>
-										))}
-									</div>
-								)}
-							</DataTableExitRow>
-						);
-					})}
-				</DataTableRowPresence>
-				{trailingRowCells && <ExtraMobileRow cells={trailingRowCells} />}
-			</ul>
-			<div className="hidden overflow-x-auto md:block">
-				<table className="w-full min-w-max border-collapse text-sm">
-					<thead className="border-b border-line bg-surface-muted">
-						{table.getHeaderGroups().map((headerGroup) => (
-							<tr key={headerGroup.id}>
-								{headerGroup.headers.map((header) => (
-									<SortableHeader
-										key={header.id}
-										canSort={header.column.getCanSort()}
-										sorted={header.column.getIsSorted()}
-										onSort={header.column.getToggleSortingHandler()}
-										align={header.column.columnDef.meta?.align}
-										title={header.column.columnDef.meta?.title}
-									>
-										{!header.isPlaceholder && (
-											<table.FlexRender header={header} />
-										)}
-									</SortableHeader>
-								))}
-							</tr>
-						))}
-					</thead>
-					<tbody className="divide-y divide-line">
-						{leadingRowCells && (
-							<ExtraDesktopRow
-								cells={leadingRowCells}
-								columns={extraDesktopColumns}
-							/>
-						)}
-						<DataTableRowPresence animate={animateRowExit}>
-							{table.getRowModel().rows.map((row) => (
+							return (
 								<DataTableExitRow
 									key={row.id}
-									as="tr"
+									as="li"
 									animate={animateRowExit}
 									reduceMotion={reduceMotion}
 									className={dataTableRowClassName(
-										"",
+										"py-3",
 										Boolean(onRowClick),
 										getRowClassName?.(row.original),
 									)}
 									onClick={dataTableRowClickHandler(onRowClick, row.original)}
+									onKeyDown={dataTableRowKeyDownHandler(
+										onRowClick,
+										row.original,
+									)}
 								>
-									{row.getVisibleCells().map((cell) => {
-										const align = cell.column.columnDef.meta?.align ?? "left";
-										const alignClass = TABLE_CELL_ALIGN[align];
-										const isActions =
-											cell.column.id === DATA_TABLE_MOBILE_ACTIONS.actions;
-
-										return (
-											<td
+									<div className="flex min-w-0 items-center justify-between gap-3">
+										{primary.map((cell) => (
+											<div
 												key={cell.id}
-												className={`${isActions ? "w-px px-0.5 py-1" : "whitespace-nowrap px-3 py-3"} ${alignClass}`}
+												className={
+													cell.column.id === DATA_TABLE_MOBILE_PRIMARY.player
+														? "min-w-0 flex-1"
+														: "shrink-0"
+												}
 											>
 												<table.FlexRender cell={cell} />
-											</td>
-										);
-									})}
+											</div>
+										))}
+									</div>
+									{stats.length > 0 && (
+										<div className="mt-2 overflow-x-auto">
+											<table className="w-full border-collapse text-sm">
+												<thead>
+													<tr>
+														{stats.map((cell) => {
+															const label = mobileTableCellAbbr(
+																cell.column.id,
+																legendItems,
+																cell.column.columnDef.meta?.title,
+															);
+
+															return (
+																<th
+																	key={cell.id}
+																	title={cell.column.columnDef.meta?.title}
+																	className="px-1 py-1 text-center text-xs font-semibold uppercase tracking-wide text-fg-muted"
+																>
+																	{label}
+																</th>
+															);
+														})}
+													</tr>
+												</thead>
+												<tbody>
+													<tr>
+														{stats.map((cell) => (
+															<td
+																key={cell.id}
+																className="whitespace-nowrap px-1 py-1 text-center tabular-nums"
+															>
+																<table.FlexRender cell={cell} />
+															</td>
+														))}
+													</tr>
+												</tbody>
+											</table>
+										</div>
+									)}
+									{actions.length > 0 && (
+										<div className="mt-2 w-full">
+											{actions.map((cell) => (
+												<div key={cell.id}>
+													<table.FlexRender cell={cell} />
+												</div>
+											))}
+										</div>
+									)}
 								</DataTableExitRow>
+							);
+						})}
+					</DataTableRowPresence>
+					{trailingRowCells && <ExtraMobileRow cells={trailingRowCells} />}
+				</ul>
+			)}
+			{isDesktop && (
+				<div className="hidden overflow-x-auto md:block">
+					<table className="w-full min-w-max border-collapse text-sm">
+						<thead className="border-b border-line bg-surface-muted">
+							{table.getHeaderGroups().map((headerGroup) => (
+								<tr key={headerGroup.id}>
+									{headerGroup.headers.map((header) => (
+										<SortableHeader
+											key={header.id}
+											canSort={header.column.getCanSort()}
+											sorted={header.column.getIsSorted()}
+											onSort={header.column.getToggleSortingHandler()}
+											align={header.column.columnDef.meta?.align}
+											title={header.column.columnDef.meta?.title}
+										>
+											{!header.isPlaceholder && (
+												<table.FlexRender header={header} />
+											)}
+										</SortableHeader>
+									))}
+								</tr>
 							))}
-						</DataTableRowPresence>
-						{trailingRowCells && (
-							<ExtraDesktopRow
-								cells={trailingRowCells}
-								columns={extraDesktopColumns}
-							/>
-						)}
-					</tbody>
-				</table>
-			</div>
+						</thead>
+						<tbody className="divide-y divide-line">
+							{leadingRowCells && (
+								<ExtraDesktopRow
+									cells={leadingRowCells}
+									columns={extraDesktopColumns}
+								/>
+							)}
+							<DataTableRowPresence animate={animateRowExit}>
+								{table.getRowModel().rows.map((row) => (
+									<DataTableExitRow
+										key={row.id}
+										as="tr"
+										animate={animateRowExit}
+										reduceMotion={reduceMotion}
+										className={dataTableRowClassName(
+											"",
+											Boolean(onRowClick),
+											getRowClassName?.(row.original),
+										)}
+										onClick={dataTableRowClickHandler(onRowClick, row.original)}
+									>
+										{row.getVisibleCells().map((cell) => {
+											const align = cell.column.columnDef.meta?.align ?? "left";
+											const alignClass = TABLE_CELL_ALIGN[align];
+											const isActions =
+												cell.column.id === DATA_TABLE_MOBILE_ACTIONS.actions;
+
+											return (
+												<td
+													key={cell.id}
+													className={`${isActions ? "w-px px-0.5 py-1" : "whitespace-nowrap px-3 py-3"} ${alignClass}`}
+												>
+													<table.FlexRender cell={cell} />
+												</td>
+											);
+										})}
+									</DataTableExitRow>
+								))}
+							</DataTableRowPresence>
+							{trailingRowCells && (
+								<ExtraDesktopRow
+									cells={trailingRowCells}
+									columns={extraDesktopColumns}
+								/>
+							)}
+						</tbody>
+					</table>
+				</div>
+			)}
 			<div className="mt-3">
 				<TableLegend items={legend} />
 			</div>
