@@ -614,18 +614,18 @@ export async function shareEventRecapImage(input: {
 		body: JSON.stringify({
 			sessionId: "4c2f81",
 			runId: "pre-fix",
-			hypothesisId: "E",
+			hypothesisId: "G",
 			location: "share-event-recap-image.ts:shareEventRecapImage",
-			message: "final recap rating rows",
+			message: "painted recap rating lines",
 			data: {
-				sample: data.ratingDeltaUp
-					.concat(data.ratingDeltaDown)
+				painted: [...data.ratingDeltaUp, ...data.ratingDeltaDown]
 					.slice(0, 8)
 					.map((row) => ({
-						playerId: row.playerId,
-						from: row.from,
-						to: row.to,
-						delta: row.delta,
+						name: row.name,
+						from: formatEventRating(row.from),
+						to: formatEventRating(row.to),
+						delta: eventRecapShareDeltaLabel(row.delta),
+						line: `${row.name} ${formatEventRating(row.from)} → ${formatEventRating(row.to)} (${eventRecapShareDeltaLabel(row.delta)})`,
 					})),
 			},
 			timestamp: Date.now(),
