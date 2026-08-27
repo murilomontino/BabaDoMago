@@ -13,7 +13,9 @@ import {
 	buildMatchOp,
 	isFatalMatchOpMessage,
 	MATCH_OP,
+	MATCH_OPS_LABEL,
 	type MatchOp,
+	matchOpsQueueBannerLabel,
 	pendingLocalGoalOpId,
 } from "./championship-event-match-ops.ts";
 import { EVENT_TEAM_COLOR } from "./event-team-color.ts";
@@ -624,6 +626,51 @@ check(
 	edited.matches[0]?.players.length,
 	started.matches[0]?.players.length,
 	"updateTeam leaves match players",
+);
+
+const attendanceQueued = applyPlayOps(baseEvent, [
+	buildMatchOp(
+		{
+			kind: MATCH_OP.saveAttendance,
+			eventId: 1,
+			presentPlayerIds: [100, 101],
+			goalkeeperPlayerIds: [100],
+		},
+		20,
+		nowMs,
+	),
+]);
+check(attendanceQueued.attendance.length, 2, "saveAttendance overlays present");
+check(
+	attendanceQueued.attendance.find((row) => row.player_id === 100)
+		?.is_goalkeeper,
+	true,
+	"saveAttendance marks goalkeeper",
+);
+
+const endedRound = applyPlayOps(baseEvent, [
+	buildMatchOp(
+		{
+			kind: MATCH_OP.endEvent,
+			eventId: 1,
+			presentPlayerIds: [100],
+			mvpPlayerIds: [100],
+		},
+		21,
+		nowMs,
+	),
+]);
+check(endedRound.ended_at !== null, true, "endEvent sets ended_at");
+
+check(
+	matchOpsQueueBannerLabel(true),
+	MATCH_OPS_LABEL.syncing,
+	"online banner is syncing",
+);
+check(
+	matchOpsQueueBannerLabel(false),
+	MATCH_OPS_LABEL.pendingOffline,
+	"offline banner is pending",
 );
 
 console.log("championship-event-match-ops ok");

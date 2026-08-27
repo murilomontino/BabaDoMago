@@ -4,7 +4,7 @@ import {
 	type MatchOp,
 } from "@/const/championship-event-match-ops";
 import {
-	invalidateChampionshipEventQueries,
+	invalidateChampionshipEventByEventId,
 	invalidateChampionshipQueries,
 } from "@/hooks/championships/championships-query-keys";
 import { queryClient } from "@/lib/query-client";
@@ -12,7 +12,9 @@ import { ensureSupabaseSession } from "@/lib/supabase-session";
 import {
 	addChampionshipEventGoal,
 	deleteChampionshipEventMatch,
+	endChampionshipEvent,
 	endChampionshipEventMatch,
+	saveChampionshipEventAttendance,
 	setChampionshipEventMatchGoalkeeper,
 	setChampionshipEventMatchPlayer,
 	startChampionshipEventMatch,
@@ -83,6 +85,20 @@ export async function runBoundMatchOpRpc(
 		case MATCH_OP.discardMatch:
 			await deleteChampionshipEventMatch(op.matchId);
 			return null;
+		case MATCH_OP.saveAttendance:
+			await saveChampionshipEventAttendance(
+				op.eventId,
+				op.presentPlayerIds,
+				op.goalkeeperPlayerIds,
+			);
+			return null;
+		case MATCH_OP.endEvent:
+			await endChampionshipEvent(
+				op.eventId,
+				op.presentPlayerIds,
+				op.mvpPlayerIds,
+			);
+			return null;
 		default: {
 			const _exhaustive: never = op;
 			return _exhaustive;
@@ -91,10 +107,16 @@ export async function runBoundMatchOpRpc(
 }
 
 export async function invalidateBoundMatchOpQueries(
+	eventId: number,
 	op: MatchOp,
 ): Promise<void> {
-	await invalidateChampionshipEventQueries(queryClient);
-	if (op.kind !== MATCH_OP.endMatch && op.kind !== MATCH_OP.discardMatch) {
+	await invalidateChampionshipEventByEventId(queryClient, eventId);
+	if (
+		op.kind !== MATCH_OP.endMatch &&
+		op.kind !== MATCH_OP.discardMatch &&
+		op.kind !== MATCH_OP.endEvent &&
+		op.kind !== MATCH_OP.saveAttendance
+	) {
 		return;
 	}
 

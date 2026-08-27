@@ -19,6 +19,7 @@ import {
 	rosterShareText,
 } from "@/const/roster-share";
 import { ROSTER_COLUMN, ROSTER_COLUMN_ABBR } from "@/const/roster-stats";
+import { loadAvatar } from "@/lib/load-avatar";
 import { shareOrDownload } from "@/lib/share-file";
 
 const SHARE_SCALE = 2;
@@ -43,17 +44,6 @@ function avatarFromLoaded(
 	}
 
 	return avatars.get(url);
-}
-
-function loadAvatar(src: string): Promise<HTMLImageElement | null> {
-	return new Promise((resolve) => {
-		const image = new Image();
-		image.crossOrigin = "anonymous";
-		image.referrerPolicy = "no-referrer";
-		image.addEventListener("load", () => resolve(image));
-		image.addEventListener("error", () => resolve(null));
-		image.src = src;
-	});
 }
 
 async function loadAvatars(

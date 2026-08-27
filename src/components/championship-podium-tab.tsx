@@ -3,6 +3,7 @@ import { lazy, Suspense, useMemo, useState } from "react";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
 import { SectionCard } from "@/components/section-card";
+import { CHAMPIONSHIP_RATING_HISTORY_CHART } from "@/const/championship-rating-history";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import {
 	championshipSynergyRanking,
@@ -68,6 +69,14 @@ const ChampionshipPodium = lazy(() =>
 	import("@/components/championship-podium").then((m) => ({
 		default: m.ChampionshipPodium,
 	})),
+);
+
+const ChampionshipRatingHistoryChart = lazy(() =>
+	import("@/components/molecules/championship-rating-history-chart").then(
+		(m) => ({
+			default: m.ChampionshipRatingHistoryChart,
+		}),
+	),
 );
 
 const FILTER_CHIP =
@@ -420,6 +429,15 @@ export function ChampionshipPodiumTab({
 					worstPairs={worstPairs}
 				/>
 			</Suspense>
+			{events && (
+				<Suspense fallback={<PodiumRatingHistorySkeleton />}>
+					<ChampionshipRatingHistoryChart
+						players={players}
+						events={events}
+						championshipName={championshipName}
+					/>
+				</Suspense>
+			)}
 			{teamBalance && teamBalance.events > 0 && (
 				<div className="mt-8 space-y-3">
 					<h3 className="text-sm font-semibold text-fg">
@@ -454,6 +472,16 @@ function PodiumStageSkeleton() {
 	return (
 		<SkeletonRegion label={SKELETON_LABEL.podium}>
 			<Skeleton className="h-48 w-full" />
+		</SkeletonRegion>
+	);
+}
+
+function PodiumRatingHistorySkeleton() {
+	return (
+		<SkeletonRegion label={SKELETON_LABEL.chart} className="mt-8">
+			<div style={{ height: CHAMPIONSHIP_RATING_HISTORY_CHART.height }}>
+				<Skeleton className="h-full w-full" />
+			</div>
 		</SkeletonRegion>
 	);
 }

@@ -167,4 +167,81 @@ check(
 	"rewrites following matchId",
 );
 
+const attendanceThenStart = matchOpsReducer(
+	MATCH_OPS_INITIAL_STATE,
+	matchOpRequested({
+		eventId: 1,
+		draft: {
+			kind: MATCH_OP.saveAttendance,
+			eventId: 1,
+			presentPlayerIds: [100],
+			goalkeeperPlayerIds: [100],
+		},
+		nowMs,
+	}),
+);
+const attendanceThenStartQueued = matchOpsReducer(
+	attendanceThenStart,
+	matchOpRequested({
+		eventId: 1,
+		draft: {
+			kind: MATCH_OP.startMatch,
+			eventId: 1,
+			teamAId: 10,
+			teamBId: 20,
+			durationSeconds: 420,
+		},
+		nowMs,
+	}),
+);
+check(
+	attendanceThenStartQueued.queues["1"]?.[0]?.kind,
+	MATCH_OP.saveAttendance,
+	"attendance flushes before start",
+);
+check(
+	attendanceThenStartQueued.queues["1"]?.[1]?.kind,
+	MATCH_OP.startMatch,
+	"start stays after attendance",
+);
+
+const goalThenEnd = matchOpsReducer(
+	MATCH_OPS_INITIAL_STATE,
+	matchOpRequested({
+		eventId: 1,
+		draft: {
+			kind: MATCH_OP.addGoal,
+			matchId: 7,
+			scorerPlayerId: 101,
+			assistPlayerId: null,
+			isOwnGoal: false,
+			elapsedSeconds: 12,
+		},
+		nowMs,
+	}),
+);
+const goalThenEndQueued = matchOpsReducer(
+	goalThenEnd,
+	matchOpRequested({
+		eventId: 1,
+		draft: {
+			kind: MATCH_OP.endEvent,
+			eventId: 1,
+			presentPlayerIds: [100],
+			mvpPlayerIds: null,
+		},
+		nowMs,
+	}),
+);
+check(
+	goalThenEndQueued.queues["1"]?.[0]?.kind,
+	MATCH_OP.addGoal,
+	"goal flushes before endEvent",
+);
+check(
+	goalThenEndQueued.queues["1"]?.[1]?.kind,
+	MATCH_OP.endEvent,
+	"endEvent stays last",
+);
+
 console.log("match-ops slice ok");

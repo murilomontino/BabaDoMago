@@ -1,5 +1,6 @@
 import type {
 	ChampionshipEvent,
+	ChampionshipEventAttendance,
 	ChampionshipEventGoal,
 	ChampionshipEventMatch,
 	ChampionshipEventMatchPlayer,
@@ -28,6 +29,8 @@ export const MATCH_OP = {
 	swapTeam: "swapTeam",
 	endMatch: "endMatch",
 	discardMatch: "discardMatch",
+	saveAttendance: "saveAttendance",
+	endEvent: "endEvent",
 } as const;
 
 export type MatchOpKind = (typeof MATCH_OP)[keyof typeof MATCH_OP];
@@ -95,6 +98,18 @@ export type MatchOpDraft =
 	| {
 			kind: typeof MATCH_OP.discardMatch;
 			matchId: number;
+	  }
+	| {
+			kind: typeof MATCH_OP.saveAttendance;
+			eventId: number;
+			presentPlayerIds: number[];
+			goalkeeperPlayerIds: number[];
+	  }
+	| {
+			kind: typeof MATCH_OP.endEvent;
+			eventId: number;
+			presentPlayerIds: number[] | null;
+			mvpPlayerIds: number[] | null;
 	  };
 
 export type MatchOp = MatchOpDraft & {
@@ -111,6 +126,7 @@ export const MATCH_OPS_FLUSH_ERROR = {
 
 export const MATCH_OPS_LABEL = {
 	syncing: "Sincronizando ações da partida",
+	pendingOffline: "Sem internet, salvo no aparelho",
 	queue: "Fila da partida",
 	setPlayer: "Jogador",
 	setGoalkeeper: "Goleiro",
@@ -121,7 +137,28 @@ export const MATCH_OPS_LABEL = {
 	swapTeam: "Trocar time",
 	endMatch: "Encerrar",
 	discardMatch: "Descartar",
+	saveAttendance: "Presença",
+	endEvent: "Encerrar rodada",
+	ratingPreview: "Prévia da nota",
 } as const;
+
+export function matchOpCopiedIds(
+	ids: readonly number[] | null | undefined,
+): number[] | null {
+	if (ids == null) {
+		return null;
+	}
+
+	return [...ids];
+}
+
+export function matchOpsQueueBannerLabel(online: boolean): string {
+	if (online) {
+		return MATCH_OPS_LABEL.syncing;
+	}
+
+	return MATCH_OPS_LABEL.pendingOffline;
+}
 
 export const MATCH_OPS_SYNCING_CLASS =
 	"pointer-events-none absolute inset-x-0 top-2 z-10 flex justify-center text-fg-muted";
@@ -237,6 +274,8 @@ export function applyMatchOp<T extends MatchOpsTarget>(
 		case MATCH_OP.swapTeam:
 		case MATCH_OP.endMatch:
 		case MATCH_OP.discardMatch:
+		case MATCH_OP.saveAttendance:
+		case MATCH_OP.endEvent:
 			return match;
 		default: {
 			const _exhaustive: never = op;
@@ -257,6 +296,10 @@ function applyPlayOp(event: ChampionshipEvent, op: MatchOp): ChampionshipEvent {
 			return applyEndMatch(event, op);
 		case MATCH_OP.discardMatch:
 			return applyDiscardMatch(event, op);
+		case MATCH_OP.saveAttendance:
+			return applySaveAttendance(event, op);
+		case MATCH_OP.endEvent:
+			return applyEndEvent(event, op);
 		case MATCH_OP.setPlayer:
 		case MATCH_OP.setGoalkeeper:
 		case MATCH_OP.addGoal:
@@ -555,6 +598,64 @@ function applyDiscardMatch(
 	return {
 		...event,
 		matches: event.matches.filter((row) => row.id !== match.id),
+	};
+}
+
+function overlayAttendanceRow(
+	event: ChampionshipEvent,
+	playerId: number,
+	isGoalkeeper: boolean,
+): ChampionshipEventAttendance {
+	const current = event.attendance.find((row) => row.player_id === playerId);
+	if (current) {
+		return {
+			...current,
+			is_goalkeeper: isGoalkeeper,
+		};
+	}
+
+	return {
+		id: -playerId,
+		event_id: event.id,
+		player_id: playerId,
+		display_name: "",
+		is_goalkeeper: isGoalkeeper,
+		event_date: event.starts_at,
+		goals: 0,
+		assists: 0,
+		assisted_goals: 0,
+		own_goals: 0,
+		wins: 0,
+		losses: 0,
+		draws: 0,
+		matches: 0,
+		rating: 0,
+		rating_delta: 0,
+		is_mvp: false,
+		mvp_overridden: false,
+	};
+}
+
+function applySaveAttendance(
+	event: ChampionshipEvent,
+	op: Extract<MatchOp, { kind: typeof MATCH_OP.saveAttendance }>,
+): ChampionshipEvent {
+	const goalkeepers = new Set(op.goalkeeperPlayerIds);
+	return {
+		...event,
+		attendance: op.presentPlayerIds.map((playerId) =>
+			overlayAttendanceRow(event, playerId, goalkeepers.has(playerId)),
+		),
+	};
+}
+
+function applyEndEvent(
+	event: ChampionshipEvent,
+	op: Extract<MatchOp, { kind: typeof MATCH_OP.endEvent }>,
+): ChampionshipEvent {
+	return {
+		...event,
+		ended_at: event.ended_at ?? op.createdAt,
 	};
 }
 

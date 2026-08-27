@@ -32,9 +32,12 @@ export async function runMatchOpRpc(
 	return runBoundMatchOpRpc(eventId, op);
 }
 
-export async function invalidateMatchOpQueries(op: MatchOp): Promise<void> {
+export async function invalidateMatchOpQueries(
+	eventId: number,
+	op: MatchOp,
+): Promise<void> {
 	const { invalidateBoundMatchOpQueries } = await import("./rpc.ts");
-	await invalidateBoundMatchOpQueries(op);
+	await invalidateBoundMatchOpQueries(eventId, op);
 }
 
 function selectMatchOpsById(eventId: number) {
@@ -69,7 +72,7 @@ export function* flushMatchOp(
 				yield put(matchClockFlushRequested({ matchId: serverMatchId }));
 			}
 
-			yield call(invalidateMatchOpQueries, op);
+			yield call(invalidateMatchOpQueries, eventId, op);
 			yield put(opSettled(eventId));
 			return true;
 		} catch (error) {
@@ -86,7 +89,7 @@ export function* flushMatchOp(
 				attempt + 1 >= MATCH_CLOCK_FLUSH_RETRY.attempts
 			) {
 				yield put(opDropped({ eventId, message }));
-				yield call(invalidateMatchOpQueries, op);
+				yield call(invalidateMatchOpQueries, eventId, op);
 				return true;
 			}
 

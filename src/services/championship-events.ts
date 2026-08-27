@@ -32,13 +32,16 @@ import type {
 	ChampionshipEventTeamPlayer,
 } from "@/types/championship-event";
 
-const EVENT_COLUMNS = `
+const EVENT_LIST_COLUMNS = `
 	id,
 	championship_id,
 	starts_at,
 	players_per_team,
 	skip_guest_goalkeeper_matches,
-	ended_at,
+	ended_at
+` as const;
+
+const EVENT_DETAIL_COLUMNS = `${EVENT_LIST_COLUMNS},
 	championship_event_teams (
 		id,
 		event_id,
@@ -369,7 +372,7 @@ export async function listChampionshipEvents(
 ): Promise<ChampionshipEvent[]> {
 	const { data, error } = await supabase
 		.from("championship_events")
-		.select(EVENT_COLUMNS)
+		.select(EVENT_DETAIL_COLUMNS)
 		.eq("championship_id", championshipId)
 		.is("deleted_at", null)
 		.order("starts_at", { ascending: false })
@@ -388,7 +391,7 @@ export async function getChampionshipEventById(
 ): Promise<ChampionshipEvent> {
 	const { data, error } = await supabase
 		.from("championship_events")
-		.select(EVENT_COLUMNS)
+		.select(EVENT_DETAIL_COLUMNS)
 		.eq("id", eventId)
 		.eq("championship_id", championshipId)
 		.is("deleted_at", null)

@@ -5,9 +5,12 @@ import path from "node:path";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
+const QUERY_CACHE_RELEASE = process.env.VITE_RELEASE ?? "2026-08-offline-v1";
+
 export default defineConfig({
 	define: {
-		__QUERY_CACHE_BUSTER__: JSON.stringify(String(Date.now())),
+		// Subir só quando o shape das query keys ou do payload persistido mudar.
+		__QUERY_CACHE_BUSTER__: JSON.stringify(QUERY_CACHE_RELEASE),
 	},
 	server: {
 		allowedHosts: [".ngrok-free.app"],
