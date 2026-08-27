@@ -89,8 +89,8 @@ import {
 	toggleMatchTeamSelection,
 } from "@/const/championship-event-match";
 import {
-	MATCH_OPS_LABEL,
 	MATCH_OPS_SYNCING_CLASS,
+	matchOpsQueueBannerLabel,
 } from "@/const/championship-event-match-ops";
 import { resolveEventPlayers } from "@/const/championship-event-roster";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
@@ -778,11 +778,18 @@ function firstPlayError(...messages: Array<string | null>): string | null {
 	return found;
 }
 
-function MatchOpsSyncingBanner() {
+function MatchOpsQueueBanner({ online }: { online: boolean }) {
+	const label = matchOpsQueueBannerLabel(online);
+
 	return (
 		<div className={MATCH_OPS_SYNCING_CLASS} role="status">
-			<LoaderCircle className="size-5 animate-spin" aria-hidden />
-			<span className="sr-only">{MATCH_OPS_LABEL.syncing}</span>
+			{online && <LoaderCircle className="size-5 animate-spin" aria-hidden />}
+			{online && <span className="sr-only">{label}</span>}
+			{!online && (
+				<span className="rounded-full bg-canvas/90 px-3 py-1 text-xs font-medium text-fg">
+					{label}
+				</span>
+			)}
 		</div>
 	);
 }
@@ -945,7 +952,7 @@ export function ChampionshipEventPlay({
 		useState<ChampionshipEventMatchPlayer | null>(null);
 	const [discardOpen, setDiscardOpen] = useState(false);
 	const online = useOnline();
-	const showSyncing = pendingOps > 0 && online;
+	const showQueueBanner = pendingOps > 0;
 	const canStartSelected = canConfirmMatchTeams(selected);
 	const selectedTeamA = event.teams.find((team) => team.id === selected[0]);
 	const selectedTeamB = event.teams.find((team) => team.id === selected[1]);
@@ -961,7 +968,7 @@ export function ChampionshipEventPlay({
 	if (!match) {
 		return (
 			<div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden relative">
-				{showSyncing && <MatchOpsSyncingBanner />}
+				{showQueueBanner && <MatchOpsQueueBanner online={online} />}
 				<p className="mb-2 shrink-0 text-sm font-medium text-fg">
 					{EVENT_MATCH_LABEL.selectTeams}
 				</p>
@@ -1208,7 +1215,7 @@ export function ChampionshipEventPlay({
 
 	return (
 		<div className="relative flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden">
-			{showSyncing && <MatchOpsSyncingBanner />}
+			{showQueueBanner && <MatchOpsQueueBanner online={online} />}
 			<MatchTeamBlock
 				color={teamA.color}
 				sortOrder={teamA.sort_order}

@@ -37,7 +37,7 @@ checkJson(success.next().value, put(inFlightSet(op.id)), "marks in flight");
 checkJson(success.next().value, call(runMatchOpRpc, 1, op), "calls rpc");
 checkJson(
 	success.next(null).value,
-	call(invalidateMatchOpQueries, op),
+	call(invalidateMatchOpQueries, 1, op),
 	"invalidates queries",
 );
 checkJson(success.next().value, put(opSettled(1)), "settles");
@@ -87,7 +87,7 @@ checkJson(
 );
 checkJson(
 	fatal.next().value,
-	call(invalidateMatchOpQueries, op),
+	call(invalidateMatchOpQueries, 1, op),
 	"fatal invalidates queries",
 );
 checkJson(fatal.next(), { value: true, done: true }, "fatal continues queue");
@@ -133,7 +133,7 @@ checkJson(
 );
 checkJson(
 	startFlush.next().value,
-	call(invalidateMatchOpQueries, startOp),
+	call(invalidateMatchOpQueries, 1, startOp),
 	"start invalidates queries",
 );
 checkJson(

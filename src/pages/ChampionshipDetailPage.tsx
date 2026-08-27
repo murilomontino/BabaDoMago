@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { Users } from "lucide-react";
 import {
@@ -5,6 +6,7 @@ import {
 	lazy,
 	Suspense,
 	useCallback,
+	useEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -26,6 +28,7 @@ import { DataTableSkeleton } from "@/components/molecules/data-table-skeleton";
 import { SectionCard } from "@/components/section-card";
 import { TabPanel, Tabs } from "@/components/tabs";
 import type { PlayerEventStatsDraft } from "@/const/championship-event";
+import { isMatchClockOnline } from "@/const/championship-event-match";
 import { assertChampionshipLogoSource } from "@/const/championship-logo";
 import {
 	type AssignableChampionshipRole,
@@ -71,6 +74,7 @@ import { ROUTES } from "@/const/routes";
 import { SKELETON_LABEL } from "@/const/skeleton";
 import { CARD_CLASS, ERROR_CLASS, MODAL_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
+import { championshipEventDetailQueryKey } from "@/hooks/championships/championships-query-keys";
 import {
 	useChampionshipEvents,
 	useSaveChampionshipPlayerEventStats,
@@ -102,6 +106,7 @@ import {
 	pendingMutationId,
 } from "@/lib/error-message";
 import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
+import { getChampionshipEventById } from "@/services/championship-events";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 const ChampionshipLogoCrop = lazy(() =>
@@ -110,12 +115,29 @@ const ChampionshipLogoCrop = lazy(() =>
 	})),
 );
 
+function prefetchableChampionshipEvent<T extends { ended_at: string | null }>(
+	events: readonly T[],
+): T | null {
+	const open = events.find((event) => event.ended_at === null);
+	if (open) {
+		return open;
+	}
+
+	const first = events[0];
+	if (!first) {
+		return null;
+	}
+
+	return first;
+}
+
 export function ChampionshipDetailPage() {
 	const { championshipId: championshipIdParam } = useParams({
 		from: "/_authenticated/championships/$championshipId/",
 	});
 	const championshipId = Number(championshipIdParam);
 	const { user } = useAuth();
+	const queryClient = useQueryClient();
 	const navigate = useNavigate();
 	const { data, isPending, isError, error } = useChampionship(championshipId);
 	const addPlayer = useAddManualPlayer(championshipId);
@@ -128,6 +150,30 @@ export function ChampionshipDetailPage() {
 	const updateRating = useUpdatePlayerRating();
 	const updateNickname = useUpdatePlayerNickname();
 	const eventsQuery = useChampionshipEvents(championshipId);
+	useEffect(() => {
+		if (!isMatchClockOnline(globalThis.navigator?.onLine)) {
+			return;
+		}
+
+		const events = eventsQuery.data;
+		if (!events || events.length === 0) {
+			return;
+		}
+
+		const active = prefetchableChampionshipEvent(events);
+		if (!active) {
+			return;
+		}
+
+		void queryClient.prefetchQuery({
+			queryKey: championshipEventDetailQueryKey(
+				championshipId,
+				active.id,
+				user?.id,
+			),
+			queryFn: () => getChampionshipEventById(championshipId, active.id),
+		});
+	}, [championshipId, eventsQuery.data, queryClient, user?.id]);
 	const savePlayerEventStats =
 		useSaveChampionshipPlayerEventStats(championshipId);
 	const renameChampionship = useRenameChampionship(championshipId);

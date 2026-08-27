@@ -36,9 +36,12 @@ import {
 	upsertChampionshipEventRsvp,
 } from "@/services/championship-events";
 import {
-	CHAMPIONSHIP_EVENTS_QUERY_KEY,
-	invalidateChampionshipEventQueries,
+	championshipEventDetailQueryKey,
+	championshipEventsListQueryKey,
+	invalidateChampionshipEvent,
+	invalidateChampionshipEvents,
 	invalidateChampionshipQueries,
+	patchCachedChampionshipEvent,
 } from "./championships-query-keys";
 import { CHAMPIONSHIP_AUDIT_QUERY_KEY } from "./use-championship-audit-logs";
 
@@ -46,7 +49,7 @@ export function useChampionshipEvents(championshipId: number) {
 	const { user } = useAuth();
 
 	return useQuery({
-		queryKey: [...CHAMPIONSHIP_EVENTS_QUERY_KEY, championshipId, user?.id],
+		queryKey: championshipEventsListQueryKey(championshipId, user?.id),
 		queryFn: () => listChampionshipEvents(championshipId),
 		enabled: Number.isFinite(championshipId) && Boolean(user),
 	});
@@ -56,12 +59,11 @@ export function useChampionshipEvent(championshipId: number, eventId: number) {
 	const { user } = useAuth();
 
 	return useQuery({
-		queryKey: [
-			...CHAMPIONSHIP_EVENTS_QUERY_KEY,
+		queryKey: championshipEventDetailQueryKey(
 			championshipId,
 			eventId,
 			user?.id,
-		],
+		),
 		queryFn: () => getChampionshipEventById(championshipId, eventId),
 		enabled:
 			Number.isFinite(championshipId) &&
@@ -82,12 +84,12 @@ export function useCreateChampionshipEvent(championshipId: number) {
 			eventTime: string;
 		}) => createChampionshipEvent(championshipId, eventDate, eventTime),
 		onSuccess: async () => {
-			await invalidateChampionshipEventQueries(queryClient);
+			await invalidateChampionshipEvents(queryClient, championshipId);
 		},
 	});
 }
 
-export function useSaveChampionshipEventTeams(_championshipId: number) {
+export function useSaveChampionshipEventTeams(championshipId: number) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
@@ -117,7 +119,7 @@ export function useSaveChampionshipEventTeams(_championshipId: number) {
 				isDraw,
 			),
 		onSuccess: async (_data, variables) => {
-			await invalidateChampionshipEventQueries(queryClient);
+			await invalidateChampionshipEvents(queryClient, championshipId);
 			if (!variables.isDraw) {
 				return;
 			}
@@ -129,7 +131,7 @@ export function useSaveChampionshipEventTeams(_championshipId: number) {
 	});
 }
 
-export function useSaveChampionshipEventAttendance(_championshipId: number) {
+export function useSaveChampionshipEventAttendance(championshipId: number) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
@@ -149,7 +151,7 @@ export function useSaveChampionshipEventAttendance(_championshipId: number) {
 			),
 		onSuccess: async () => {
 			await Promise.all([
-				invalidateChampionshipEventQueries(queryClient),
+				invalidateChampionshipEvents(queryClient, championshipId),
 				invalidateChampionshipQueries(queryClient),
 			]);
 		},
@@ -157,7 +159,7 @@ export function useSaveChampionshipEventAttendance(_championshipId: number) {
 }
 
 export function useEnsureChampionshipEventAttendancePlayer(
-	_championshipId: number,
+	championshipId: number,
 ) {
 	const queryClient = useQueryClient();
 
@@ -171,33 +173,33 @@ export function useEnsureChampionshipEventAttendancePlayer(
 		}) => ensureChampionshipEventAttendancePlayer(eventId, playerId),
 		onSuccess: async () => {
 			await Promise.all([
-				invalidateChampionshipEventQueries(queryClient),
+				invalidateChampionshipEvents(queryClient, championshipId),
 				invalidateChampionshipQueries(queryClient),
 			]);
 		},
 	});
 }
 
-export function useUpsertChampionshipEventRsvp(_championshipId: number) {
+export function useUpsertChampionshipEventRsvp(championshipId: number) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: ({ eventId, status }: { eventId: number; status: string }) =>
 			upsertChampionshipEventRsvp(eventId, status),
 		onSuccess: async () => {
-			await invalidateChampionshipEventQueries(queryClient);
+			await invalidateChampionshipEvents(queryClient, championshipId);
 		},
 	});
 }
 
-export function usePromoteChampionshipEventRsvpGoing(_championshipId: number) {
+export function usePromoteChampionshipEventRsvpGoing(championshipId: number) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: (eventId: number) => promoteChampionshipEventRsvpGoing(eventId),
 		onSuccess: async () => {
 			await Promise.all([
-				invalidateChampionshipEventQueries(queryClient),
+				invalidateChampionshipEvents(queryClient, championshipId),
 				invalidateChampionshipQueries(queryClient),
 			]);
 		},
@@ -205,7 +207,7 @@ export function usePromoteChampionshipEventRsvpGoing(_championshipId: number) {
 }
 
 export function useSaveChampionshipEventAttendanceStats(
-	_championshipId: number,
+	championshipId: number,
 ) {
 	const queryClient = useQueryClient();
 
@@ -219,14 +221,14 @@ export function useSaveChampionshipEventAttendanceStats(
 		}) => saveChampionshipEventAttendanceStats(eventId, stats),
 		onSuccess: async () => {
 			await Promise.all([
-				invalidateChampionshipEventQueries(queryClient),
+				invalidateChampionshipEvents(queryClient, championshipId),
 				invalidateChampionshipQueries(queryClient),
 			]);
 		},
 	});
 }
 
-export function useSaveChampionshipPlayerEventStats(_championshipId: number) {
+export function useSaveChampionshipPlayerEventStats(championshipId: number) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
@@ -241,14 +243,14 @@ export function useSaveChampionshipPlayerEventStats(_championshipId: number) {
 		}) => saveChampionshipPlayerEventStats(playerId, eventId, stats),
 		onSuccess: async () => {
 			await Promise.all([
-				invalidateChampionshipEventQueries(queryClient),
+				invalidateChampionshipEvents(queryClient, championshipId),
 				invalidateChampionshipQueries(queryClient),
 			]);
 		},
 	});
 }
 
-export function useAddChampionshipEventTeam(_championshipId: number) {
+export function useAddChampionshipEventTeam(championshipId: number) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
@@ -269,12 +271,12 @@ export function useAddChampionshipEventTeam(_championshipId: number) {
 				goalkeeperId,
 			}),
 		onSuccess: async () => {
-			await invalidateChampionshipEventQueries(queryClient);
+			await invalidateChampionshipEvents(queryClient, championshipId);
 		},
 	});
 }
 
-export function useUpdateChampionshipEventTeam(_championshipId: number) {
+export function useUpdateChampionshipEventTeam(championshipId: number) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
@@ -295,23 +297,23 @@ export function useUpdateChampionshipEventTeam(_championshipId: number) {
 				goalkeeperId,
 			}),
 		onSuccess: async () => {
-			await invalidateChampionshipEventQueries(queryClient);
+			await invalidateChampionshipEvents(queryClient, championshipId);
 		},
 	});
 }
 
-export function useDeleteChampionshipEventTeam(_championshipId: number) {
+export function useDeleteChampionshipEventTeam(championshipId: number) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: (teamId: number) => deleteChampionshipEventTeam(teamId),
 		onSuccess: async () => {
-			await invalidateChampionshipEventQueries(queryClient);
+			await invalidateChampionshipEvents(queryClient, championshipId);
 		},
 	});
 }
 
-export function useStartChampionshipEventMatch(_championshipId: number) {
+export function useStartChampionshipEventMatch(championshipId: number) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
@@ -337,16 +339,16 @@ export function useStartChampionshipEventMatch(_championshipId: number) {
 				),
 			),
 		onSuccess: async () => {
-			await invalidateChampionshipEventQueries(queryClient);
+			await invalidateChampionshipEvents(queryClient, championshipId);
 		},
 	});
 }
 
-export function useAddChampionshipEventMatch(_championshipId: number) {
-	return useStartChampionshipEventMatch(_championshipId);
+export function useAddChampionshipEventMatch(championshipId: number) {
+	return useStartChampionshipEventMatch(championshipId);
 }
 
-export function useSwapChampionshipEventMatchTeam(_championshipId: number) {
+export function useSwapChampionshipEventMatchTeam(championshipId: number) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
@@ -361,54 +363,54 @@ export function useSwapChampionshipEventMatchTeam(_championshipId: number) {
 		}) =>
 			swapChampionshipEventMatchTeam(matchId, outgoingTeamId, incomingTeamId),
 		onSuccess: async () => {
-			await invalidateChampionshipEventQueries(queryClient);
+			await invalidateChampionshipEvents(queryClient, championshipId);
 		},
 	});
 }
 
-export function useEndChampionshipEventMatch(_championshipId: number) {
+export function useEndChampionshipEventMatch(championshipId: number) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: (matchId: number) => endChampionshipEventMatch(matchId),
 		onSuccess: async () => {
 			await Promise.all([
-				invalidateChampionshipEventQueries(queryClient),
+				invalidateChampionshipEvents(queryClient, championshipId),
 				invalidateChampionshipQueries(queryClient),
 			]);
 		},
 	});
 }
 
-export function useReopenChampionshipEventMatch(_championshipId: number) {
+export function useReopenChampionshipEventMatch(championshipId: number) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: (matchId: number) => reopenChampionshipEventMatch(matchId),
 		onSuccess: async () => {
 			await Promise.all([
-				invalidateChampionshipEventQueries(queryClient),
+				invalidateChampionshipEvents(queryClient, championshipId),
 				invalidateChampionshipQueries(queryClient),
 			]);
 		},
 	});
 }
 
-export function useDeleteChampionshipEventMatch(_championshipId: number) {
+export function useDeleteChampionshipEventMatch(championshipId: number) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: (matchId: number) => deleteChampionshipEventMatch(matchId),
 		onSuccess: async () => {
 			await Promise.all([
-				invalidateChampionshipEventQueries(queryClient),
+				invalidateChampionshipEvents(queryClient, championshipId),
 				invalidateChampionshipQueries(queryClient),
 			]);
 		},
 	});
 }
 
-export function useEndChampionshipEvent(_championshipId: number) {
+export function useEndChampionshipEvent(championshipId: number) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
@@ -423,14 +425,14 @@ export function useEndChampionshipEvent(_championshipId: number) {
 		}) => endChampionshipEvent(eventId, presentPlayerIds, mvpPlayerIds ?? null),
 		onSuccess: async () => {
 			await Promise.all([
-				invalidateChampionshipEventQueries(queryClient),
+				invalidateChampionshipEvents(queryClient, championshipId),
 				invalidateChampionshipQueries(queryClient),
 			]);
 		},
 	});
 }
 
-export function useSetChampionshipEventMvps(_championshipId: number) {
+export function useSetChampionshipEventMvps(championshipId: number) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
@@ -443,92 +445,154 @@ export function useSetChampionshipEventMvps(_championshipId: number) {
 		}) => setChampionshipEventMvps(eventId, playerIds),
 		onSuccess: async () => {
 			await Promise.all([
-				invalidateChampionshipEventQueries(queryClient),
+				invalidateChampionshipEvents(queryClient, championshipId),
 				invalidateChampionshipQueries(queryClient),
 			]);
 		},
 	});
 }
 
-export function useDeleteChampionshipEvent(_championshipId: number) {
+export function useDeleteChampionshipEvent(championshipId: number) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: (eventId: number) => deleteChampionshipEvent(eventId),
-		onSuccess: async (_void, eventId) => {
-			await queryClient.invalidateQueries({
-				queryKey: CHAMPIONSHIP_EVENTS_QUERY_KEY,
-				predicate: (query) => query.queryKey[2] !== eventId,
-			});
+		onSuccess: async () => {
+			await invalidateChampionshipEvents(queryClient, championshipId);
 		},
 	});
 }
 
-const EVENT_MATCH_REALTIME_DEBOUNCE_MS = 50;
+const EVENT_MATCH_REALTIME_DEBOUNCE_MS = 500;
+
+type EventRealtimePayload = {
+	eventType?: string;
+	new?: Record<string, unknown>;
+	old?: Record<string, unknown>;
+};
+
+function subscribeEventMatchChannel(
+	eventId: number,
+	onChange: (table: string, payload: EventRealtimePayload) => void,
+) {
+	const filter = `event_id=eq.${eventId}`;
+	return supabase
+		.channel(`event-match:${eventId}`)
+		.on(
+			"postgres_changes",
+			{
+				event: "*",
+				schema: "public",
+				table: "championship_event_matches",
+				filter,
+			},
+			(payload) => {
+				onChange("championship_event_matches", payload);
+			},
+		)
+		.on(
+			"postgres_changes",
+			{
+				event: "*",
+				schema: "public",
+				table: "championship_event_match_players",
+				filter,
+			},
+			(payload) => {
+				onChange("championship_event_match_players", payload);
+			},
+		)
+		.on(
+			"postgres_changes",
+			{
+				event: "*",
+				schema: "public",
+				table: "championship_event_goals",
+				filter,
+			},
+			(payload) => {
+				onChange("championship_event_goals", payload);
+			},
+		)
+		.subscribe();
+}
 
 export function useChampionshipEventRealtime(
-	_championshipId: number,
+	championshipId: number,
 	eventId: number,
 ) {
 	const queryClient = useQueryClient();
 
 	useEffect(() => {
-		if (!Number.isFinite(eventId)) {
+		if (!Number.isFinite(eventId) || !Number.isFinite(championshipId)) {
 			return;
 		}
 
 		let timeout: ReturnType<typeof setTimeout> | null = null;
-		function invalidate() {
+		let channel: ReturnType<typeof subscribeEventMatchChannel> | null = null;
+		const pending: Array<{ table: string; payload: EventRealtimePayload }> = [];
+
+		function flushPatches() {
+			timeout = null;
+			const batch = pending.splice(0, pending.length);
+			for (const item of batch) {
+				patchCachedChampionshipEvent(
+					queryClient,
+					eventId,
+					item.table,
+					item.payload,
+				);
+			}
+		}
+
+		function onChange(table: string, payload: EventRealtimePayload) {
+			pending.push({ table, payload });
 			if (timeout) {
 				clearTimeout(timeout);
 			}
 
-			timeout = setTimeout(() => {
-				void invalidateChampionshipEventQueries(queryClient);
-			}, EVENT_MATCH_REALTIME_DEBOUNCE_MS);
+			timeout = setTimeout(flushPatches, EVENT_MATCH_REALTIME_DEBOUNCE_MS);
 		}
 
-		const filter = `event_id=eq.${eventId}`;
-		const channel = supabase
-			.channel(`event-match:${eventId}`)
-			.on(
-				"postgres_changes",
-				{
-					event: "*",
-					schema: "public",
-					table: "championship_event_matches",
-					filter,
-				},
-				invalidate,
-			)
-			.on(
-				"postgres_changes",
-				{
-					event: "*",
-					schema: "public",
-					table: "championship_event_match_players",
-					filter,
-				},
-				invalidate,
-			)
-			.on(
-				"postgres_changes",
-				{
-					event: "*",
-					schema: "public",
-					table: "championship_event_goals",
-					filter,
-				},
-				invalidate,
-			)
-			.subscribe();
+		function subscribe() {
+			if (channel) {
+				return;
+			}
 
-		return () => {
-			if (timeout) {
-				clearTimeout(timeout);
+			channel = subscribeEventMatchChannel(eventId, onChange);
+		}
+
+		function unsubscribe() {
+			if (!channel) {
+				return;
 			}
 
 			void supabase.removeChannel(channel);
+			channel = null;
+		}
+
+		function onVisibility() {
+			if (document.visibilityState !== "visible") {
+				unsubscribe();
+				return;
+			}
+
+			subscribe();
+			void invalidateChampionshipEvent(queryClient, championshipId, eventId);
+		}
+
+		if (document.visibilityState === "visible") {
+			subscribe();
+		}
+
+		document.addEventListener("visibilitychange", onVisibility);
+		return () => {
+			document.removeEventListener("visibilitychange", onVisibility);
+			if (timeout) {
+				clearTimeout(timeout);
+			}
+
+			unsubscribe();
 		};
-	}, [eventId, queryClient]);
+	}, [championshipId, eventId, queryClient]);
 }

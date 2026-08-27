@@ -9,7 +9,7 @@ import {
 	EVENT_DRAW_REVEAL,
 	eventDrawRevealAuditChannelName,
 } from "@/const/event-draw-reveal";
-import { invalidateChampionshipEventQueries } from "@/hooks/championships/championships-query-keys";
+import { invalidateChampionshipEvents } from "@/hooks/championships/championships-query-keys";
 import { supabase } from "@/lib/supabase";
 import {
 	listChampionshipAuditLogs,
@@ -58,7 +58,7 @@ export function useChampionshipEventDrawLogs(
 						eventId,
 					],
 				});
-				void invalidateChampionshipEventQueries(queryClient);
+				void invalidateChampionshipEvents(queryClient, championshipId);
 			}, EVENT_DRAW_REVEAL.realtimeDebounceMs);
 		}
 

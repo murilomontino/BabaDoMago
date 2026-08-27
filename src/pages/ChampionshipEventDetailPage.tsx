@@ -7,13 +7,20 @@ import { TeamCardSkeleton } from "@/components/molecules/team-card-skeleton";
 import { PageHeader } from "@/components/page-header";
 import { QueryRefresh } from "@/components/query-refresh";
 import {
+	clearAttendanceDraft,
 	countPlayerAttendance,
 	EVENT_BUILDER_STEP_LABEL,
 	EVENT_STATUS_LABEL,
 	eventStatus,
 	formatEventStartsAt,
 } from "@/const/championship-event";
-import { applyPlayOps } from "@/const/championship-event-match-ops";
+import {
+	applyPlayOps,
+	MATCH_OP,
+	MATCH_OPS_LABEL,
+	type MatchOp,
+	matchOpCopiedIds,
+} from "@/const/championship-event-match-ops";
 import {
 	CHAMPIONSHIP_ROLE,
 	canInvite,
@@ -23,6 +30,10 @@ import {
 	resolveChampionshipRole,
 } from "@/const/championship-role";
 import { CHAMPIONSHIP_TAB } from "@/const/championship-tab";
+import {
+	eventRatingPreview,
+	formatEventRating,
+} from "@/const/event-rating-adjustment";
 import { ROUTES } from "@/const/routes";
 import { SKELETON_LABEL, SKELETON_TEAM_CARDS } from "@/const/skeleton";
 import { ERROR_CLASS } from "@/const/ui";
@@ -36,11 +47,9 @@ import {
 	useDeleteChampionshipEvent,
 	useDeleteChampionshipEventMatch,
 	useDeleteChampionshipEventTeam,
-	useEndChampionshipEvent,
 	useEnsureChampionshipEventAttendancePlayer,
 	usePromoteChampionshipEventRsvpGoing,
 	useReopenChampionshipEventMatch,
-	useSaveChampionshipEventAttendance,
 	useSaveChampionshipEventAttendanceStats,
 	useSaveChampionshipEventTeams,
 	useSetChampionshipEventMvps,
@@ -53,8 +62,36 @@ import {
 } from "@/hooks/championships/use-championships";
 import { mutationErrorMessage } from "@/lib/error-message";
 import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
-import { useAppSelector } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { requestMatchOp } from "@/store/match-ops/actions";
 import { selectMatchOps } from "@/store/match-ops/selectors";
+import type { ChampionshipPlayer } from "@/types/championship";
+import type { ChampionshipEventAttendance } from "@/types/championship-event";
+
+function queuedMvpIds(ids: readonly number[] | null): number[] {
+	if (ids === null) {
+		return [];
+	}
+
+	return [...ids];
+}
+
+function eventRatingPreviewWhenQueued(
+	endOp: MatchOp | undefined,
+	attendance: readonly ChampionshipEventAttendance[],
+	players: readonly ChampionshipPlayer[],
+) {
+	if (!endOp || endOp.kind !== MATCH_OP.endEvent) {
+		return [];
+	}
+
+	return eventRatingPreview({
+		attendance,
+		players,
+		presentPlayerIds: endOp.presentPlayerIds,
+		mvpPlayerIds: queuedMvpIds(endOp.mvpPlayerIds),
+	});
+}
 
 export function ChampionshipEventDetailPage() {
 	const { championshipId: championshipIdParam, eventId: eventIdParam } =
@@ -65,11 +102,11 @@ export function ChampionshipEventDetailPage() {
 	const eventId = Number(eventIdParam);
 	const navigate = useNavigate();
 	const { user } = useAuth();
+	const dispatch = useAppDispatch();
 	const championshipQuery = useChampionship(championshipId);
 	const eventQuery = useChampionshipEvent(championshipId, eventId);
 	const eventsQuery = useChampionshipEvents(championshipId);
 	const saveTeams = useSaveChampionshipEventTeams(championshipId);
-	const saveAttendance = useSaveChampionshipEventAttendance(championshipId);
 	const ensureAttendance =
 		useEnsureChampionshipEventAttendancePlayer(championshipId);
 	const upsertRsvp = useUpsertChampionshipEventRsvp(championshipId);
@@ -81,12 +118,15 @@ export function ChampionshipEventDetailPage() {
 	const deleteTeam = useDeleteChampionshipEventTeam(championshipId);
 	const deleteMatch = useDeleteChampionshipEventMatch(championshipId);
 	const reopenMatch = useReopenChampionshipEventMatch(championshipId);
-	const endEvent = useEndChampionshipEvent(championshipId);
 	const setMvps = useSetChampionshipEventMvps(championshipId);
 	const deleteEvent = useDeleteChampionshipEvent(championshipId);
 	const addPlayer = useAddManualPlayer(championshipId);
 	useChampionshipEventRealtime(championshipId, eventId);
 	const matchOps = useAppSelector((state) => selectMatchOps(state, eventId));
+	const savingAttendance = matchOps.some(
+		(op) => op.kind === MATCH_OP.saveAttendance,
+	);
+	const endingEvent = matchOps.some((op) => op.kind === MATCH_OP.endEvent);
 	const attendanceCounts = useMemo(
 		() => countPlayerAttendance(eventsQuery.data ?? []),
 		[eventsQuery.data],
@@ -142,6 +182,12 @@ export function ChampionshipEventDetailPage() {
 	const event = applyPlayOps(eventQuery.data, matchOps);
 	const when = formatEventStartsAt(event.starts_at);
 	const status = eventStatus(event.ended_at);
+	const endOp = matchOps.find((op) => op.kind === MATCH_OP.endEvent);
+	const ratingPreview = eventRatingPreviewWhenQueued(
+		endOp,
+		event.attendance,
+		activePlayers,
+	);
 
 	return (
 		<main>
@@ -160,6 +206,17 @@ export function ChampionshipEventDetailPage() {
 					</Link>
 				}
 			/>
+			{ratingPreview.length > 0 && (
+				<p className="mb-3 text-sm text-fg-muted">
+					{MATCH_OPS_LABEL.ratingPreview}:{" "}
+					{ratingPreview
+						.map(
+							(row) =>
+								`${row.name} ${formatEventRating(row.from)}→${formatEventRating(row.to)}`,
+						)
+						.join(" · ")}
+				</p>
+			)}
 			<QueryRefresh queryKey={CHAMPIONSHIP_EVENTS_QUERY_KEY}>
 				<ChampionshipEventDetail
 					event={event}
@@ -173,8 +230,8 @@ export function ChampionshipEventDetailPage() {
 					canSetMvp={canSetMvp}
 					savingTeams={saveTeams.isPending}
 					saveTeamsError={mutationErrorMessage(saveTeams)}
-					savingAttendance={saveAttendance.isPending}
-					saveAttendanceError={mutationErrorMessage(saveAttendance)}
+					savingAttendance={savingAttendance}
+					saveAttendanceError={null}
 					ensuringAttendance={ensureAttendance.isPending}
 					ensureAttendanceError={mutationErrorMessage(ensureAttendance)}
 					savingRsvp={upsertRsvp.isPending}
@@ -193,8 +250,8 @@ export function ChampionshipEventDetailPage() {
 					deleteMatchError={mutationErrorMessage(deleteMatch)}
 					openingMatch={reopenMatch.isPending}
 					openMatchError={mutationErrorMessage(reopenMatch)}
-					ending={endEvent.isPending}
-					endError={mutationErrorMessage(endEvent)}
+					ending={endingEvent}
+					endError={null}
 					settingMvp={setMvps.isPending}
 					setMvpError={mutationErrorMessage(setMvps)}
 					deleting={deleteEvent.isPending}
@@ -220,11 +277,15 @@ export function ChampionshipEventDetailPage() {
 						});
 					}}
 					onSaveAttendance={async (presentPlayerIds, goalkeeperPlayerIds) => {
-						await saveAttendance.mutateAsync({
-							eventId: event.id,
-							presentPlayerIds,
-							goalkeeperPlayerIds,
-						});
+						dispatch(
+							requestMatchOp(event.id, {
+								kind: MATCH_OP.saveAttendance,
+								eventId: event.id,
+								presentPlayerIds: [...presentPlayerIds],
+								goalkeeperPlayerIds: [...goalkeeperPlayerIds],
+							}),
+						);
+						clearAttendanceDraft(event.id);
 					}}
 					onEnsureAttendance={async (playerId) => {
 						await ensureAttendance.mutateAsync({
@@ -283,11 +344,14 @@ export function ChampionshipEventDetailPage() {
 						});
 					}}
 					onEnd={async (presentPlayerIds, mvpPlayerIds) => {
-						await endEvent.mutateAsync({
-							eventId: event.id,
-							presentPlayerIds,
-							mvpPlayerIds,
-						});
+						dispatch(
+							requestMatchOp(event.id, {
+								kind: MATCH_OP.endEvent,
+								eventId: event.id,
+								presentPlayerIds: matchOpCopiedIds(presentPlayerIds),
+								mvpPlayerIds: matchOpCopiedIds(mvpPlayerIds),
+							}),
+						);
 					}}
 					onSetMvps={async (playerIds) => {
 						await setMvps.mutateAsync({

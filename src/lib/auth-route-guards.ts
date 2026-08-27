@@ -5,10 +5,10 @@ import { supabase } from "@/lib/supabase";
 
 export async function requireUser(): Promise<void> {
 	const {
-		data: { user },
-	} = await supabase.auth.getUser();
+		data: { session },
+	} = await supabase.auth.getSession();
 
-	if (user) {
+	if (session) {
 		return;
 	}
 
@@ -17,10 +17,10 @@ export async function requireUser(): Promise<void> {
 
 export async function requireGuest(nextPath?: string): Promise<void> {
 	const {
-		data: { user },
-	} = await supabase.auth.getUser();
+		data: { session },
+	} = await supabase.auth.getSession();
 
-	if (!user) {
+	if (!session) {
 		return;
 	}
 

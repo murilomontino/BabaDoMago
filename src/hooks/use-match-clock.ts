@@ -19,11 +19,25 @@ export function useMatchClock(match: MatchClockFields | null): number {
 		}
 
 		setNowMs(Date.now());
-		const id = setInterval(() => {
+		function resampleNow() {
 			setNowMs(Date.now());
-		}, 250);
+		}
+
+		function onVisibility() {
+			if (document.visibilityState !== "visible") {
+				return;
+			}
+
+			resampleNow();
+		}
+
+		const id = setInterval(resampleNow, 250);
+		window.addEventListener("pageshow", resampleNow);
+		document.addEventListener("visibilitychange", onVisibility);
 		return () => {
 			clearInterval(id);
+			window.removeEventListener("pageshow", resampleNow);
+			document.removeEventListener("visibilitychange", onVisibility);
 		};
 	}, [ticking]);
 
