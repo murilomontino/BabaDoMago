@@ -1,6 +1,7 @@
 import {
 	Award,
 	ChartColumn,
+	Link2,
 	LoaderCircle,
 	Pencil,
 	Plus,
@@ -20,6 +21,7 @@ import { DeleteEventMatchModal } from "@/components/delete-event-match-modal";
 import { DeleteEventTeamModal } from "@/components/delete-event-team-modal";
 import { EditEventAttendanceModal } from "@/components/edit-event-attendance-modal";
 import { EditEventAttendanceStatsModal } from "@/components/edit-event-attendance-stats-modal";
+import { EventTeamDrawLog } from "@/components/event-team-draw-log";
 import {
 	EVENT_TEAM_PLAYER_SLOT_CLASS,
 	EVENT_TEAM_POSITION_CHIP_CLASS,
@@ -77,6 +79,7 @@ import {
 	resolveEventPlayers,
 	resolveRosterPlayer,
 } from "@/const/championship-event-roster";
+import { copyDrawLinkLabel, eventDrawUrl } from "@/const/event-draw-reveal";
 import {
 	attendanceMvpPlayerIds,
 	EVENT_MVP_LABEL,
@@ -98,6 +101,7 @@ import {
 } from "@/const/event-team-share";
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
+import { ROUTES } from "@/const/routes";
 import {
 	CHIP_CLASS,
 	ERROR_CLASS,
@@ -231,6 +235,7 @@ type ChampionshipEventRoundTabProps = {
 		presentPlayerIds: number[];
 		goalkeeperPlayerIds: number[];
 		teams: EventTeamDraft[];
+		isDraw?: boolean;
 	}) => Promise<void>;
 	onSaveAttendance: (
 		presentPlayerIds: number[],
@@ -361,12 +366,14 @@ export function ChampionshipEventRoundTab({
 	);
 	const showShareTeams =
 		!showTeamBuilder && builderTeamsHavePlayers(detailTeams);
+	const showCopyDrawLink = canManage && showShareTeams;
 	const showAddAttendance = canManage && !showTeamBuilder;
 	const showAttendanceOwnerActions = canOverrideEnded && !showTeamBuilder;
 	const showAddTeam = canOverrideEnded && !showTeamBuilder;
 	const showMatchDelete = canOverrideEnded && !showTeamBuilder;
 	const [isSharing, setIsSharing] = useState(false);
 	const [shareError, setShareError] = useState<string | null>(null);
+	const [copiedDrawLink, setCopiedDrawLink] = useState(false);
 	const [isSharingRecap, setIsSharingRecap] = useState(false);
 	const [recapError, setRecapError] = useState<string | null>(null);
 	const [isMvpOpen, setIsMvpOpen] = useState(false);
@@ -419,6 +426,17 @@ export function ChampionshipEventRoundTab({
 		}
 	}
 
+	async function handleCopyDrawLink() {
+		const url = eventDrawUrl(
+			window.location.origin,
+			event.championship_id,
+			event.id,
+			ROUTES.championshipEventDraw,
+		);
+		await navigator.clipboard.writeText(url);
+		setCopiedDrawLink(true);
+	}
+
 	const recapRatingChanges = eventRecapShareRatingChangesFromAttendance(
 		event.attendance,
 	);
@@ -454,14 +472,17 @@ export function ChampionshipEventRoundTab({
 					step={builderStep}
 					startsAt={event.starts_at}
 					championshipName={championshipName}
+					championshipId={event.championship_id}
+					eventId={event.id}
 					initialPresentIds={resolveBuilderInitialPresentIds(
 						event.attendance.map((row) => row.player_id),
 						event.id,
 					)}
 					initialGoalkeeperIds={volunteerGoalkeeperIds}
 					initialTeams={detailTeams}
-					isPending={savingTeams}
-					errorMessage={saveTeamsError}
+					isPending={savingTeams || savingAttendance}
+					errorMessage={saveTeamsError ?? saveAttendanceError}
+					onSaveAttendance={onSaveAttendance}
 					onStepChange={(next) => {
 						void onBuilderStepChange(next);
 					}}
@@ -515,6 +536,16 @@ export function ChampionshipEventRoundTab({
 									}}
 								/>
 							)}
+							{showCopyDrawLink && (
+								<IconTooltipButton
+									showLabel
+									label={copyDrawLinkLabel(copiedDrawLink)}
+									icon={<Link2 className="size-4" />}
+									onClick={() => {
+										void handleCopyDrawLink();
+									}}
+								/>
+							)}
 							{showShareRecap && (
 								<IconTooltipButton
 									showLabel
@@ -557,6 +588,12 @@ export function ChampionshipEventRoundTab({
 							)}
 						</div>
 					</div>
+					{canManage && (
+						<EventTeamDrawLog
+							championshipId={event.championship_id}
+							eventId={event.id}
+						/>
+					)}
 					{shareError && <p className={ERROR_CLASS}>{shareError}</p>}
 					{recapError && <p className={ERROR_CLASS}>{recapError}</p>}
 					<ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">

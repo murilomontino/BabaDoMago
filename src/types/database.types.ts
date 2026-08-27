@@ -669,6 +669,15 @@ export type Database = {
 				Args: { player_id: number };
 				Returns: undefined;
 			};
+			draw_championship_event_teams: {
+				Args: {
+					event_id: number;
+					present_player_ids: Json;
+					teams: Json;
+					goalkeeper_player_ids: Json;
+				};
+				Returns: Json;
+			};
 			end_championship_event: {
 				Args: {
 					event_id: number;

@@ -8,6 +8,7 @@ type AttendanceFloatingSaveProps = {
 	disabled?: boolean;
 	type?: "button" | "submit";
 	onClick?: () => void;
+	secondary?: ReactNode;
 	children: ReactNode;
 };
 
@@ -17,6 +18,7 @@ export function AttendanceFloatingSave({
 	disabled,
 	type = "button",
 	onClick,
+	secondary,
 	children,
 }: AttendanceFloatingSaveProps) {
 	return (
@@ -26,6 +28,7 @@ export function AttendanceFloatingSave({
 			<span className={CHIP_CLASS} aria-live="polite">
 				{`${selected}/${total}`}
 			</span>
+			{secondary}
 			<Button
 				type={type}
 				disabled={disabled}

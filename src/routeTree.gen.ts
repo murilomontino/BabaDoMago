@@ -19,6 +19,7 @@ import { Route as AuthenticatedChampionshipsChampionshipIdIndexRouteImport } fro
 import { Route as AuthenticatedChampionshipsChampionshipIdEventsEventIdRouteImport } from './routes/_authenticated/championships.$championshipId.events.$eventId'
 import { Route as AuthenticatedChampionshipsChampionshipIdPlayersPlayerIdRouteImport } from './routes/_authenticated/championships.$championshipId.players.$playerId'
 import { Route as AuthenticatedChampionshipsChampionshipIdEventsEventIdIndexRouteImport } from './routes/_authenticated/championships.$championshipId.events.$eventId.index'
+import { Route as AuthenticatedChampionshipsChampionshipIdEventsEventIdDrawRouteImport } from './routes/_authenticated/championships.$championshipId.events.$eventId.draw'
 import { Route as AuthenticatedChampionshipsChampionshipIdEventsEventIdPlayRouteImport } from './routes/_authenticated/championships.$championshipId.events.$eventId.play'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
@@ -77,6 +78,13 @@ const AuthenticatedChampionshipsChampionshipIdEventsEventIdIndexRoute =
     getParentRoute: () =>
       AuthenticatedChampionshipsChampionshipIdEventsEventIdRoute,
   } as any)
+const AuthenticatedChampionshipsChampionshipIdEventsEventIdDrawRoute =
+  AuthenticatedChampionshipsChampionshipIdEventsEventIdDrawRouteImport.update({
+    id: '/draw',
+    path: '/draw',
+    getParentRoute: () =>
+      AuthenticatedChampionshipsChampionshipIdEventsEventIdRoute,
+  } as any)
 const AuthenticatedChampionshipsChampionshipIdEventsEventIdPlayRoute =
   AuthenticatedChampionshipsChampionshipIdEventsEventIdPlayRouteImport.update({
     id: '/play',
@@ -94,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/championships/$championshipId/': typeof AuthenticatedChampionshipsChampionshipIdIndexRoute
   '/championships/$championshipId/events/$eventId': typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdRouteWithChildren
   '/championships/$championshipId/players/$playerId': typeof AuthenticatedChampionshipsChampionshipIdPlayersPlayerIdRoute
+  '/championships/$championshipId/events/$eventId/draw': typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdDrawRoute
   '/championships/$championshipId/events/$eventId/play': typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdPlayRoute
   '/championships/$championshipId/events/$eventId/': typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdIndexRoute
 }
@@ -104,6 +113,7 @@ export interface FileRoutesByTo {
   '/championships/new': typeof AuthenticatedChampionshipsNewRoute
   '/championships/$championshipId': typeof AuthenticatedChampionshipsChampionshipIdIndexRoute
   '/championships/$championshipId/players/$playerId': typeof AuthenticatedChampionshipsChampionshipIdPlayersPlayerIdRoute
+  '/championships/$championshipId/events/$eventId/draw': typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdDrawRoute
   '/championships/$championshipId/events/$eventId/play': typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdPlayRoute
   '/championships/$championshipId/events/$eventId': typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdIndexRoute
 }
@@ -118,6 +128,7 @@ export interface FileRoutesById {
   '/_authenticated/championships/$championshipId/': typeof AuthenticatedChampionshipsChampionshipIdIndexRoute
   '/_authenticated/championships/$championshipId/events/$eventId': typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdRouteWithChildren
   '/_authenticated/championships/$championshipId/players/$playerId': typeof AuthenticatedChampionshipsChampionshipIdPlayersPlayerIdRoute
+  '/_authenticated/championships/$championshipId/events/$eventId/draw': typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdDrawRoute
   '/_authenticated/championships/$championshipId/events/$eventId/play': typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdPlayRoute
   '/_authenticated/championships/$championshipId/events/$eventId/': typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdIndexRoute
 }
@@ -132,6 +143,7 @@ export interface FileRouteTypes {
     | '/championships/$championshipId/'
     | '/championships/$championshipId/events/$eventId'
     | '/championships/$championshipId/players/$playerId'
+    | '/championships/$championshipId/events/$eventId/draw'
     | '/championships/$championshipId/events/$eventId/play'
     | '/championships/$championshipId/events/$eventId/'
   fileRoutesByTo: FileRoutesByTo
@@ -142,6 +154,7 @@ export interface FileRouteTypes {
     | '/championships/new'
     | '/championships/$championshipId'
     | '/championships/$championshipId/players/$playerId'
+    | '/championships/$championshipId/events/$eventId/draw'
     | '/championships/$championshipId/events/$eventId/play'
     | '/championships/$championshipId/events/$eventId'
   id:
@@ -155,6 +168,7 @@ export interface FileRouteTypes {
     | '/_authenticated/championships/$championshipId/'
     | '/_authenticated/championships/$championshipId/events/$eventId'
     | '/_authenticated/championships/$championshipId/players/$playerId'
+    | '/_authenticated/championships/$championshipId/events/$eventId/draw'
     | '/_authenticated/championships/$championshipId/events/$eventId/play'
     | '/_authenticated/championships/$championshipId/events/$eventId/'
   fileRoutesById: FileRoutesById
@@ -237,6 +251,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdIndexRouteImport
       parentRoute: typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdRoute
     }
+    '/_authenticated/championships/$championshipId/events/$eventId/draw': {
+      id: '/_authenticated/championships/$championshipId/events/$eventId/draw'
+      path: '/draw'
+      fullPath: '/championships/$championshipId/events/$eventId/draw'
+      preLoaderRoute: typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdDrawRouteImport
+      parentRoute: typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdRoute
+    }
     '/_authenticated/championships/$championshipId/events/$eventId/play': {
       id: '/_authenticated/championships/$championshipId/events/$eventId/play'
       path: '/play'
@@ -248,12 +269,15 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedChampionshipsChampionshipIdEventsEventIdRouteChildren {
+  AuthenticatedChampionshipsChampionshipIdEventsEventIdDrawRoute: typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdDrawRoute
   AuthenticatedChampionshipsChampionshipIdEventsEventIdPlayRoute: typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdPlayRoute
   AuthenticatedChampionshipsChampionshipIdEventsEventIdIndexRoute: typeof AuthenticatedChampionshipsChampionshipIdEventsEventIdIndexRoute
 }
 
 const AuthenticatedChampionshipsChampionshipIdEventsEventIdRouteChildren: AuthenticatedChampionshipsChampionshipIdEventsEventIdRouteChildren =
   {
+    AuthenticatedChampionshipsChampionshipIdEventsEventIdDrawRoute:
+      AuthenticatedChampionshipsChampionshipIdEventsEventIdDrawRoute,
     AuthenticatedChampionshipsChampionshipIdEventsEventIdPlayRoute:
       AuthenticatedChampionshipsChampionshipIdEventsEventIdPlayRoute,
     AuthenticatedChampionshipsChampionshipIdEventsEventIdIndexRoute:

@@ -209,12 +209,14 @@ export function ChampionshipEventDetailPage() {
 						presentPlayerIds,
 						teams,
 						goalkeeperPlayerIds,
+						isDraw,
 					}) => {
 						await saveTeams.mutateAsync({
 							eventId: event.id,
 							presentPlayerIds,
 							teams,
 							goalkeeperPlayerIds,
+							isDraw,
 						});
 					}}
 					onSaveAttendance={async (presentPlayerIds, goalkeeperPlayerIds) => {

@@ -45,6 +45,25 @@ html.dark {
 	--color-danger-fg: #fca5a5;
 }
 
+@utility scrollbar-thin {
+	scrollbar-width: thin;
+	scrollbar-color: var(--color-fg-subtle) transparent;
+
+	&::-webkit-scrollbar {
+		width: 4px;
+		height: 4px;
+	}
+
+	&::-webkit-scrollbar-thumb {
+		background-color: var(--color-fg-subtle);
+		border-radius: 9999px;
+	}
+
+	&::-webkit-scrollbar-track {
+		background: transparent;
+	}
+}
+
 body {
 	min-height: 100dvh;
 	background-color: var(--color-field);

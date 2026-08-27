@@ -46,6 +46,7 @@ import {
 	eventListActionFlags,
 	eventTeamByPlayerId,
 	eventTeamCount,
+	eventTeamDrawCountLabel,
 	eventTeamPlayerIds,
 	eventTeamPlayerOptionLabel,
 	eventTeamPlayerPosition,
@@ -1148,5 +1149,7 @@ check(
 	false,
 );
 check(typeof eventIsoWeekday("2026-08-17T22:00:00-03:00"), "number");
+check(eventTeamDrawCountLabel(1), "Sorteado 1 vez");
+check(eventTeamDrawCountLabel(3), "Sorteado 3 vezes");
 
 console.log("championship-event ok");

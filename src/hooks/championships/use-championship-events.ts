@@ -40,6 +40,7 @@ import {
 	invalidateChampionshipEventQueries,
 	invalidateChampionshipQueries,
 } from "./championships-query-keys";
+import { CHAMPIONSHIP_AUDIT_QUERY_KEY } from "./use-championship-audit-logs";
 
 export function useChampionshipEvents(championshipId: number) {
 	const { user } = useAuth();
@@ -95,6 +96,7 @@ export function useSaveChampionshipEventTeams(_championshipId: number) {
 			presentPlayerIds,
 			teams,
 			goalkeeperPlayerIds,
+			isDraw,
 		}: {
 			eventId: number;
 			presentPlayerIds: readonly number[];
@@ -105,15 +107,24 @@ export function useSaveChampionshipEventTeams(_championshipId: number) {
 				isActive?: boolean;
 			}[];
 			goalkeeperPlayerIds: readonly number[];
+			isDraw?: boolean;
 		}) =>
 			saveChampionshipEventTeams(
 				eventId,
 				presentPlayerIds,
 				teams,
 				goalkeeperPlayerIds,
+				isDraw,
 			),
-		onSuccess: async () => {
+		onSuccess: async (_data, variables) => {
 			await invalidateChampionshipEventQueries(queryClient);
+			if (!variables.isDraw) {
+				return;
+			}
+
+			await queryClient.invalidateQueries({
+				queryKey: CHAMPIONSHIP_AUDIT_QUERY_KEY,
+			});
 		},
 	});
 }

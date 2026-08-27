@@ -12,6 +12,7 @@ export const AUDIT_ACTION = {
 	updateEventConfig: "update_event_config",
 	updateVisibility: "update_visibility",
 	renameChampionship: "rename_championship",
+	drawEventTeams: "draw_event_teams",
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTION)[keyof typeof AUDIT_ACTION];
@@ -30,6 +31,7 @@ export const AUDIT_ACTION_LABEL = {
 	[AUDIT_ACTION.updateEventConfig]: "Configuração da rodada",
 	[AUDIT_ACTION.updateVisibility]: "Visibilidade alterada",
 	[AUDIT_ACTION.renameChampionship]: "Nome alterado",
+	[AUDIT_ACTION.drawEventTeams]: "Times sorteados",
 } as const;
 
 export const AUDIT_ENTITY = {

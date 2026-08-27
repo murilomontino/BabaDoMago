@@ -14,10 +14,15 @@ function check(condition: boolean, message: string) {
 }
 
 check(isAuditAction(AUDIT_ACTION.updatePlayerRating), "known action");
+check(isAuditAction(AUDIT_ACTION.drawEventTeams), "draw action");
 check(!isAuditAction("nope"), "unknown action");
 check(
 	auditActionLabel(AUDIT_ACTION.updatePlayerRating) === "Nota alterada",
 	"rating label",
+);
+check(
+	auditActionLabel(AUDIT_ACTION.drawEventTeams) === "Times sorteados",
+	"draw label",
 );
 check(auditActionLabel("custom") === "custom", "unknown label passthrough");
 check(

@@ -43,6 +43,7 @@ type ChampionshipEventDetailProps = {
 		presentPlayerIds: number[];
 		goalkeeperPlayerIds: number[];
 		teams: EventTeamDraft[];
+		isDraw?: boolean;
 	}) => Promise<void>;
 	onSaveAttendance: (
 		presentPlayerIds: number[],
