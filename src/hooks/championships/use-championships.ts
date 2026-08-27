@@ -44,10 +44,12 @@ export function useChampionships() {
 }
 
 export function useChampionship(championshipId: number) {
+	const { user } = useAuth();
+
 	return useQuery({
-		queryKey: [...CHAMPIONSHIP_BY_ID_QUERY_KEY, championshipId],
+		queryKey: [...CHAMPIONSHIP_BY_ID_QUERY_KEY, championshipId, user?.id],
 		queryFn: () => getChampionshipById(championshipId),
-		enabled: Number.isFinite(championshipId),
+		enabled: Number.isFinite(championshipId) && Boolean(user),
 	});
 }
 

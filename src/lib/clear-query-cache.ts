@@ -7,6 +7,7 @@ function nextMacrotask(): Promise<void> {
 }
 
 export async function clearQueryCache(): Promise<void> {
+	await queryClient.cancelQueries();
 	queryClient.clear();
 	await queryPersister.removeClient();
 	await nextMacrotask();
