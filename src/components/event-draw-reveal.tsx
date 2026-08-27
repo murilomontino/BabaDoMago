@@ -111,7 +111,7 @@ export function EventDrawReveal({
 					{EVENT_DRAW_REVEAL_LABEL.title}
 				</h1>
 			</header>
-			<ul className="grid min-h-0 flex-1 grid-cols-1 content-start gap-2 overflow-y-auto overscroll-contain">
+			<ul className="scrollbar-thin grid min-h-0 flex-1 grid-cols-1 content-start gap-2 overflow-y-auto overscroll-contain">
 				<AnimatePresence initial={false}>
 					{visibleCards.map((card) => {
 						const cardStyle = eventTeamColorStyle(card.color);
