@@ -9,15 +9,22 @@ import {
 } from "./podium.ts";
 import {
 	PODIUM_SHARE,
+	PODIUM_SHARE_LABEL,
+	PODIUM_SHARE_MODE,
 	podiumShareAllFileName,
 	podiumShareAllText,
+	podiumShareCaptionText,
 	podiumShareCardFromStandings,
 	podiumShareCardsFromPlayers,
 	podiumShareFileName,
 	podiumShareHeading,
+	podiumSharePeriodCaption,
+	podiumSharePeriodLabel,
 	podiumSharePeriodSlug,
 	podiumSharePlacesInDisplayOrder,
+	podiumShareSheetText,
 	podiumShareText,
+	podiumSharingLabel,
 } from "./podium-share.ts";
 import { ROSTER_COLUMN, toRosterRow } from "./roster-stats.ts";
 
@@ -75,10 +82,33 @@ check(
 	podiumSharePeriodSlug(2026, null, selectPodiumAllMonths()),
 	"Temporada 2026",
 );
+check(podiumSharePeriodLabel(2026, null, []), "Temporada 2026");
+check(
+	podiumSharePeriodLabel(2026, PODIUM_SEMESTER.first, []),
+	"Temporada 2026 · Primeiro Semestre",
+);
+check(podiumSharePeriodLabel(2026, null, [8]), "Temporada 2026 · Agosto");
+check(
+	podiumSharePeriodLabel(2026, null, [1, 3]),
+	"Temporada 2026 · Janeiro, Março",
+);
+check(
+	podiumSharePeriodLabel(2026, null, selectPodiumAllMonths()),
+	"Temporada 2026",
+);
+check(
+	podiumSharePeriodCaption("2026-08-14T13:00:00.000Z", 2026, null, []),
+	"14/08/2026",
+);
+check(
+	podiumSharePeriodCaption(undefined, 2026, null, [8]),
+	"Temporada 2026 · Agosto",
+);
 
 const shareParts = {
 	championshipName: "Baba do Mago",
 	context: podiumSharePeriodSlug(2026, null, []),
+	periodLabel: podiumSharePeriodLabel(2026, null, []),
 	generatedAt: "2026-08-14T13:00:00.000Z",
 };
 check(
@@ -111,7 +141,16 @@ check(
 	podiumShareAllFileName(shareParts),
 	"podio-baba-do-mago-tudo-temporada-2026-14-08-2026.png",
 );
+check(podiumShareCaptionText(shareParts), "Baba do Mago\nTemporada 2026");
 check(PODIUM_SHARE.fileAll, "tudo");
+check(PODIUM_SHARE_LABEL.shareAllSeparate, "Compartilhar tudo separado");
+check(PODIUM_SHARE_LABEL.sharingMany, "Gerando imagens...");
+check(podiumSharingLabel(PODIUM_SHARE_MODE.one), PODIUM_SHARE_LABEL.sharing);
+check(podiumSharingLabel(PODIUM_SHARE_MODE.all), PODIUM_SHARE_LABEL.sharing);
+check(
+	podiumSharingLabel(PODIUM_SHARE_MODE.separate),
+	PODIUM_SHARE_LABEL.sharingMany,
+);
 
 const bruno = toRosterRow(player(2, "Bruno", { goals: 4, rating: 8 }));
 const ana = toRosterRow(
@@ -192,4 +231,11 @@ check(
 		cards.filter((item) => item.metric === ROSTER_COLUMN.goals),
 	),
 	"Pódio · Gols\n1º Ana — 4\n2º Bruno — 2",
+);
+check(
+	podiumShareSheetText(
+		cards.filter((item) => item.metric === ROSTER_COLUMN.goals),
+		shareParts,
+	),
+	"Baba do Mago\nTemporada 2026\n\nPódio · Gols\n1º Ana — 4\n2º Bruno — 2",
 );

@@ -76,7 +76,41 @@ export function playerVisibleName(player: {
 		return nickname;
 	}
 
-	return player.display_name;
+	const displayName = player.display_name.trim();
+	if (displayName) {
+		return displayName;
+	}
+
+	return PLAYER_LABEL.player;
+}
+
+export function matchOpDisplayName(
+	playerId: number | null,
+	players: readonly {
+		id: number;
+		nickname: string | null;
+		display_name: string;
+	}[],
+	attendance: readonly { player_id: number; display_name: string }[] = [],
+): string {
+	if (playerId === null) {
+		return "";
+	}
+
+	const rosterPlayer = players.find((row) => row.id === playerId);
+	if (rosterPlayer) {
+		return playerVisibleName(rosterPlayer);
+	}
+
+	const present = attendance.find((row) => row.player_id === playerId);
+	if (!present) {
+		return PLAYER_LABEL.player;
+	}
+
+	return playerVisibleName({
+		nickname: null,
+		display_name: present.display_name,
+	});
 }
 
 export function legalNameIfDifferent(

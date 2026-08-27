@@ -3,6 +3,7 @@ import { ChampionshipRoster } from "@/components/championship-roster";
 import { SectionCard } from "@/components/section-card";
 import { CHAMPIONSHIP_TAB_LABEL } from "@/const/championship-tab";
 import { ERROR_CLASS } from "@/const/ui";
+import { CHAMPIONSHIP_BY_ID_QUERY_KEY } from "@/hooks/championships/championships-query-keys";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 type ChampionshipDeactivatedTabProps = {
@@ -32,6 +33,7 @@ export function ChampionshipDeactivatedTab({
 		<SectionCard
 			title={CHAMPIONSHIP_TAB_LABEL.deactivated}
 			icon={<UserX className="size-4 text-pitch-fg" />}
+			queryKey={CHAMPIONSHIP_BY_ID_QUERY_KEY}
 		>
 			<ChampionshipRoster
 				players={players}

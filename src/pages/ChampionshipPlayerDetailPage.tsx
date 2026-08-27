@@ -38,6 +38,10 @@ import { ROUTES } from "@/const/routes";
 import { SKELETON_LABEL } from "@/const/skeleton";
 import { BUTTON_VARIANT, CARD_CLASS, ERROR_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
+import {
+	CHAMPIONSHIP_BY_ID_QUERY_KEY,
+	CHAMPIONSHIP_EVENTS_QUERY_KEY,
+} from "@/hooks/championships/championships-query-keys";
 import { useChampionshipEvents } from "@/hooks/championships/use-championship-events";
 import { useChampionship } from "@/hooks/championships/use-championships";
 import { prefixedErrorMessage } from "@/lib/error-message";
@@ -105,6 +109,7 @@ export function ChampionshipPlayerDetailPage() {
 			<main>
 				<PageHeader
 					title={PLAYER_PROFILE_LABEL.notFound}
+					queryKey={CHAMPIONSHIP_BY_ID_QUERY_KEY}
 					action={
 						<Link
 							to={ROUTES.championship}
@@ -124,6 +129,7 @@ export function ChampionshipPlayerDetailPage() {
 		<main>
 			<PageHeader
 				title={playerVisibleName(player)}
+				queryKey={CHAMPIONSHIP_BY_ID_QUERY_KEY}
 				action={
 					<Link
 						to={ROUTES.championship}
@@ -223,7 +229,10 @@ function ChampionshipPlayerDetailPageSkeleton({
 							withPlayerColumn={false}
 						/>
 					</SectionCard>
-					<SectionCard title={PLAYER_PROFILE_LABEL.history}>
+					<SectionCard
+						title={PLAYER_PROFILE_LABEL.history}
+						queryKey={CHAMPIONSHIP_EVENTS_QUERY_KEY}
+					>
 						<div className="space-y-4">
 							<div style={{ height: PLAYER_RATING_HISTORY_CHART.height }}>
 								<Skeleton className="h-full w-full" />

@@ -57,6 +57,11 @@ export async function shareOrDownload({
 		}
 	}
 
+	if (files.length > 1) {
+		downloadFiles(files);
+		return;
+	}
+
 	try {
 		await navigator.share({
 			text,
@@ -68,30 +73,5 @@ export async function shareOrDownload({
 		}
 
 		downloadFiles(files);
-	}
-}
-
-export async function tryShareFiles({
-	files,
-	title,
-	text,
-}: ShareOrDownloadInput): Promise<"shared" | "aborted" | "failed"> {
-	if (files.length === 0 || !canOpenShareSheet()) {
-		return "failed";
-	}
-
-	try {
-		await navigator.share({
-			files: [...files],
-			text,
-			title,
-		});
-		return "shared";
-	} catch (error) {
-		if (isShareAbort(error)) {
-			return "aborted";
-		}
-
-		return "failed";
 	}
 }

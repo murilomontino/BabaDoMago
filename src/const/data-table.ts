@@ -1,3 +1,7 @@
+import { TOOLTIP_ENABLED_QUERY } from "./tooltip.ts";
+
+export const DATA_TABLE_DESKTOP_QUERY = TOOLTIP_ENABLED_QUERY;
+
 export const DATA_TABLE_MOBILE_PRIMARY = {
 	player: "player",
 	rating: "rating",

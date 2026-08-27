@@ -169,6 +169,109 @@ const blockedRemove = applyMatchOp(
 );
 check(blockedRemove, scoredMatch, "remove with goals is noop");
 
+const removed = applyMatchOp(
+	baseMatch,
+	buildMatchOp(
+		{
+			kind: MATCH_OP.setPlayer,
+			matchId: 7,
+			teamId: 10,
+			slot: 1,
+			playerId: null,
+			displayName: "",
+			includeStats: false,
+		},
+		11,
+		nowMs,
+	),
+);
+check(
+	removed.players.find((player) => player.player_id === 101),
+	undefined,
+	"remove without goals",
+);
+
+const readded = applyMatchOp(
+	removed,
+	buildMatchOp(
+		{
+			kind: MATCH_OP.setPlayer,
+			matchId: 7,
+			teamId: 10,
+			slot: 1,
+			playerId: 101,
+			displayName: "Beto",
+			includeStats: false,
+		},
+		12,
+		nowMs,
+	),
+);
+check(
+	readded.players.find((player) => player.player_id === 101)?.slot,
+	1,
+	"re-add after remove",
+);
+
+const clearedIncoming = applyMatchOp(
+	substituted,
+	buildMatchOp(
+		{
+			kind: MATCH_OP.setPlayer,
+			matchId: 7,
+			teamId: 10,
+			slot: 1,
+			playerId: null,
+			displayName: "",
+			includeStats: false,
+		},
+		13,
+		nowMs,
+	),
+);
+const reactivated = applyMatchOp(
+	clearedIncoming,
+	buildMatchOp(
+		{
+			kind: MATCH_OP.setPlayer,
+			matchId: 7,
+			teamId: 10,
+			slot: 1,
+			playerId: 101,
+			displayName: "Beto",
+			includeStats: false,
+		},
+		14,
+		nowMs,
+	),
+);
+const back = reactivated.players.find((player) => player.player_id === 101);
+check(back?.is_substituted, false, "reactivates substituted");
+check(back?.slot, 1, "reactivated slot");
+check(back?.id, beto.id, "reactivated keeps row");
+
+const swappedBack = applyMatchOp(
+	substituted,
+	buildMatchOp(
+		{
+			kind: MATCH_OP.setPlayer,
+			matchId: 7,
+			teamId: 10,
+			slot: 1,
+			playerId: 101,
+			displayName: "Beto",
+			includeStats: false,
+		},
+		15,
+		nowMs,
+	),
+);
+const restored = swappedBack.players.find((player) => player.player_id === 101);
+const benched = swappedBack.players.find((player) => player.player_id === 102);
+check(restored?.is_substituted, false, "swap back reactivates");
+check(restored?.slot, 1, "swap back slot");
+check(benched?.is_substituted, true, "outgoing becomes substituted");
+
 const swapped = applyMatchOp(
 	baseMatch,
 	buildMatchOp(

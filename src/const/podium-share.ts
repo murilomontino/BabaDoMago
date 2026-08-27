@@ -1,4 +1,5 @@
 import type { ChampionshipPlayer } from "../types/championship.ts";
+import { formatEventStartsAt } from "./championship-event.ts";
 import { playerVisibleName } from "./player-name.ts";
 import {
 	type SynergyPairRow,
@@ -32,6 +33,7 @@ export const PODIUM_SHARE = {
 	padding: 40,
 	gap: 28,
 	headerHeight: 64,
+	captionHeight: 72,
 	avatar: 80,
 	star: 22,
 	filePrefix: "podio",
@@ -43,9 +45,28 @@ export const PODIUM_SHARE = {
 export const PODIUM_SHARE_LABEL = {
 	shareOne: "Compartilhar",
 	shareAll: "Compartilhar tudo",
+	shareAllSeparate: "Compartilhar tudo separado",
 	sharing: "Gerando imagem...",
+	sharingMany: "Gerando imagens...",
 	shareFailed: "Não foi possível compartilhar o pódio",
 } as const;
+
+export const PODIUM_SHARE_MODE = {
+	one: "one",
+	all: "all",
+	separate: "separate",
+} as const;
+
+export type PodiumShareMode =
+	(typeof PODIUM_SHARE_MODE)[keyof typeof PODIUM_SHARE_MODE];
+
+export function podiumSharingLabel(mode: PodiumShareMode): string {
+	if (mode === PODIUM_SHARE_MODE.separate) {
+		return PODIUM_SHARE_LABEL.sharingMany;
+	}
+
+	return PODIUM_SHARE_LABEL.sharing;
+}
 
 export const PODIUM_SHARE_COLOR = {
 	field: "#fafaf9",
@@ -88,8 +109,50 @@ export function podiumShareHeading(metric: PodiumMetricId): string {
 export type PodiumShareFileParts = {
 	championshipName: string;
 	context: string | null;
+	periodLabel: string;
 	generatedAt: string;
 };
+
+function podiumShareSeasonFilter(year: number, filter: string): string {
+	return `${podiumSeasonLabel(year)} · ${filter}`;
+}
+
+export function podiumSharePeriodLabel(
+	year: number,
+	semester: PodiumSemester | null,
+	months: readonly PodiumMonth[],
+): string {
+	if (
+		isPodiumAllMonthsSelected(months) ||
+		(semester === null && months.length === 0)
+	) {
+		return podiumSeasonLabel(year);
+	}
+
+	if (semester) {
+		return podiumShareSeasonFilter(year, PODIUM_FILTER_LABEL[semester]);
+	}
+
+	const monthNames = [...months]
+		.sort((left, right) => left - right)
+		.map((month) => PODIUM_MONTH_LABEL[month])
+		.join(", ");
+
+	return podiumShareSeasonFilter(year, monthNames);
+}
+
+export function podiumSharePeriodCaption(
+	eventStartsAt: string | undefined,
+	year: number,
+	semester: PodiumSemester | null,
+	months: readonly PodiumMonth[],
+): string {
+	if (eventStartsAt) {
+		return formatEventStartsAt(eventStartsAt).date;
+	}
+
+	return podiumSharePeriodLabel(year, semester, months);
+}
 
 export function podiumSharePeriodSlug(
 	year: number,
@@ -166,6 +229,19 @@ export function podiumShareText(card: PodiumShareCard): string {
 
 export function podiumShareAllText(cards: readonly PodiumShareCard[]): string {
 	return cards.map(podiumShareText).join("\n\n");
+}
+
+export function podiumShareCaptionText(parts: PodiumShareFileParts): string {
+	return `${parts.championshipName}\n${parts.periodLabel}`;
+}
+
+export function podiumShareSheetText(
+	cards: readonly PodiumShareCard[],
+	parts: PodiumShareFileParts,
+): string {
+	return [podiumShareCaptionText(parts), podiumShareAllText(cards)].join(
+		"\n\n",
+	);
 }
 
 export function podiumShareCardFromStandings(

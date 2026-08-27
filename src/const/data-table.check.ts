@@ -1,4 +1,5 @@
 import {
+	DATA_TABLE_DESKTOP_QUERY,
 	DATA_TABLE_EXTRA_PRESENT,
 	DATA_TABLE_MOBILE_PRIMARY,
 	DATA_TABLE_ROW_EXIT,
@@ -96,5 +97,10 @@ check(keys.join(",") === "b", "enter activates row");
 
 check(dataTableSortDirectionLabel(true) === DATA_TABLE_SORT.desc, "desc label");
 check(dataTableSortDirectionLabel(false) === DATA_TABLE_SORT.asc, "asc label");
+
+check(
+	DATA_TABLE_DESKTOP_QUERY === "(min-width: 768px)",
+	"desktop query matches md breakpoint",
+);
 
 console.log("data-table ok");

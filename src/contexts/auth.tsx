@@ -8,7 +8,7 @@ import {
 	useMemo,
 	useState,
 } from "react";
-import { queryClient, queryPersister } from "@/lib/query-client";
+import { clearQueryCache } from "@/lib/clear-query-cache";
 import { safeInternalPathOrHome } from "@/lib/safe-path";
 import { supabase } from "@/lib/supabase";
 import { ensureCurrentUser } from "@/services/users";
@@ -62,8 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 			setIsLoading(false);
 
 			if (event === "SIGNED_OUT") {
-				queryClient.clear();
-				void queryPersister.removeClient();
+				void clearQueryCache();
 				return;
 			}
 
@@ -97,6 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	}, []);
 
 	const signOut = useCallback(async () => {
+		await clearQueryCache();
 		const { error } = await supabase.auth.signOut();
 
 		if (error) {

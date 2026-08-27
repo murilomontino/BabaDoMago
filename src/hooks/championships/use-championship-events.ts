@@ -10,6 +10,7 @@ import {
 	matchDurationSeconds,
 } from "@/const/championship-event-match";
 import type { EventTeamColor } from "@/const/event-team-color";
+import { useAuth } from "@/contexts/auth";
 import { supabase } from "@/lib/supabase";
 import {
 	addChampionshipEventTeam,
@@ -41,18 +42,30 @@ import {
 } from "./championships-query-keys";
 
 export function useChampionshipEvents(championshipId: number) {
+	const { user } = useAuth();
+
 	return useQuery({
-		queryKey: [...CHAMPIONSHIP_EVENTS_QUERY_KEY, championshipId],
+		queryKey: [...CHAMPIONSHIP_EVENTS_QUERY_KEY, championshipId, user?.id],
 		queryFn: () => listChampionshipEvents(championshipId),
-		enabled: Number.isFinite(championshipId),
+		enabled: Number.isFinite(championshipId) && Boolean(user),
 	});
 }
 
 export function useChampionshipEvent(championshipId: number, eventId: number) {
+	const { user } = useAuth();
+
 	return useQuery({
-		queryKey: [...CHAMPIONSHIP_EVENTS_QUERY_KEY, championshipId, eventId],
+		queryKey: [
+			...CHAMPIONSHIP_EVENTS_QUERY_KEY,
+			championshipId,
+			eventId,
+			user?.id,
+		],
 		queryFn: () => getChampionshipEventById(championshipId, eventId),
-		enabled: Number.isFinite(championshipId) && Number.isFinite(eventId),
+		enabled:
+			Number.isFinite(championshipId) &&
+			Number.isFinite(eventId) &&
+			Boolean(user),
 	});
 }
 

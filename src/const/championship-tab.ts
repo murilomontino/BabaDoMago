@@ -64,3 +64,29 @@ export function visibleChampionshipTab(
 
 	return requestedTab;
 }
+
+export function keepChampionshipTabMounted(
+	selectedTab: ChampionshipTab,
+	tab: ChampionshipTab,
+	alreadyMounted: boolean,
+): boolean {
+	if (alreadyMounted) {
+		return true;
+	}
+
+	return selectedTab === tab;
+}
+
+export function rememberChampionshipTab(
+	mounted: Readonly<Partial<Record<ChampionshipTab, boolean>>>,
+	selectedTab: ChampionshipTab,
+): Partial<Record<ChampionshipTab, boolean>> {
+	if (mounted[selectedTab]) {
+		return mounted;
+	}
+
+	return {
+		...mounted,
+		[selectedTab]: true,
+	};
+}

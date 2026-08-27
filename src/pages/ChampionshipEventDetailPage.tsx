@@ -5,6 +5,7 @@ import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { ChampionshipEventDetail } from "@/components/championship-event-detail";
 import { TeamCardSkeleton } from "@/components/molecules/team-card-skeleton";
 import { PageHeader } from "@/components/page-header";
+import { QueryRefresh } from "@/components/query-refresh";
 import {
 	countPlayerAttendance,
 	EVENT_BUILDER_STEP_LABEL,
@@ -26,6 +27,7 @@ import { ROUTES } from "@/const/routes";
 import { SKELETON_LABEL, SKELETON_TEAM_CARDS } from "@/const/skeleton";
 import { ERROR_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
+import { CHAMPIONSHIP_EVENTS_QUERY_KEY } from "@/hooks/championships/championships-query-keys";
 import {
 	useAddChampionshipEventTeam,
 	useChampionshipEvent,
@@ -114,17 +116,26 @@ export function ChampionshipEventDetailPage() {
 
 	if (championshipQuery.isError) {
 		return (
-			<p className={ERROR_CLASS}>
-				Erro ao carregar campeonato: {championshipQuery.error.message}
-			</p>
+			<main>
+				<PageHeader
+					title="Campeonato"
+					queryKey={CHAMPIONSHIP_EVENTS_QUERY_KEY}
+				/>
+				<p className={ERROR_CLASS}>
+					Erro ao carregar campeonato: {championshipQuery.error.message}
+				</p>
+			</main>
 		);
 	}
 
 	if (eventQuery.isError) {
 		return (
-			<p className={ERROR_CLASS}>
-				Erro ao carregar rodada: {eventQuery.error.message}
-			</p>
+			<main>
+				<PageHeader title="Rodada" queryKey={CHAMPIONSHIP_EVENTS_QUERY_KEY} />
+				<p className={ERROR_CLASS}>
+					Erro ao carregar rodada: {eventQuery.error.message}
+				</p>
+			</main>
 		);
 	}
 
@@ -137,6 +148,7 @@ export function ChampionshipEventDetailPage() {
 			<PageHeader
 				title={`${when.date} · ${when.time}`}
 				description={EVENT_STATUS_LABEL[status]}
+				queryKey={CHAMPIONSHIP_EVENTS_QUERY_KEY}
 				action={
 					<Link
 						to={ROUTES.championship}
@@ -148,146 +160,149 @@ export function ChampionshipEventDetailPage() {
 					</Link>
 				}
 			/>
-			<ChampionshipEventDetail
-				event={event}
-				championshipName={championship?.name ?? ""}
-				players={activePlayers}
-				attendanceCounts={attendanceCounts}
-				seedEvents={eventsQuery.data ?? []}
-				currentPlayerId={currentPlayer?.id ?? null}
-				canManage={canManage}
-				canOverrideEnded={canOverrideEnded}
-				canSetMvp={canSetMvp}
-				savingTeams={saveTeams.isPending}
-				saveTeamsError={mutationErrorMessage(saveTeams)}
-				savingAttendance={saveAttendance.isPending}
-				saveAttendanceError={mutationErrorMessage(saveAttendance)}
-				ensuringAttendance={ensureAttendance.isPending}
-				ensureAttendanceError={mutationErrorMessage(ensureAttendance)}
-				savingRsvp={upsertRsvp.isPending}
-				rsvpError={mutationErrorMessage(upsertRsvp)}
-				promotingRsvp={promoteRsvp.isPending}
-				promoteRsvpError={mutationErrorMessage(promoteRsvp)}
-				savingAttendanceStats={saveAttendanceStats.isPending}
-				saveAttendanceStatsError={mutationErrorMessage(saveAttendanceStats)}
-				addingTeam={addTeam.isPending}
-				addTeamError={mutationErrorMessage(addTeam)}
-				updatingTeam={updateTeam.isPending}
-				updateTeamError={mutationErrorMessage(updateTeam)}
-				deletingTeam={deleteTeam.isPending}
-				deleteTeamError={mutationErrorMessage(deleteTeam)}
-				deletingMatch={deleteMatch.isPending}
-				deleteMatchError={mutationErrorMessage(deleteMatch)}
-				openingMatch={reopenMatch.isPending}
-				openMatchError={mutationErrorMessage(reopenMatch)}
-				ending={endEvent.isPending}
-				endError={mutationErrorMessage(endEvent)}
-				settingMvp={setMvps.isPending}
-				setMvpError={mutationErrorMessage(setMvps)}
-				deleting={deleteEvent.isPending}
-				deleteError={mutationErrorMessage(deleteEvent)}
-				isAddingPlayer={addPlayer.isPending}
-				addPlayerError={mutationErrorMessage(addPlayer)}
-				onAddPlayer={handlerWhenAllowed(canInvite(actorRole), async (values) =>
-					addPlayer.mutateAsync(values),
-				)}
-				onSaveTeams={async ({
-					presentPlayerIds,
-					teams,
-					goalkeeperPlayerIds,
-				}) => {
-					await saveTeams.mutateAsync({
-						eventId: event.id,
+			<QueryRefresh queryKey={CHAMPIONSHIP_EVENTS_QUERY_KEY}>
+				<ChampionshipEventDetail
+					event={event}
+					championshipName={championship?.name ?? ""}
+					players={activePlayers}
+					attendanceCounts={attendanceCounts}
+					seedEvents={eventsQuery.data ?? []}
+					currentPlayerId={currentPlayer?.id ?? null}
+					canManage={canManage}
+					canOverrideEnded={canOverrideEnded}
+					canSetMvp={canSetMvp}
+					savingTeams={saveTeams.isPending}
+					saveTeamsError={mutationErrorMessage(saveTeams)}
+					savingAttendance={saveAttendance.isPending}
+					saveAttendanceError={mutationErrorMessage(saveAttendance)}
+					ensuringAttendance={ensureAttendance.isPending}
+					ensureAttendanceError={mutationErrorMessage(ensureAttendance)}
+					savingRsvp={upsertRsvp.isPending}
+					rsvpError={mutationErrorMessage(upsertRsvp)}
+					promotingRsvp={promoteRsvp.isPending}
+					promoteRsvpError={mutationErrorMessage(promoteRsvp)}
+					savingAttendanceStats={saveAttendanceStats.isPending}
+					saveAttendanceStatsError={mutationErrorMessage(saveAttendanceStats)}
+					addingTeam={addTeam.isPending}
+					addTeamError={mutationErrorMessage(addTeam)}
+					updatingTeam={updateTeam.isPending}
+					updateTeamError={mutationErrorMessage(updateTeam)}
+					deletingTeam={deleteTeam.isPending}
+					deleteTeamError={mutationErrorMessage(deleteTeam)}
+					deletingMatch={deleteMatch.isPending}
+					deleteMatchError={mutationErrorMessage(deleteMatch)}
+					openingMatch={reopenMatch.isPending}
+					openMatchError={mutationErrorMessage(reopenMatch)}
+					ending={endEvent.isPending}
+					endError={mutationErrorMessage(endEvent)}
+					settingMvp={setMvps.isPending}
+					setMvpError={mutationErrorMessage(setMvps)}
+					deleting={deleteEvent.isPending}
+					deleteError={mutationErrorMessage(deleteEvent)}
+					isAddingPlayer={addPlayer.isPending}
+					addPlayerError={mutationErrorMessage(addPlayer)}
+					onAddPlayer={handlerWhenAllowed(
+						canInvite(actorRole),
+						async (values) => addPlayer.mutateAsync(values),
+					)}
+					onSaveTeams={async ({
 						presentPlayerIds,
 						teams,
 						goalkeeperPlayerIds,
-					});
-				}}
-				onSaveAttendance={async (presentPlayerIds, goalkeeperPlayerIds) => {
-					await saveAttendance.mutateAsync({
-						eventId: event.id,
-						presentPlayerIds,
-						goalkeeperPlayerIds,
-					});
-				}}
-				onEnsureAttendance={async (playerId) => {
-					await ensureAttendance.mutateAsync({
-						eventId: event.id,
-						playerId,
-					});
-				}}
-				onUpsertRsvp={async (status) => {
-					await upsertRsvp.mutateAsync({
-						eventId: event.id,
-						status,
-					});
-				}}
-				onPromoteRsvpGoing={async () => {
-					await promoteRsvp.mutateAsync(event.id);
-				}}
-				onSaveAttendanceStats={async (stats) => {
-					await saveAttendanceStats.mutateAsync({
-						eventId: event.id,
-						stats,
-					});
-				}}
-				onAddTeam={async ({ color, playerIds, goalkeeperId }) => {
-					await addTeam.mutateAsync({
-						eventId: event.id,
-						color,
-						playerIds,
-						goalkeeperId,
-					});
-				}}
-				onUpdateTeam={async ({ teamId, color, playerIds, goalkeeperId }) => {
-					await updateTeam.mutateAsync({
-						teamId,
-						color,
-						playerIds,
-						goalkeeperId,
-					});
-				}}
-				onDeleteTeam={async (teamId) => {
-					await deleteTeam.mutateAsync(teamId);
-				}}
-				onDeleteMatch={async (matchId) => {
-					await deleteMatch.mutateAsync(matchId);
-				}}
-				onOpenMatch={async (match) => {
-					if (match.ended_at !== null) {
-						await reopenMatch.mutateAsync(match.id);
-					}
+					}) => {
+						await saveTeams.mutateAsync({
+							eventId: event.id,
+							presentPlayerIds,
+							teams,
+							goalkeeperPlayerIds,
+						});
+					}}
+					onSaveAttendance={async (presentPlayerIds, goalkeeperPlayerIds) => {
+						await saveAttendance.mutateAsync({
+							eventId: event.id,
+							presentPlayerIds,
+							goalkeeperPlayerIds,
+						});
+					}}
+					onEnsureAttendance={async (playerId) => {
+						await ensureAttendance.mutateAsync({
+							eventId: event.id,
+							playerId,
+						});
+					}}
+					onUpsertRsvp={async (status) => {
+						await upsertRsvp.mutateAsync({
+							eventId: event.id,
+							status,
+						});
+					}}
+					onPromoteRsvpGoing={async () => {
+						await promoteRsvp.mutateAsync(event.id);
+					}}
+					onSaveAttendanceStats={async (stats) => {
+						await saveAttendanceStats.mutateAsync({
+							eventId: event.id,
+							stats,
+						});
+					}}
+					onAddTeam={async ({ color, playerIds, goalkeeperId }) => {
+						await addTeam.mutateAsync({
+							eventId: event.id,
+							color,
+							playerIds,
+							goalkeeperId,
+						});
+					}}
+					onUpdateTeam={async ({ teamId, color, playerIds, goalkeeperId }) => {
+						await updateTeam.mutateAsync({
+							teamId,
+							color,
+							playerIds,
+							goalkeeperId,
+						});
+					}}
+					onDeleteTeam={async (teamId) => {
+						await deleteTeam.mutateAsync(teamId);
+					}}
+					onDeleteMatch={async (matchId) => {
+						await deleteMatch.mutateAsync(matchId);
+					}}
+					onOpenMatch={async (match) => {
+						if (match.ended_at !== null) {
+							await reopenMatch.mutateAsync(match.id);
+						}
 
-					await navigate({
-						to: ROUTES.championshipEventPlay,
-						params: {
-							championshipId: String(championshipId),
-							eventId: String(eventId),
-						},
-					});
-				}}
-				onEnd={async (presentPlayerIds, mvpPlayerIds) => {
-					await endEvent.mutateAsync({
-						eventId: event.id,
-						presentPlayerIds,
-						mvpPlayerIds,
-					});
-				}}
-				onSetMvps={async (playerIds) => {
-					await setMvps.mutateAsync({
-						eventId: event.id,
-						playerIds,
-					});
-				}}
-				onDelete={async () => {
-					await deleteEvent.mutateAsync(event.id);
-					await navigate({
-						to: ROUTES.championship,
-						params: { championshipId: String(championshipId) },
-						search: { tab: CHAMPIONSHIP_TAB.events },
-					});
-				}}
-			/>
+						await navigate({
+							to: ROUTES.championshipEventPlay,
+							params: {
+								championshipId: String(championshipId),
+								eventId: String(eventId),
+							},
+						});
+					}}
+					onEnd={async (presentPlayerIds, mvpPlayerIds) => {
+						await endEvent.mutateAsync({
+							eventId: event.id,
+							presentPlayerIds,
+							mvpPlayerIds,
+						});
+					}}
+					onSetMvps={async (playerIds) => {
+						await setMvps.mutateAsync({
+							eventId: event.id,
+							playerIds,
+						});
+					}}
+					onDelete={async () => {
+						await deleteEvent.mutateAsync(event.id);
+						await navigate({
+							to: ROUTES.championship,
+							params: { championshipId: String(championshipId) },
+							search: { tab: CHAMPIONSHIP_TAB.events },
+						});
+					}}
+				/>
+			</QueryRefresh>
 		</main>
 	);
 }
@@ -314,20 +329,22 @@ function ChampionshipEventDetailPageSkeleton({
 						Voltar
 					</Link>
 				</div>
-				<article className="space-y-6">
-					<div>
-						<p className="mb-1 text-xs font-medium uppercase tracking-wide text-fg-muted">
-							{EVENT_BUILDER_STEP_LABEL.teams}
-						</p>
-						<ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-							{SKELETON_TEAM_CARDS.map((card) => (
-								<li key={card}>
-									<TeamCardSkeleton />
-								</li>
-							))}
-						</ul>
-					</div>
-				</article>
+				<QueryRefresh queryKey={CHAMPIONSHIP_EVENTS_QUERY_KEY}>
+					<article className="space-y-6">
+						<div>
+							<p className="mb-1 text-xs font-medium uppercase tracking-wide text-fg-muted">
+								{EVENT_BUILDER_STEP_LABEL.teams}
+							</p>
+							<ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+								{SKELETON_TEAM_CARDS.map((card) => (
+									<li key={card}>
+										<TeamCardSkeleton />
+									</li>
+								))}
+							</ul>
+						</div>
+					</article>
+				</QueryRefresh>
 			</main>
 		</SkeletonRegion>
 	);

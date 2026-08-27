@@ -3,6 +3,7 @@ import {
 	confirmClaimPlayerMessage,
 	isGoalkeeperKind,
 	legalNameIfDifferent,
+	matchOpDisplayName,
 	normalizeNicknameTags,
 	PLAYER_KIND,
 	PLAYER_KIND_LABEL,
@@ -81,6 +82,39 @@ check(
 check(
 	playerVisibleName({ nickname: "", display_name: "Murilo" }) === "Murilo",
 	"empty falls back",
+);
+check(
+	playerVisibleName({ nickname: null, display_name: "" }) ===
+		PLAYER_LABEL.player,
+	"blank name uses player label",
+);
+check(
+	playerVisibleName({ nickname: "   ", display_name: "  " }) ===
+		PLAYER_LABEL.player,
+	"whitespace name uses player label",
+);
+
+check(matchOpDisplayName(null, [], []) === "", "null player id");
+check(
+	matchOpDisplayName(
+		1,
+		[{ id: 1, nickname: "Vitinho", display_name: "Murilo" }],
+		[],
+	) === "Vitinho",
+	"roster nickname",
+);
+check(
+	matchOpDisplayName(2, [], [{ player_id: 2, display_name: "Ana" }]) === "Ana",
+	"attendance name",
+);
+check(
+	matchOpDisplayName(3, [], [{ player_id: 3, display_name: "" }]) ===
+		PLAYER_LABEL.player,
+	"empty attendance name",
+);
+check(
+	matchOpDisplayName(9, [], []) === PLAYER_LABEL.player,
+	"missing player fallback",
 );
 
 check(

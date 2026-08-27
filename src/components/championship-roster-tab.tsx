@@ -1,5 +1,5 @@
 import { Copy, LoaderCircle, Share2, Users } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/button";
 import { ChampionshipRoster } from "@/components/championship-roster";
 import { SectionCard } from "@/components/section-card";
@@ -12,6 +12,7 @@ import {
 	sameRosterShareSort,
 } from "@/const/roster-share";
 import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
+import { CHAMPIONSHIP_BY_ID_QUERY_KEY } from "@/hooks/championships/championships-query-keys";
 import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
 import { shareRosterImage } from "@/lib/share-roster-image";
 import type { ChampionshipPlayer } from "@/types/championship";
@@ -112,7 +113,7 @@ export function ChampionshipRosterTab({
 	const showShare = visiblePlayers.length > 0;
 	const showActions = showShare || canInvite;
 
-	function handleSortingChange(next: RosterShareSort | null) {
+	const handleSortingChange = useCallback((next: RosterShareSort | null) => {
 		setSorting((current) => {
 			if (sameRosterShareSort(current, next)) {
 				return current;
@@ -120,7 +121,7 @@ export function ChampionshipRosterTab({
 
 			return next;
 		});
-	}
+	}, []);
 
 	async function handleShare() {
 		setIsSharing(true);
@@ -141,6 +142,7 @@ export function ChampionshipRosterTab({
 		<SectionCard
 			title="Elenco"
 			icon={<Users className="size-4 text-pitch-fg" />}
+			queryKey={CHAMPIONSHIP_BY_ID_QUERY_KEY}
 		>
 			{showActions && (
 				<div className="mb-4 flex flex-col gap-2 md:flex-row md:flex-wrap">

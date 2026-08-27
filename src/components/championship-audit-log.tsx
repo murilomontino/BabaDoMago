@@ -13,7 +13,10 @@ import {
 } from "@/const/championship-audit";
 import { formatEventStartsAt } from "@/const/championship-event";
 import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
-import { useChampionshipAuditLogs } from "@/hooks/championships/use-championship-audit-logs";
+import {
+	CHAMPIONSHIP_AUDIT_QUERY_KEY,
+	useChampionshipAuditLogs,
+} from "@/hooks/championships/use-championship-audit-logs";
 
 type ChampionshipAuditLogProps = {
 	championshipId: number;
@@ -33,6 +36,7 @@ export function ChampionshipAuditLog({
 		<SectionCard
 			title={AUDIT_LABEL.title}
 			icon={<ScrollText className="size-4 text-pitch-fg" />}
+			queryKey={CHAMPIONSHIP_AUDIT_QUERY_KEY}
 			action={
 				<label className="block min-w-40 text-xs font-medium text-fg-muted">
 					{AUDIT_LABEL.action}

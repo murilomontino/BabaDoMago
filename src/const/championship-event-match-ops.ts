@@ -670,6 +670,16 @@ function applySetPlayer<T extends MatchOpsTarget>(
 		outgoing,
 		op.includeStats,
 	);
+	const existing = substitutedMatchPlayer(remaining, op.playerId);
+	if (existing) {
+		return {
+			...match,
+			players: remaining.map((player) =>
+				reactivatedMatchPlayer(player, existing.id, op),
+			),
+		};
+	}
+
 	const incoming: ChampionshipEventMatchPlayer = {
 		id: op.localId,
 		match_id: match.id,
@@ -885,11 +895,61 @@ function activeTeamPlayer(
 	});
 }
 
+function substitutedMatchPlayer(
+	players: readonly ChampionshipEventMatchPlayer[],
+	playerId: number,
+): ChampionshipEventMatchPlayer | undefined {
+	return players.find((player) => {
+		if (player.player_id !== playerId) {
+			return false;
+		}
+
+		return player.is_substituted;
+	});
+}
+
+function incomingMatchDisplayName(
+	incomingName: string,
+	existingName: string,
+): string {
+	const trimmed = incomingName.trim();
+	if (trimmed.length > 0) {
+		return trimmed;
+	}
+
+	return existingName;
+}
+
+function reactivatedMatchPlayer(
+	player: ChampionshipEventMatchPlayer,
+	existingId: number,
+	op: Extract<MatchOp, { kind: typeof MATCH_OP.setPlayer }>,
+): ChampionshipEventMatchPlayer {
+	if (player.id !== existingId) {
+		return player;
+	}
+
+	return {
+		...player,
+		team_id: op.teamId,
+		slot: op.slot,
+		is_substituted: false,
+		is_goalkeeper: isMatchSlotGoalkeeper(op.slot),
+		display_name: incomingMatchDisplayName(op.displayName, player.display_name),
+	};
+}
+
 function playerInMatch(
 	players: readonly ChampionshipEventMatchPlayer[],
 	playerId: number,
 ): boolean {
-	return players.some((player) => player.player_id === playerId);
+	return players.some((player) => {
+		if (player.player_id !== playerId) {
+			return false;
+		}
+
+		return !player.is_substituted;
+	});
 }
 
 function playerHasMatchGoal(

@@ -31,6 +31,7 @@ import {
 	PAGE_SHELL_CLASS,
 } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
+import { CHAMPIONSHIP_BY_INVITE_QUERY_KEY } from "@/hooks/championships/championships-query-keys";
 import {
 	useChampionshipByInvite,
 	useClaimPlayer,
@@ -199,6 +200,7 @@ export function JoinChampionshipPage() {
 			<SectionCard
 				title="Elenco"
 				icon={<Users className="size-4 text-pitch-fg" />}
+				queryKey={CHAMPIONSHIP_BY_INVITE_QUERY_KEY}
 			>
 				{!alreadyMember && (
 					<p className="mb-3 text-sm text-fg-muted">{JOIN_PAGE.hint}</p>
@@ -271,6 +273,7 @@ function JoinChampionshipPageSkeleton() {
 				<SectionCard
 					title="Elenco"
 					icon={<Users className="size-4 text-pitch-fg" />}
+					queryKey={CHAMPIONSHIP_BY_INVITE_QUERY_KEY}
 				>
 					<DataTableSkeleton withSearch withColumns />
 				</SectionCard>
