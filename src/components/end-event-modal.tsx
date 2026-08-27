@@ -173,39 +173,6 @@ export function EndEventModal({
 		setShareError(null);
 
 		try {
-			// #region agent log
-			fetch("http://127.0.0.1:7501/ingest/7aa36caa-8689-4af1-a425-f57dce975cbd", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					"X-Debug-Session-Id": "4c2f81",
-				},
-				body: JSON.stringify({
-					sessionId: "4c2f81",
-					runId: "pre-fix",
-					hypothesisId: "A",
-					location: "end-event-modal.tsx:handleShare",
-					message: "share after end uses preview rows",
-					data: {
-						step,
-						rowCount: rows.length,
-						sample: rows.slice(0, 8).map((row) => ({
-							playerId: row.playerId,
-							from: row.from,
-							to: row.to,
-							isMvp: row.isMvp,
-						})),
-						changeSample: ratingChanges.slice(0, 8).map((row) => ({
-							playerId: row.playerId,
-							from: row.from,
-							to: row.to,
-							delta: row.delta,
-						})),
-					},
-					timestamp: Date.now(),
-				}),
-			}).catch(() => {});
-			// #endregion
 			await shareEventRecapImage({
 				championshipName,
 				startsAt,

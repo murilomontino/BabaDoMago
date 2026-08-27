@@ -604,34 +604,6 @@ export async function shareEventRecapImage(input: {
 	});
 
 	const blob = await renderRecapPng(input);
-	// #region agent log
-	fetch("http://127.0.0.1:7501/ingest/7aa36caa-8689-4af1-a425-f57dce975cbd", {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			"X-Debug-Session-Id": "4c2f81",
-		},
-		body: JSON.stringify({
-			sessionId: "4c2f81",
-			runId: "pre-fix",
-			hypothesisId: "G",
-			location: "share-event-recap-image.ts:shareEventRecapImage",
-			message: "painted recap rating lines",
-			data: {
-				painted: [...data.ratingDeltaUp, ...data.ratingDeltaDown]
-					.slice(0, 8)
-					.map((row) => ({
-						name: row.name,
-						from: formatEventRating(row.from),
-						to: formatEventRating(row.to),
-						delta: eventRecapShareDeltaLabel(row.delta),
-						line: `${row.name} ${formatEventRating(row.from)} → ${formatEventRating(row.to)} (${eventRecapShareDeltaLabel(row.delta)})`,
-					})),
-			},
-			timestamp: Date.now(),
-		}),
-	}).catch(() => {});
-	// #endregion
 	const file = new File(
 		[blob],
 		eventRecapShareFileName({

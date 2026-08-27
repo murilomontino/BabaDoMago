@@ -429,61 +429,6 @@ export function ChampionshipEventRoundTab({
 		setRecapError(null);
 
 		try {
-			const playerRatingById = new Map(
-				players.map((player) => [player.id, player.rating]),
-			);
-			const compared = event.attendance.map((row) => {
-				const playerRating = playerRatingById.get(row.player_id) ?? null;
-				const change = recapRatingChanges.find(
-					(item) => item.playerId === row.player_id,
-				);
-				return {
-					playerId: row.player_id,
-					attendanceRating: row.rating,
-					ratingDelta: row.rating_delta,
-					playerRating,
-					from: change?.from ?? null,
-					to: change?.to ?? null,
-					fromIsPlayer: playerRating !== null && change?.from === playerRating,
-					toMismatch:
-						playerRating !== null &&
-						change !== undefined &&
-						change.to !== playerRating,
-				};
-			});
-			// #region agent log
-			fetch("http://127.0.0.1:7501/ingest/7aa36caa-8689-4af1-a425-f57dce975cbd", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					"X-Debug-Session-Id": "4c2f81",
-				},
-				body: JSON.stringify({
-					sessionId: "4c2f81",
-					runId: "pre-fix",
-					hypothesisId: "F",
-					location: "championship-event-round-tab.tsx:handleShareRecap",
-					message: "share recap doubled vs mismatch",
-					data: {
-						endedAt: event.ended_at,
-						doubledCount: compared.filter((row) => row.fromIsPlayer).length,
-						mismatchCount: compared.filter((row) => row.toMismatch).length,
-						doubled: compared
-							.filter((row) => row.fromIsPlayer)
-							.slice(0, 8),
-						mismatch: compared.filter((row) => row.toMismatch).slice(0, 8),
-						topChanges: recapRatingChanges.slice(0, 8).map((row) => ({
-							playerId: row.playerId,
-							name: row.name,
-							from: row.from,
-							to: row.to,
-							delta: row.delta,
-						})),
-					},
-					timestamp: Date.now(),
-				}),
-			}).catch(() => {});
-			// #endregion
 			await shareEventRecapImage({
 				championshipName,
 				startsAt: event.starts_at,
