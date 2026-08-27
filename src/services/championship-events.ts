@@ -446,8 +446,9 @@ export async function saveChampionshipEventTeams(
 		isActive?: boolean;
 	}[],
 	goalkeeperPlayerIds: readonly number[] = [],
+	isDraw = false,
 ): Promise<void> {
-	const { error } = await supabase.rpc("save_championship_event_teams", {
+	const payload = {
 		event_id: eventId,
 		present_player_ids: [...presentPlayerIds],
 		teams: teams.map((team) => ({
@@ -457,7 +458,23 @@ export async function saveChampionshipEventTeams(
 			is_active: team.isActive !== false,
 		})),
 		goalkeeper_player_ids: [...goalkeeperPlayerIds],
-	});
+	};
+
+	if (isDraw) {
+		const { error } = await supabase.rpc(
+			"draw_championship_event_teams",
+			payload,
+		);
+		if (error) {
+			throwEventError(error);
+		}
+		return;
+	}
+
+	const { error } = await supabase.rpc(
+		"save_championship_event_teams",
+		payload,
+	);
 
 	if (error) {
 		throwEventError(error);

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { AppDialog } from "@/components/atoms/app-dialog";
 import { Button } from "@/components/button";
 import { EventAttendanceTable } from "@/components/event-attendance-table";
+import { EventTeamDrawLog } from "@/components/event-team-draw-log";
 import {
 	EVENT_TEAM_PLAYER_SLOT_CLASS,
 	EVENT_TEAM_POSITION_CHIP_CLASS,
@@ -98,6 +99,8 @@ type ChampionshipEventBuilderProps = {
 	step: EventBuilderStep;
 	startsAt: string;
 	championshipName: string;
+	championshipId: number;
+	eventId: number;
 	initialPresentIds?: readonly number[];
 	initialGoalkeeperIds?: readonly number[];
 	initialTeams?: EventTeamBuilderTeam[];
@@ -118,6 +121,7 @@ type ChampionshipEventBuilderProps = {
 			presentPlayerIds: number[];
 			goalkeeperPlayerIds: number[];
 			teams: EventTeamDraft[];
+			isDraw?: boolean;
 		},
 		keepOpen?: boolean,
 	) => Promise<void>;
@@ -131,6 +135,8 @@ export function ChampionshipEventBuilder({
 	step,
 	startsAt,
 	championshipName,
+	championshipId,
+	eventId,
 	initialPresentIds = [],
 	initialGoalkeeperIds = [],
 	initialTeams,
@@ -307,6 +313,7 @@ export function ChampionshipEventBuilder({
 					presentPlayerIds: presentIds,
 					goalkeeperPlayerIds: presentGoalkeeperIds,
 					teams: drafts,
+					isDraw: true,
 				},
 				true,
 			);
@@ -799,6 +806,10 @@ export function ChampionshipEventBuilder({
 													</Button>
 												)}
 											</div>
+											<EventTeamDrawLog
+												championshipId={championshipId}
+												eventId={eventId}
+											/>
 											{teamsError && (
 												<p className={ERROR_CLASS}>{teamsError}</p>
 											)}

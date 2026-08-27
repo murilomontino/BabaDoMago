@@ -20,6 +20,7 @@ import { DeleteEventMatchModal } from "@/components/delete-event-match-modal";
 import { DeleteEventTeamModal } from "@/components/delete-event-team-modal";
 import { EditEventAttendanceModal } from "@/components/edit-event-attendance-modal";
 import { EditEventAttendanceStatsModal } from "@/components/edit-event-attendance-stats-modal";
+import { EventTeamDrawLog } from "@/components/event-team-draw-log";
 import {
 	EVENT_TEAM_PLAYER_SLOT_CLASS,
 	EVENT_TEAM_POSITION_CHIP_CLASS,
@@ -231,6 +232,7 @@ type ChampionshipEventRoundTabProps = {
 		presentPlayerIds: number[];
 		goalkeeperPlayerIds: number[];
 		teams: EventTeamDraft[];
+		isDraw?: boolean;
 	}) => Promise<void>;
 	onSaveAttendance: (
 		presentPlayerIds: number[],
@@ -454,6 +456,8 @@ export function ChampionshipEventRoundTab({
 					step={builderStep}
 					startsAt={event.starts_at}
 					championshipName={championshipName}
+					championshipId={event.championship_id}
+					eventId={event.id}
 					initialPresentIds={resolveBuilderInitialPresentIds(
 						event.attendance.map((row) => row.player_id),
 						event.id,
@@ -557,6 +561,12 @@ export function ChampionshipEventRoundTab({
 							)}
 						</div>
 					</div>
+					{canManage && (
+						<EventTeamDrawLog
+							championshipId={event.championship_id}
+							eventId={event.id}
+						/>
+					)}
 					{shareError && <p className={ERROR_CLASS}>{shareError}</p>}
 					{recapError && <p className={ERROR_CLASS}>{recapError}</p>}
 					<ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">

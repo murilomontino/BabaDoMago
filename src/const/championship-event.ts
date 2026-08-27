@@ -258,6 +258,19 @@ export const EVENT_TEAM_MESSAGE = {
 	sharedPlayers: "Times com jogador em comum",
 } as const;
 
+export const EVENT_TEAM_DRAW_LABEL = {
+	countOne: "Sorteado 1 vez",
+	countMany: "Sorteado {count} vezes",
+} as const;
+
+export function eventTeamDrawCountLabel(count: number): string {
+	if (count === 1) {
+		return EVENT_TEAM_DRAW_LABEL.countOne;
+	}
+
+	return EVENT_TEAM_DRAW_LABEL.countMany.replace("{count}", String(count));
+}
+
 export const EVENT_ATTENDANCE_MESSAGE = {
 	minPresent: "Marque pelo menos dois presentes",
 	notInRoster: "Jogador fora do elenco",
