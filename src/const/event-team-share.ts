@@ -1,6 +1,9 @@
 import {
+	EVENT_TEAM_AVERAGE_LABEL,
 	type EventTeamBuilderTeam,
+	eventTeamRatingAverage,
 	formatEventStartsAt,
+	formatEventTeamRatingAverage,
 } from "./championship-event.ts";
 import { eventTeamName } from "./event-team-color.ts";
 import { playerVisibleName } from "./player-name.ts";
@@ -16,6 +19,8 @@ export const EVENT_TEAM_SHARE = {
 	cardPadding: 16,
 	avatar: 48,
 	star: 22,
+	ratingWidth: 44,
+	footerHeight: 28,
 	fileName: "times.png",
 	filePrefix: "times",
 	mimePng: "image/png",
@@ -104,12 +109,32 @@ export function eventTeamsShareText(
 	return [heading, ...blocks].join("\n\n");
 }
 
+export function eventTeamShareCardFooterHeight(playerCount: number): number {
+	if (playerCount === 0) {
+		return 0;
+	}
+
+	return EVENT_TEAM_SHARE.footerHeight;
+}
+
 export function eventTeamShareCardHeight(playerCount: number): number {
 	return (
 		EVENT_TEAM_SHARE.cardPadding * 2 +
 		EVENT_TEAM_SHARE.headerHeight +
-		playerCount * EVENT_TEAM_SHARE.rowHeight
+		playerCount * EVENT_TEAM_SHARE.rowHeight +
+		eventTeamShareCardFooterHeight(playerCount)
 	);
+}
+
+export function eventTeamShareAverageLabel(
+	ratings: readonly number[],
+): string | null {
+	if (ratings.length === 0) {
+		return null;
+	}
+
+	const average = formatEventTeamRatingAverage(eventTeamRatingAverage(ratings));
+	return `${EVENT_TEAM_AVERAGE_LABEL} ${average}`;
 }
 
 export function eventTeamShareCardWidth(): number {

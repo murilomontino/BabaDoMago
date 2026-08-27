@@ -5,9 +5,11 @@ import {
 	EVENT_DRAW_REVEAL_LABEL,
 	EVENT_DRAW_REVEAL_PAGE,
 	EVENT_DRAW_REVEAL_PHASE,
+	eventDrawRevealAuditChannelName,
 	eventDrawRevealCanNext,
 	eventDrawRevealCardKey,
 	eventDrawRevealCards,
+	eventDrawRevealChannelName,
 	eventDrawRevealCountAfterStart,
 	eventDrawRevealDelayMs,
 	eventDrawRevealItemCount,
@@ -15,8 +17,13 @@ import {
 	eventDrawRevealPageStatus,
 	eventDrawRevealPhase,
 	eventDrawRevealShouldTick,
+	eventDrawRevealShareIsPrimary,
 	eventDrawRevealShowControls,
+	eventDrawRevealShowShare,
 	eventDrawRevealSlotIsGoalkeeper,
+	eventDrawRevealViewersFromPresence,
+	eventDrawRevealViewingBadgeCount,
+	eventDrawRevealViewingLabel,
 	eventDrawRevealVisibleCards,
 	eventDrawRevealVisiblePlayerCount,
 	eventDrawUrl,
@@ -137,6 +144,12 @@ check(
 	false,
 );
 check(eventDrawRevealShowControls(EVENT_DRAW_REVEAL_PHASE.done, false), false);
+check(eventDrawRevealShowShare(EVENT_DRAW_REVEAL_PHASE.poster), true);
+check(eventDrawRevealShowShare(EVENT_DRAW_REVEAL_PHASE.playing), false);
+check(eventDrawRevealShowShare(EVENT_DRAW_REVEAL_PHASE.done), true);
+check(eventDrawRevealShareIsPrimary(EVENT_DRAW_REVEAL_PHASE.poster), false);
+check(eventDrawRevealShareIsPrimary(EVENT_DRAW_REVEAL_PHASE.playing), false);
+check(eventDrawRevealShareIsPrimary(EVENT_DRAW_REVEAL_PHASE.done), true);
 
 check(EVENT_DRAW_REVEAL_LABEL.pause, "Pausar sorteio");
 check(EVENT_DRAW_REVEAL_LABEL.play, "Play sorteio");
@@ -217,6 +230,32 @@ check(
 		teamsReady: true,
 	}),
 	EVENT_DRAW_REVEAL_PAGE.ready,
+);
+
+check(eventDrawRevealViewingLabel(0), EVENT_DRAW_REVEAL_LABEL.viewingEmpty);
+check(eventDrawRevealViewingLabel(1), EVENT_DRAW_REVEAL_LABEL.viewingOne);
+check(eventDrawRevealViewingLabel(3), "3 presenciando");
+check(eventDrawRevealViewingBadgeCount(0), "0");
+check(eventDrawRevealViewingBadgeCount(7), "7");
+check(eventDrawRevealViewingBadgeCount(100), "99+");
+check(eventDrawRevealChannelName(9), "event-draw:9");
+check(eventDrawRevealAuditChannelName(9), "event-draw-audit:9");
+check(
+	eventDrawRevealViewersFromPresence({
+		"1": [
+			{ playerId: 1, displayName: "Ana", avatarUrl: null },
+			{ playerId: 1, displayName: "Ana", avatarUrl: null },
+		],
+		"2": [{ playerId: 2, displayName: "Bruno", avatarUrl: "https://a" }],
+		bad: [{ playerId: "x", displayName: "Nope" }],
+	}).length,
+	2,
+);
+check(
+	eventDrawRevealViewersFromPresence({
+		"2": [{ playerId: 2, displayName: "Bruno", avatarUrl: "https://a" }],
+	})[0]?.displayName,
+	"Bruno",
 );
 
 console.log("event-draw-reveal ok");

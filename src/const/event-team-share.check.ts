@@ -1,6 +1,8 @@
 import { EVENT_TEAM_COLOR, EVENT_TEAM_COLOR_NONE } from "./event-team-color.ts";
 import {
 	EVENT_TEAM_SHARE,
+	eventTeamShareAverageLabel,
+	eventTeamShareCardFooterHeight,
 	eventTeamShareCardHeight,
 	eventTeamShareFileName,
 	eventTeamShareImageHeight,
@@ -63,6 +65,8 @@ check(cards[0]?.players[1]?.avatarUrl, null);
 check(cards[1]?.title, "Time 2");
 check(cards[1]?.players.length, 0);
 
+check(eventTeamShareCardFooterHeight(0), 0);
+check(eventTeamShareCardFooterHeight(2), EVENT_TEAM_SHARE.footerHeight);
 check(
 	eventTeamShareCardHeight(0),
 	EVENT_TEAM_SHARE.cardPadding * 2 + EVENT_TEAM_SHARE.headerHeight,
@@ -71,8 +75,11 @@ check(
 	eventTeamShareCardHeight(2),
 	EVENT_TEAM_SHARE.cardPadding * 2 +
 		EVENT_TEAM_SHARE.headerHeight +
-		EVENT_TEAM_SHARE.rowHeight * 2,
+		EVENT_TEAM_SHARE.rowHeight * 2 +
+		EVENT_TEAM_SHARE.footerHeight,
 );
+check(eventTeamShareAverageLabel([]), null);
+check(eventTeamShareAverageLabel([10, 7, 6, 3]), "Média 6.5");
 check(eventTeamShareImageHeight([]), EVENT_TEAM_SHARE.padding * 2);
 check(
 	eventTeamShareImageHeight([1, 5]),

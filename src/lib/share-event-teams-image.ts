@@ -1,3 +1,4 @@
+import { formatEventRating } from "@/const/event-rating-adjustment";
 import {
 	eventTeamColorFg,
 	eventTeamColorPastel,
@@ -7,6 +8,7 @@ import {
 	EVENT_TEAM_SHARE_COLOR,
 	EVENT_TEAM_SHARE_LABEL,
 	type EventTeamShareCard,
+	eventTeamShareAverageLabel,
 	eventTeamShareCardHeight,
 	eventTeamShareCardWidth,
 	eventTeamShareFileName,
@@ -244,7 +246,9 @@ function drawPlayerRow(
 	drawAvatar(context, avatarX, avatarY, player.name, avatar);
 
 	const starsWidth = EVENT_TEAM_SHARE.star * PLAYER_RATING.starCount;
-	const starsX = x + width - EVENT_TEAM_SHARE.cardPadding - starsWidth;
+	const ratingRight = x + width - EVENT_TEAM_SHARE.cardPadding;
+	const starsX =
+		ratingRight - EVENT_TEAM_SHARE.ratingWidth - TEXT_GAP - starsWidth;
 	drawStars(
 		context,
 		starsX,
@@ -253,6 +257,12 @@ function drawPlayerRow(
 		ceiling,
 	);
 
+	context.fillStyle = EVENT_TEAM_SHARE_COLOR.fg;
+	context.font = "600 20px system-ui, sans-serif";
+	context.textAlign = "end";
+	context.textBaseline = "middle";
+	context.fillText(formatEventRating(player.rating), ratingRight, midY);
+
 	const nameX = avatarX + EVENT_TEAM_SHARE.avatar + TEXT_GAP;
 	const nameMaxWidth = Math.max(0, starsX - TEXT_GAP - nameX);
 	context.fillStyle = EVENT_TEAM_SHARE_COLOR.fg;
@@ -260,6 +270,38 @@ function drawPlayerRow(
 	context.textAlign = "start";
 	context.textBaseline = "middle";
 	context.fillText(fitText(context, player.name, nameMaxWidth), nameX, midY);
+	context.textBaseline = "alphabetic";
+}
+
+function drawCardAverage(
+	context: CanvasRenderingContext2D,
+	x: number,
+	y: number,
+	width: number,
+	height: number,
+	card: EventTeamShareCard,
+	color: string,
+) {
+	const label = eventTeamShareAverageLabel(
+		card.players.map((player) => player.rating),
+	);
+	if (!label) {
+		return;
+	}
+
+	context.fillStyle = color;
+	context.font = "600 20px system-ui, sans-serif";
+	context.textAlign = "end";
+	context.textBaseline = "middle";
+	context.fillText(
+		label,
+		x + width - EVENT_TEAM_SHARE.cardPadding,
+		y +
+			height -
+			EVENT_TEAM_SHARE.cardPadding -
+			EVENT_TEAM_SHARE.footerHeight / 2,
+	);
+	context.textAlign = "start";
 	context.textBaseline = "alphabetic";
 }
 
@@ -322,6 +364,8 @@ function drawCard(
 			avatars,
 		);
 	}
+
+	drawCardAverage(context, x, y, width, height, card, titleColor);
 }
 
 async function renderEventTeamsPng(

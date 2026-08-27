@@ -18,13 +18,17 @@ export function AuthenticatedLayout() {
 		from: "/_authenticated/championships/$championshipId/events/$eventId/play",
 		shouldThrow: false,
 	});
+	const drawRoute = useMatch({
+		from: "/_authenticated/championships/$championshipId/events/$eventId/draw",
+		shouldThrow: false,
+	});
 
 	async function handleSignOut() {
 		await signOut();
 		await navigate({ to: ROUTES.login });
 	}
 
-	if (playRoute) {
+	if (playRoute || drawRoute) {
 		return <Outlet />;
 	}
 

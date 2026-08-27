@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { EventDrawReveal } from "@/components/event-draw-reveal";
+import { EventDrawViewers } from "@/components/event-draw-viewers";
+import { EventTeamDrawLog } from "@/components/event-team-draw-log";
 import { TeamCardSkeleton } from "@/components/molecules/team-card-skeleton";
 import {
 	builderTeamsFromEvent,
@@ -26,6 +28,7 @@ import {
 	eventDrawRevealShouldTick,
 } from "@/const/event-draw-reveal";
 import {
+	EVENT_TEAM_SHARE_LABEL,
 	type EventTeamShareCard,
 	eventTeamsShareCards,
 } from "@/const/event-team-share";
@@ -33,13 +36,19 @@ import { championshipRatingCeiling } from "@/const/player-rating";
 import { ROUTES } from "@/const/routes";
 import { SKELETON_LABEL } from "@/const/skeleton";
 import { ERROR_CLASS } from "@/const/ui";
+import { shareEventTeamsImage } from "@/lib/share-event-teams-image";
+import { useAuth } from "@/contexts/auth";
 import { useChampionshipEvent } from "@/hooks/championships/use-championship-events";
 import { useChampionship } from "@/hooks/championships/use-championships";
+import { useEventDrawPresence } from "@/hooks/championships/use-event-draw-presence";
 import { useWakeLock } from "@/hooks/use-wake-lock";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 const DRAW_SHELL_CLASS =
-	"flex h-dvh flex-col overflow-y-auto overscroll-contain select-none touch-manipulation pt-[max(0.75rem,env(safe-area-inset-top))] pr-[max(0.75rem,env(safe-area-inset-right))] pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))]";
+	"flex h-dvh flex-col overflow-hidden overscroll-contain select-none touch-manipulation pt-[max(0.75rem,env(safe-area-inset-top))] pr-[max(0.75rem,env(safe-area-inset-right))] pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))]";
+
+const DRAW_HEADER_CLASS =
+	"grid shrink-0 grid-cols-[3.25rem_minmax(0,1fr)_3.25rem] items-center";
 
 export function ChampionshipEventDrawPage() {
 	const { championshipId: championshipIdParam, eventId: eventIdParam } =
@@ -48,6 +57,7 @@ export function ChampionshipEventDrawPage() {
 		});
 	const championshipId = Number(championshipIdParam);
 	const eventId = Number(eventIdParam);
+	const { user } = useAuth();
 	const championshipQuery = useChampionship(championshipId);
 	const eventQuery = useChampionshipEvent(championshipId, eventId);
 	const reduceMotion = useReducedMotion();
@@ -56,6 +66,8 @@ export function ChampionshipEventDrawPage() {
 	);
 	const [visibleCount, setVisibleCount] = useState(0);
 	const [autoplay, setAutoplay] = useState(true);
+	const [isSharing, setIsSharing] = useState(false);
+	const [shareError, setShareError] = useState<string | null>(null);
 
 	const event = eventQuery.data ?? null;
 	const championship = championshipQuery.data ?? null;
@@ -65,6 +77,18 @@ export function ChampionshipEventDrawPage() {
 	const rosterById = useMemo(
 		() => new Map(activePlayers.map((player) => [player.id, player])),
 		[activePlayers],
+	);
+	const currentPlayer = useMemo(() => {
+		if (!user) {
+			return null;
+		}
+
+		return activePlayers.find((player) => player.user_id === user.id) ?? null;
+	}, [activePlayers, user]);
+	const viewers = useEventDrawPresence(
+		eventId,
+		currentPlayer,
+		user?.id ?? null,
 	);
 	const liveCards = useMemo(() => {
 		if (!event) {
@@ -185,10 +209,28 @@ export function ChampionshipEventDrawPage() {
 	const ceiling = championshipRatingCeiling(
 		activePlayers.map((player) => player.rating),
 	);
+	const championshipName = championship.name;
+	const startsAt = event.starts_at;
+
+	async function shareTeams() {
+		setIsSharing(true);
+		setShareError(null);
+
+		try {
+			await shareEventTeamsImage(cards, ceiling, {
+				championshipName,
+				startsAt,
+			});
+		} catch {
+			setShareError(EVENT_TEAM_SHARE_LABEL.shareFailed);
+		} finally {
+			setIsSharing(false);
+		}
+	}
 
 	return (
-		<main className={`${DRAW_SHELL_CLASS} gap-4`}>
-			<div className="flex shrink-0 items-center">
+		<main className={DRAW_SHELL_CLASS}>
+			<header className={DRAW_HEADER_CLASS}>
 				<Link
 					to={ROUTES.championshipEvent}
 					params={{
@@ -196,22 +238,33 @@ export function ChampionshipEventDrawPage() {
 						eventId: String(eventId),
 					}}
 					aria-label={EVENT_DRAW_REVEAL_LABEL.back}
-					className="inline-flex size-10 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-muted"
+					className="inline-flex size-11 items-center justify-center justify-self-start rounded-lg text-fg-muted hover:bg-surface-muted"
 				>
 					<ArrowLeft className="size-5" />
 				</Link>
-			</div>
-			{pageStatus === EVENT_DRAW_REVEAL_PAGE.empty && (
-				<EmptyState
-					icon={<Shuffle className="size-10" />}
-					title={EVENT_DRAW_REVEAL_LABEL.empty}
-					description={`${championship.name} · ${when.date}`}
+				<EventTeamDrawLog
+					championshipId={championshipId}
+					eventId={eventId}
+					showWhenEmpty
+					compact
 				/>
+				<div className="justify-self-end">
+					<EventDrawViewers viewers={viewers} rosterById={rosterById} />
+				</div>
+			</header>
+			{pageStatus === EVENT_DRAW_REVEAL_PAGE.empty && (
+				<div className="min-h-0 flex-1 overflow-y-auto">
+					<EmptyState
+						icon={<Shuffle className="size-10" />}
+						title={EVENT_DRAW_REVEAL_LABEL.empty}
+						description={`${championshipName} · ${when.date}`}
+					/>
+				</div>
 			)}
 			{pageStatus === EVENT_DRAW_REVEAL_PAGE.ready && (
 				<EventDrawReveal
-					championshipName={championship.name}
-					startsAt={event.starts_at}
+					championshipName={championshipName}
+					startsAt={startsAt}
 					cards={cards}
 					visibleCount={visibleCount}
 					phase={phase}
@@ -223,6 +276,11 @@ export function ChampionshipEventDrawPage() {
 					onPause={pauseReveal}
 					onPlay={resumeReveal}
 					onNext={nextReveal}
+					onShare={() => {
+						void shareTeams();
+					}}
+					isSharing={isSharing}
+					shareError={shareError}
 				/>
 			)}
 		</main>
