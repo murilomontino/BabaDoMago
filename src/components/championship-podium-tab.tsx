@@ -431,7 +431,11 @@ export function ChampionshipPodiumTab({
 			</Suspense>
 			{events && (
 				<Suspense fallback={<PodiumRatingHistorySkeleton />}>
-					<ChampionshipRatingHistoryChart players={players} events={events} />
+					<ChampionshipRatingHistoryChart
+						players={players}
+						events={events}
+						championshipName={championshipName}
+					/>
 				</Suspense>
 			)}
 			{teamBalance && teamBalance.events > 0 && (

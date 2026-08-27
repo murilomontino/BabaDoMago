@@ -136,27 +136,36 @@ const chart = championshipRatingHistoryChart(
 	nowIso,
 );
 
-check(chart.rows.length === 4, "two rounds plus sentinel date plus now");
+check(
+	chart.rows.length === 5,
+	"entry row plus two rounds plus sentinel date plus now",
+);
 check(chart.series.length === 2, "skip sentinel player");
 check(chart.series[0]?.playerId === 7, "first player order");
 check(chart.series[0]?.name === "Ana", "visible name");
 check(chart.series[0]?.dataKey === "p7", "series key");
 check(chart.rows[0]?.startsAt === endedOlder.starts_at, "oldest first");
-check(chart.rows[0]?.p7 === 49.5, "player 7 first to");
-check(chart.rows[0]?.p8 === 41.2, "player 8 first to");
-check(chart.rows[1]?.p7 === 50.7, "player 7 second to");
-check(chart.rows[1]?.p8 === 41.2, "player 8 carry-forward");
-check(chart.rows[2]?.p7 === 50.7, "player 7 carry on missed sentinel event");
-check(chart.rows[2]?.p8 === 41.2, "player 8 carry on missed sentinel event");
-check(chart.rows[3]?.startsAt === nowIso, "now point");
-check(chart.rows[3]?.p7 === 51, "player 7 current");
-check(chart.rows[3]?.p8 === 41.2, "player 8 current");
+check(chart.rows[0]?.p7 === 50, "player 7 rating from");
+check(chart.rows[0]?.p8 === 40, "player 8 rating from");
+check(chart.rows[1]?.p7 === 49.5, "player 7 first to");
+check(chart.rows[1]?.p8 === 41.2, "player 8 first to");
+check(chart.rows[2]?.p7 === 50.7, "player 7 second to");
+check(chart.rows[2]?.p8 === 41.2, "player 8 carry-forward");
+check(chart.rows[3]?.p7 === 50.7, "player 7 carry on missed sentinel event");
+check(chart.rows[3]?.p8 === 41.2, "player 8 carry on missed sentinel event");
+check(chart.rows[4]?.startsAt === nowIso, "now point");
+check(chart.rows[4]?.p7 === 51, "player 7 current");
+check(chart.rows[4]?.p8 === 41.2, "player 8 current");
 check(
-	championshipRatingHistoryTickLabel(chart.rows, 0) === "01/08/2026",
+	championshipRatingHistoryTickLabel(chart.rows, 0) === "",
+	"hidden duplicate entry tick",
+);
+check(
+	championshipRatingHistoryTickLabel(chart.rows, 1) === "01/08/2026",
 	"oldest tick",
 );
 check(
-	championshipRatingHistoryTickLabel(chart.rows, 1) === "08/08/2026",
+	championshipRatingHistoryTickLabel(chart.rows, 2) === "08/08/2026",
 	"newer tick",
 );
 
@@ -174,8 +183,24 @@ const player8OnlyLater = championshipRatingHistoryChart(
 	],
 	nowIso,
 );
-check(player8OnlyLater.rows[0]?.p8 === null, "null before first presence");
+check(player8OnlyLater.rows.length === 3, "no extra row when debut is later");
+check(player8OnlyLater.rows[0]?.p8 === 40, "rating from on previous slot");
 check(player8OnlyLater.rows[1]?.p8 === 41.2, "value after first presence");
+
+const seededDebut = {
+	id: 11,
+	championship_id: 9,
+	starts_at: "2026-08-20T22:00:00.000Z",
+	ended_at: "2026-08-20T23:00:00.000Z",
+	attendance: [attendance(11, 0, 3)],
+};
+const seeded = championshipRatingHistoryChart(
+	[player(11, 3)],
+	[seededDebut],
+	nowIso,
+);
+check(seeded.rows.length === 2, "no extra row for sentinel from");
+check(seeded.rows[0]?.p11 === 3, "seeded debut starts at to");
 
 check(
 	championshipRatingHistoryChart([player(9, 0)], [sentinelEvent], nowIso).series

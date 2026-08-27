@@ -1,3 +1,4 @@
+import { Film, LoaderCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
 	Line,
@@ -7,6 +8,7 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
+import { Button } from "@/components/button";
 import { formatEventStartsAt } from "@/const/championship-event";
 import {
 	CHAMPIONSHIP_RATING_HISTORY_CHART,
@@ -25,12 +27,22 @@ import {
 } from "@/const/championship-rating-history";
 import { formatEventRating } from "@/const/event-rating-adjustment";
 import { championshipRatingCeiling } from "@/const/player-rating";
+import {
+	parseRatingRaceLimit,
+	RATING_RACE_LABEL,
+	RATING_RACE_LIMIT,
+	type RatingRaceLimit,
+	ratingRaceLimitValue,
+} from "@/const/rating-race-share";
+import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
+import { shareRatingRaceGif } from "@/lib/share-rating-race-gif";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type { ChampionshipEvent } from "@/types/championship-event";
 
 type ChampionshipRatingHistoryChartProps = {
 	players: readonly ChampionshipPlayer[];
 	events: readonly ChampionshipEvent[];
+	championshipName: string;
 };
 
 type ChartTooltipPayload = {
@@ -48,6 +60,7 @@ type ChartSeriesDotProps = {
 export function ChampionshipRatingHistoryChart({
 	players,
 	events,
+	championshipName,
 }: ChampionshipRatingHistoryChartProps) {
 	const chart = useMemo(
 		() =>
@@ -56,6 +69,11 @@ export function ChampionshipRatingHistoryChart({
 	);
 	const playerIds = championshipRatingHistoryPlayerIds(chart.series);
 	const [selected, setSelected] = useState<ReadonlySet<number> | null>(null);
+	const [limit, setLimit] = useState<RatingRaceLimit>(
+		RATING_RACE_LIMIT.default,
+	);
+	const [isGeneratingGif, setIsGeneratingGif] = useState(false);
+	const [gifError, setGifError] = useState<string | null>(null);
 	const selectedIds = championshipRatingHistorySelection(selected, playerIds);
 	const visible = visibleChampionshipRatingHistorySeries(
 		chart.series,
@@ -71,11 +89,70 @@ export function ChampionshipRatingHistoryChart({
 		selectedIds,
 	);
 
+	async function handleGenerateGif() {
+		setIsGeneratingGif(true);
+		setGifError(null);
+		try {
+			await shareRatingRaceGif({
+				championshipName,
+				rows: chart.rows,
+				series: visible,
+				ceiling,
+				limit,
+				generatedAt: new Date().toISOString(),
+			});
+		} catch {
+			setGifError(RATING_RACE_LABEL.failed);
+		} finally {
+			setIsGeneratingGif(false);
+		}
+	}
+
 	return (
 		<div className="mt-8 space-y-3">
-			<h3 className="text-sm font-semibold text-fg">
-				{CHAMPIONSHIP_RATING_HISTORY_LABEL.title}
-			</h3>
+			<div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+				<h3 className="text-sm font-semibold text-fg">
+					{CHAMPIONSHIP_RATING_HISTORY_LABEL.title}
+				</h3>
+				{visible.length > 0 && (
+					<div className="flex flex-wrap items-end gap-2">
+						<label className="block text-xs text-fg-muted">
+							{RATING_RACE_LABEL.limit}
+							<select
+								value={ratingRaceLimitValue(limit)}
+								className={`mt-1 ${FIELD_CLASS}`}
+								onChange={(event) => {
+									setLimit(parseRatingRaceLimit(event.target.value));
+								}}
+							>
+								{RATING_RACE_LIMIT.options.map((option) => (
+									<option key={option} value={option}>
+										{option}
+									</option>
+								))}
+								<option value={RATING_RACE_LIMIT.all}>
+									{RATING_RACE_LABEL.limitAll}
+								</option>
+							</select>
+						</label>
+						<Button
+							variant={BUTTON_VARIANT.secondary}
+							disabled={isGeneratingGif}
+							onClick={() => {
+								void handleGenerateGif();
+							}}
+						>
+							{isGeneratingGif && (
+								<LoaderCircle className="size-4 animate-spin" aria-hidden />
+							)}
+							{!isGeneratingGif && <Film className="size-4" />}
+							{isGeneratingGif && RATING_RACE_LABEL.generating}
+							{!isGeneratingGif && RATING_RACE_LABEL.generate}
+						</Button>
+					</div>
+				)}
+			</div>
+			{gifError && <p className={ERROR_CLASS}>{gifError}</p>}
 			{emptyLabel && <p className="text-sm text-fg-muted">{emptyLabel}</p>}
 			{!emptyLabel && (
 				<>

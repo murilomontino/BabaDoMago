@@ -6,6 +6,7 @@ import {
 import { playerVisibleName } from "./player-name.ts";
 import {
 	type PlayerProfileEventInput,
+	type PlayerProfileHistoryRow,
 	playerProfileDelta,
 	playerProfileHistory,
 } from "./player-profile.ts";
@@ -76,9 +77,17 @@ export type ChampionshipRatingHistoryChart = {
 	series: ChampionshipRatingHistorySeries[];
 };
 
+const RATING_HISTORY_ENTRY_ROW = -1;
+
+type RatingHistoryEntry = {
+	index: number;
+	rating: number;
+};
+
 type SeriesValues = {
 	series: ChampionshipRatingHistorySeries;
 	values: readonly (number | null)[];
+	entry: RatingHistoryEntry | null;
 };
 
 export function championshipRatingChartDataKey(playerId: number): string {
@@ -117,6 +126,11 @@ export function championshipRatingHistoryTickLabel(
 ): string {
 	const row = rows[x];
 	if (!row) {
+		return "";
+	}
+
+	const next = rows[x + 1];
+	if (next && next.startsAt === row.startsAt) {
 		return "";
 	}
 
@@ -194,19 +208,30 @@ export function championshipRatingHistoryChart(
 	nowIso: string,
 ): ChampionshipRatingHistoryChart {
 	const ended = endedChampionshipEvents(events);
-	if (ended.length === 0) {
+	const firstEvent = ended[0];
+	if (!firstEvent) {
 		return { rows: [], series: [] };
 	}
 
 	const seriesWithValues = players.flatMap((player) =>
 		includeDefinedSeries(player, ended),
 	);
-	const rows = [
-		...ended.map((event, index) =>
-			chartRow(index, event.starts_at, seriesWithValues, index),
-		),
-		chartRow(ended.length, nowIso, seriesWithValues, ended.length),
+	const needsEntryRow = seriesWithValues.some(
+		(item) => item.entry?.index === RATING_HISTORY_ENTRY_ROW,
+	);
+	const withEntry = seriesWithValues.map((item) => ({
+		series: item.series,
+		values: valuesWithEntryRating(item, needsEntryRow),
+		entry: item.entry,
+	}));
+	const dates = [
+		...includeWhen(needsEntryRow, firstEvent.starts_at),
+		...ended.map((event) => event.starts_at),
+		nowIso,
 	];
+	const rows = dates.map((startsAt, index) =>
+		chartRow(index, startsAt, withEntry, index),
+	);
 
 	return {
 		rows,
@@ -237,11 +262,8 @@ function includeDefinedSeries(
 	player: ChampionshipRatingHistoryPlayer,
 	events: readonly PlayerProfileEventInput[],
 ): SeriesValues[] {
-	const values = playerRatingValuesAlongEvents(
-		events,
-		playerProfileHistory(events, player.id),
-		player.rating,
-	);
+	const history = playerProfileHistory(events, player.id);
+	const values = playerRatingValuesAlongEvents(events, history, player.rating);
 	if (!valuesIncludeOfficialRating(values)) {
 		return [];
 	}
@@ -256,13 +278,79 @@ function includeDefinedSeries(
 				dataKey: championshipRatingChartDataKey(player.id),
 			},
 			values,
+			entry: playerRatingEntryPoint(events, history),
 		},
 	];
 }
 
+function playerRatingEntryPoint(
+	events: readonly PlayerProfileEventInput[],
+	history: readonly PlayerProfileHistoryRow[],
+): RatingHistoryEntry | null {
+	const byEvent = new Map(history.map((row) => [row.eventId, row.ratingFrom]));
+	const first = events.findIndex((event) => byEvent.has(event.id));
+	const firstEvent = events[first];
+	if (!firstEvent) {
+		return null;
+	}
+
+	const ratingFrom = byEvent.get(firstEvent.id);
+	if (ratingFrom === undefined) {
+		return null;
+	}
+
+	const rating = officialEventRating(ratingFrom);
+	if (rating === null) {
+		return null;
+	}
+
+	return { index: first - 1, rating };
+}
+
+function entryRowOffset(needsEntryRow: boolean): number {
+	if (needsEntryRow) {
+		return 1;
+	}
+
+	return 0;
+}
+
+function valueOrEntry(
+	value: number | null,
+	isSlot: boolean,
+	rating: number,
+): number | null {
+	if (isSlot) {
+		return rating;
+	}
+
+	return value;
+}
+
+function valuesWithEntryRating(
+	item: SeriesValues,
+	needsEntryRow: boolean,
+): (number | null)[] {
+	const offset = entryRowOffset(needsEntryRow);
+	const base = [...includeWhen(needsEntryRow, null), ...item.values];
+	const entry = item.entry;
+	if (!entry) {
+		return base;
+	}
+
+	const slot = entry.index + offset;
+	if (slot < 0) {
+		return base;
+	}
+
+	return base.map((value, index) =>
+		valueOrEntry(value, index === slot, entry.rating),
+	);
+}
+
 function playerRatingValuesAlongEvents(
 	events: readonly PlayerProfileEventInput[],
-	history: readonly { eventId: number; ratingTo: number }[],
+	history: readonly PlayerProfileHistoryRow[],
 	currentRating: number,
 ): (number | null)[] {
 	const byEvent = new Map(history.map((row) => [row.eventId, row.ratingTo]));

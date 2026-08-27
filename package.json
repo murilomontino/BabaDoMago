@@ -24,6 +24,7 @@
 		"@tanstack/react-table": "^9.1.2",
 		"canvas-confetti": "^1.9.4",
 		"formik": "^2.4.9",
+		"gifenc": "^1.0.3",
 		"idb-keyval": "^6.3.0",
 		"lucide-react": "^1.31.0",
 		"motion": "^13.1.0",
