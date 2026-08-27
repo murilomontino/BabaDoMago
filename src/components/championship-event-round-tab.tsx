@@ -480,8 +480,9 @@ export function ChampionshipEventRoundTab({
 					)}
 					initialGoalkeeperIds={volunteerGoalkeeperIds}
 					initialTeams={detailTeams}
-					isPending={savingTeams}
-					errorMessage={saveTeamsError}
+					isPending={savingTeams || savingAttendance}
+					errorMessage={saveTeamsError ?? saveAttendanceError}
+					onSaveAttendance={onSaveAttendance}
 					onStepChange={(next) => {
 						void onBuilderStepChange(next);
 					}}

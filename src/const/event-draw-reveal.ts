@@ -12,7 +12,10 @@ export const EVENT_DRAW_REVEAL_LABEL = {
 	title: "Sorteio dos times",
 	start: "Iniciar",
 	replay: "Ver de novo",
+	shareShort: "Compartilhar",
 	empty: "Ainda não sorteou",
+	waitingHost: "Copie o link, espere a galera e sorteie.",
+	waitingGuest: "Espere o sorteio começar.",
 	copied: "Link copiado.",
 	back: "Voltar",
 	pause: "Pausar sorteio",
@@ -225,6 +228,61 @@ export function eventDrawRevealShowControls(
 	}
 
 	return phase === EVENT_DRAW_REVEAL_PHASE.playing;
+}
+
+export function eventDrawRevealWaitingHint(canDraw: boolean): string {
+	if (canDraw) {
+		return EVENT_DRAW_REVEAL_LABEL.waitingHost;
+	}
+
+	return EVENT_DRAW_REVEAL_LABEL.waitingGuest;
+}
+
+export function eventDrawRevealPageSettled(
+	status: EventDrawRevealPageStatus,
+): boolean {
+	switch (status) {
+		case EVENT_DRAW_REVEAL_PAGE.empty:
+		case EVENT_DRAW_REVEAL_PAGE.ready:
+			return true;
+		case EVENT_DRAW_REVEAL_PAGE.loading:
+		case EVENT_DRAW_REVEAL_PAGE.championshipError:
+		case EVENT_DRAW_REVEAL_PAGE.eventError:
+			return false;
+		default: {
+			const _exhaustive: never = status;
+			return _exhaustive;
+		}
+	}
+}
+
+export function eventDrawRevealShouldAutoStart(input: {
+	previousReady: boolean | null;
+	ready: boolean;
+	visibleCount: number;
+	settled: boolean;
+}): boolean {
+	if (!input.settled) {
+		return false;
+	}
+
+	if (input.previousReady === null) {
+		return false;
+	}
+
+	if (!input.ready) {
+		return false;
+	}
+
+	if (input.previousReady) {
+		return false;
+	}
+
+	if (input.visibleCount !== 0) {
+		return false;
+	}
+
+	return true;
 }
 
 export function eventDrawRevealShowShare(phase: EventDrawRevealPhase): boolean {

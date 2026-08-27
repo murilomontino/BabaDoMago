@@ -1,18 +1,32 @@
 import { Link, useParams } from "@tanstack/react-router";
-import { ArrowLeft, Shuffle } from "lucide-react";
+import { ArrowLeft, LoaderCircle } from "lucide-react";
 import { useReducedMotion } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AppDialog } from "@/components/atoms/app-dialog";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
-import { EmptyState } from "@/components/empty-state";
-import { EventDrawReveal } from "@/components/event-draw-reveal";
+import {
+	EventDrawReveal,
+	EventDrawWaiting,
+} from "@/components/event-draw-reveal";
 import { EventDrawViewers } from "@/components/event-draw-viewers";
 import { EventTeamDrawLog } from "@/components/event-team-draw-log";
 import { TeamCardSkeleton } from "@/components/molecules/team-card-skeleton";
 import {
+	attendanceGoalkeeperIds,
 	builderTeamsFromEvent,
+	EVENT_TEAM_MESSAGE,
 	eventTeamsAreReady,
 	formatEventStartsAt,
+	keepGoalkeepersPresent,
+	validateEventAttendance,
+	validateEventTeams,
+	validateTeamsInAttendance,
 } from "@/const/championship-event";
+import {
+	CHAMPIONSHIP_ROLE,
+	canManageEvent,
+	resolveChampionshipRole,
+} from "@/const/championship-role";
 import {
 	EVENT_DRAW_REVEAL_LABEL,
 	EVENT_DRAW_REVEAL_PAGE,
@@ -23,9 +37,12 @@ import {
 	eventDrawRevealDelayMs,
 	eventDrawRevealItemCount,
 	eventDrawRevealNextPlayerCount,
+	eventDrawRevealPageSettled,
 	eventDrawRevealPageStatus,
 	eventDrawRevealPhase,
+	eventDrawRevealShouldAutoStart,
 	eventDrawRevealShouldTick,
+	eventDrawUrl,
 } from "@/const/event-draw-reveal";
 import {
 	EVENT_TEAM_SHARE_LABEL,
@@ -35,13 +52,18 @@ import {
 import { championshipRatingCeiling } from "@/const/player-rating";
 import { ROUTES } from "@/const/routes";
 import { SKELETON_LABEL } from "@/const/skeleton";
-import { ERROR_CLASS } from "@/const/ui";
-import { shareEventTeamsImage } from "@/lib/share-event-teams-image";
+import { ERROR_CLASS, MODAL_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
-import { useChampionshipEvent } from "@/hooks/championships/use-championship-events";
+import {
+	useChampionshipEvent,
+	useSaveChampionshipEventTeams,
+} from "@/hooks/championships/use-championship-events";
 import { useChampionship } from "@/hooks/championships/use-championships";
 import { useEventDrawPresence } from "@/hooks/championships/use-event-draw-presence";
 import { useWakeLock } from "@/hooks/use-wake-lock";
+import { caughtErrorMessage } from "@/lib/error-message";
+import { runEventTeamDraw } from "@/lib/event-team-draw";
+import { shareEventTeamsImage } from "@/lib/share-event-teams-image";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 const DRAW_SHELL_CLASS =
@@ -60,6 +82,7 @@ export function ChampionshipEventDrawPage() {
 	const { user } = useAuth();
 	const championshipQuery = useChampionship(championshipId);
 	const eventQuery = useChampionshipEvent(championshipId, eventId);
+	const saveTeams = useSaveChampionshipEventTeams(championshipId);
 	const reduceMotion = useReducedMotion();
 	const [frozenCards, setFrozenCards] = useState<EventTeamShareCard[] | null>(
 		null,
@@ -68,6 +91,11 @@ export function ChampionshipEventDrawPage() {
 	const [autoplay, setAutoplay] = useState(true);
 	const [isSharing, setIsSharing] = useState(false);
 	const [shareError, setShareError] = useState<string | null>(null);
+	const [copiedDrawLink, setCopiedDrawLink] = useState(false);
+	const [isDrawing, setIsDrawing] = useState(false);
+	const [drawError, setDrawError] = useState<string | null>(null);
+	const drawWorkerRef = useRef<Worker | null>(null);
+	const readyRef = useRef<boolean | null>(null);
 
 	const event = eventQuery.data ?? null;
 	const championship = championshipQuery.data ?? null;
@@ -85,6 +113,12 @@ export function ChampionshipEventDrawPage() {
 
 		return activePlayers.find((player) => player.user_id === user.id) ?? null;
 	}, [activePlayers, user]);
+	const actorRole = resolveChampionshipRole(
+		championship?.created_by ?? "",
+		user?.id ?? null,
+		currentPlayer?.role ?? CHAMPIONSHIP_ROLE.member,
+	);
+	const canDraw = canManageEvent(actorRole);
 	const viewers = useEventDrawPresence(
 		eventId,
 		currentPlayer,
@@ -119,6 +153,13 @@ export function ChampionshipEventDrawPage() {
 		eventError: eventQuery.isError,
 		teamsReady: event ? eventTeamsAreReady(event.teams) : false,
 	});
+	const teamsReady = pageStatus === EVENT_DRAW_REVEAL_PAGE.ready;
+
+	useEffect(() => {
+		return () => {
+			drawWorkerRef.current?.terminate();
+		};
+	}, []);
 
 	useEffect(() => {
 		if (
@@ -145,7 +186,7 @@ export function ChampionshipEventDrawPage() {
 		};
 	}, [autoplay, phase, reduceMotion, total, visibleCount]);
 
-	function startReveal() {
+	const startReveal = useCallback(() => {
 		const snapshot = frozenCards ?? liveCards;
 		setFrozenCards(snapshot);
 		setAutoplay(true);
@@ -155,7 +196,27 @@ export function ChampionshipEventDrawPage() {
 				Boolean(reduceMotion),
 			),
 		);
-	}
+	}, [frozenCards, liveCards, reduceMotion]);
+
+	useEffect(() => {
+		const settled = eventDrawRevealPageSettled(pageStatus);
+		if (
+			!eventDrawRevealShouldAutoStart({
+				previousReady: readyRef.current,
+				ready: teamsReady,
+				visibleCount,
+				settled,
+			})
+		) {
+			if (settled) {
+				readyRef.current = teamsReady;
+			}
+			return;
+		}
+
+		readyRef.current = teamsReady;
+		startReveal();
+	}, [pageStatus, startReveal, teamsReady, visibleCount]);
 
 	function replayReveal() {
 		setVisibleCount(0);
@@ -175,6 +236,75 @@ export function ChampionshipEventDrawPage() {
 		}
 
 		setVisibleCount(eventDrawRevealNextPlayerCount(cards, visibleCount));
+	}
+
+	async function copyDrawLink() {
+		const url = eventDrawUrl(
+			window.location.origin,
+			championshipId,
+			eventId,
+			ROUTES.championshipEventDraw,
+		);
+		await navigator.clipboard.writeText(url);
+		setCopiedDrawLink(true);
+	}
+
+	async function drawTeams() {
+		if (!event) {
+			return;
+		}
+
+		const presentIds = event.attendance.map((row) => row.player_id);
+		const rosterIds = activePlayers.map((player) => player.id);
+		const attendanceInvalid = validateEventAttendance(presentIds, rosterIds);
+		if (attendanceInvalid) {
+			setDrawError(attendanceInvalid);
+			return;
+		}
+
+		const present = new Set(presentIds);
+		const volunteerIds = keepGoalkeepersPresent(
+			attendanceGoalkeeperIds(event.attendance),
+			presentIds,
+		);
+		setIsDrawing(true);
+		setDrawError(null);
+		try {
+			const { worker, done } = runEventTeamDraw({
+				players: activePlayers.flatMap((player) => {
+					if (!present.has(player.id)) {
+						return [];
+					}
+
+					return [{ id: player.id, rating: player.rating }];
+				}),
+				playersPerTeam: event.players_per_team,
+				volunteerIds,
+			});
+			drawWorkerRef.current = worker;
+			const drafts = await done;
+			const teamsInvalid =
+				validateEventTeams(drafts, event.players_per_team) ??
+				validateTeamsInAttendance(drafts, presentIds);
+			if (teamsInvalid) {
+				setDrawError(teamsInvalid);
+				return;
+			}
+
+			await saveTeams.mutateAsync({
+				eventId,
+				presentPlayerIds: presentIds,
+				teams: drafts,
+				goalkeeperPlayerIds: volunteerIds,
+				isDraw: true,
+			});
+		} catch (error) {
+			setDrawError(caughtErrorMessage(error, EVENT_TEAM_MESSAGE.drawFailed));
+		} finally {
+			drawWorkerRef.current?.terminate();
+			drawWorkerRef.current = null;
+			setIsDrawing(false);
+		}
 	}
 
 	if (pageStatus === EVENT_DRAW_REVEAL_PAGE.loading) {
@@ -230,6 +360,23 @@ export function ChampionshipEventDrawPage() {
 
 	return (
 		<main className={DRAW_SHELL_CLASS}>
+			{isDrawing && (
+				<AppDialog onClose={() => undefined}>
+					<div
+						className={`${MODAL_CLASS} max-w-sm text-center`}
+						role="status"
+						aria-live="polite"
+					>
+						<LoaderCircle
+							className="mx-auto size-8 animate-spin text-pitch"
+							aria-hidden
+						/>
+						<p className="mt-3 text-sm font-medium text-fg">
+							{EVENT_TEAM_MESSAGE.drawing}
+						</p>
+					</div>
+				</AppDialog>
+			)}
 			<header className={DRAW_HEADER_CLASS}>
 				<Link
 					to={ROUTES.championshipEvent}
@@ -253,13 +400,20 @@ export function ChampionshipEventDrawPage() {
 				</div>
 			</header>
 			{pageStatus === EVENT_DRAW_REVEAL_PAGE.empty && (
-				<div className="min-h-0 flex-1 overflow-y-auto">
-					<EmptyState
-						icon={<Shuffle className="size-10" />}
-						title={EVENT_DRAW_REVEAL_LABEL.empty}
-						description={`${championshipName} · ${when.date}`}
-					/>
-				</div>
+				<EventDrawWaiting
+					championshipName={championshipName}
+					dateLabel={when.date}
+					canDraw={canDraw}
+					copied={copiedDrawLink}
+					isDrawing={isDrawing}
+					drawError={drawError}
+					onCopyLink={() => {
+						void copyDrawLink();
+					}}
+					onDraw={() => {
+						void drawTeams();
+					}}
+				/>
 			)}
 			{pageStatus === EVENT_DRAW_REVEAL_PAGE.ready && (
 				<EventDrawReveal

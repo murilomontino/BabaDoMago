@@ -1,6 +1,15 @@
-import { ChevronRight, LoaderCircle, Pause, Play, Share2 } from "lucide-react";
+import {
+	ChevronRight,
+	Link2,
+	LoaderCircle,
+	Pause,
+	Play,
+	Share2,
+	Shuffle,
+} from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/button";
+import { EmptyState } from "@/components/empty-state";
 import {
 	EVENT_TEAM_PLAYER_SLOT_CLASS,
 	EVENT_TEAM_POSITION_CHIP_CLASS,
@@ -9,12 +18,14 @@ import {
 	EventTeamRatingAverage,
 } from "@/components/event-team-player";
 import {
+	EVENT_ACTION,
 	EVENT_TEAM_POSITION_LABEL,
 	eventTeamPlayerPosition,
 	formatEventStartsAt,
 } from "@/const/championship-event";
 import { resolveRosterPlayer } from "@/const/championship-event-roster";
 import {
+	copyDrawLinkLabel,
 	EVENT_DRAW_REVEAL_LABEL,
 	EVENT_DRAW_REVEAL_MOTION,
 	EVENT_DRAW_REVEAL_PHASE,
@@ -28,6 +39,7 @@ import {
 	eventDrawRevealShowShare,
 	eventDrawRevealSlotIsGoalkeeper,
 	eventDrawRevealVisibleCards,
+	eventDrawRevealWaitingHint,
 } from "@/const/event-draw-reveal";
 import { eventTeamColorStyle } from "@/const/event-team-color";
 import {
@@ -92,7 +104,7 @@ export function EventDrawReveal({
 	const shareVariant = drawShareButtonVariant(
 		eventDrawRevealShareIsPrimary(phase),
 	);
-	const shareLabel = drawShareButtonLabel(isSharing);
+	const shareLabel = drawShareButtonLabel(isSharing, showReplay);
 	const showControls = eventDrawRevealShowControls(
 		phase,
 		Boolean(reduceMotion),
@@ -236,30 +248,36 @@ export function EventDrawReveal({
 					</Button>
 				</div>
 			)}
-			{showShare && (
+			{(showShare || showReplay) && (
 				<div className="flex shrink-0 flex-col gap-1 py-1">
 					{shareError && <p className={ERROR_CLASS}>{shareError}</p>}
-					<Button
-						variant={shareVariant}
-						className="h-12 w-full text-sm sm:h-14 sm:min-w-40 sm:w-auto sm:text-base"
-						disabled={isSharing}
-						onClick={onShare}
-					>
-						{isSharing && <LoaderCircle className="size-5 animate-spin" />}
-						{!isSharing && <Share2 className="size-5" />}
-						{shareLabel}
-					</Button>
-				</div>
-			)}
-			{showReplay && (
-				<div className="flex shrink-0 justify-center py-1">
-					<Button
-						variant={BUTTON_VARIANT.secondary}
-						className="h-12 w-full text-sm sm:h-14 sm:min-w-40 sm:w-auto sm:text-base"
-						onClick={onReplay}
-					>
-						{EVENT_DRAW_REVEAL_LABEL.replay}
-					</Button>
+					<div className="flex gap-2">
+						{showShare && (
+							<Button
+								variant={shareVariant}
+								className="h-12 min-w-0 flex-1 text-sm sm:h-14 sm:text-base"
+								disabled={isSharing}
+								onClick={onShare}
+							>
+								{isSharing && (
+									<LoaderCircle className="size-5 shrink-0 animate-spin" />
+								)}
+								{!isSharing && <Share2 className="size-5 shrink-0" />}
+								<span className="truncate">{shareLabel}</span>
+							</Button>
+						)}
+						{showReplay && (
+							<Button
+								variant={BUTTON_VARIANT.secondary}
+								className="h-12 min-w-0 flex-1 text-sm sm:h-14 sm:text-base"
+								onClick={onReplay}
+							>
+								<span className="truncate">
+									{EVENT_DRAW_REVEAL_LABEL.replay}
+								</span>
+							</Button>
+						)}
+					</div>
 				</div>
 			)}
 		</div>
@@ -274,10 +292,65 @@ function drawShareButtonVariant(isPrimary: boolean) {
 	return BUTTON_VARIANT.secondary;
 }
 
-function drawShareButtonLabel(isSharing: boolean) {
+function drawShareButtonLabel(isSharing: boolean, compact: boolean) {
 	if (isSharing) {
 		return EVENT_TEAM_SHARE_LABEL.sharing;
 	}
 
+	if (compact) {
+		return EVENT_DRAW_REVEAL_LABEL.shareShort;
+	}
+
 	return EVENT_TEAM_SHARE_LABEL.shareTeams;
+}
+
+type EventDrawWaitingProps = {
+	championshipName: string;
+	dateLabel: string;
+	canDraw: boolean;
+	copied: boolean;
+	isDrawing: boolean;
+	drawError: string | null;
+	onCopyLink: () => void;
+	onDraw: () => void;
+};
+
+export function EventDrawWaiting({
+	championshipName,
+	dateLabel,
+	canDraw,
+	copied,
+	isDrawing,
+	drawError,
+	onCopyLink,
+	onDraw,
+}: EventDrawWaitingProps) {
+	return (
+		<div className="min-h-0 flex-1 overflow-y-auto">
+			<EmptyState
+				icon={<Shuffle className="size-10" />}
+				title={EVENT_DRAW_REVEAL_LABEL.empty}
+				description={`${championshipName} · ${dateLabel}. ${eventDrawRevealWaitingHint(canDraw)}`}
+				action={
+					<div className="flex w-full max-w-xs flex-col gap-2">
+						{drawError && <p className={ERROR_CLASS}>{drawError}</p>}
+						<Button
+							variant={BUTTON_VARIANT.secondary}
+							disabled={isDrawing}
+							onClick={onCopyLink}
+						>
+							<Link2 className="size-4" />
+							{copyDrawLinkLabel(copied)}
+						</Button>
+						{canDraw && (
+							<Button disabled={isDrawing} onClick={onDraw}>
+								<Shuffle className="size-4" />
+								{EVENT_ACTION.drawTeams}
+							</Button>
+						)}
+					</div>
+				}
+			/>
+		</div>
+	);
 }

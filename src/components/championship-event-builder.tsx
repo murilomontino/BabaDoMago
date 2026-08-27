@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router";
 import { Field, FieldArray, Form, Formik } from "formik";
 import { Link2, LoaderCircle, Plus, Share2, Shuffle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -75,17 +76,14 @@ import {
 	FIELD_CLASS,
 	MODAL_CLASS,
 } from "@/const/ui";
+import { caughtErrorMessage } from "@/lib/error-message";
+import { runEventTeamDraw } from "@/lib/event-team-draw";
 import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
 import { shareEventTeamsImage } from "@/lib/share-event-teams-image";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 type EventBuilderValues = {
 	teams: EventTeamBuilderTeam[];
-};
-
-type EventTeamDrawResponse = {
-	teams: EventTeamDraft[] | null;
-	error: string | null;
 };
 
 type ChampionshipEventBuilderProps = {
@@ -118,6 +116,10 @@ type ChampionshipEventBuilderProps = {
 	}) => Promise<ChampionshipPlayer[]>;
 	isAddingPlayer?: boolean;
 	addPlayerError?: string | null;
+	onSaveAttendance: (
+		presentPlayerIds: number[],
+		goalkeeperPlayerIds: number[],
+	) => Promise<void>;
 	onSubmit: (
 		values: {
 			presentPlayerIds: number[];
@@ -150,8 +152,10 @@ export function ChampionshipEventBuilder({
 	onAddPlayer,
 	isAddingPlayer = false,
 	addPlayerError = null,
+	onSaveAttendance,
 	onSubmit,
 }: ChampionshipEventBuilderProps) {
+	const navigate = useNavigate();
 	const [presentIds, setPresentIds] = useState<number[]>([
 		...initialPresentIds,
 	]);
@@ -162,6 +166,7 @@ export function ChampionshipEventBuilder({
 	const [teamsError, setTeamsError] = useState<string | null>(null);
 	const [isDrawing, setIsDrawing] = useState(false);
 	const [isSharing, setIsSharing] = useState(false);
+	const [isOpeningDraw, setIsOpeningDraw] = useState(false);
 	const [copiedDrawLink, setCopiedDrawLink] = useState(false);
 	const [drawConfirmOpen, setDrawConfirmOpen] = useState(false);
 	const drawSetTeamsRef = useRef<
@@ -180,6 +185,7 @@ export function ChampionshipEventBuilder({
 		goalkeeperIds,
 		presentIds,
 	);
+	const busy = isPending || isDrawing || isOpeningDraw;
 	const presentRatings = presentPlayers.map((player) => player.rating);
 	const teamsStart =
 		initialTeams ??
@@ -272,43 +278,29 @@ export function ChampionshipEventBuilder({
 
 	async function handleDrawTeams(
 		setTeams: (teams: EventTeamBuilderTeam[]) => void,
-	) {
+	): Promise<boolean> {
 		const attendanceInvalid = validateEventAttendance(presentIds, rosterIds);
 		if (attendanceInvalid) {
 			setAttendanceError(attendanceInvalid);
 			onStepChange(EVENT_BUILDER_STEP.attendance);
-			return;
+			return false;
 		}
 
 		setIsDrawing(true);
 		try {
-			const worker = new Worker(
-				new URL("../workers/event-team-draw.worker.ts", import.meta.url),
-				{ type: "module" },
-			);
-			drawWorkerRef.current = worker;
-			const drafts = await new Promise<EventTeamDraft[]>((resolve, reject) => {
-				worker.onmessage = ({ data }: MessageEvent<EventTeamDrawResponse>) => {
-					if (!data.teams || data.error) {
-						reject(new Error(data.error ?? "team draw failed"));
-						return;
-					}
-
-					resolve(data.teams);
-				};
-				worker.onerror = () => reject(new Error("team draw failed"));
-				worker.postMessage({
-					players: presentPlayers.map(({ id, rating }) => ({ id, rating })),
-					playersPerTeam,
-					volunteerIds: presentGoalkeeperIds,
-				});
+			const { worker, done } = runEventTeamDraw({
+				players: presentPlayers.map(({ id, rating }) => ({ id, rating })),
+				playersPerTeam,
+				volunteerIds: presentGoalkeeperIds,
 			});
+			drawWorkerRef.current = worker;
+			const drafts = await done;
 			const teamsInvalid =
 				validateEventTeams(drafts, playersPerTeam) ??
 				validateTeamsInAttendance(drafts, presentIds);
 			if (teamsInvalid) {
 				setTeamsError(teamsInvalid);
-				return;
+				return false;
 			}
 
 			await onSubmit(
@@ -322,12 +314,40 @@ export function ChampionshipEventBuilder({
 			);
 			setTeams(builderTeamsFromDrafts(drafts, playersPerTeam));
 			setTeamsError(null);
+			return true;
 		} catch {
 			setTeamsError(EVENT_TEAM_MESSAGE.drawFailed);
+			return false;
 		} finally {
 			drawWorkerRef.current?.terminate();
 			drawWorkerRef.current = null;
 			setIsDrawing(false);
+		}
+	}
+
+	async function openDrawCeremony() {
+		const invalid = validateEventAttendance(presentIds, rosterIds);
+		if (invalid) {
+			setAttendanceError(invalid);
+			return;
+		}
+
+		setIsOpeningDraw(true);
+		try {
+			await onSaveAttendance(presentIds, presentGoalkeeperIds);
+			await navigate({
+				to: ROUTES.championshipEventDraw,
+				params: {
+					championshipId: String(championshipId),
+					eventId: String(eventId),
+				},
+			});
+		} catch (error) {
+			setAttendanceError(
+				caughtErrorMessage(error, EVENT_TEAM_MESSAGE.needAttendance),
+			);
+		} finally {
+			setIsOpeningDraw(false);
 		}
 	}
 
@@ -527,6 +547,10 @@ export function ChampionshipEventBuilder({
 						}
 					}
 
+					function openCeremony() {
+						void openDrawCeremony();
+					}
+
 					return (
 						<Form className="space-y-4">
 							<Tabs
@@ -535,7 +559,7 @@ export function ChampionshipEventBuilder({
 								onChange={handleTabChange}
 							/>
 							{step === EVENT_BUILDER_STEP.attendance && (
-								<div className="space-y-4 pb-24 md:pb-0">
+								<div className="space-y-4 pb-36 md:pb-0">
 									<p className="text-sm font-medium text-fg">Presentes</p>
 									<EventAttendanceTable
 										players={players}
@@ -558,27 +582,46 @@ export function ChampionshipEventBuilder({
 									{attendanceError && (
 										<p className={ERROR_CLASS}>{attendanceError}</p>
 									)}
+									{teamsError && <p className={ERROR_CLASS}>{teamsError}</p>}
 									<div className="flex justify-end gap-2">
 										{onCancel && (
 											<Button
 												variant={BUTTON_VARIANT.secondary}
 												onClick={onCancel}
-												disabled={isPending}
+												disabled={busy}
 											>
 												Cancelar
 											</Button>
 										)}
 										<span className="hidden md:inline-flex">
-											<Button type="submit">{EVENT_ACTION.continue}</Button>
+											<Button type="submit" disabled={busy}>
+												{EVENT_ACTION.continue}
+											</Button>
+										</span>
+										<span className="hidden md:inline-flex">
+											<Button disabled={busy} onClick={openCeremony}>
+												{EVENT_ACTION.openDraw}
+											</Button>
 										</span>
 									</div>
 									<AttendanceFloatingSave
 										selected={presentIds.length}
 										total={players.length}
-										disabled={isPending}
-										type="submit"
+										disabled={busy}
+										type="button"
+										onClick={openCeremony}
+										secondary={
+											<Button
+												type="submit"
+												variant={BUTTON_VARIANT.secondary}
+												disabled={busy}
+												className="shadow-md"
+											>
+												{EVENT_ACTION.continue}
+											</Button>
+										}
 									>
-										{EVENT_ACTION.continue}
+										{EVENT_ACTION.openDraw}
 									</AttendanceFloatingSave>
 								</div>
 							)}
@@ -790,7 +833,7 @@ export function ChampionshipEventBuilder({
 												)}
 												<Button
 													variant={BUTTON_VARIANT.secondary}
-													disabled={isPending || isDrawing || isSharing}
+													disabled={busy || isSharing}
 													onClick={() => {
 														requestDrawTeams(values.teams, (teams) => {
 															setFieldValue("teams", teams);
@@ -803,7 +846,7 @@ export function ChampionshipEventBuilder({
 												{builderTeamsHavePlayers(values.teams) && (
 													<Button
 														variant={BUTTON_VARIANT.secondary}
-														disabled={isPending || isDrawing || isSharing}
+														disabled={busy || isSharing}
 														onClick={() => {
 															void handleShareTeams(values.teams);
 														}}
@@ -822,7 +865,7 @@ export function ChampionshipEventBuilder({
 												{builderTeamsHavePlayers(values.teams) && (
 													<Button
 														variant={BUTTON_VARIANT.secondary}
-														disabled={isPending || isDrawing}
+														disabled={busy}
 														onClick={() => {
 															void handleCopyDrawLink();
 														}}

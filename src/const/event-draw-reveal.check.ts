@@ -15,10 +15,12 @@ import {
 	eventDrawRevealGridClass,
 	eventDrawRevealItemCount,
 	eventDrawRevealNextPlayerCount,
+	eventDrawRevealPageSettled,
 	eventDrawRevealPageStatus,
 	eventDrawRevealPhase,
 	eventDrawRevealRoundRobinSlots,
 	eventDrawRevealShareIsPrimary,
+	eventDrawRevealShouldAutoStart,
 	eventDrawRevealShouldTick,
 	eventDrawRevealShowControls,
 	eventDrawRevealShowShare,
@@ -28,6 +30,7 @@ import {
 	eventDrawRevealViewingLabel,
 	eventDrawRevealVisibleCards,
 	eventDrawRevealVisiblePlayerCount,
+	eventDrawRevealWaitingHint,
 	eventDrawUrl,
 } from "./event-draw-reveal.ts";
 import { EVENT_TEAM_COLOR, EVENT_TEAM_COLOR_NONE } from "./event-team-color.ts";
@@ -224,9 +227,62 @@ check(eventDrawRevealShareIsPrimary(EVENT_DRAW_REVEAL_PHASE.poster), false);
 check(eventDrawRevealShareIsPrimary(EVENT_DRAW_REVEAL_PHASE.playing), false);
 check(eventDrawRevealShareIsPrimary(EVENT_DRAW_REVEAL_PHASE.done), true);
 
+check(EVENT_DRAW_REVEAL_LABEL.shareShort, "Compartilhar");
+check(EVENT_DRAW_REVEAL_LABEL.replay, "Ver de novo");
 check(EVENT_DRAW_REVEAL_LABEL.pause, "Pausar sorteio");
 check(EVENT_DRAW_REVEAL_LABEL.play, "Play sorteio");
 check(EVENT_DRAW_REVEAL_LABEL.next, "Próximo jogador sorteado");
+check(EVENT_ACTION.openDraw, "Abrir sorteio");
+check(eventDrawRevealWaitingHint(true), EVENT_DRAW_REVEAL_LABEL.waitingHost);
+check(eventDrawRevealWaitingHint(false), EVENT_DRAW_REVEAL_LABEL.waitingGuest);
+check(eventDrawRevealPageSettled(EVENT_DRAW_REVEAL_PAGE.loading), false);
+check(eventDrawRevealPageSettled(EVENT_DRAW_REVEAL_PAGE.empty), true);
+check(eventDrawRevealPageSettled(EVENT_DRAW_REVEAL_PAGE.ready), true);
+check(
+	eventDrawRevealShouldAutoStart({
+		previousReady: null,
+		ready: true,
+		visibleCount: 0,
+		settled: true,
+	}),
+	false,
+);
+check(
+	eventDrawRevealShouldAutoStart({
+		previousReady: false,
+		ready: true,
+		visibleCount: 0,
+		settled: false,
+	}),
+	false,
+);
+check(
+	eventDrawRevealShouldAutoStart({
+		previousReady: false,
+		ready: true,
+		visibleCount: 0,
+		settled: true,
+	}),
+	true,
+);
+check(
+	eventDrawRevealShouldAutoStart({
+		previousReady: true,
+		ready: true,
+		visibleCount: 0,
+		settled: true,
+	}),
+	false,
+);
+check(
+	eventDrawRevealShouldAutoStart({
+		previousReady: false,
+		ready: true,
+		visibleCount: 1,
+		settled: true,
+	}),
+	false,
+);
 
 check(eventDrawRevealDelayMs(true), 0);
 check(eventDrawRevealDelayMs(false), EVENT_DRAW_REVEAL.itemDelayMs);
