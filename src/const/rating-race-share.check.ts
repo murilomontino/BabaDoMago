@@ -2,6 +2,7 @@ import type { ChampionshipRatingHistorySeries } from "./championship-rating-hist
 import {
 	parseRatingRaceLimit,
 	RATING_RACE_LIMIT_KIND,
+	RATING_RACE_SHARE,
 	ratingRaceFrames,
 	ratingRaceGifFileName,
 	ratingRaceLeaders,
@@ -32,6 +33,15 @@ const bruno: ChampionshipRatingHistorySeries = {
 	color: "#111111",
 	dataKey: "p2",
 };
+
+check(RATING_RACE_SHARE.mp4Height % 16 === 0, "mp4 height 16-aligned");
+check(RATING_RACE_SHARE.width % 16 === 0, "mp4 width 16-aligned");
+check(
+	RATING_RACE_SHARE.mp4FrameRepeat * (1000 / RATING_RACE_SHARE.mp4Fps) ===
+		RATING_RACE_SHARE.frameDelayMs,
+	"mp4 frame repeat matches gif delay",
+);
+check(RATING_RACE_SHARE.mp4SilentAacFrame.length > 0, "silent aac frame");
 
 const frames = ratingRaceFrames(3);
 check(frames.length === 69, "frames: 33 growing + 36 hold");

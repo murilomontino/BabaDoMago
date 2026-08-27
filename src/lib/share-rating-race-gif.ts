@@ -174,28 +174,22 @@ async function encodeRatingRaceMp4(
 	avatars: ReadonlyMap<string, HTMLImageElement>,
 ): Promise<Blob> {
 	// ponytail: encode síncrono no main thread, O(frames × pixels), pode travar a UI por 1-3s; upgrade é Web Worker + OffscreenCanvas.
-	const supported = await isRatingRaceMp4Supported();
-	if (!supported) {
+	const videoConfig = await ratingRaceVideoEncoderConfig();
+	if (!videoConfig) {
 		throw new Error(RATING_RACE_LABEL.failedVideo);
 	}
 
-	const { width, height, frameDelayMs, mp4Codec, mp4Bitrate } =
-		RATING_RACE_SHARE;
+	const { width, mp4Height, mp4Fps, mp4FrameRepeat } = RATING_RACE_SHARE;
 	const frames = ratingRaceFrames(input.rows.length);
 	const lastProgress = frames.at(-1) ?? 0;
 	drawRaceFrame(context, input, entries, avatars, lastProgress);
 
-	const timestampUs = frameDelayMs * 1000;
+	const padded = createPaddedVideoCanvas(canvas);
+	const timestampUs = Math.round(1_000_000 / mp4Fps);
 	const target = new ArrayBufferTarget();
-	const muxer = new Muxer({
-		target,
-		video: {
-			codec: "avc",
-			width,
-			height,
-		},
-		fastStart: "in-memory",
-	});
+	const muxer = new Muxer(
+		ratingRaceMuxerOptions(target, width, mp4Height, mp4Fps),
+	);
 
 	let encodeError: Error | null = null;
 	const encoder = new VideoEncoder({
@@ -206,27 +200,27 @@ async function encodeRatingRaceMp4(
 			encodeError = error;
 		},
 	});
-	encoder.configure({
-		codec: mp4Codec,
-		width,
-		height,
-		bitrate: mp4Bitrate,
-	});
+	encoder.configure(videoConfig);
 
-	for (const [index, progress] of frames.entries()) {
+	let encodedIndex = 0;
+	for (const progress of frames) {
 		if (encodeError) {
 			encoder.close();
 			throw encodeError;
 		}
 
-		await waitForEncoderQueue(encoder);
 		drawRaceFrame(context, input, entries, avatars, progress);
-		const frame = new VideoFrame(canvas, {
-			timestamp: index * timestampUs,
-			duration: timestampUs,
-		});
-		encoder.encode(frame, { keyFrame: isMp4KeyFrame(index) });
-		frame.close();
+		blitToVideoCanvas(canvas, padded.context);
+		for (let repeat = 0; repeat < mp4FrameRepeat; repeat += 1) {
+			await waitForEncoderQueue(encoder);
+			const frame = new VideoFrame(padded.canvas, {
+				timestamp: encodedIndex * timestampUs,
+				duration: timestampUs,
+			});
+			encoder.encode(frame, { keyFrame: isMp4KeyFrame(encodedIndex) });
+			frame.close();
+			encodedIndex += 1;
+		}
 	}
 
 	await encoder.flush();
@@ -235,27 +229,138 @@ async function encodeRatingRaceMp4(
 		throw encodeError;
 	}
 
+	const durationUs = encodedIndex * timestampUs;
+	encodeSilentAacTrack(muxer, durationUs);
+
 	muxer.finalize();
 	return mp4BytesBlob(target.buffer);
 }
 
-async function isRatingRaceMp4Supported(): Promise<boolean> {
+async function ratingRaceVideoEncoderConfig(): Promise<VideoEncoderConfig | null> {
 	if (typeof VideoEncoder === "undefined") {
-		return false;
+		return null;
 	}
 
-	const result = await VideoEncoder.isConfigSupported({
-		codec: RATING_RACE_SHARE.mp4Codec,
-		width: RATING_RACE_SHARE.width,
-		height: RATING_RACE_SHARE.height,
-		bitrate: RATING_RACE_SHARE.mp4Bitrate,
-	});
+	for (const candidate of ratingRaceVideoEncoderCandidates()) {
+		const result = await VideoEncoder.isConfigSupported(candidate);
+		const accepted = supportedVideoEncoderConfig(result, candidate);
+		if (accepted) {
+			return accepted;
+		}
+	}
 
-	return Boolean(result.supported);
+	return null;
+}
+
+function ratingRaceVideoEncoderCandidates(): VideoEncoderConfig[] {
+	const { width, mp4Height, mp4Codec, mp4Bitrate, mp4Fps } = RATING_RACE_SHARE;
+	const shared = {
+		codec: mp4Codec,
+		width,
+		height: mp4Height,
+		bitrate: mp4Bitrate,
+		framerate: mp4Fps,
+	};
+
+	return [
+		{
+			...shared,
+			avc: { format: "avc" },
+			hardwareAcceleration: "prefer-software",
+		},
+		{ ...shared, avc: { format: "avc" } },
+		shared,
+	];
+}
+
+function supportedVideoEncoderConfig(
+	result: VideoEncoderSupport,
+	fallback: VideoEncoderConfig,
+): VideoEncoderConfig | null {
+	if (!result.supported) {
+		return null;
+	}
+
+	if (result.config) {
+		return result.config;
+	}
+
+	return fallback;
+}
+
+function ratingRaceMuxerOptions(
+	target: ArrayBufferTarget,
+	width: number,
+	height: number,
+	frameRate: number,
+) {
+	return {
+		target,
+		video: {
+			codec: "avc" as const,
+			width,
+			height,
+			frameRate,
+		},
+		audio: {
+			codec: "aac" as const,
+			numberOfChannels: RATING_RACE_SHARE.mp4AudioChannels,
+			sampleRate: RATING_RACE_SHARE.mp4AudioSampleRate,
+		},
+		fastStart: "in-memory" as const,
+	};
+}
+
+function createPaddedVideoCanvas(source: HTMLCanvasElement): {
+	canvas: HTMLCanvasElement;
+	context: CanvasRenderingContext2D;
+} {
+	const canvas = document.createElement("canvas");
+	canvas.width = RATING_RACE_SHARE.width;
+	canvas.height = RATING_RACE_SHARE.mp4Height;
+	const context = canvas.getContext("2d");
+	if (!context) {
+		throw new Error(RATING_RACE_LABEL.failedVideo);
+	}
+
+	blitToVideoCanvas(source, context);
+	return { canvas, context };
+}
+
+function blitToVideoCanvas(
+	source: HTMLCanvasElement,
+	context: CanvasRenderingContext2D,
+) {
+	const { width, mp4Height } = RATING_RACE_SHARE;
+	context.fillStyle = RATING_RACE_COLOR.field;
+	context.fillRect(0, 0, width, mp4Height);
+	context.drawImage(source, 0, 0);
+}
+
+function encodeSilentAacTrack(
+	muxer: Muxer<ArrayBufferTarget>,
+	durationUs: number,
+) {
+	// ponytail: AAC-LC silencioso cru — WhatsApp recusa MP4 sem áudio; AudioEncoder AAC some no Android. Se o envio falhar, gerar AAC real.
+	const { mp4AudioSampleRate, mp4AacSamplesPerFrame, mp4SilentAacFrame } =
+		RATING_RACE_SHARE;
+	const chunkDurationUs = Math.round(
+		(mp4AacSamplesPerFrame / mp4AudioSampleRate) * 1_000_000,
+	);
+	const frame = new Uint8Array(mp4SilentAacFrame);
+	let timestamp = 0;
+	while (timestamp < durationUs) {
+		muxer.addAudioChunkRaw(frame, "key", timestamp, chunkDurationUs);
+		timestamp += chunkDurationUs;
+	}
 }
 
 function isMp4KeyFrame(index: number): boolean {
-	return index % RATING_RACE_SHARE.stepsPerRound === 0;
+	return (
+		index %
+			(RATING_RACE_SHARE.stepsPerRound * RATING_RACE_SHARE.mp4FrameRepeat) ===
+		0
+	);
 }
 
 async function waitForEncoderQueue(encoder: VideoEncoder): Promise<void> {

@@ -27,8 +27,17 @@ export const RATING_RACE_SHARE = {
 	gifFormat: "rgb565",
 	mimeGif: "image/gif",
 	mimeMp4: "video/mp4",
-	mp4Codec: "avc1.42001f",
+	mp4Codec: "avc1.42E01E",
 	mp4Bitrate: 1_500_000,
+	mp4Height: 608,
+	mp4Fps: 25,
+	mp4FrameRepeat: 2,
+	mp4AudioCodec: "mp4a.40.2",
+	mp4AudioSampleRate: 44_100,
+	mp4AudioChannels: 1,
+	mp4AudioBitrate: 64_000,
+	mp4AacSamplesPerFrame: 1024,
+	mp4SilentAacFrame: [0x21, 0x10, 0x04, 0x60, 0x8c, 0x1c],
 	filePrefix: "corrida-nota",
 } as const;
 

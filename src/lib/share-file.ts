@@ -12,6 +12,35 @@ function canOpenShareSheet(): boolean {
 	return typeof navigator.share === "function";
 }
 
+function isVideoFile(file: File): boolean {
+	return file.type.startsWith("video/");
+}
+
+function filesIncludeVideo(files: readonly File[]): boolean {
+	return files.some(isVideoFile);
+}
+
+function canShareFiles(files: readonly File[]): boolean {
+	if (typeof navigator.canShare !== "function") {
+		return true;
+	}
+
+	try {
+		return navigator.canShare({ files: [...files] });
+	} catch {
+		return false;
+	}
+}
+
+function sharePayload({ files, title, text }: ShareOrDownloadInput): ShareData {
+	const list = [...files];
+	if (filesIncludeVideo(files)) {
+		return { files: list };
+	}
+
+	return { files: list, text, title };
+}
+
 function downloadFile(file: File) {
 	const url = URL.createObjectURL(file);
 	const link = document.createElement("a");
@@ -39,17 +68,13 @@ export async function shareOrDownload({
 		return;
 	}
 
-	if (!canOpenShareSheet()) {
+	if (!canOpenShareSheet() || !canShareFiles(files)) {
 		downloadFiles(files);
 		return;
 	}
 
 	try {
-		await navigator.share({
-			files: [...files],
-			text,
-			title,
-		});
+		await navigator.share(sharePayload({ files, title, text }));
 		return;
 	} catch (error) {
 		if (isShareAbort(error)) {
@@ -57,7 +82,7 @@ export async function shareOrDownload({
 		}
 	}
 
-	if (files.length > 1) {
+	if (filesIncludeVideo(files) || files.length > 1) {
 		downloadFiles(files);
 		return;
 	}
