@@ -1,6 +1,7 @@
 import {
 	Award,
 	ChartColumn,
+	Link2,
 	LoaderCircle,
 	Pencil,
 	Plus,
@@ -78,6 +79,7 @@ import {
 	resolveEventPlayers,
 	resolveRosterPlayer,
 } from "@/const/championship-event-roster";
+import { copyDrawLinkLabel, eventDrawUrl } from "@/const/event-draw-reveal";
 import {
 	attendanceMvpPlayerIds,
 	EVENT_MVP_LABEL,
@@ -99,6 +101,7 @@ import {
 } from "@/const/event-team-share";
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
+import { ROUTES } from "@/const/routes";
 import {
 	CHIP_CLASS,
 	ERROR_CLASS,
@@ -363,12 +366,14 @@ export function ChampionshipEventRoundTab({
 	);
 	const showShareTeams =
 		!showTeamBuilder && builderTeamsHavePlayers(detailTeams);
+	const showCopyDrawLink = canManage && showShareTeams;
 	const showAddAttendance = canManage && !showTeamBuilder;
 	const showAttendanceOwnerActions = canOverrideEnded && !showTeamBuilder;
 	const showAddTeam = canOverrideEnded && !showTeamBuilder;
 	const showMatchDelete = canOverrideEnded && !showTeamBuilder;
 	const [isSharing, setIsSharing] = useState(false);
 	const [shareError, setShareError] = useState<string | null>(null);
+	const [copiedDrawLink, setCopiedDrawLink] = useState(false);
 	const [isSharingRecap, setIsSharingRecap] = useState(false);
 	const [recapError, setRecapError] = useState<string | null>(null);
 	const [isMvpOpen, setIsMvpOpen] = useState(false);
@@ -419,6 +424,17 @@ export function ChampionshipEventRoundTab({
 		} finally {
 			setIsSharing(false);
 		}
+	}
+
+	async function handleCopyDrawLink() {
+		const url = eventDrawUrl(
+			window.location.origin,
+			event.championship_id,
+			event.id,
+			ROUTES.championshipEventDraw,
+		);
+		await navigator.clipboard.writeText(url);
+		setCopiedDrawLink(true);
 	}
 
 	const recapRatingChanges = eventRecapShareRatingChangesFromAttendance(
@@ -516,6 +532,16 @@ export function ChampionshipEventRoundTab({
 									disabled={isSharing}
 									onClick={() => {
 										void handleShareTeams();
+									}}
+								/>
+							)}
+							{showCopyDrawLink && (
+								<IconTooltipButton
+									showLabel
+									label={copyDrawLinkLabel(copiedDrawLink)}
+									icon={<Link2 className="size-4" />}
+									onClick={() => {
+										void handleCopyDrawLink();
 									}}
 								/>
 							)}

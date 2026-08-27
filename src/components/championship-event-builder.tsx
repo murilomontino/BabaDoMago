@@ -1,5 +1,5 @@
 import { Field, FieldArray, Form, Formik } from "formik";
-import { LoaderCircle, Plus, Share2, Shuffle } from "lucide-react";
+import { Link2, LoaderCircle, Plus, Share2, Shuffle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AppDialog } from "@/components/atoms/app-dialog";
 import { Button } from "@/components/button";
@@ -49,6 +49,7 @@ import {
 	validateEventTeams,
 	validateTeamsInAttendance,
 } from "@/const/championship-event";
+import { copyDrawLinkLabel, eventDrawUrl } from "@/const/event-draw-reveal";
 import {
 	EVENT_TEAM_COLOR,
 	EVENT_TEAM_COLOR_CUSTOM_LABEL,
@@ -67,6 +68,7 @@ import {
 } from "@/const/event-team-share";
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
+import { ROUTES } from "@/const/routes";
 import {
 	BUTTON_VARIANT,
 	ERROR_CLASS,
@@ -160,6 +162,7 @@ export function ChampionshipEventBuilder({
 	const [teamsError, setTeamsError] = useState<string | null>(null);
 	const [isDrawing, setIsDrawing] = useState(false);
 	const [isSharing, setIsSharing] = useState(false);
+	const [copiedDrawLink, setCopiedDrawLink] = useState(false);
 	const [drawConfirmOpen, setDrawConfirmOpen] = useState(false);
 	const drawSetTeamsRef = useRef<
 		((teams: EventTeamBuilderTeam[]) => void) | null
@@ -342,6 +345,17 @@ export function ChampionshipEventBuilder({
 		} finally {
 			setIsSharing(false);
 		}
+	}
+
+	async function handleCopyDrawLink() {
+		const url = eventDrawUrl(
+			window.location.origin,
+			championshipId,
+			eventId,
+			ROUTES.championshipEventDraw,
+		);
+		await navigator.clipboard.writeText(url);
+		setCopiedDrawLink(true);
 	}
 
 	function requestDrawTeams(
@@ -803,6 +817,18 @@ export function ChampionshipEventBuilder({
 														{!isSharing && <Share2 className="size-4" />}
 														{isSharing && EVENT_TEAM_SHARE_LABEL.sharing}
 														{!isSharing && EVENT_TEAM_SHARE_LABEL.shareTeams}
+													</Button>
+												)}
+												{builderTeamsHavePlayers(values.teams) && (
+													<Button
+														variant={BUTTON_VARIANT.secondary}
+														disabled={isPending || isDrawing}
+														onClick={() => {
+															void handleCopyDrawLink();
+														}}
+													>
+														<Link2 className="size-4" />
+														{copyDrawLinkLabel(copiedDrawLink)}
 													</Button>
 												)}
 											</div>
