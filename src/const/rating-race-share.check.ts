@@ -32,9 +32,9 @@ const bruno: ChampionshipRatingHistorySeries = {
 };
 
 const frames = ratingRaceFrames(3);
-check(frames.length === 21, "frames: 9 growing + 12 hold");
-check(frames[1] === 0.25, "frames step 1 is 0.25");
-check(frames[8] === 2, "frames step 8 is last index");
+check(frames.length === 69, "frames: 33 growing + 36 hold");
+check(frames[1] === 0.0625, "frames step 1 is 1/16");
+check(frames[32] === 2, "frames step 32 is last index");
 check(frames.at(-1) === 2, "hold stops at last point");
 
 check(
