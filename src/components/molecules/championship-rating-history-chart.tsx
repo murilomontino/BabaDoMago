@@ -11,22 +11,29 @@ import {
 import { Button } from "@/components/button";
 import { formatEventStartsAt } from "@/const/championship-event";
 import {
+	championshipMetricHistoryEmptyLabel,
+	championshipMetricHistoryFormat,
+	championshipMetricHistoryTitle,
+	championshipMetricHistoryYAxisWidth,
+	championshipMetricHistoryYDomain,
+	championshipPodiumHistoryChart,
+	isChampionshipRatingHistoryMetric,
+} from "@/const/championship-metric-history";
+import {
 	CHAMPIONSHIP_RATING_HISTORY_CHART,
 	CHAMPIONSHIP_RATING_HISTORY_LABEL,
 	type ChampionshipRatingHistoryChartPoint,
 	type ChampionshipRatingHistorySeries,
 	championshipRatingHistoryAllSelected,
-	championshipRatingHistoryChart,
 	championshipRatingHistoryChipClass,
-	championshipRatingHistoryEmptyLabel,
 	championshipRatingHistoryPlayerIds,
 	championshipRatingHistorySelection,
 	championshipRatingHistoryTickLabel,
 	toggleChampionshipRatingHistoryPlayer,
 	visibleChampionshipRatingHistorySeries,
 } from "@/const/championship-rating-history";
-import { formatEventRating } from "@/const/event-rating-adjustment";
 import { championshipRatingCeiling } from "@/const/player-rating";
+import type { PodiumPlayerMetricId } from "@/const/podium";
 import {
 	parseRatingRaceLimit,
 	RATING_RACE_LABEL,
@@ -48,10 +55,12 @@ import {
 import type { ChampionshipPlayer } from "@/types/championship";
 import type { ChampionshipEvent } from "@/types/championship-event";
 
-type ChampionshipRatingHistoryChartProps = {
+type ChampionshipMetricHistoryChartProps = {
+	metric: PodiumPlayerMetricId;
 	players: readonly ChampionshipPlayer[];
 	events: readonly ChampionshipEvent[];
 	championshipName: string;
+	nowIso: string | null;
 };
 
 type ChartTooltipPayload = {
@@ -86,15 +95,16 @@ function ratingRaceShareFailedLabel(kind: RatingRaceShareKind): string {
 	return RATING_RACE_LABEL.failed;
 }
 
-export function ChampionshipRatingHistoryChart({
+export function ChampionshipMetricHistoryChart({
+	metric,
 	players,
 	events,
 	championshipName,
-}: ChampionshipRatingHistoryChartProps) {
+	nowIso,
+}: ChampionshipMetricHistoryChartProps) {
 	const chart = useMemo(
-		() =>
-			championshipRatingHistoryChart(players, events, new Date().toISOString()),
-		[events, players],
+		() => championshipPodiumHistoryChart(metric, players, events, nowIso),
+		[events, metric, nowIso, players],
 	);
 	const playerIds = championshipRatingHistoryPlayerIds(chart.series);
 	const [selected, setSelected] = useState<ReadonlySet<number> | null>(null);
@@ -108,15 +118,17 @@ export function ChampionshipRatingHistoryChart({
 		chart.series,
 		selectedIds,
 	);
-	const emptyLabel = championshipRatingHistoryEmptyLabel(chart);
+	const emptyLabel = championshipMetricHistoryEmptyLabel(chart, metric);
 	const ceiling = championshipRatingCeiling(
 		players.map((player) => player.rating),
 	);
+	const yDomain = championshipMetricHistoryYDomain(metric, chart, ceiling);
 	const lastIndex = chart.rows.length - 1;
 	const allSelected = championshipRatingHistoryAllSelected(
 		playerIds,
 		selectedIds,
 	);
+	const showRatingRace = isChampionshipRatingHistoryMetric(metric);
 
 	const isBusy = shareKind !== null;
 	const isGeneratingGif = shareKind === RATING_RACE_SHARE_KIND.gif;
@@ -146,9 +158,9 @@ export function ChampionshipRatingHistoryChart({
 		<div className="mt-8 space-y-3">
 			<div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
 				<h3 className="text-sm font-semibold text-fg">
-					{CHAMPIONSHIP_RATING_HISTORY_LABEL.title}
+					{championshipMetricHistoryTitle(metric)}
 				</h3>
-				{visible.length > 0 && (
+				{showRatingRace && visible.length > 0 && (
 					<div className="flex w-full flex-col gap-2 sm:w-auto">
 						<label className="block text-xs text-fg-muted">
 							{RATING_RACE_LABEL.limit}
@@ -308,12 +320,17 @@ export function ChampionshipRatingHistoryChart({
 									}
 								/>
 								<YAxis
-									domain={[0, ceiling]}
+									domain={yDomain}
 									tick={{ fontSize: 12 }}
-									width={36}
+									tickFormatter={(value) =>
+										championshipMetricHistoryFormat(metric, Number(value))
+									}
+									width={championshipMetricHistoryYAxisWidth(metric)}
 								/>
 								<Tooltip
-									formatter={(value) => formatEventRating(Number(value))}
+									formatter={(value) =>
+										championshipMetricHistoryFormat(metric, Number(value))
+									}
 									labelFormatter={chartTooltipLabel}
 								/>
 								{visible.map((item) => (

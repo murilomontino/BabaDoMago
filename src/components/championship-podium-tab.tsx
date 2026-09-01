@@ -3,6 +3,10 @@ import { lazy, Suspense, useMemo, useState } from "react";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
 import { SectionCard } from "@/components/section-card";
+import {
+	championshipMetricHistoryNowIso,
+	championshipPodiumHistoryMetric,
+} from "@/const/championship-metric-history";
 import { CHAMPIONSHIP_RATING_HISTORY_CHART } from "@/const/championship-rating-history";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import {
@@ -71,10 +75,10 @@ const ChampionshipPodium = lazy(() =>
 	})),
 );
 
-const ChampionshipRatingHistoryChart = lazy(() =>
+const ChampionshipMetricHistoryChart = lazy(() =>
 	import("@/components/molecules/championship-rating-history-chart").then(
 		(m) => ({
-			default: m.ChampionshipRatingHistoryChart,
+			default: m.ChampionshipMetricHistoryChart,
 		}),
 	),
 );
@@ -170,6 +174,20 @@ export function ChampionshipPodiumTab({
 	const ceiling = championshipRatingCeiling(
 		podiumPlayers.map((player) => player.rating),
 	);
+	const historyMetric = championshipPodiumHistoryMetric(metric);
+	const historyNowIso = useMemo(() => {
+		if (!historyMetric) {
+			return null;
+		}
+
+		return championshipMetricHistoryNowIso(
+			historyMetric,
+			new Date().toISOString(),
+			year,
+			semester,
+			months,
+		);
+	}, [historyMetric, months, semester, year]);
 	const synergyCard = useMemo(
 		() => podiumShareCardFromSynergyPairs(synergyPairs),
 		[synergyPairs],
@@ -429,12 +447,15 @@ export function ChampionshipPodiumTab({
 					worstPairs={worstPairs}
 				/>
 			</Suspense>
-			{events && (
+			{events && historyMetric && (
 				<Suspense fallback={<PodiumRatingHistorySkeleton />}>
-					<ChampionshipRatingHistoryChart
+					<ChampionshipMetricHistoryChart
+						key={metric}
+						metric={historyMetric}
 						players={players}
-						events={events}
+						events={periodEvents}
 						championshipName={championshipName}
+						nowIso={historyNowIso}
 					/>
 				</Suspense>
 			)}
