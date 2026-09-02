@@ -702,6 +702,18 @@ export type Database = {
 				Args: { invite_code: string };
 				Returns: Json;
 			};
+			save_event_draw_audit: {
+				Args: {
+					p_event_id: number;
+					p_championship_id: number;
+					p_seed: number;
+					p_algorithm_version: number;
+					p_input_snapshot: Json;
+					p_output_snapshot: Json;
+					p_input_hash: string;
+				};
+				Returns: number;
+			};
 			list_championship_audit_logs: {
 				Args: {
 					p_championship_id: number;

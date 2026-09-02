@@ -294,7 +294,7 @@ export function ChampionshipEventBuilder({
 				volunteerIds: presentGoalkeeperIds,
 			});
 			drawWorkerRef.current = worker;
-			const drafts = await done;
+			const { teams: drafts } = await done;
 			const teamsInvalid =
 				validateEventTeams(drafts, playersPerTeam) ??
 				validateTeamsInAttendance(drafts, presentIds);

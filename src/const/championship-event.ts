@@ -841,6 +841,8 @@ type EventTeamPartition = {
 
 const EVENT_TEAM_RATING_EPSILON = 1e-9;
 
+export const EVENT_TEAM_DRAW_ALGORITHM_VERSION = 1;
+
 function extraSlotForLargerTeam(index: number, largerTeams: number): number {
 	if (index < largerTeams) {
 		return 1;

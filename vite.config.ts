@@ -42,6 +42,9 @@ export default defineConfig({
 			workbox: {
 				navigateFallback: "index.html",
 				globPatterns: ["**/*.{js,css,html,ico,png,svg,mp3,woff2,webmanifest}"],
+				// O polyfill AAC (~1 MB) só é baixado por quem precisa dele
+				// (Firefox), então fica fora do precache do service worker.
+				globIgnores: ["**/mediabunny-aac-encoder-*.js"],
 			},
 			pwaAssets: {
 				preset: "minimal-2023",

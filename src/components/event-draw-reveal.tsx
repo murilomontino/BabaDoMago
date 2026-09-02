@@ -8,6 +8,7 @@ import {
 	Shuffle,
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { useEffect } from "react";
 import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
 import {
@@ -48,6 +49,7 @@ import {
 } from "@/const/event-team-share";
 import { PLAYER_STAR_CLASS } from "@/const/player-rating";
 import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
+import { playDrawCompleteSound, playRevealSound } from "@/lib/event-draw-audio";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 type EventDrawRevealProps = {
@@ -95,6 +97,13 @@ export function EventDrawReveal({
 	isSharing,
 	shareError,
 }: EventDrawRevealProps) {
+	useEffect(() => {
+		if (phase === EVENT_DRAW_REVEAL_PHASE.playing && visibleCount > 0) {
+			playRevealSound();
+		} else if (phase === EVENT_DRAW_REVEAL_PHASE.done) {
+			playDrawCompleteSound();
+		}
+	}, [visibleCount, phase]);
 	const reduceMotion = useReducedMotion();
 	const when = formatEventStartsAt(startsAt);
 	const visibleCards = eventDrawRevealVisibleCards(cards, visibleCount);
