@@ -104,6 +104,7 @@ export function ChampionshipEventDrawPage() {
 	>("idle");
 	const [videoProgress, setVideoProgress] = useState(0);
 	const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
+	const [videoHasAudio, setVideoHasAudio] = useState(true);
 	const videoAbortRef = useRef<AbortController | null>(null);
 	const drawWorkerRef = useRef<Worker | null>(null);
 	const readyRef = useRef<boolean | null>(null);
@@ -278,9 +279,10 @@ export function ChampionshipEventDrawPage() {
 		setVideoStatus("generating");
 		setVideoProgress(0);
 		setVideoBlob(null);
+		setVideoHasAudio(true);
 
 		try {
-			const blob = await generateEventDrawVideo({
+			const result = await generateEventDrawVideo({
 				data: {
 					championshipName: params.championshipName,
 					eventDateLabel: params.eventDateLabel,
@@ -294,8 +296,9 @@ export function ChampionshipEventDrawPage() {
 				signal: controller.signal,
 			});
 
-			if (blob) {
-				setVideoBlob(blob);
+			if (result) {
+				setVideoBlob(result.blob);
+				setVideoHasAudio(result.hasAudio);
 				setVideoStatus("ready");
 			} else {
 				setVideoStatus("error");
@@ -606,6 +609,11 @@ export function ChampionshipEventDrawPage() {
 						<Video className="size-5" />
 						Compartilhar vídeo MP4
 					</Button>
+					{!videoHasAudio && (
+						<p className="mt-2 text-xs text-fg-muted">
+							Vídeo sem som: este navegador não gera áudio AAC.
+						</p>
+					)}
 				</div>
 			)}
 			{videoStatus === "error" && (

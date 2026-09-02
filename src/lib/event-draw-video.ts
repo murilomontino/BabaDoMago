@@ -1,8 +1,14 @@
-import { ArrayBufferTarget } from "mp4-muxer";
 import {
-	EVENT_DRAW_AUDIO_TRACK,
-	renderEventDrawAudioTrack,
-} from "./event-draw-audio-track.ts";
+	AudioBufferSource,
+	BufferTarget,
+	CanvasSource,
+	canEncodeAudio,
+	canEncodeVideo,
+	Mp4OutputFormat,
+	Output,
+	Quality,
+} from "mediabunny";
+import { renderEventDrawAudioTrack } from "./event-draw-audio-track.ts";
 import {
 	type EventDrawRenderData,
 	prepareEventDrawAvatars,
@@ -14,15 +20,28 @@ import {
 	eventDrawRevealTimesSec,
 	eventDrawTotalDurationSec,
 } from "./event-draw-video-timeline.ts";
-import {
-	createAacEncoderConfig,
-	createMp4EncoderConfig,
-	createMp4Muxer,
-	createPaddedCanvas,
-	mp4BufferToBlob,
-} from "./mp4-encoder-util.ts";
+
+const FRAMES_PER_BACKPRESSURE_AWAIT = 15;
+
+/**
+ * H.264 Constrained Baseline 3.1: o perfil que aparelhos antigos e o
+ * WhatsApp aceitam sem reclamar. Quando o browser nao encoda esse perfil,
+ * deixamos a mediabunny escolher.
+ */
+const AVC_COMPATIBLE_CODEC = "avc1.42E01F";
 
 export type EventDrawVideoProgressCallback = (percent: number) => void;
+
+export const EVENT_DRAW_VIDEO_BITRATE = {
+	video: 2_500_000,
+	audio: 128_000,
+} as const;
+
+export type EventDrawVideoResult = {
+	blob: Blob;
+	/** false quando nenhum encoder AAC estava disponivel e o MP4 saiu mudo. */
+	hasAudio: boolean;
+};
 
 export type GenerateEventDrawVideoOptions = {
 	data: EventDrawRenderData;
@@ -30,194 +49,139 @@ export type GenerateEventDrawVideoOptions = {
 	signal?: AbortSignal;
 };
 
-const AUDIO_CHUNK_FRAMES = 1024;
-
-type AudioEncodeInput = {
-	buffer: AudioBuffer;
-	config: AudioEncoderConfig;
-};
-
-async function prepareAudio(
-	data: EventDrawRenderData,
-	durationSec: number,
-): Promise<AudioEncodeInput | null> {
-	const config = await createAacEncoderConfig({
-		sampleRate: EVENT_DRAW_AUDIO_TRACK.sampleRate,
-		channels: EVENT_DRAW_AUDIO_TRACK.channels,
-	});
-	if (!config) {
-		return null;
+/**
+ * Garante um encoder AAC. O Firefox nao implementa AAC no WebCodecs, entao
+ * carregamos sob demanda o polyfill WASM — so nesse caso, para o Chrome nao
+ * pagar o custo do download.
+ */
+export async function ensureAacEncoder(): Promise<boolean> {
+	if (await canEncodeAudio("aac")) {
+		return true;
 	}
 
-	const buffer = await renderEventDrawAudioTrack({
-		revealTimesSec: eventDrawRevealTimesSec(data.cards),
-		completeTimeSec: eventDrawCompleteTimeSec(data.cards),
-		durationSec,
-	});
-	if (!buffer) {
-		return null;
+	try {
+		const { registerAacEncoder } = await import("@mediabunny/aac-encoder");
+		registerAacEncoder();
+	} catch {
+		return false;
 	}
 
-	return { buffer, config };
-}
-
-/** Fatia o AudioBuffer em AudioData e joga tudo no AudioEncoder. */
-async function encodeAudio(
-	audio: AudioEncodeInput,
-	muxer: ReturnType<typeof createMp4Muxer>,
-): Promise<void> {
-	const { buffer, config } = audio;
-	const channels = buffer.numberOfChannels;
-	const sampleRate = buffer.sampleRate;
-
-	let audioError: Error | null = null;
-	const encoder = new AudioEncoder({
-		output: (chunk, meta) => muxer.addAudioChunk(chunk, meta),
-		error: (err) => {
-			audioError = err;
-		},
-	});
-	encoder.configure(config);
-
-	const channelData = Array.from({ length: channels }, (_, index) =>
-		buffer.getChannelData(index),
-	);
-
-	for (let offset = 0; offset < buffer.length; offset += AUDIO_CHUNK_FRAMES) {
-		if (audioError) {
-			encoder.close();
-			throw audioError;
-		}
-
-		const frames = Math.min(AUDIO_CHUNK_FRAMES, buffer.length - offset);
-		const interleaved = new Float32Array(frames * channels);
-		for (let channel = 0; channel < channels; channel++) {
-			const source = channelData[channel];
-			if (!source) continue;
-			for (let frame = 0; frame < frames; frame++) {
-				interleaved[frame * channels + channel] = source[offset + frame] ?? 0;
-			}
-		}
-
-		const audioData = new AudioData({
-			format: "f32",
-			sampleRate,
-			numberOfFrames: frames,
-			numberOfChannels: channels,
-			timestamp: Math.round((offset / sampleRate) * 1_000_000),
-			data: interleaved,
-		});
-		encoder.encode(audioData);
-		audioData.close();
-	}
-
-	await encoder.flush();
-	encoder.close();
-
-	if (audioError) {
-		throw audioError;
-	}
+	return canEncodeAudio("aac");
 }
 
 export async function generateEventDrawVideo(
 	options: GenerateEventDrawVideoOptions,
-): Promise<Blob | null> {
+): Promise<EventDrawVideoResult | null> {
 	const { data, onProgress, signal } = options;
 	const { width, height, fps } = EVENT_DRAW_VIDEO_CONFIG;
+
+	if (!(await canEncodeVideo("avc"))) {
+		return null;
+	}
+
+	const fullCodecString = (await canEncodeVideo("avc", {
+		width,
+		height,
+		fullCodecString: AVC_COMPATIBLE_CODEC,
+	}))
+		? AVC_COMPATIBLE_CODEC
+		: undefined;
 
 	const totalDurationSec = eventDrawTotalDurationSec(data.cards);
 	const totalFrames = Math.ceil(totalDurationSec * fps);
 
-	const videoConfig = await createMp4EncoderConfig({ width, height, fps });
-	if (!videoConfig) {
-		return null;
-	}
-
-	const audio = await prepareAudio(data, totalDurationSec);
+	const hasAudio = await ensureAacEncoder();
 	const avatars = await prepareEventDrawAvatars(data);
 
-	const renderCanvas = document.createElement("canvas");
-	renderCanvas.width = width;
-	renderCanvas.height = height;
-	const renderCtx = renderCanvas.getContext("2d");
-	if (!renderCtx) {
+	const canvas = document.createElement("canvas");
+	canvas.width = width;
+	canvas.height = height;
+	const ctx = canvas.getContext("2d");
+	if (!ctx) {
 		throw new Error("Contexto canvas 2D indisponivel");
 	}
 
-	const padded = createPaddedCanvas(width, height);
-	const target = new ArrayBufferTarget();
-	const muxer = createMp4Muxer(
-		target,
-		{ width, height, fps },
-		audio
-			? {
-					sampleRate: EVENT_DRAW_AUDIO_TRACK.sampleRate,
-					channels: EVENT_DRAW_AUDIO_TRACK.channels,
-				}
-			: null,
-	);
-
-	let encodeError: Error | null = null;
-	const encoder = new VideoEncoder({
-		output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-		error: (err) => {
-			encodeError = err;
-		},
+	const output = new Output({
+		format: new Mp4OutputFormat({ fastStart: "in-memory" }),
+		target: new BufferTarget(),
 	});
-	encoder.configure(videoConfig);
 
-	const frameDurationUs = Math.round(1_000_000 / fps);
+	const videoSource = new CanvasSource(canvas, {
+		codec: "avc",
+		quality: new Quality({ bitrate: EVENT_DRAW_VIDEO_BITRATE.video }),
+		keyFrameInterval: 2,
+		fullCodecString,
+	});
+	output.addVideoTrack(videoSource, { frameRate: fps });
 
-	for (let frameIdx = 0; frameIdx < totalFrames; frameIdx++) {
-		if (signal?.aborted) {
-			encoder.close();
-			throw new Error("Geracao de video cancelada");
-		}
-		if (encodeError) {
-			encoder.close();
-			throw encodeError;
-		}
+	const audioSource = hasAudio
+		? new AudioBufferSource({
+				codec: "aac",
+				quality: new Quality({ bitrate: EVENT_DRAW_VIDEO_BITRATE.audio }),
+			})
+		: null;
+	if (audioSource) {
+		output.addAudioTrack(audioSource);
+	}
 
-		renderEventDrawFrame(renderCtx, data, frameIdx / fps, avatars);
+	try {
+		await output.start();
 
-		padded.context.drawImage(renderCanvas, 0, 0);
-
-		const videoFrame = new VideoFrame(padded.canvas, {
-			timestamp: frameIdx * frameDurationUs,
-			duration: frameDurationUs,
-		});
-
-		encoder.encode(videoFrame, { keyFrame: frameIdx % (fps * 2) === 0 });
-		videoFrame.close();
-
-		if (onProgress && frameIdx % 5 === 0) {
-			const percent = Math.min(97, Math.round((frameIdx / totalFrames) * 97));
-			onProgress(percent);
-		}
-
-		if (encoder.encodeQueueSize > fps) {
-			await new Promise<void>((resolve) => {
-				encoder.addEventListener("dequeue", () => resolve(), { once: true });
+		// A trilha inteira entra antes dos frames: o muxer aplica contrapressao
+		// no video enquanto o audio da mesma janela de tempo nao chegou, entao
+		// alimentar o audio depois trava a geracao.
+		if (audioSource) {
+			const buffer = await renderEventDrawAudioTrack({
+				revealTimesSec: eventDrawRevealTimesSec(data.cards),
+				completeTimeSec: eventDrawCompleteTimeSec(data.cards),
+				durationSec: totalDurationSec,
 			});
-		} else if (frameIdx % 10 === 0) {
-			await new Promise((resolve) => setTimeout(resolve, 0));
+			if (buffer) {
+				await audioSource.add(buffer);
+			}
+			audioSource.close();
 		}
+
+		const frameDuration = 1 / fps;
+		let pending: Promise<void> | null = null;
+
+		for (let frameIdx = 0; frameIdx < totalFrames; frameIdx++) {
+			if (signal?.aborted) {
+				throw new Error("Geracao de video cancelada");
+			}
+
+			renderEventDrawFrame(ctx, data, frameIdx / fps, avatars);
+			pending = videoSource.add(frameIdx / fps, frameDuration);
+
+			// Aguardar a contrapressao a cada frame custa um macrotask por frame,
+			// e aba em segundo plano limita isso a ~1/s: a geracao levaria minutos.
+			// Agrupar mantem a contrapressao respeitada com uma fracao do custo.
+			if (frameIdx % FRAMES_PER_BACKPRESSURE_AWAIT === 0) {
+				await pending;
+				pending = null;
+				onProgress?.(Math.min(98, Math.round((frameIdx / totalFrames) * 98)));
+			}
+		}
+
+		if (pending) {
+			await pending;
+		}
+
+		await output.finalize();
+	} catch (error) {
+		await output.cancel().catch(() => undefined);
+		throw error;
 	}
 
-	await encoder.flush();
-	encoder.close();
-
-	if (encodeError) {
-		throw encodeError;
+	const buffer = output.target.buffer;
+	if (!buffer) {
+		return null;
 	}
 
-	if (audio) {
-		onProgress?.(98);
-		await encodeAudio(audio, muxer);
-	}
-
-	muxer.finalize();
 	onProgress?.(100);
 
-	return mp4BufferToBlob(target.buffer);
+	return {
+		blob: new Blob([buffer], { type: "video/mp4" }),
+		hasAudio: Boolean(audioSource),
+	};
 }
