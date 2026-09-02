@@ -7,6 +7,8 @@ export const ROUTES = {
 	championshipEvent: "/championships/$championshipId/events/$eventId",
 	championshipEventPlay: "/championships/$championshipId/events/$eventId/play",
 	championshipEventDraw: "/championships/$championshipId/events/$eventId/draw",
+	championshipEventPotDraw:
+		"/championships/$championshipId/events/$eventId/draw-pots",
 	join: "/join/$inviteCode",
 } as const;
 

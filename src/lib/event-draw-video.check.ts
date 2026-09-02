@@ -1,10 +1,12 @@
-import { EVENT_DRAW_REVEAL } from "@/const/event-draw-reveal";
-import type { EventTeamShareCard } from "@/const/event-team-share";
+import { EVENT_DRAW_REVEAL } from "../const/event-draw-reveal.ts";
+import type { EventTeamShareCard } from "../const/event-team-share.ts";
 import { EVENT_DRAW_AUDIO_TRACK } from "./event-draw-audio-track.ts";
 import {
 	EVENT_DRAW_VIDEO_CONFIG,
 	eventDrawCompleteTimeSec,
 	eventDrawOutroStartSec,
+	eventDrawPotRevealTimesSec,
+	eventDrawPotsDurationSec,
 	eventDrawRevealTimesSec,
 	eventDrawTotalDurationSec,
 	eventDrawTotalPlayers,
@@ -74,6 +76,20 @@ check(
 check(
 	eventDrawCompleteTimeSec([]) === null,
 	"sem jogadores nao ha acorde final",
+);
+check(eventDrawPotsDurationSec(0) === 0, "sem potes nao alonga o video");
+check(
+	eventDrawPotsDurationSec(2) === 2 * EVENT_DRAW_VIDEO_CONFIG.playerRevealSec,
+	"cada pote usa o mesmo delay da tela",
+);
+check(
+	eventDrawRevealTimesSec(cards, 2)[0] ===
+		EVENT_DRAW_VIDEO_CONFIG.introDurationSec + eventDrawPotsDurationSec(2),
+	"times comecam depois dos potes",
+);
+check(
+	eventDrawPotRevealTimesSec(2)[0] === EVENT_DRAW_VIDEO_CONFIG.introDurationSec,
+	"primeiro pote logo apos a intro",
 );
 check(
 	EVENT_DRAW_AUDIO_TRACK.sampleRate === 48_000 &&

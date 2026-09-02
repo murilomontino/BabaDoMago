@@ -185,6 +185,7 @@ export const EVENT_ACTION = {
 	removeTeam: "Excluir time",
 	drawTeams: "Sortear times",
 	openDraw: "Abrir sorteio",
+	openPotDraw: "Sorteio por potes",
 	copyDrawLink: "Copiar link do sorteio",
 	endEvent: "Encerrar Rodada",
 	setMvp: "Escolher MVP",

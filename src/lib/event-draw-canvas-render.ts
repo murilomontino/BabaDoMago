@@ -13,6 +13,7 @@ import {
 	eventTeamColorFg,
 	eventTeamColorPastel,
 } from "@/const/event-team-color";
+import { EVENT_POT_DRAW_LABEL } from "@/const/event-team-pot-draw";
 import {
 	type EventTeamShareCard,
 	eventTeamShareAverageLabel,
@@ -26,6 +27,7 @@ import {
 import {
 	EVENT_DRAW_VIDEO_CONFIG,
 	eventDrawOutroStartSec,
+	eventDrawPotsDurationSec,
 	eventDrawTotalPlayers,
 } from "@/lib/event-draw-video-timeline";
 import { loadAvatar } from "@/lib/load-avatar";
@@ -39,8 +41,51 @@ export type EventDrawRenderData = {
 	seed: number;
 	inputHash: string;
 	cards: readonly EventTeamShareCard[];
+	pots?: readonly EventTeamShareCard[];
 	ceiling: number;
+	title?: string;
 };
+
+export function eventDrawRenderTitle(data: EventDrawRenderData): string {
+	if (data.title) {
+		return data.title;
+	}
+
+	return EVENT_DRAW_REVEAL_LABEL.title;
+}
+
+function eventDrawRenderPots(
+	data: EventDrawRenderData,
+): readonly EventTeamShareCard[] {
+	if (!data.pots) {
+		return [];
+	}
+
+	return data.pots;
+}
+
+function eventDrawPotsPhaseEndSec(potCount: number): number {
+	return (
+		EVENT_DRAW_VIDEO_CONFIG.introDurationSec +
+		eventDrawPotsDurationSec(potCount)
+	);
+}
+
+function eventDrawFrameHeading(
+	data: EventDrawRenderData,
+	progressSec: number,
+): string {
+	const pots = eventDrawRenderPots(data);
+	if (pots.length === 0) {
+		return eventDrawRenderTitle(data);
+	}
+
+	if (progressSec < eventDrawPotsPhaseEndSec(pots.length)) {
+		return EVENT_POT_DRAW_LABEL.potsTitle;
+	}
+
+	return eventDrawRenderTitle(data);
+}
 
 const STAR_VIEWBOX = 24;
 
@@ -126,6 +171,19 @@ function drawStars(
 	ctx.restore();
 }
 
+function playerRowAvatarX(
+	x: number,
+	padX: number,
+	chipW: number,
+	hidePosition: boolean,
+): number {
+	if (hidePosition) {
+		return x + padX;
+	}
+
+	return x + padX + chipW + 6;
+}
+
 function drawAvatar(
 	ctx: CanvasRenderingContext2D,
 	x: number,
@@ -172,6 +230,7 @@ function drawPlayerRow(
 	ceiling: number,
 	avatars: ReadonlyMap<string, HTMLImageElement>,
 	progress: number,
+	hidePosition: boolean,
 ) {
 	const eased = easeOutCubic(clamp01(progress));
 
@@ -189,26 +248,27 @@ function drawPlayerRow(
 
 	const midY = innerY + innerH / 2;
 	const padX = 6;
-
-	const position = eventTeamPlayerPosition(
-		eventDrawRevealSlotIsGoalkeeper(player.number),
-	);
-	const chipLabel = EVENT_TEAM_POSITION_LABEL[position];
-	const chipX = x + padX;
 	const chipW = 26;
-
-	ctx.fillStyle = VIDEO_COLOR.surface;
-	ctx.beginPath();
-	ctx.roundRect(chipX, midY - 9, chipW, 18, 4);
-	ctx.fill();
-	ctx.fillStyle = VIDEO_COLOR.fgMuted;
-	ctx.font = "500 10px system-ui, sans-serif";
-	ctx.textAlign = "center";
-	ctx.textBaseline = "middle";
-	ctx.fillText(chipLabel, chipX + chipW / 2, midY);
-
+	const chipX = x + padX;
 	const avatarSize = 22;
-	const avatarX = chipX + chipW + 6;
+	const avatarX = playerRowAvatarX(x, padX, chipW, hidePosition);
+
+	if (!hidePosition) {
+		const position = eventTeamPlayerPosition(
+			eventDrawRevealSlotIsGoalkeeper(player.number),
+		);
+		const chipLabel = EVENT_TEAM_POSITION_LABEL[position];
+		ctx.fillStyle = VIDEO_COLOR.surface;
+		ctx.beginPath();
+		ctx.roundRect(chipX, midY - 9, chipW, 18, 4);
+		ctx.fill();
+		ctx.fillStyle = VIDEO_COLOR.fgMuted;
+		ctx.font = "500 10px system-ui, sans-serif";
+		ctx.textAlign = "center";
+		ctx.textBaseline = "middle";
+		ctx.fillText(chipLabel, chipX + chipW / 2, midY);
+	}
+
 	drawAvatar(
 		ctx,
 		avatarX,
@@ -253,7 +313,12 @@ type CardRender = {
 	/** progresso de entrada 0..1 de cada linha revelada */
 	rowProgress: number[];
 	cardProgress: number;
+	hidePosition: boolean;
 };
+
+function cardRenderHidesPosition(hidePosition: boolean | undefined): boolean {
+	return hidePosition === true;
+}
 
 function drawCard(
 	ctx: CanvasRenderingContext2D,
@@ -320,6 +385,7 @@ function drawCard(
 			ceiling,
 			avatars,
 			rowProgress[i] ?? 1,
+			cardRenderHidesPosition(entry.hidePosition),
 		);
 	}
 
@@ -371,7 +437,7 @@ async function loadAvatars(
 export async function prepareEventDrawAvatars(
 	data: EventDrawRenderData,
 ): Promise<ReadonlyMap<string, HTMLImageElement>> {
-	return loadAvatars(data.cards);
+	return loadAvatars([...data.cards, ...eventDrawRenderPots(data)]);
 }
 
 /**
@@ -381,8 +447,9 @@ export async function prepareEventDrawAvatars(
 function computeCardRenders(
 	cards: readonly EventTeamShareCard[],
 	progressSec: number,
+	revealStartSec: number,
 ): CardRender[] {
-	const { introDurationSec, playerRevealSec } = EVENT_DRAW_VIDEO_CONFIG;
+	const { playerRevealSec } = EVENT_DRAW_VIDEO_CONFIG;
 	const slots: readonly EventDrawRevealSlot[] =
 		eventDrawRevealRoundRobinSlots(cards);
 
@@ -391,10 +458,11 @@ function computeCardRenders(
 		revealed: 0,
 		rowProgress: [],
 		cardProgress: 0,
+		hidePosition: false,
 	}));
 
 	slots.forEach((slot, index) => {
-		const startSec = introDurationSec + index * playerRevealSec;
+		const startSec = revealStartSec + index * playerRevealSec;
 		const progress = clamp01(
 			(progressSec - startSec) / EVENT_DRAW_REVEAL_MOTION.duration,
 		);
@@ -415,9 +483,42 @@ function computeCardRenders(
 	return entries;
 }
 
+function computePotCardRenders(
+	pots: readonly EventTeamShareCard[],
+	progressSec: number,
+): CardRender[] {
+	const { introDurationSec, playerRevealSec } = EVENT_DRAW_VIDEO_CONFIG;
+
+	return pots.map((card, index) => {
+		const startSec = introDurationSec + index * playerRevealSec;
+		if (progressSec < startSec) {
+			return {
+				card,
+				revealed: 0,
+				rowProgress: [],
+				cardProgress: 0,
+				hidePosition: true,
+			};
+		}
+
+		const progress = clamp01(
+			(progressSec - startSec) / EVENT_DRAW_REVEAL_MOTION.duration,
+		);
+
+		return {
+			card,
+			revealed: card.players.length,
+			rowProgress: card.players.map(() => progress),
+			cardProgress: progress,
+			hidePosition: true,
+		};
+	});
+}
+
 function drawHeader(
 	ctx: CanvasRenderingContext2D,
 	data: EventDrawRenderData,
+	progressSec: number,
 	width: number,
 ) {
 	ctx.textAlign = "center";
@@ -432,7 +533,7 @@ function drawHeader(
 
 	ctx.fillStyle = VIDEO_COLOR.fg;
 	ctx.font = "600 20px system-ui, sans-serif";
-	ctx.fillText(EVENT_DRAW_REVEAL_LABEL.title, width / 2, 64);
+	ctx.fillText(eventDrawFrameHeading(data, progressSec), width / 2, 64);
 
 	ctx.textAlign = "start";
 	ctx.textBaseline = "alphabetic";
@@ -493,7 +594,7 @@ function drawIntro(
 
 	ctx.fillStyle = VIDEO_COLOR.fg;
 	ctx.font = "600 20px system-ui, sans-serif";
-	ctx.fillText(EVENT_DRAW_REVEAL_LABEL.title, width / 2, height / 2 + 20);
+	ctx.fillText(eventDrawRenderTitle(data), width / 2, height / 2 + 20);
 
 	ctx.fillStyle = VIDEO_COLOR.fgSubtle;
 	ctx.font = "400 12px system-ui, sans-serif";
@@ -515,7 +616,10 @@ function drawOutroBar(
 	width: number,
 	height: number,
 ) {
-	const outroStart = eventDrawOutroStartSec(data.cards);
+	const outroStart = eventDrawOutroStartSec(
+		data.cards,
+		eventDrawRenderPots(data).length,
+	);
 	if (progressSec < outroStart) {
 		return;
 	}
@@ -571,30 +675,34 @@ function gridScale(
 	return available / content;
 }
 
-export function renderEventDrawFrame(
-	ctx: CanvasRenderingContext2D,
-	data: EventDrawRenderData,
-	progressSec: number,
-	avatars: ReadonlyMap<string, HTMLImageElement>,
-): void {
-	const { width, height, introDurationSec } = EVENT_DRAW_VIDEO_CONFIG;
-
-	drawBackground(ctx, width, height);
-
-	if (progressSec < introDurationSec) {
-		drawIntro(ctx, data, progressSec, width, height);
-		return;
+function revealGridColumns(cardCount: number): number {
+	if (cardCount <= 1) {
+		return 1;
 	}
 
-	drawHeader(ctx, data, width);
+	return 2;
+}
 
-	const entries = computeCardRenders(data.cards, progressSec);
-	const columns = data.cards.length <= 1 ? 1 : 2;
-	const cardWidth =
-		columns === 1
-			? width - LAYOUT.padding * 2
-			: (width - LAYOUT.padding * 2 - LAYOUT.gap) / 2;
-	const scale = gridScale(data.cards, height);
+function revealCardWidth(width: number, columns: number): number {
+	if (columns === 1) {
+		return width - LAYOUT.padding * 2;
+	}
+
+	return (width - LAYOUT.padding * 2 - LAYOUT.gap) / 2;
+}
+
+function drawRevealGrid(
+	ctx: CanvasRenderingContext2D,
+	cards: readonly EventTeamShareCard[],
+	entries: readonly CardRender[],
+	width: number,
+	height: number,
+	ceiling: number,
+	avatars: ReadonlyMap<string, HTMLImageElement>,
+) {
+	const columns = revealGridColumns(cards.length);
+	const cardWidth = revealCardWidth(width, columns);
+	const scale = gridScale(cards, height);
 
 	ctx.save();
 	ctx.translate(width / 2, LAYOUT.headerBottom);
@@ -618,13 +726,11 @@ export function renderEventDrawFrame(
 				top,
 				cardWidth,
 				entry,
-				data.ceiling,
+				ceiling,
 				avatars,
 			);
 		}
 
-		// A altura da linha acompanha o card final, para o grid nao "pular"
-		// a cada revelacao (mesma sensacao da tela, que ja reserva o espaco).
 		const rowMax = Math.max(
 			...rowEntries.map((entry) => cardHeight(entry.card.players.length)),
 			0,
@@ -633,6 +739,49 @@ export function renderEventDrawFrame(
 	}
 
 	ctx.restore();
+}
+
+export function renderEventDrawFrame(
+	ctx: CanvasRenderingContext2D,
+	data: EventDrawRenderData,
+	progressSec: number,
+	avatars: ReadonlyMap<string, HTMLImageElement>,
+): void {
+	const { width, height, introDurationSec } = EVENT_DRAW_VIDEO_CONFIG;
+	const pots = eventDrawRenderPots(data);
+	const potEnd = eventDrawPotsPhaseEndSec(pots.length);
+
+	drawBackground(ctx, width, height);
+
+	if (progressSec < introDurationSec) {
+		drawIntro(ctx, data, progressSec, width, height);
+		return;
+	}
+
+	drawHeader(ctx, data, progressSec, width);
+
+	if (pots.length > 0 && progressSec < potEnd) {
+		drawRevealGrid(
+			ctx,
+			pots,
+			computePotCardRenders(pots, progressSec),
+			width,
+			height,
+			data.ceiling,
+			avatars,
+		);
+		return;
+	}
+
+	drawRevealGrid(
+		ctx,
+		data.cards,
+		computeCardRenders(data.cards, progressSec, potEnd),
+		width,
+		height,
+		data.ceiling,
+		avatars,
+	);
 
 	drawOutroBar(ctx, data, progressSec, width, height);
 }

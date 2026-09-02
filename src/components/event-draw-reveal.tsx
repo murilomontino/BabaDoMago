@@ -31,13 +31,15 @@ import {
 	EVENT_DRAW_REVEAL_MOTION,
 	EVENT_DRAW_REVEAL_PHASE,
 	type EventDrawRevealPhase,
-	eventDrawRevealCanNext,
+	eventDrawRevealAdvanceEnabled,
 	eventDrawRevealCardKey,
 	eventDrawRevealGridClass,
+	eventDrawRevealHeading,
 	eventDrawRevealItemCount,
 	eventDrawRevealShareIsPrimary,
 	eventDrawRevealShowControls,
 	eventDrawRevealShowShare,
+	eventDrawRevealShowsPosition,
 	eventDrawRevealSlotIsGoalkeeper,
 	eventDrawRevealVisibleCards,
 	eventDrawRevealWaitingHint,
@@ -69,6 +71,9 @@ type EventDrawRevealProps = {
 	onShare: () => void;
 	isSharing: boolean;
 	shareError: string | null;
+	title?: string;
+	showPosition?: boolean;
+	canAdvance?: boolean;
 };
 
 function revealEnterInitial(reduceMotion: boolean | null) {
@@ -96,6 +101,9 @@ export function EventDrawReveal({
 	onShare,
 	isSharing,
 	shareError,
+	title,
+	showPosition,
+	canAdvance,
 }: EventDrawRevealProps) {
 	useEffect(() => {
 		if (phase === EVENT_DRAW_REVEAL_PHASE.playing && visibleCount > 0) {
@@ -118,7 +126,9 @@ export function EventDrawReveal({
 		phase,
 		Boolean(reduceMotion),
 	);
-	const canNext = eventDrawRevealCanNext(
+	const showPlayerPosition = eventDrawRevealShowsPosition(showPosition);
+	const canNext = eventDrawRevealAdvanceEnabled(
+		canAdvance,
 		visibleCount,
 		eventDrawRevealItemCount(cards),
 	);
@@ -131,7 +141,7 @@ export function EventDrawReveal({
 					{when.date} · {when.time}
 				</p>
 				<h1 className="mt-1 text-xl font-semibold tracking-tight text-fg sm:mt-2 sm:text-2xl">
-					{EVENT_DRAW_REVEAL_LABEL.title}
+					{eventDrawRevealHeading(title)}
 				</h1>
 			</header>
 			<ul
@@ -179,11 +189,13 @@ export function EventDrawReveal({
 													}}
 													className={EVENT_TEAM_PLAYER_SLOT_CLASS}
 												>
-													<span
-														className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}
-													>
-														{EVENT_TEAM_POSITION_LABEL[position]}
-													</span>
+													{showPlayerPosition && (
+														<span
+															className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}
+														>
+															{EVENT_TEAM_POSITION_LABEL[position]}
+														</span>
+													)}
 													<EventTeamPlayerRow
 														player={player}
 														ceiling={ceiling}

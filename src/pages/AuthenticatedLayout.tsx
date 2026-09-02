@@ -22,13 +22,17 @@ export function AuthenticatedLayout() {
 		from: "/_authenticated/championships/$championshipId/events/$eventId/draw",
 		shouldThrow: false,
 	});
+	const potDrawRoute = useMatch({
+		from: "/_authenticated/championships/$championshipId/events/$eventId/draw-pots",
+		shouldThrow: false,
+	});
 
 	async function handleSignOut() {
 		await signOut();
 		await navigate({ to: ROUTES.login });
 	}
 
-	if (playRoute || drawRoute) {
+	if (playRoute || drawRoute || potDrawRoute) {
 		return <Outlet />;
 	}
 
