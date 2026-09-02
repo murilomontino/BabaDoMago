@@ -31,6 +31,7 @@ import type {
 	ChampionshipEventTeam,
 	ChampionshipEventTeamPlayer,
 } from "@/types/championship-event";
+import type { Json } from "@/types/database.types";
 
 const EVENT_LIST_COLUMNS = `
 	id,
@@ -878,4 +879,39 @@ export async function deleteChampionshipEvent(eventId: number): Promise<void> {
 	if (error) {
 		throwEventError(error);
 	}
+}
+
+export async function saveEventDrawAudit(params: {
+	eventId: number;
+	championshipId: number;
+	seed: number;
+	algorithmVersion: number;
+	inputSnapshot: {
+		players: readonly { id: number; rating: number }[];
+		playersPerTeam: number;
+		volunteerIds: readonly number[];
+	};
+	outputSnapshot: {
+		teams: readonly {
+			playerIds: readonly number[];
+			goalkeeperId: number;
+		}[];
+	};
+	inputHash: string;
+}): Promise<number> {
+	const { data, error } = await supabase.rpc("save_event_draw_audit", {
+		p_event_id: params.eventId,
+		p_championship_id: params.championshipId,
+		p_seed: params.seed,
+		p_algorithm_version: params.algorithmVersion,
+		p_input_snapshot: params.inputSnapshot as unknown as Json,
+		p_output_snapshot: params.outputSnapshot as unknown as Json,
+		p_input_hash: params.inputHash,
+	});
+
+	if (error) {
+		throwEventError(error);
+	}
+
+	return data as number;
 }

@@ -1,9 +1,10 @@
 import { Link, useParams } from "@tanstack/react-router";
-import { ArrowLeft, LoaderCircle } from "lucide-react";
+import { ArrowLeft, LoaderCircle, RefreshCw, Video } from "lucide-react";
 import { useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppDialog } from "@/components/atoms/app-dialog";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
+import { Button } from "@/components/button";
 import {
 	EventDrawReveal,
 	EventDrawWaiting,
@@ -15,6 +16,7 @@ import {
 	attendanceGoalkeeperIds,
 	builderTeamsFromEvent,
 	EVENT_TEAM_MESSAGE,
+	type EventTeamDraft,
 	eventTeamsAreReady,
 	formatEventStartsAt,
 	keepGoalkeepersPresent,
@@ -52,7 +54,7 @@ import {
 import { championshipRatingCeiling } from "@/const/player-rating";
 import { ROUTES } from "@/const/routes";
 import { SKELETON_LABEL } from "@/const/skeleton";
-import { ERROR_CLASS, MODAL_CLASS } from "@/const/ui";
+import { BUTTON_VARIANT, ERROR_CLASS, MODAL_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
 import {
 	useChampionshipEvent,
@@ -62,8 +64,11 @@ import { useChampionship } from "@/hooks/championships/use-championships";
 import { useEventDrawPresence } from "@/hooks/championships/use-event-draw-presence";
 import { useWakeLock } from "@/hooks/use-wake-lock";
 import { caughtErrorMessage } from "@/lib/error-message";
+import { generateEventDrawVideo } from "@/lib/event-draw-video";
 import { runEventTeamDraw } from "@/lib/event-team-draw";
+import { eventTeamDrawHash } from "@/lib/event-team-draw-hash";
 import { shareEventTeamsImage } from "@/lib/share-event-teams-image";
+import { saveEventDrawAudit } from "@/services/championship-events";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 const DRAW_SHELL_CLASS =
@@ -94,6 +99,12 @@ export function ChampionshipEventDrawPage() {
 	const [copiedDrawLink, setCopiedDrawLink] = useState(false);
 	const [isDrawing, setIsDrawing] = useState(false);
 	const [drawError, setDrawError] = useState<string | null>(null);
+	const [videoStatus, setVideoStatus] = useState<
+		"idle" | "generating" | "ready" | "error"
+	>("idle");
+	const [videoProgress, setVideoProgress] = useState(0);
+	const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
+	const videoAbortRef = useRef<AbortController | null>(null);
 	const drawWorkerRef = useRef<Worker | null>(null);
 	const readyRef = useRef<boolean | null>(null);
 
@@ -249,11 +260,58 @@ export function ChampionshipEventDrawPage() {
 		setCopiedDrawLink(true);
 	}
 
+	async function startVideoGeneration(params: {
+		seed: number;
+		algorithmVersion: number;
+		inputHash: string;
+		cards: readonly EventTeamShareCard[];
+		ceiling: number;
+		drawPlayers: readonly { id: number; rating: number }[];
+	}) {
+		if (videoAbortRef.current) {
+			videoAbortRef.current.abort();
+		}
+		const controller = new AbortController();
+		videoAbortRef.current = controller;
+
+		setVideoStatus("generating");
+		setVideoProgress(0);
+		setVideoBlob(null);
+
+		try {
+			const blob = await generateEventDrawVideo({
+				data: {
+					championshipName: championship?.name ?? "Campeonato",
+					eventDateLabel: event?.starts_at ? new Date(event.starts_at).toLocaleDateString("pt-BR") : "",
+					algorithmVersion: params.algorithmVersion,
+					seed: params.seed,
+					inputHash: params.inputHash,
+					cards,
+					ceiling,
+				},
+				onProgress: (percent) => setVideoProgress(percent),
+				signal: controller.signal,
+			});
+
+			if (blob) {
+				setVideoBlob(blob);
+				setVideoStatus("ready");
+			} else {
+				setVideoStatus("error");
+			}
+		} catch {
+			if (!controller.signal.aborted) {
+				setVideoStatus("error");
+			}
+		}
+	}
+
 	async function drawTeams() {
-		if (!event) {
+		if (!event || !championship) {
 			return;
 		}
 
+		const championshipEntityId = championship.id;
 		const presentIds = event.attendance.map((row) => row.player_id);
 		const rosterIds = activePlayers.map((player) => player.id);
 		const attendanceInvalid = validateEventAttendance(presentIds, rosterIds);
@@ -270,19 +328,20 @@ export function ChampionshipEventDrawPage() {
 		setIsDrawing(true);
 		setDrawError(null);
 		try {
-			const { worker, done } = runEventTeamDraw({
-				players: activePlayers.flatMap((player) => {
-					if (!present.has(player.id)) {
-						return [];
-					}
+			const drawPlayers = activePlayers.flatMap((player) => {
+				if (!present.has(player.id)) {
+					return [];
+				}
 
-					return [{ id: player.id, rating: player.rating }];
-				}),
+				return [{ id: player.id, rating: player.rating }];
+			});
+			const { worker, done } = runEventTeamDraw({
+				players: drawPlayers,
 				playersPerTeam: event.players_per_team,
 				volunteerIds,
 			});
 			drawWorkerRef.current = worker;
-			const drafts = await done;
+			const { teams: drafts, seed, algorithmVersion } = await done;
 			const teamsInvalid =
 				validateEventTeams(drafts, event.players_per_team) ??
 				validateTeamsInAttendance(drafts, presentIds);
@@ -298,6 +357,44 @@ export function ChampionshipEventDrawPage() {
 				goalkeeperPlayerIds: volunteerIds,
 				isDraw: true,
 			});
+
+			eventTeamDrawHash({
+				seed,
+				algorithmVersion,
+				players: drawPlayers,
+				playersPerTeam: event.players_per_team,
+				volunteerIds,
+			}).then((inputHash) =>
+				saveEventDrawAudit({
+					eventId,
+					championshipId: championshipEntityId,
+					seed,
+					algorithmVersion,
+					inputSnapshot: {
+						players: drawPlayers,
+						playersPerTeam: event.players_per_team,
+						volunteerIds,
+					},
+					outputSnapshot: {
+						teams: drafts.map((team) => ({
+							playerIds: [...team.playerIds],
+							goalkeeperId: team.goalkeeperId,
+						})),
+					},
+					inputHash,
+				})
+					.then(() => {
+						void startVideoGeneration({
+							seed,
+							algorithmVersion,
+							inputHash,
+							cards,
+							ceiling,
+							drawPlayers,
+						});
+					})
+					.catch(console.error),
+			);
 		} catch (error) {
 			setDrawError(caughtErrorMessage(error, EVENT_TEAM_MESSAGE.drawFailed));
 		} finally {
@@ -356,6 +453,35 @@ export function ChampionshipEventDrawPage() {
 		} finally {
 			setIsSharing(false);
 		}
+	}
+
+	async function handleShareVideo() {
+		if (!videoBlob) return;
+		const fileName =
+			`sorteio-${championship?.name ?? "baba"}-${event?.id ?? 0}.mp4`
+				.toLowerCase()
+				.replace(/[^a-z0-9.]+/g, "-");
+		const file = new File([videoBlob], fileName, { type: "video/mp4" });
+
+		if (navigator.canShare && navigator.canShare({ files: [file] })) {
+			try {
+				await navigator.share({
+					files: [file],
+					title: "Sorteio de Times Auditado",
+					text: `Confira o sorteio auditado do ${championship?.name ?? "campeonato"}!`,
+				});
+				return;
+			} catch {
+				// Fallback se o usuario cancelar
+			}
+		}
+
+		const url = URL.createObjectURL(videoBlob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = fileName;
+		a.click();
+		URL.revokeObjectURL(url);
 	}
 
 	return (
@@ -436,6 +562,49 @@ export function ChampionshipEventDrawPage() {
 					isSharing={isSharing}
 					shareError={shareError}
 				/>
+			)}
+			{videoStatus === "generating" && (
+				<div className="mx-auto w-full max-w-sm rounded-xl border border-border bg-surface-elevated p-4 text-center my-4 shadow-sm">
+					<div className="flex justify-between text-xs font-medium text-fg-muted mb-2">
+						<span>Gerando vídeo auditável...</span>
+						<span>{videoProgress}%</span>
+					</div>
+					<div className="h-2 w-full overflow-hidden rounded-full bg-surface-muted">
+						<div
+							className="h-full bg-pitch transition-all duration-300"
+							style={{ width: `${videoProgress}%` }}
+						/>
+					</div>
+				</div>
+			)}
+			{videoStatus === "ready" && (
+				<div className="mx-auto w-full max-w-sm text-center my-4">
+					<Button
+						type="button"
+						onClick={() => {
+							void handleShareVideo();
+						}}
+						className="w-full justify-center gap-2 bg-pitch text-pitch-fg hover:bg-pitch-hover font-semibold py-3"
+					>
+						<Video className="size-5" />
+						Compartilhar vídeo MP4
+					</Button>
+				</div>
+			)}
+			{videoStatus === "error" && (
+				<div className="mx-auto w-full max-w-sm text-center my-4">
+					<Button
+						type="button"
+						variant={BUTTON_VARIANT.secondary}
+						onClick={() => {
+							setVideoStatus("idle");
+						}}
+						className="w-full justify-center gap-2 text-fg-muted border-border"
+					>
+						<RefreshCw className="size-4" />
+						Vídeo indisponível
+					</Button>
+				</div>
 			)}
 		</main>
 	);
