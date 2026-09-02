@@ -111,7 +111,7 @@ const seeded = championshipRatingScatterPoints(
 );
 check(seeded.length === 1, "seeded point");
 check(seeded[0]?.initialRating === 3, "seeded initial is ratingTo");
-check(seeded[0]?.currentRating === 3.5, "seeded current");
+check(seeded[0]?.currentRating === 3, "seeded current from history");
 
 const ranked = championshipRatingScatterPoints(
 	[player(7, 5.5), player(11, 3.5)],

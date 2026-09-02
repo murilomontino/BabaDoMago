@@ -31,8 +31,11 @@ export const CHAMPIONSHIP_RATING_SCATTER_CHART = {
 	height: 280,
 	xKey: "x",
 	yKey: "rating",
+	nameKey: "name",
 	dotRadius: 5,
-	margin: { top: 16, right: 28, bottom: 8, left: 0 },
+	labelOffset: 8,
+	labelFontSize: 11,
+	margin: { top: 24, right: 28, bottom: 8, left: 0 },
 	domainPad: 0.5,
 	axisWidth: 36,
 } as const;
@@ -152,14 +155,14 @@ function scatterPointForPlayer(
 	player: ChampionshipRatingScatterPlayer,
 	events: readonly PlayerProfileEventInput[],
 ): ChampionshipRatingScatterPoint | null {
-	const currentRating = officialEventRating(player.rating);
-	if (currentRating === null) {
-		return null;
-	}
-
 	const history = playerProfileHistory(events, player.id);
 	const initialRating = playerInitialOfficialRating(history);
 	if (initialRating === null) {
+		return null;
+	}
+
+	const currentRating = playerLatestOfficialRating(history);
+	if (currentRating === null) {
 		return null;
 	}
 
@@ -171,6 +174,19 @@ function scatterPointForPlayer(
 		initialRating,
 		currentRating,
 	};
+}
+
+function playerLatestOfficialRating(
+	history: readonly PlayerProfileHistoryRow[],
+): number | null {
+	const latest = history.find(
+		(row) => officialEventRating(row.ratingTo) !== null,
+	);
+	if (!latest) {
+		return null;
+	}
+
+	return officialEventRating(latest.ratingTo);
 }
 
 function playerInitialOfficialRating(

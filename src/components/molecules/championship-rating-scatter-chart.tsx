@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
 	CartesianGrid,
+	LabelList,
 	ResponsiveContainer,
 	Scatter,
 	ScatterChart,
@@ -21,8 +22,18 @@ import {
 	championshipRatingScatterSeries,
 	championshipRatingScatterTitle,
 } from "@/const/championship-rating-scatter";
+import {
+	CHAMPIONSHIP_SCATTER_PERIOD_DEFAULT,
+	CHAMPIONSHIP_SCATTER_PERIOD_LABEL,
+	CHAMPIONSHIP_SCATTER_PERIOD_OPTIONS,
+	type ChampionshipScatterPeriod,
+	championshipScatterPeriodCaption,
+	championshipScatterPeriodEvents,
+	parseChampionshipScatterPeriod,
+} from "@/const/championship-scatter-period";
 import { formatEventRating } from "@/const/event-rating-adjustment";
 import type { PlayerProfileEventInput } from "@/const/player-profile";
+import { FIELD_CLASS } from "@/const/ui";
 
 type ChampionshipRatingScatterChartProps = {
 	players: readonly {
@@ -93,18 +104,6 @@ function ScatterDot(props: {
 	);
 }
 
-function scatterTickLabel(
-	series: readonly ChampionshipRatingScatterSeriesPoint[],
-	x: number,
-): string {
-	const point = series[x];
-	if (!point) {
-		return "";
-	}
-
-	return point.name;
-}
-
 function RatingScatterPanel({
 	kind,
 	points,
@@ -135,9 +134,8 @@ function RatingScatterPanel({
 						<XAxis
 							type="number"
 							dataKey={CHAMPIONSHIP_RATING_SCATTER_CHART.xKey}
-							tick={{ fontSize: 11 }}
-							interval={0}
-							tickFormatter={(value) => scatterTickLabel(series, Number(value))}
+							tick={false}
+							axisLine
 						/>
 						<YAxis
 							type="number"
@@ -156,7 +154,15 @@ function RatingScatterPanel({
 							name={championshipRatingScatterTitle(kind)}
 							data={[...series]}
 							shape={ScatterDot}
-						/>
+						>
+							<LabelList
+								dataKey={CHAMPIONSHIP_RATING_SCATTER_CHART.nameKey}
+								position="top"
+								offset={CHAMPIONSHIP_RATING_SCATTER_CHART.labelOffset}
+								fontSize={CHAMPIONSHIP_RATING_SCATTER_CHART.labelFontSize}
+								fill="currentColor"
+							/>
+						</Scatter>
 					</ScatterChart>
 				</ResponsiveContainer>
 			</div>
@@ -168,14 +174,37 @@ export function ChampionshipRatingScatterChart({
 	players,
 	events,
 }: ChampionshipRatingScatterChartProps) {
+	const [period, setPeriod] = useState<ChampionshipScatterPeriod>(
+		CHAMPIONSHIP_SCATTER_PERIOD_DEFAULT,
+	);
+	const periodEvents = useMemo(
+		() => championshipScatterPeriodEvents(events, period),
+		[events, period],
+	);
 	const points = useMemo(
-		() => championshipRatingScatterPoints(players, events),
-		[events, players],
+		() => championshipRatingScatterPoints(players, periodEvents),
+		[periodEvents, players],
 	);
 	const emptyLabel = championshipRatingScatterEmptyLabel(points);
 
 	return (
 		<div className="mt-8 space-y-8">
+			<label className="block text-xs text-fg-muted">
+				{CHAMPIONSHIP_SCATTER_PERIOD_LABEL.filter}
+				<select
+					value={period}
+					className={`mt-1 ${FIELD_CLASS}`}
+					onChange={(event) => {
+						setPeriod(parseChampionshipScatterPeriod(event.target.value));
+					}}
+				>
+					{CHAMPIONSHIP_SCATTER_PERIOD_OPTIONS.map((option) => (
+						<option key={option} value={option}>
+							{championshipScatterPeriodCaption(option)}
+						</option>
+					))}
+				</select>
+			</label>
 			{emptyLabel && <p className="text-sm text-fg-muted">{emptyLabel}</p>}
 			{!emptyLabel &&
 				SCATTER_KINDS.map((kind) => (
