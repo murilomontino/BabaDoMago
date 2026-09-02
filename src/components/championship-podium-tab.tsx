@@ -8,6 +8,7 @@ import {
 	championshipPodiumHistoryMetric,
 } from "@/const/championship-metric-history";
 import { CHAMPIONSHIP_RATING_HISTORY_CHART } from "@/const/championship-rating-history";
+import { CHAMPIONSHIP_RATING_SCATTER_CHART } from "@/const/championship-rating-scatter";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import {
 	championshipSynergyRanking,
@@ -79,6 +80,14 @@ const ChampionshipMetricHistoryChart = lazy(() =>
 	import("@/components/molecules/championship-rating-history-chart").then(
 		(m) => ({
 			default: m.ChampionshipMetricHistoryChart,
+		}),
+	),
+);
+
+const ChampionshipRatingScatterChart = lazy(() =>
+	import("@/components/molecules/championship-rating-scatter-chart").then(
+		(m) => ({
+			default: m.ChampionshipRatingScatterChart,
 		}),
 	),
 );
@@ -459,6 +468,11 @@ export function ChampionshipPodiumTab({
 					/>
 				</Suspense>
 			)}
+			{events && includeSynergy && (
+				<Suspense fallback={<PodiumRatingScatterSkeleton />}>
+					<ChampionshipRatingScatterChart players={players} events={events} />
+				</Suspense>
+			)}
 			{teamBalance && teamBalance.events > 0 && (
 				<div className="mt-8 space-y-3">
 					<h3 className="text-sm font-semibold text-fg">
@@ -501,6 +515,21 @@ function PodiumRatingHistorySkeleton() {
 	return (
 		<SkeletonRegion label={SKELETON_LABEL.chart} className="mt-8">
 			<div style={{ height: CHAMPIONSHIP_RATING_HISTORY_CHART.height }}>
+				<Skeleton className="h-full w-full" />
+			</div>
+		</SkeletonRegion>
+	);
+}
+
+function PodiumRatingScatterSkeleton() {
+	return (
+		<SkeletonRegion label={SKELETON_LABEL.chart} className="mt-8">
+			<div
+				className="space-y-8"
+				style={{
+					height: CHAMPIONSHIP_RATING_SCATTER_CHART.height * 2 + 32,
+				}}
+			>
 				<Skeleton className="h-full w-full" />
 			</div>
 		</SkeletonRegion>
