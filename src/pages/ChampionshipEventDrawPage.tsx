@@ -16,7 +16,6 @@ import {
 	attendanceGoalkeeperIds,
 	builderTeamsFromEvent,
 	EVENT_TEAM_MESSAGE,
-	type EventTeamDraft,
 	eventTeamsAreReady,
 	formatEventStartsAt,
 	keepGoalkeepersPresent,

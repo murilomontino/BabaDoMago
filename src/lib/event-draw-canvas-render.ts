@@ -9,7 +9,6 @@ import {
 	eventTeamColorPastel,
 } from "@/const/event-team-color";
 import {
-	EVENT_TEAM_SHARE,
 	type EventTeamShareCard,
 	eventTeamShareAverageLabel,
 } from "@/const/event-team-share";
@@ -286,7 +285,7 @@ function drawCard(
 		const isVisible = Boolean(slot);
 
 		if (isVisible) {
-			const progress = revealProgress[slotKey] ?? 1;
+			const progress = revealProgress.get(slotKey) ?? 1;
 			drawPlayerRow(
 				ctx,
 				x + 8,
@@ -332,14 +331,6 @@ function drawCard(
 	}
 }
 
-// Removida findCardIndex desnecessária
-function findCardIndex(
-	_card: EventTeamShareCard,
-	_title: string,
-): number {
-	return 0;
-}
-
 async function loadAvatars(
 	cards: readonly EventTeamShareCard[],
 ): Promise<ReadonlyMap<string, HTMLImageElement>> {
@@ -379,7 +370,7 @@ function computeRevealProgress(
 	visibleSlots: readonly EventDrawRevealSlot[],
 	progressSec: number,
 ): Map<string, number> {
-	const { introDurationSec, playerRevealSec, fps } = EVENT_DRAW_VIDEO_CONFIG;
+	const { introDurationSec, playerRevealSec } = EVENT_DRAW_VIDEO_CONFIG;
 	const progress = new Map<string, number>();
 
 	for (let i = 0; i < visibleSlots.length; i++) {
@@ -415,7 +406,7 @@ export function renderEventDrawFrame(
 	progressSec: number,
 	avatars: ReadonlyMap<string, HTMLImageElement>,
 ): void {
-	const { width, height, introDurationSec, playerRevealSec, outroDurationSec } =
+	const { width, height, introDurationSec, playerRevealSec } =
 		EVENT_DRAW_VIDEO_CONFIG;
 	const totalPlayers = data.cards.reduce(
 		(acc, c) => acc + c.players.length,
