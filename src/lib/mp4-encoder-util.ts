@@ -51,9 +51,42 @@ export async function createMp4EncoderConfig(
 	return null;
 }
 
+export type Mp4AudioOptions = {
+	sampleRate: number;
+	channels: number;
+	bitrate?: number;
+};
+
+export async function createAacEncoderConfig(
+	options: Mp4AudioOptions,
+): Promise<AudioEncoderConfig | null> {
+	if (typeof AudioEncoder === "undefined") {
+		return null;
+	}
+
+	const candidate: AudioEncoderConfig = {
+		codec: "mp4a.40.2",
+		sampleRate: options.sampleRate,
+		numberOfChannels: options.channels,
+		bitrate: options.bitrate ?? 128_000,
+	};
+
+	try {
+		const result = await AudioEncoder.isConfigSupported(candidate);
+		if (result.supported) {
+			return result.config ?? candidate;
+		}
+	} catch {
+		// sem suporte a AAC neste browser
+	}
+
+	return null;
+}
+
 export function createMp4Muxer(
 	target: ArrayBufferTarget,
 	options: Mp4EncoderOptions,
+	audio?: Mp4AudioOptions | null,
 ): Muxer<ArrayBufferTarget> {
 	const width = options.width % 2 === 0 ? options.width : options.width + 1;
 	const height = options.height % 2 === 0 ? options.height : options.height + 1;
@@ -65,6 +98,13 @@ export function createMp4Muxer(
 			width,
 			height,
 		},
+		audio: audio
+			? {
+					codec: "aac",
+					numberOfChannels: audio.channels,
+					sampleRate: audio.sampleRate,
+				}
+			: undefined,
 		fastStart: "in-memory",
 	});
 }

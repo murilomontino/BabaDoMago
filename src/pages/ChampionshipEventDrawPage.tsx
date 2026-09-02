@@ -14,6 +14,7 @@ import { EventTeamDrawLog } from "@/components/event-team-draw-log";
 import { TeamCardSkeleton } from "@/components/molecules/team-card-skeleton";
 import {
 	attendanceGoalkeeperIds,
+	builderTeamsFromDrafts,
 	builderTeamsFromEvent,
 	EVENT_TEAM_MESSAGE,
 	eventTeamsAreReady,
@@ -265,7 +266,8 @@ export function ChampionshipEventDrawPage() {
 		inputHash: string;
 		cards: readonly EventTeamShareCard[];
 		ceiling: number;
-		drawPlayers: readonly { id: number; rating: number }[];
+		championshipName: string;
+		eventDateLabel: string;
 	}) {
 		if (videoAbortRef.current) {
 			videoAbortRef.current.abort();
@@ -280,13 +282,13 @@ export function ChampionshipEventDrawPage() {
 		try {
 			const blob = await generateEventDrawVideo({
 				data: {
-					championshipName: championship?.name ?? "Campeonato",
-					eventDateLabel: event?.starts_at ? new Date(event.starts_at).toLocaleDateString("pt-BR") : "",
+					championshipName: params.championshipName,
+					eventDateLabel: params.eventDateLabel,
 					algorithmVersion: params.algorithmVersion,
 					seed: params.seed,
 					inputHash: params.inputHash,
-					cards,
-					ceiling,
+					cards: params.cards,
+					ceiling: params.ceiling,
 				},
 				onProgress: (percent) => setVideoProgress(percent),
 				signal: controller.signal,
@@ -357,14 +359,29 @@ export function ChampionshipEventDrawPage() {
 				isDraw: true,
 			});
 
-			eventTeamDrawHash({
+			// Cards do sorteio recem-feito: a query do evento ainda nao refletiu
+			// o resultado, entao o video usa os drafts diretamente.
+			const drawnCards = eventDrawRevealCards(
+				eventTeamsShareCards(
+					builderTeamsFromDrafts(drafts, event.players_per_team),
+					activePlayers,
+				),
+			);
+			const drawnCeiling = championshipRatingCeiling(
+				activePlayers.map((player) => player.rating),
+			);
+			const drawnWhen = formatEventStartsAt(event.starts_at);
+
+			void eventTeamDrawHash({
 				seed,
 				algorithmVersion,
 				players: drawPlayers,
 				playersPerTeam: event.players_per_team,
 				volunteerIds,
-			}).then((inputHash) =>
-				saveEventDrawAudit({
+			}).then(async (inputHash) => {
+				// O video nao depende da auditoria: se o registro falhar,
+				// o sorteio ja aconteceu e o video precisa sair mesmo assim.
+				const audit = saveEventDrawAudit({
 					eventId,
 					championshipId: championshipEntityId,
 					seed,
@@ -381,19 +398,20 @@ export function ChampionshipEventDrawPage() {
 						})),
 					},
 					inputHash,
-				})
-					.then(() => {
-						void startVideoGeneration({
-							seed,
-							algorithmVersion,
-							inputHash,
-							cards,
-							ceiling,
-							drawPlayers,
-						});
-					})
-					.catch(console.error),
-			);
+				}).catch(console.error);
+
+				await startVideoGeneration({
+					seed,
+					algorithmVersion,
+					inputHash,
+					cards: drawnCards,
+					ceiling: drawnCeiling,
+					championshipName: championship.name,
+					eventDateLabel: `${drawnWhen.date} · ${drawnWhen.time}`,
+				});
+
+				await audit;
+			});
 		} catch (error) {
 			setDrawError(caughtErrorMessage(error, EVENT_TEAM_MESSAGE.drawFailed));
 		} finally {

@@ -1,8 +1,13 @@
-import { formatEventRating } from "@/const/event-rating-adjustment";
 import {
+	EVENT_TEAM_POSITION_LABEL,
+	eventTeamPlayerPosition,
+} from "@/const/championship-event";
+import {
+	EVENT_DRAW_REVEAL_LABEL,
 	EVENT_DRAW_REVEAL_MOTION,
-	eventDrawRevealRoundRobinSlots,
 	type EventDrawRevealSlot,
+	eventDrawRevealRoundRobinSlots,
+	eventDrawRevealSlotIsGoalkeeper,
 } from "@/const/event-draw-reveal";
 import {
 	eventTeamColorFg,
@@ -18,16 +23,14 @@ import {
 	PLAYER_STARS,
 	ratingToStarFill,
 } from "@/const/player-rating";
+import {
+	EVENT_DRAW_VIDEO_CONFIG,
+	eventDrawOutroStartSec,
+	eventDrawTotalPlayers,
+} from "@/lib/event-draw-video-timeline";
 import { loadAvatar } from "@/lib/load-avatar";
 
-export const EVENT_DRAW_VIDEO_CONFIG = {
-	width: 540,
-	height: 960,
-	fps: 30,
-	introDurationSec: 2,
-	playerRevealSec: 1.5,
-	outroDurationSec: 5,
-} as const;
+export { EVENT_DRAW_VIDEO_CONFIG };
 
 export type EventDrawRenderData = {
 	championshipName: string;
@@ -56,8 +59,24 @@ const VIDEO_COLOR = {
 	accent: "#166534",
 } as const;
 
+/** Metricas do card, espelhando o layout da tela (p-1.5, gap-2, min-h-7). */
+const LAYOUT = {
+	padding: 12,
+	gap: 8,
+	headerBottom: 84,
+	cardPad: 8,
+	cardHeader: 22,
+	rowHeight: 30,
+	footerHeight: 20,
+	outroBarHeight: 34,
+} as const;
+
 function easeOutCubic(t: number): number {
 	return 1 - (1 - t) ** 3;
+}
+
+function clamp01(value: number): number {
+	return Math.max(0, Math.min(1, value));
 }
 
 function fitText(
@@ -69,10 +88,10 @@ function fitText(
 		return text;
 	}
 	let t = text;
-	while (t.length > 0 && ctx.measureText(`${t}\u2026`).width > maxWidth) {
+	while (t.length > 0 && ctx.measureText(`${t}…`).width > maxWidth) {
 		t = t.slice(0, -1);
 	}
-	return t ? `${t}\u2026` : "\u2026";
+	return t ? `${t}…` : "…";
 }
 
 function drawStars(
@@ -101,12 +120,7 @@ function drawStars(
 	paint(VIDEO_COLOR.starEmpty);
 	ctx.save();
 	ctx.beginPath();
-	ctx.rect(
-		x,
-		y,
-		(fill / PLAYER_RATING.starCount) * size * PLAYER_RATING.starCount,
-		size,
-	);
+	ctx.rect(x, y, fill * size, size);
 	ctx.clip();
 	paint(VIDEO_COLOR.starFill);
 	ctx.restore();
@@ -154,19 +168,19 @@ function drawPlayerRow(
 	x: number,
 	y: number,
 	width: number,
-	rowHeight: number,
 	player: EventTeamShareCard["players"][number],
 	ceiling: number,
 	avatars: ReadonlyMap<string, HTMLImageElement>,
-	opacity: number,
-	offsetY: number,
+	progress: number,
 ) {
+	const eased = easeOutCubic(clamp01(progress));
+
 	ctx.save();
-	ctx.globalAlpha = opacity;
-	ctx.translate(0, offsetY);
+	ctx.globalAlpha = clamp01(progress);
+	ctx.translate(0, (1 - eased) * EVENT_DRAW_REVEAL_MOTION.y);
 
 	const innerY = y + 3;
-	const innerH = rowHeight - 6;
+	const innerH = LAYOUT.rowHeight - 6;
 
 	ctx.fillStyle = VIDEO_COLOR.surfaceMuted;
 	ctx.beginPath();
@@ -176,19 +190,25 @@ function drawPlayerRow(
 	const midY = innerY + innerH / 2;
 	const padX = 6;
 
-	const positionChip = player.number === 1 ? "GK" : "JOG";
+	const position = eventTeamPlayerPosition(
+		eventDrawRevealSlotIsGoalkeeper(player.number),
+	);
+	const chipLabel = EVENT_TEAM_POSITION_LABEL[position];
+	const chipX = x + padX;
+	const chipW = 26;
+
 	ctx.fillStyle = VIDEO_COLOR.surface;
 	ctx.beginPath();
-	ctx.roundRect(padX, midY - 9, 28, 18, 4);
+	ctx.roundRect(chipX, midY - 9, chipW, 18, 4);
 	ctx.fill();
 	ctx.fillStyle = VIDEO_COLOR.fgMuted;
-	ctx.font = "600 10px system-ui, sans-serif";
+	ctx.font = "500 10px system-ui, sans-serif";
 	ctx.textAlign = "center";
 	ctx.textBaseline = "middle";
-	ctx.fillText(positionChip, padX + 14, midY);
+	ctx.fillText(chipLabel, chipX + chipW / 2, midY);
 
-	const avatarX = padX + 28 + 6;
 	const avatarSize = 22;
+	const avatarX = chipX + chipW + 6;
 	drawAvatar(
 		ctx,
 		avatarX,
@@ -198,51 +218,64 @@ function drawPlayerRow(
 		player.avatarUrl ? avatars.get(player.avatarUrl) : undefined,
 	);
 
-	const starSize = 13;
+	const starSize = 12;
 	const starsWidth = starSize * PLAYER_RATING.starCount;
-	const ratingW = 32;
 	const rightX = x + width - padX;
-	const starsX = rightX - ratingW - 6 - starsWidth;
+	const starsX = rightX - starsWidth;
 
 	drawStars(ctx, starsX, midY - starSize / 2, starSize, player.rating, ceiling);
-
-	ctx.fillStyle = VIDEO_COLOR.fg;
-	ctx.font = "600 11px system-ui, sans-serif";
-	ctx.textAlign = "end";
-	ctx.textBaseline = "middle";
-	ctx.fillText(formatEventRating(player.rating), rightX, midY);
 
 	const nameX = avatarX + avatarSize + 6;
 	const nameMaxW = Math.max(0, starsX - 6 - nameX);
 	ctx.fillStyle = VIDEO_COLOR.fg;
-	ctx.font = "600 12px system-ui, sans-serif";
+	ctx.font = "500 12px system-ui, sans-serif";
 	ctx.textAlign = "start";
 	ctx.textBaseline = "middle";
 	ctx.fillText(fitText(ctx, player.name, nameMaxW), nameX, midY);
-	ctx.textBaseline = "alphabetic";
 
+	ctx.textAlign = "start";
+	ctx.textBaseline = "alphabetic";
 	ctx.restore();
 }
+
+function cardHeight(revealedCount: number): number {
+	return (
+		LAYOUT.cardPad * 2 +
+		LAYOUT.cardHeader +
+		revealedCount * LAYOUT.rowHeight +
+		LAYOUT.footerHeight
+	);
+}
+
+type CardRender = {
+	card: EventTeamShareCard;
+	revealed: number;
+	/** progresso de entrada 0..1 de cada linha revelada */
+	rowProgress: number[];
+	cardProgress: number;
+};
 
 function drawCard(
 	ctx: CanvasRenderingContext2D,
 	x: number,
 	y: number,
 	width: number,
-	height: number,
-	card: EventTeamShareCard,
-	cardIndex: number,
+	entry: CardRender,
 	ceiling: number,
 	avatars: ReadonlyMap<string, HTMLImageElement>,
-	visibleSlots: readonly EventDrawRevealSlot[],
-	revealProgress: ReadonlyMap<string, number>,
 ) {
+	const { card, revealed, rowProgress, cardProgress } = entry;
+	const height = cardHeight(revealed);
+	const eased = easeOutCubic(clamp01(cardProgress));
+
+	ctx.save();
+	ctx.globalAlpha = clamp01(cardProgress);
+	ctx.translate(0, (1 - eased) * EVENT_DRAW_REVEAL_MOTION.y);
+
 	const bg = card.color
 		? eventTeamColorPastel(card.color)
 		: VIDEO_COLOR.surface;
-	const titleColor = card.color
-		? eventTeamColorFg(bg)
-		: VIDEO_COLOR.fg;
+	const fg = card.color ? eventTeamColorFg(bg) : VIDEO_COLOR.fg;
 
 	ctx.fillStyle = bg;
 	ctx.strokeStyle = VIDEO_COLOR.line;
@@ -254,81 +287,61 @@ function drawCard(
 
 	if (card.color) {
 		ctx.fillStyle = card.color;
+		ctx.strokeStyle = "rgba(0,0,0,0.25)";
 		ctx.beginPath();
-		ctx.arc(x + width - 12, y + 12, 5, 0, Math.PI * 2);
+		ctx.arc(x + width - 14, y + 14, 6, 0, Math.PI * 2);
 		ctx.fill();
+		ctx.stroke();
 	}
 
-	ctx.fillStyle = titleColor;
-	ctx.font = "700 12px system-ui, sans-serif";
+	ctx.fillStyle = fg;
+	ctx.font = "500 12px system-ui, sans-serif";
 	ctx.textAlign = "start";
 	ctx.textBaseline = "middle";
 	ctx.fillText(
-		fitText(ctx, card.title, width - 28),
-		x + 8,
-		y + 12,
+		fitText(ctx, card.title, width - LAYOUT.cardPad * 2 - 20),
+		x + LAYOUT.cardPad,
+		y + LAYOUT.cardPad + 8,
 	);
 	ctx.textBaseline = "alphabetic";
 
-	const rowWidth = width - 16;
-	const rowsStart = y + 26;
-	const rowHeight = 30;
+	const rowWidth = width - LAYOUT.cardPad * 2;
+	const rowsStart = y + LAYOUT.cardPad + LAYOUT.cardHeader;
 
-	for (let i = 0; i < card.players.length; i++) {
+	for (let i = 0; i < revealed; i++) {
 		const player = card.players[i];
 		if (!player) continue;
-
-		const slotKey = `${card.title}:${i}`;
-		const slot = visibleSlots.find(
-			(s) => s.teamIndex === cardIndex && s.playerIndex === i,
+		drawPlayerRow(
+			ctx,
+			x + LAYOUT.cardPad,
+			rowsStart + i * LAYOUT.rowHeight,
+			rowWidth,
+			player,
+			ceiling,
+			avatars,
+			rowProgress[i] ?? 1,
 		);
-		const isVisible = Boolean(slot);
-
-		if (isVisible) {
-			const progress = revealProgress.get(slotKey) ?? 1;
-			drawPlayerRow(
-				ctx,
-				x + 8,
-				rowsStart + i * rowHeight,
-				rowWidth,
-				rowHeight,
-				player,
-				ceiling,
-				avatars,
-				Math.min(1, progress),
-				(1 - easeOutCubic(Math.min(1, progress))) * EVENT_DRAW_REVEAL_MOTION.y,
-			);
-		} else {
-			ctx.fillStyle = VIDEO_COLOR.surfaceMuted;
-			ctx.beginPath();
-			ctx.roundRect(
-				x + 8,
-				rowsStart + i * rowHeight + 3,
-				rowWidth,
-				rowHeight - 6,
-				6,
-			);
-			ctx.fill();
-		}
 	}
 
-	const visibleCount = visibleSlots.filter(
-		(s) => s.playerIndex < card.players.length,
-	).length;
-	if (visibleCount >= card.players.length && card.players.length > 0) {
-		const label = eventTeamShareAverageLabel(
-			card.players.map((p) => p.rating),
+	const label = eventTeamShareAverageLabel(
+		card.players.slice(0, revealed).map((p) => p.rating),
+	);
+	if (label) {
+		const average = label.split(" ").at(-1) ?? label;
+		ctx.fillStyle = fg;
+		ctx.font = "500 11px system-ui, sans-serif";
+		ctx.textAlign = "end";
+		ctx.textBaseline = "middle";
+		ctx.fillText(
+			average,
+			x + width - LAYOUT.cardPad,
+			y + height - LAYOUT.cardPad - 4,
 		);
-		if (label) {
-			ctx.fillStyle = titleColor;
-			ctx.font = "600 11px system-ui, sans-serif";
-			ctx.textAlign = "end";
-			ctx.textBaseline = "middle";
-			ctx.fillText(label, x + width - 8, y + height - 10);
-			ctx.textAlign = "start";
-			ctx.textBaseline = "alphabetic";
-		}
+		ctx.textAlign = "start";
+		ctx.textBaseline = "alphabetic";
 	}
+
+	ctx.restore();
 }
 
 async function loadAvatars(
@@ -355,66 +368,81 @@ async function loadAvatars(
 	);
 }
 
-function computeVisibleSlots(
-	cards: readonly EventTeamShareCard[],
-	visibleCount: number,
-): EventDrawRevealSlot[] {
-	return eventDrawRevealRoundRobinSlots(cards).slice(
-		0,
-		Math.max(0, visibleCount),
-	);
-}
-
-function computeRevealProgress(
-	cards: readonly EventTeamShareCard[],
-	visibleSlots: readonly EventDrawRevealSlot[],
-	progressSec: number,
-): Map<string, number> {
-	const { introDurationSec, playerRevealSec } = EVENT_DRAW_VIDEO_CONFIG;
-	const progress = new Map<string, number>();
-
-	for (let i = 0; i < visibleSlots.length; i++) {
-		const slot = visibleSlots[i];
-		if (!slot) continue;
-
-		const card = cards[slot.teamIndex];
-		if (!card) continue;
-		const player = card.players[slot.playerIndex];
-		if (!player) continue;
-
-		const slotKey = `${card.title}:${slot.playerIndex}`;
-		const revealStartSec =
-			introDurationSec + i * playerRevealSec;
-		const elapsed = progressSec - revealStartSec;
-		const animDuration = EVENT_DRAW_REVEAL_MOTION.duration;
-		const p = Math.max(0, Math.min(1, elapsed / animDuration));
-		progress.set(slotKey, p);
-	}
-
-	return progress;
-}
-
 export async function prepareEventDrawAvatars(
 	data: EventDrawRenderData,
 ): Promise<ReadonlyMap<string, HTMLImageElement>> {
 	return loadAvatars(data.cards);
 }
 
-export function renderEventDrawFrame(
+/**
+ * Estado de revelacao no instante `progressSec`, na mesma ordem round-robin
+ * usada pela tela (um jogador por time, por rodada).
+ */
+function computeCardRenders(
+	cards: readonly EventTeamShareCard[],
+	progressSec: number,
+): CardRender[] {
+	const { introDurationSec, playerRevealSec } = EVENT_DRAW_VIDEO_CONFIG;
+	const slots: readonly EventDrawRevealSlot[] =
+		eventDrawRevealRoundRobinSlots(cards);
+
+	const entries: CardRender[] = cards.map((card) => ({
+		card,
+		revealed: 0,
+		rowProgress: [],
+		cardProgress: 0,
+	}));
+
+	slots.forEach((slot, index) => {
+		const startSec = introDurationSec + index * playerRevealSec;
+		const progress = clamp01(
+			(progressSec - startSec) / EVENT_DRAW_REVEAL_MOTION.duration,
+		);
+		if (progressSec < startSec) {
+			return;
+		}
+
+		const entry = entries[slot.teamIndex];
+		if (!entry) {
+			return;
+		}
+
+		entry.revealed = Math.max(entry.revealed, slot.playerIndex + 1);
+		entry.rowProgress[slot.playerIndex] = progress;
+		entry.cardProgress = entry.cardProgress === 0 ? progress : 1;
+	});
+
+	return entries;
+}
+
+function drawHeader(
 	ctx: CanvasRenderingContext2D,
 	data: EventDrawRenderData,
-	progressSec: number,
-	avatars: ReadonlyMap<string, HTMLImageElement>,
-): void {
-	const { width, height, introDurationSec, playerRevealSec } =
-		EVENT_DRAW_VIDEO_CONFIG;
-	const totalPlayers = data.cards.reduce(
-		(acc, c) => acc + c.players.length,
-		0,
-	);
-	const totalRevealSec = totalPlayers * playerRevealSec;
+	width: number,
+) {
+	ctx.textAlign = "center";
+	ctx.textBaseline = "middle";
 
-	// Background (mesmo estilo do body: field com radial gradient pitch-soft)
+	ctx.fillStyle = VIDEO_COLOR.fgMuted;
+	ctx.font = "500 13px system-ui, sans-serif";
+	ctx.fillText(data.championshipName, width / 2, 22);
+
+	ctx.font = "400 11px system-ui, sans-serif";
+	ctx.fillText(data.eventDateLabel, width / 2, 40);
+
+	ctx.fillStyle = VIDEO_COLOR.fg;
+	ctx.font = "600 20px system-ui, sans-serif";
+	ctx.fillText(EVENT_DRAW_REVEAL_LABEL.title, width / 2, 64);
+
+	ctx.textAlign = "start";
+	ctx.textBaseline = "alphabetic";
+}
+
+function drawBackground(
+	ctx: CanvasRenderingContext2D,
+	width: number,
+	height: number,
+) {
 	ctx.fillStyle = VIDEO_COLOR.field;
 	ctx.fillRect(0, 0, width, height);
 
@@ -427,159 +455,184 @@ export function renderEventDrawFrame(
 		height * 0.8,
 	);
 	gradient.addColorStop(0, VIDEO_COLOR.pitchSoft);
-	gradient.addColorStop(1, "transparent");
+	gradient.addColorStop(1, "rgba(236,253,245,0)");
 	ctx.fillStyle = gradient;
 	ctx.fillRect(0, 0, width, height);
+}
 
-	// Intro
-	if (progressSec < introDurationSec) {
-		const introP = progressSec / introDurationSec;
-		const opacity = Math.min(1, introP * 2);
+function drawIntro(
+	ctx: CanvasRenderingContext2D,
+	data: EventDrawRenderData,
+	progressSec: number,
+	width: number,
+	height: number,
+) {
+	const { introDurationSec } = EVENT_DRAW_VIDEO_CONFIG;
+	const totalPlayers = eventDrawTotalPlayers(data.cards);
+	const introP = progressSec / introDurationSec;
+	const opacity = Math.min(1, introP * 2);
+	const rise = (1 - easeOutCubic(Math.min(1, introP * 1.6))) * 18;
 
-		ctx.save();
-		ctx.globalAlpha = opacity;
-		ctx.fillStyle = VIDEO_COLOR.fg;
-		ctx.font = "700 26px system-ui, sans-serif";
-		ctx.textAlign = "center";
-		ctx.textBaseline = "middle";
-		ctx.fillText(data.championshipName, width / 2, height / 2 - 50);
+	ctx.save();
+	ctx.globalAlpha = opacity;
+	ctx.translate(0, rise);
+	ctx.textAlign = "center";
+	ctx.textBaseline = "middle";
 
-		ctx.fillStyle = VIDEO_COLOR.fgMuted;
-		ctx.font = "400 15px system-ui, sans-serif";
-		ctx.fillText(data.eventDateLabel, width / 2, height / 2 - 18);
+	ctx.fillStyle = VIDEO_COLOR.fg;
+	ctx.font = "700 26px system-ui, sans-serif";
+	ctx.fillText(
+		fitText(ctx, data.championshipName, width - 48),
+		width / 2,
+		height / 2 - 50,
+	);
 
-		ctx.fillStyle = VIDEO_COLOR.fg;
-		ctx.font = "600 20px system-ui, sans-serif";
-		ctx.fillText("Sorteio dos times", width / 2, height / 2 + 20);
+	ctx.fillStyle = VIDEO_COLOR.fgMuted;
+	ctx.font = "400 15px system-ui, sans-serif";
+	ctx.fillText(data.eventDateLabel, width / 2, height / 2 - 18);
 
-		ctx.fillStyle = VIDEO_COLOR.fgSubtle;
-		ctx.font = "400 12px system-ui, sans-serif";
-		ctx.fillText(
-			`${totalPlayers} jogadores \u00b7 ${data.cards.length} times`,
-			width / 2,
-			height / 2 + 50,
-		);
+	ctx.fillStyle = VIDEO_COLOR.fg;
+	ctx.font = "600 20px system-ui, sans-serif";
+	ctx.fillText(EVENT_DRAW_REVEAL_LABEL.title, width / 2, height / 2 + 20);
 
-		ctx.fillStyle = VIDEO_COLOR.accent;
-		ctx.font = "600 11px system-ui, sans-serif";
-		ctx.fillText("Sorteio auditavel", width / 2, height / 2 + 78);
+	ctx.fillStyle = VIDEO_COLOR.fgSubtle;
+	ctx.font = "400 12px system-ui, sans-serif";
+	ctx.fillText(
+		`${totalPlayers} jogadores · ${data.cards.length} times`,
+		width / 2,
+		height / 2 + 50,
+	);
 
-		ctx.restore();
-		ctx.textAlign = "start";
-		ctx.textBaseline = "alphabetic";
+	ctx.restore();
+	ctx.textAlign = "start";
+	ctx.textBaseline = "alphabetic";
+}
+
+function drawOutroBar(
+	ctx: CanvasRenderingContext2D,
+	data: EventDrawRenderData,
+	progressSec: number,
+	width: number,
+	height: number,
+) {
+	const outroStart = eventDrawOutroStartSec(data.cards);
+	if (progressSec < outroStart) {
 		return;
 	}
 
-	// Header (igual ao componente real)
-	ctx.fillStyle = VIDEO_COLOR.fgMuted;
-	ctx.font = "500 13px system-ui, sans-serif";
+	const opacity = Math.min(1, (progressSec - outroStart) / 0.4);
+
+	ctx.save();
+	ctx.globalAlpha = opacity;
 	ctx.textAlign = "center";
 	ctx.textBaseline = "middle";
-	ctx.fillText(data.championshipName, width / 2, 24);
 
-	ctx.fillStyle = VIDEO_COLOR.fgMuted;
-	ctx.font = "400 11px system-ui, sans-serif";
-	ctx.fillText(data.eventDateLabel, width / 2, 42);
+	ctx.fillStyle = VIDEO_COLOR.accent;
+	ctx.font = "600 14px system-ui, sans-serif";
+	ctx.fillText("✓ Sorteio concluído e auditado", width / 2, height - 30);
 
-	ctx.fillStyle = VIDEO_COLOR.fg;
-	ctx.font = "600 18px system-ui, sans-serif";
-	ctx.fillText("Sorteio dos times", width / 2, 64);
-	ctx.textAlign = "start";
-	ctx.textBaseline = "alphabetic";
-
-	// Cards
-	const isOutro =
-		progressSec > introDurationSec + totalRevealSec;
-	const visibleCount = isOutro
-		? totalPlayers
-		: Math.floor(
-				(progressSec - introDurationSec) / playerRevealSec,
-			);
-
-	const visibleSlots = computeVisibleSlots(data.cards, visibleCount);
-	const revealProgress = computeRevealProgress(
-		data.cards,
-		visibleSlots,
-		progressSec,
+	ctx.fillStyle = VIDEO_COLOR.fgSubtle;
+	ctx.font = "400 10px system-ui, sans-serif";
+	ctx.fillText(
+		`seed ${data.seed} · v${data.algorithmVersion} · ${data.inputHash.slice(0, 12)}`,
+		width / 2,
+		height - 14,
 	);
 
-	const padding = 12;
-	const gap = 8;
+	ctx.restore();
+	ctx.textAlign = "start";
+	ctx.textBaseline = "alphabetic";
+}
+
+/**
+ * Escala do grid para que os cards completos caibam sempre na tela,
+ * evitando que o video corte jogadores quando o time e grande.
+ */
+function gridScale(
+	cards: readonly EventTeamShareCard[],
+	height: number,
+): number {
+	const columns = cards.length <= 1 ? 1 : 2;
+	const rowCount = Math.ceil(cards.length / columns);
+	const rowHeights = Array.from({ length: rowCount }, (_, row) => {
+		const slice = cards.slice(row * columns, row * columns + columns);
+		return Math.max(...slice.map((card) => cardHeight(card.players.length)));
+	});
+	const content =
+		rowHeights.reduce((sum, h) => sum + h, 0) +
+		Math.max(0, rowHeights.length - 1) * LAYOUT.gap;
+	const available =
+		height - LAYOUT.headerBottom - LAYOUT.outroBarHeight - LAYOUT.padding;
+
+	if (content <= available) {
+		return 1;
+	}
+
+	return available / content;
+}
+
+export function renderEventDrawFrame(
+	ctx: CanvasRenderingContext2D,
+	data: EventDrawRenderData,
+	progressSec: number,
+	avatars: ReadonlyMap<string, HTMLImageElement>,
+): void {
+	const { width, height, introDurationSec } = EVENT_DRAW_VIDEO_CONFIG;
+
+	drawBackground(ctx, width, height);
+
+	if (progressSec < introDurationSec) {
+		drawIntro(ctx, data, progressSec, width, height);
+		return;
+	}
+
+	drawHeader(ctx, data, width);
+
+	const entries = computeCardRenders(data.cards, progressSec);
 	const columns = data.cards.length <= 1 ? 1 : 2;
 	const cardWidth =
 		columns === 1
-			? width - padding * 2
-			: (width - padding * 2 - gap) / 2;
+			? width - LAYOUT.padding * 2
+			: (width - LAYOUT.padding * 2 - LAYOUT.gap) / 2;
+	const scale = gridScale(data.cards, height);
 
-	const rowHeight = 30;
-	const cardInnerPad = 8;
-	const cardHeaderH = 26;
-	const cardFooterH = 20;
+	ctx.save();
+	ctx.translate(width / 2, LAYOUT.headerBottom);
+	ctx.scale(scale, scale);
+	ctx.translate(-width / 2, 0);
 
-	const cardHeights = data.cards.map((card) => {
-		const players = card.players.length;
-		return (
-			cardInnerPad * 2 +
-			cardHeaderH +
-			players * rowHeight +
-			cardFooterH
-		);
-	});
-
-	const rowCount = Math.ceil(data.cards.length / columns);
-	const startY = 84;
-	let top = startY;
+	let top = 0;
+	const rowCount = Math.ceil(entries.length / columns);
 
 	for (let row = 0; row < rowCount; row++) {
 		const start = row * columns;
-		const rowCards = data.cards.slice(start, start + columns);
-		const rowHeightMax = Math.max(
-			...rowCards.map((_, i) => cardHeights[start + i] ?? 100),
-		);
+		const rowEntries = entries.slice(start, start + columns);
 
-		for (const [col, card] of rowCards.entries()) {
-			const cardIdx = start + col;
-			const ch = cardHeights[cardIdx] ?? 100;
-			const cardVisibleSlots = visibleSlots.filter(
-				(s) => s.teamIndex === cardIdx,
-			);
-
+		for (const [col, entry] of rowEntries.entries()) {
+			if (entry.revealed === 0) {
+				continue;
+			}
 			drawCard(
 				ctx,
-				padding + col * (cardWidth + gap),
+				LAYOUT.padding + col * (cardWidth + LAYOUT.gap),
 				top,
 				cardWidth,
-				ch,
-				card,
-				cardIdx,
+				entry,
 				data.ceiling,
 				avatars,
-				cardVisibleSlots,
-				revealProgress,
 			);
 		}
-		top += rowHeightMax + gap;
-	}
 
-	// Outro
-	if (isOutro) {
-		const outroElapsed =
-			progressSec - introDurationSec - totalRevealSec;
-		const outroOpacity = Math.min(1, outroElapsed / 0.5);
-
-		ctx.save();
-		ctx.globalAlpha = outroOpacity;
-		ctx.fillStyle = VIDEO_COLOR.accent;
-		ctx.font = "700 15px system-ui, sans-serif";
-		ctx.textAlign = "center";
-		ctx.textBaseline = "middle";
-		ctx.fillText(
-			"\u2713 Sorteio concluido e auditado",
-			width / 2,
-			height - 24,
+		// A altura da linha acompanha o card final, para o grid nao "pular"
+		// a cada revelacao (mesma sensacao da tela, que ja reserva o espaco).
+		const rowMax = Math.max(
+			...rowEntries.map((entry) => cardHeight(entry.card.players.length)),
+			0,
 		);
-		ctx.restore();
-		ctx.textAlign = "start";
-		ctx.textBaseline = "alphabetic";
+		top += rowMax + LAYOUT.gap;
 	}
+
+	ctx.restore();
+
+	drawOutroBar(ctx, data, progressSec, width, height);
 }
