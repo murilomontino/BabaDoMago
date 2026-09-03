@@ -130,10 +130,16 @@ import {
 	trendsWindowCaption,
 } from "@/const/championship-trends-window";
 import { ROSTER_COLUMN } from "@/const/roster-stats";
+import {
+	ratingInflationShareCard,
+	ratingInflationShareContext,
+	RATING_INFLATION_SHARE_LABEL,
+} from "@/const/rating-inflation-share";
 import { SKELETON_LABEL } from "@/const/skeleton";
 import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
 import { CHAMPIONSHIP_EVENTS_QUERY_KEY } from "@/hooks/championships/championships-query-keys";
 import { shareFormHeatmapImage } from "@/lib/share-form-heatmap-image";
+import { shareRatingInflationImage } from "@/lib/share-rating-inflation-image";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type { ChampionshipEvent } from "@/types/championship-event";
 
@@ -473,6 +479,10 @@ export function ChampionshipTrendsTab({
 	const [heatmapShareError, setHeatmapShareError] = useState<string | null>(
 		null,
 	);
+	const [isSharingInflation, setIsSharingInflation] = useState(false);
+	const [inflationShareError, setInflationShareError] = useState<string | null>(
+		null,
+	);
 
 	const hasEnough = championshipTrendsHasEnoughEnded(events);
 	const hasMonthlyPlayers = useMemo(
@@ -564,6 +574,26 @@ export function ChampionshipTrendsTab({
 			setHeatmapShareError(FORM_HEATMAP_SHARE_LABEL.shareFailed);
 		} finally {
 			setIsSharingHeatmap(false);
+		}
+	}
+
+	async function handleShareInflation() {
+		setIsSharingInflation(true);
+		setInflationShareError(null);
+		const context = ratingInflationShareContext([
+			TRENDS_WINDOW_LABEL.allEndedCaption,
+			audience === TRENDS_AUDIENCE_DEFAULT
+				? null
+				: trendsAudienceCaption(audience),
+		]);
+		try {
+			await shareRatingInflationImage(
+				ratingInflationShareCard(inflation, championshipName, context),
+			);
+		} catch {
+			setInflationShareError(RATING_INFLATION_SHARE_LABEL.shareFailed);
+		} finally {
+			setIsSharingInflation(false);
 		}
 	}
 
@@ -700,18 +730,40 @@ export function ChampionshipTrendsTab({
 					</section>
 
 					<section className="space-y-3">
-						<div className="space-y-1">
-							<div className="flex items-center gap-2">
-								<Scale className="size-4 text-pitch-fg" />
-								<h3 className="text-sm font-semibold text-fg">
-									{RATING_INFLATION_LABEL.title}
-								</h3>
+						<div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+							<div className="space-y-1">
+								<div className="flex items-center gap-2">
+									<Scale className="size-4 text-pitch-fg" />
+									<h3 className="text-sm font-semibold text-fg">
+										{RATING_INFLATION_LABEL.title}
+									</h3>
+								</div>
+								<p className="text-sm text-fg-muted">{RATING_INFLATION_LABEL.hint}</p>
+								<p className="text-xs text-fg-muted">
+									{TRENDS_WINDOW_LABEL.allEndedCaption}
+								</p>
 							</div>
-							<p className="text-sm text-fg-muted">{RATING_INFLATION_LABEL.hint}</p>
-							<p className="text-xs text-fg-muted">
-								{TRENDS_WINDOW_LABEL.allEndedCaption}
-							</p>
+							{inflation.events > 0 && (
+								<Button
+									variant={BUTTON_VARIANT.secondary}
+									className="w-full sm:w-auto"
+									disabled={isSharingInflation}
+									onClick={() => {
+										void handleShareInflation();
+									}}
+								>
+									{isSharingInflation && (
+										<LoaderCircle className="size-4 animate-spin" aria-hidden />
+									)}
+									{!isSharingInflation && <Share2 className="size-4" />}
+									{isSharingInflation && RATING_INFLATION_SHARE_LABEL.sharing}
+									{!isSharingInflation && RATING_INFLATION_SHARE_LABEL.share}
+								</Button>
+							)}
 						</div>
+						{inflationShareError && (
+							<p className={ERROR_CLASS}>{inflationShareError}</p>
+						)}
 						{inflation.events === 0 && (
 							<p className="text-sm text-fg-muted">
 								{trendsSectionEmptyLabel(audience, RATING_INFLATION_LABEL.empty)}
