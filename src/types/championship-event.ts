@@ -98,6 +98,7 @@ export type ChampionshipEvent = {
 	skip_guest_goalkeeper_matches: boolean;
 	ended_at: string | null;
 	player_votes_closed_at?: string | null;
+	player_votes_voided_at?: string | null;
 	attendance: ChampionshipEventAttendance[];
 	rsvps: ChampionshipEventRsvp[];
 	teams: ChampionshipEventTeam[];

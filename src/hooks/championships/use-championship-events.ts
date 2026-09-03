@@ -29,6 +29,7 @@ import {
 	listMyChampionshipEventPlayerVotes,
 	promoteChampionshipEventRsvpGoing,
 	reopenChampionshipEventMatch,
+	restoreChampionshipEventPlayerVotes,
 	saveChampionshipEventAttendance,
 	saveChampionshipEventAttendanceStats,
 	saveChampionshipEventTeams,
@@ -39,6 +40,7 @@ import {
 	swapChampionshipEventMatchTeam,
 	updateChampionshipEventTeam,
 	upsertChampionshipEventRsvp,
+	voidChampionshipEventPlayerVotes,
 	voteChampionshipEventPlayer,
 } from "@/services/championship-events";
 import type { ChampionshipEvent } from "@/types/championship-event";
@@ -510,6 +512,77 @@ export function useCloseChampionshipEventPlayerVotes(
 
 			await Promise.all([
 				invalidateChampionshipEvent(queryClient, championshipId, eventId),
+				invalidateChampionshipQueries(queryClient),
+			]);
+		},
+	});
+}
+
+export function useVoidChampionshipEventPlayerVotes(championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (eventId: number) => voidChampionshipEventPlayerVotes(eventId),
+		onSuccess: async (result) => {
+			queryClient.setQueriesData<ChampionshipEvent>(
+				{
+					predicate: (query) =>
+						eventIdFromDetailKey(query.queryKey) === result.event_id,
+				},
+				(current) => {
+					if (!current) {
+						return current;
+					}
+
+					return {
+						...current,
+						player_votes_voided_at: result.player_votes_voided_at,
+					};
+				},
+			);
+
+			await Promise.all([
+				invalidateChampionshipEvent(
+					queryClient,
+					championshipId,
+					result.event_id,
+				),
+				invalidateChampionshipQueries(queryClient),
+			]);
+		},
+	});
+}
+
+export function useRestoreChampionshipEventPlayerVotes(championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (eventId: number) =>
+			restoreChampionshipEventPlayerVotes(eventId),
+		onSuccess: async (result) => {
+			queryClient.setQueriesData<ChampionshipEvent>(
+				{
+					predicate: (query) =>
+						eventIdFromDetailKey(query.queryKey) === result.event_id,
+				},
+				(current) => {
+					if (!current) {
+						return current;
+					}
+
+					return {
+						...current,
+						player_votes_voided_at: result.player_votes_voided_at,
+					};
+				},
+			);
+
+			await Promise.all([
+				invalidateChampionshipEvent(
+					queryClient,
+					championshipId,
+					result.event_id,
+				),
 				invalidateChampionshipQueries(queryClient),
 			]);
 		},

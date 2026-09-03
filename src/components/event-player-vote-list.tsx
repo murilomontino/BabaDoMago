@@ -33,6 +33,7 @@ type EventPlayerVoteListProps = {
 	canVoteRole: boolean;
 	eventEnded: boolean;
 	votesClosed: boolean;
+	votesVoided: boolean;
 	voterPresent: boolean;
 	voterPlayerId: number | null;
 	draftVotes: EventPlayerVoteDraft;
@@ -77,6 +78,7 @@ export function EventPlayerVoteList({
 	canVoteRole,
 	eventEnded,
 	votesClosed,
+	votesVoided,
 	voterPresent,
 	voterPlayerId,
 	draftVotes,
@@ -108,12 +110,21 @@ export function EventPlayerVoteList({
 					{EVENT_PLAYER_VOTE_LABEL.needPresent}
 				</p>
 			)}
-			{canVoteRole && eventEnded && votesClosed && (
+			{canVoteRole && eventEnded && votesVoided && (
+				<p className="text-sm text-fg-muted">
+					{EVENT_PLAYER_VOTE_LABEL.votesVoided}
+				</p>
+			)}
+			{canVoteRole && eventEnded && !votesVoided && votesClosed && (
 				<p className="text-sm text-fg-muted">
 					{EVENT_PLAYER_VOTE_LABEL.votesClosed}
 				</p>
 			)}
-			{canVoteRole && eventEnded && !votesClosed && !voterPresent && (
+			{canVoteRole &&
+				eventEnded &&
+				!votesVoided &&
+				!votesClosed &&
+				!voterPresent && (
 				<p className="text-sm text-fg-muted">
 					{EVENT_PLAYER_VOTE_LABEL.needPresent}
 				</p>
@@ -154,18 +165,23 @@ export function EventPlayerVoteList({
 								const name = playerVisibleName(player);
 								const rating = player.rating;
 								const draftVote = draftVotes.get(row.player_id) ?? null;
-								const chip = eventPlayerVoteChipLabel(row.vote_rating_delta);
+								const chip = votesVoided
+									? null
+									: eventPlayerVoteChipLabel(row.vote_rating_delta);
 								const canVote = canVoteEventPlayer({
 									canVote: canVoteRole,
 									eventEnded,
 									votesClosed,
+									votesVoided,
 									voterPresent,
 									targetPlayerId: row.player_id,
 									voterPlayerId,
 									voteRatingDelta: row.vote_rating_delta,
 								});
 								const isSelf = voterPlayerId === row.player_id;
-								const locked = isEventPlayerVoteLocked(row.vote_rating_delta);
+								const locked =
+									!votesVoided &&
+									isEventPlayerVoteLocked(row.vote_rating_delta);
 								const nextLike = nextEventPlayerVoteValue(draftVote, "like");
 								const nextDislike = nextEventPlayerVoteValue(
 									draftVote,

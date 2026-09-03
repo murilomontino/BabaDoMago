@@ -5,16 +5,20 @@ import {
 	countEventPlayerVoteDraft,
 	EVENT_PLAYER_VOTE,
 	EVENT_PLAYER_VOTE_LABEL,
+	EVENT_PLAYER_VOTE_STATUS,
 	type EventPlayerVoteChoice,
 	eventPlayerVoteAppliedDelta,
 	eventPlayerVoteBudgetSummary,
 	eventPlayerVoteChipLabel,
 	eventPlayerVoteDraftToSubmit,
 	eventPlayerVoteErrorMessage,
+	eventPlayerVoteStatus,
+	eventPlayerVoteStatusLabel,
 	eventPlayerVoteTeamSections,
 	eventPlayerVoteUrl,
 	isEventPlayerVoteDraftDirty,
 	isEventPlayerVoteLocked,
+	isEventPlayerVotesVoided,
 	nextEventPlayerVoteValue,
 	savedEventPlayerVoteDraft,
 } from "./event-player-vote.ts";
@@ -310,9 +314,55 @@ check(
 	"votes closed blocks vote",
 );
 check(
+	!canVoteEventPlayer({
+		canVote: true,
+		eventEnded: true,
+		votesClosed: false,
+		votesVoided: true,
+		voterPresent: true,
+		targetPlayerId: 2,
+		voterPlayerId: 1,
+		voteRatingDelta: 0,
+	}),
+	"votes voided blocks vote",
+);
+check(isEventPlayerVotesVoided("2026-09-03T12:00:00Z"), "voided true");
+check(!isEventPlayerVotesVoided(null), "voided false");
+check(
+	eventPlayerVoteStatus({
+		playerVotesClosedAt: null,
+		playerVotesVoidedAt: null,
+	}) === EVENT_PLAYER_VOTE_STATUS.open,
+	"status open",
+);
+check(
+	eventPlayerVoteStatus({
+		playerVotesClosedAt: "2026-09-03T12:00:00Z",
+		playerVotesVoidedAt: null,
+	}) === EVENT_PLAYER_VOTE_STATUS.closed,
+	"status closed",
+);
+check(
+	eventPlayerVoteStatus({
+		playerVotesClosedAt: "2026-09-03T12:00:00Z",
+		playerVotesVoidedAt: "2026-09-03T13:00:00Z",
+	}) === EVENT_PLAYER_VOTE_STATUS.voided,
+	"status voided wins",
+);
+check(
+	eventPlayerVoteStatusLabel(EVENT_PLAYER_VOTE_STATUS.voided) ===
+		EVENT_PLAYER_VOTE_LABEL.statusVoided,
+	"status voided label",
+);
+check(
 	eventPlayerVoteErrorMessage("player votes closed") ===
 		EVENT_PLAYER_VOTE_LABEL.votesClosed,
 	"player votes closed error",
+);
+check(
+	eventPlayerVoteErrorMessage("player votes voided") ===
+		EVENT_PLAYER_VOTE_LABEL.votesVoided,
+	"player votes voided error",
 );
 
 check(

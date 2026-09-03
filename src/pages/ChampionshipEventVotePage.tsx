@@ -17,6 +17,7 @@ import {
 	eventPlayerVoteDraftToSubmit,
 	isEventPlayerVoteDraftDirty,
 	isEventPlayerVotesClosed,
+	isEventPlayerVotesVoided,
 	savedEventPlayerVoteDraft,
 } from "@/const/event-player-vote";
 import { championshipRatingCeiling } from "@/const/player-rating";
@@ -91,6 +92,9 @@ export function ChampionshipEventVotePage() {
 	const votesClosed = isEventPlayerVotesClosed(
 		event?.player_votes_closed_at ?? null,
 	);
+	const votesVoided = isEventPlayerVotesVoided(
+		event?.player_votes_voided_at,
+	);
 	const ceiling = championshipRatingCeiling(
 		(championship?.players ?? []).map((player) => player.rating),
 	);
@@ -119,6 +123,7 @@ export function ChampionshipEventVotePage() {
 		canVoteRole &&
 		event?.ended_at !== null &&
 		!votesClosed &&
+		!votesVoided &&
 		voterPresent;
 	const draftDirty = isEventPlayerVoteDraftDirty(draftVotes, savedVotes);
 
@@ -155,7 +160,8 @@ export function ChampionshipEventVotePage() {
 	const showCloseVotesButton =
 		canCloseVotesAsOwner &&
 		event.ended_at !== null &&
-		!votesClosed;
+		!votesClosed &&
+		!votesVoided;
 
 	return (
 		<div className={VOTE_SHELL_CLASS}>
@@ -189,6 +195,7 @@ export function ChampionshipEventVotePage() {
 				canVoteRole={canVoteRole}
 				eventEnded={event.ended_at !== null}
 				votesClosed={votesClosed}
+				votesVoided={votesVoided}
 				voterPresent={voterPresent}
 				voterPlayerId={voterPlayerId}
 				draftVotes={draftVotes}
@@ -262,7 +269,12 @@ export function ChampionshipEventVotePage() {
 				</section>
 			)}
 
-			{canCloseVotesAsOwner && votesClosed && (
+			{canCloseVotesAsOwner && votesVoided && (
+				<p className="text-sm text-fg-muted">
+					{EVENT_PLAYER_VOTE_LABEL.votesVoided}
+				</p>
+			)}
+			{canCloseVotesAsOwner && !votesVoided && votesClosed && (
 				<p className="text-sm text-fg-muted">
 					{EVENT_PLAYER_VOTE_LABEL.votesClosed}
 				</p>

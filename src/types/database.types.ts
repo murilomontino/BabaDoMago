@@ -477,6 +477,7 @@ export type Database = {
 					ended_at: string | null;
 					id: number;
 					player_votes_closed_at: string | null;
+					player_votes_voided_at: string | null;
 					players_per_team: number;
 					skip_guest_goalkeeper_matches: boolean;
 					starts_at: string;
@@ -489,6 +490,7 @@ export type Database = {
 					ended_at?: string | null;
 					id?: number;
 					player_votes_closed_at?: string | null;
+					player_votes_voided_at?: string | null;
 					players_per_team: number;
 					skip_guest_goalkeeper_matches?: boolean;
 					starts_at: string;
@@ -501,6 +503,7 @@ export type Database = {
 					ended_at?: string | null;
 					id?: number;
 					player_votes_closed_at?: string | null;
+					player_votes_voided_at?: string | null;
 					players_per_team?: number;
 					skip_guest_goalkeeper_matches?: boolean;
 					starts_at?: string;
@@ -814,6 +817,14 @@ export type Database = {
 				Returns: Json;
 			};
 			close_championship_event_player_votes: {
+				Args: { event_id: number };
+				Returns: Json;
+			};
+			void_championship_event_player_votes: {
+				Args: { event_id: number };
+				Returns: Json;
+			};
+			restore_championship_event_player_votes: {
 				Args: { event_id: number };
 				Returns: Json;
 			};

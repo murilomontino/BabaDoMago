@@ -37,6 +37,18 @@ export const EVENT_PLAYER_VOTE_LABEL = {
 	votesClosed: "Votação encerrada",
 	closeVotes: "Encerrar votação",
 	closeVotesFailed: "Não foi possível encerrar a votação",
+	historyTitle: "Histórico de votação",
+	historyEmpty: "Nenhuma rodada encerrada.",
+	statusOpen: "Aberta",
+	statusClosed: "Encerrada",
+	statusVoided: "Cancelada",
+	openHistory: "Abrir",
+	cancelVotes: "Cancelar efeito",
+	cancelVotesHint: "Notas voltam ao valor pré-voto. Os votos ficam gravados.",
+	cancelVotesFailed: "Não foi possível cancelar o efeito",
+	restoreVotes: "Reativar efeito",
+	restoreVotesFailed: "Não foi possível reativar o efeito",
+	votesVoided: "Efeito da votação cancelado",
 	noTeam: "Sem time",
 	back: "Voltar",
 	goals: "G",
@@ -61,9 +73,19 @@ export const EVENT_PLAYER_VOTE_ERROR_MESSAGE = {
 	"player not present": "Jogador fora da presença",
 	"vote closed": "Voto deste jogador já fechou",
 	"player votes closed": "Votação encerrada",
+	"player votes voided": "Efeito da votação cancelado",
 	"like budget exceeded": "No máximo 5 likes",
 	"dislike budget exceeded": "No máximo 5 dislikes",
 } as const;
+
+export const EVENT_PLAYER_VOTE_STATUS = {
+	open: "open",
+	closed: "closed",
+	voided: "voided",
+} as const;
+
+export type EventPlayerVoteStatus =
+	(typeof EVENT_PLAYER_VOTE_STATUS)[keyof typeof EVENT_PLAYER_VOTE_STATUS];
 
 export function eventPlayerVoteErrorMessage(message: string): string {
 	const known =
@@ -129,16 +151,58 @@ export function isEventPlayerVotesClosed(
 	return playerVotesClosedAt !== null;
 }
 
+export function isEventPlayerVotesVoided(
+	playerVotesVoidedAt: string | null | undefined,
+): boolean {
+	return playerVotesVoidedAt != null;
+}
+
+export function eventPlayerVoteStatus(input: {
+	playerVotesClosedAt: string | null | undefined;
+	playerVotesVoidedAt: string | null | undefined;
+}): EventPlayerVoteStatus {
+	if (isEventPlayerVotesVoided(input.playerVotesVoidedAt)) {
+		return EVENT_PLAYER_VOTE_STATUS.voided;
+	}
+
+	if (isEventPlayerVotesClosed(input.playerVotesClosedAt ?? null)) {
+		return EVENT_PLAYER_VOTE_STATUS.closed;
+	}
+
+	return EVENT_PLAYER_VOTE_STATUS.open;
+}
+
+export function eventPlayerVoteStatusLabel(status: EventPlayerVoteStatus): string {
+	switch (status) {
+		case EVENT_PLAYER_VOTE_STATUS.open:
+			return EVENT_PLAYER_VOTE_LABEL.statusOpen;
+		case EVENT_PLAYER_VOTE_STATUS.closed:
+			return EVENT_PLAYER_VOTE_LABEL.statusClosed;
+		case EVENT_PLAYER_VOTE_STATUS.voided:
+			return EVENT_PLAYER_VOTE_LABEL.statusVoided;
+		default: {
+			const _exhaustive: never = status;
+			return _exhaustive;
+		}
+	}
+}
+
 export function canVoteEventPlayer(input: {
 	canVote: boolean;
 	eventEnded: boolean;
 	votesClosed: boolean;
+	votesVoided?: boolean;
 	voterPresent: boolean;
 	targetPlayerId: number;
 	voterPlayerId: number | null;
 	voteRatingDelta: number;
 }): boolean {
-	if (!input.canVote || !input.eventEnded || input.votesClosed) {
+	if (
+		!input.canVote ||
+		!input.eventEnded ||
+		input.votesClosed ||
+		input.votesVoided
+	) {
 		return false;
 	}
 

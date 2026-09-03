@@ -44,7 +44,8 @@ const EVENT_LIST_COLUMNS = `
 	players_per_team,
 	skip_guest_goalkeeper_matches,
 	ended_at,
-	player_votes_closed_at
+	player_votes_closed_at,
+	player_votes_voided_at
 ` as const;
 
 const EVENT_DETAIL_COLUMNS = `${EVENT_LIST_COLUMNS},
@@ -371,6 +372,7 @@ function asEvent(value: unknown): ChampionshipEvent {
 		skip_guest_goalkeeper_matches: row.skip_guest_goalkeeper_matches !== false,
 		ended_at: optionalString(row.ended_at),
 		player_votes_closed_at: optionalString(row.player_votes_closed_at),
+		player_votes_voided_at: optionalString(row.player_votes_voided_at),
 		attendance: [...attendance].sort((a, b) => a.id - b.id),
 		rsvps: [...rsvps].sort((a, b) => a.player_id - b.player_id),
 		teams: [...teams].sort((a, b) => a.sort_order - b.sort_order),
@@ -1079,12 +1081,55 @@ export async function closeChampionshipEventPlayerVotes(
 	);
 
 	if (error) {
-		throwEventError(error);
+		throwVoteError(error);
 	}
 
 	const row = (data ?? {}) as Record<string, unknown>;
 	return {
 		event_id: Number(row.event_id ?? eventId),
 		player_votes_closed_at: String(row.player_votes_closed_at ?? ""),
+	};
+}
+
+export type VoidChampionshipEventPlayerVotesResult = {
+	event_id: number;
+	player_votes_voided_at: string | null;
+};
+
+export async function voidChampionshipEventPlayerVotes(
+	eventId: number,
+): Promise<VoidChampionshipEventPlayerVotesResult> {
+	const { data, error } = await supabase.rpc(
+		"void_championship_event_player_votes",
+		{ event_id: eventId },
+	);
+
+	if (error) {
+		throwVoteError(error);
+	}
+
+	const row = (data ?? {}) as Record<string, unknown>;
+	return {
+		event_id: Number(row.event_id ?? eventId),
+		player_votes_voided_at: optionalString(row.player_votes_voided_at),
+	};
+}
+
+export async function restoreChampionshipEventPlayerVotes(
+	eventId: number,
+): Promise<VoidChampionshipEventPlayerVotesResult> {
+	const { data, error } = await supabase.rpc(
+		"restore_championship_event_player_votes",
+		{ event_id: eventId },
+	);
+
+	if (error) {
+		throwVoteError(error);
+	}
+
+	const row = (data ?? {}) as Record<string, unknown>;
+	return {
+		event_id: Number(row.event_id ?? eventId),
+		player_votes_voided_at: optionalString(row.player_votes_voided_at),
 	};
 }
