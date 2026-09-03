@@ -82,7 +82,10 @@ import {
 	RATING_INFLATION_CHART,
 	RATING_INFLATION_LABEL,
 } from "@/const/championship-rating-inflation";
-import { endedChampionshipHistoryEvents } from "@/const/championship-rating-history";
+import {
+	CHAMPIONSHIP_RATING_HISTORY_CHART,
+	endedChampionshipHistoryEvents,
+} from "@/const/championship-rating-history";
 import { TREND_LINE_CHART } from "@/const/championship-trend-line-chart";
 import { CHAMPIONSHIP_TAB_LABEL } from "@/const/championship-tab";
 import {
@@ -92,14 +95,22 @@ import {
 	TRENDS_WINDOW_DEFAULT,
 	TRENDS_WINDOW_LABEL,
 	TRENDS_WINDOW_OPTIONS,
+	TRENDS_RATING_HISTORY_LABEL,
 	type TrendsWindow,
 	trendsWindowCaption,
 } from "@/const/championship-trends-window";
+import { ROSTER_COLUMN } from "@/const/roster-stats";
 import { SKELETON_LABEL } from "@/const/skeleton";
 import { FIELD_CLASS } from "@/const/ui";
 import { CHAMPIONSHIP_EVENTS_QUERY_KEY } from "@/hooks/championships/championships-query-keys";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type { ChampionshipEvent } from "@/types/championship-event";
+
+const ChampionshipMetricHistoryChart = lazy(() =>
+	import("@/components/molecules/championship-rating-history-chart").then((m) => ({
+		default: m.ChampionshipMetricHistoryChart,
+	}),
+));
 
 const ChampionshipRatingInflationChart = lazy(() =>
 	import("@/components/molecules/championship-rating-inflation-chart").then(
@@ -149,6 +160,7 @@ const goalkeeperColumnHelper = createColumnHelper<
 >();
 
 type ChampionshipTrendsTabProps = {
+	championshipName: string;
 	players: ChampionshipPlayer[];
 	events: readonly ChampionshipEvent[];
 };
@@ -406,6 +418,7 @@ function GoalkeeperTable({ rows }: { rows: GoalkeeperRankingRow[] }) {
 }
 
 export function ChampionshipTrendsTab({
+	championshipName,
 	players,
 	events,
 }: ChampionshipTrendsTabProps) {
@@ -608,6 +621,37 @@ export function ChampionshipTrendsTab({
 								<ChampionshipRatingInflationChart points={inflationChart} />
 							</Suspense>
 						)}
+					</section>
+
+					<section className="space-y-3">
+						<div className="space-y-1">
+							<div className="flex items-center gap-2">
+								<LineChartIcon className="size-4 text-pitch-fg" />
+								<h3 className="text-sm font-semibold text-fg">
+									{TRENDS_RATING_HISTORY_LABEL.title}
+								</h3>
+							</div>
+							<p className="text-sm text-fg-muted">
+								{TRENDS_RATING_HISTORY_LABEL.hint}
+							</p>
+						</div>
+						<Suspense
+							fallback={
+								<SkeletonRegion label={SKELETON_LABEL.chart}>
+									<div style={{ height: CHAMPIONSHIP_RATING_HISTORY_CHART.height }}>
+										<Skeleton className="h-full w-full" />
+									</div>
+								</SkeletonRegion>
+							}
+						>
+							<ChampionshipMetricHistoryChart
+								metric={ROSTER_COLUMN.rating}
+								players={players}
+								events={windowEvents}
+								championshipName={championshipName}
+								nowIso={null}
+							/>
+						</Suspense>
 					</section>
 
 					<section className="space-y-3">

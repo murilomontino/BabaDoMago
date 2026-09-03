@@ -25,6 +25,11 @@ export const TRENDS_WINDOW_LABEL = {
 	allEndedCaption: "Todas as rodadas encerradas",
 } as const;
 
+export const TRENDS_RATING_HISTORY_LABEL = {
+	title: "Evolução da nota",
+	hint: "Nota ao longo das rodadas do recorte. Quem subiu nas últimas peladas.",
+} as const;
+
 export const TRENDS_WINDOW_OPTIONS = [
 	TRENDS_WINDOW.last3,
 	TRENDS_WINDOW.last5,
