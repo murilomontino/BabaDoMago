@@ -15,6 +15,7 @@ import {
 	removePlayer,
 	renameChampionship,
 	setPlayerIsGoalkeeper,
+	setPlayerIsMonthly,
 	setPlayerRole,
 	transferChampionshipOwner,
 	unlinkPlayer,
@@ -32,6 +33,7 @@ import {
 	invalidateChampionshipEventQueries,
 	invalidateChampionshipQueries,
 	withChampionshipPlayerGoalkeeper,
+	withChampionshipPlayerMonthly,
 } from "./championships-query-keys";
 
 export function useChampionships() {
@@ -255,6 +257,51 @@ export function useSetPlayerIsGoalkeeper() {
 					}
 
 					return withChampionshipPlayerGoalkeeper(data, playerId, isGoalkeeper);
+				},
+			);
+			return { previous };
+		},
+		onError: (_error, _variables, context) => {
+			if (!context) {
+				return;
+			}
+
+			for (const [queryKey, data] of context.previous) {
+				queryClient.setQueryData(queryKey, data);
+			}
+		},
+		onSuccess: async () => {
+			await invalidateChampionshipQueries(queryClient);
+		},
+	});
+}
+
+export function useSetPlayerIsMonthly() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({
+			playerId,
+			isMonthly,
+		}: {
+			playerId: number;
+			isMonthly: boolean;
+		}) => setPlayerIsMonthly(playerId, isMonthly),
+		onMutate: ({ playerId, isMonthly }) => {
+			const previous = queryClient.getQueriesData<ChampionshipWithPlayers>({
+				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,
+			});
+			void queryClient.cancelQueries({
+				queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY,
+			});
+			queryClient.setQueriesData<ChampionshipWithPlayers>(
+				{ queryKey: CHAMPIONSHIP_BY_ID_QUERY_KEY },
+				(data) => {
+					if (!data) {
+						return data;
+					}
+
+					return withChampionshipPlayerMonthly(data, playerId, isMonthly);
 				},
 			);
 			return { previous };

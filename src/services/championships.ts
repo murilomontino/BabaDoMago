@@ -28,7 +28,7 @@ import type {
 } from "@/types/championship";
 
 const PLAYER_COLUMNS =
-	"id, championship_id, user_id, display_name, nickname, nickname_tags, avatar_url, rating, role, is_goalkeeper, deleted_at, goals, assists, assisted_goals, own_goals, wins, losses, draws, matches, mvps" as const;
+	"id, championship_id, user_id, display_name, nickname, nickname_tags, avatar_url, rating, role, is_goalkeeper, is_monthly, deleted_at, goals, assists, assisted_goals, own_goals, wins, losses, draws, matches, mvps" as const;
 
 const CHAMPIONSHIP_COLUMNS =
 	"id, name, invite_code, created_by, logo_path, event_time, event_weekday, location, players_per_team, skip_guest_goalkeeper_matches, rating_drop_goal_share, rating_drop_share_exclude_top, player_vote_quorum, is_visible" as const;
@@ -97,6 +97,7 @@ function asPlayer(value: unknown): ChampionshipPlayer {
 		rating,
 		role: optionalString(row.role) ?? CHAMPIONSHIP_ROLE.member,
 		is_goalkeeper: row.is_goalkeeper === true,
+		is_monthly: row.is_monthly === true,
 		deleted_at: optionalString(row.deleted_at),
 		goals: rosterSafeCount(row.goals),
 		assists: rosterSafeCount(row.assists),
@@ -420,6 +421,22 @@ export async function setPlayerIsGoalkeeper(
 	const { data, error } = await supabase.rpc("set_player_is_goalkeeper", {
 		player_id: playerId,
 		is_goalkeeper: isGoalkeeper,
+	});
+
+	if (error) {
+		throw error;
+	}
+
+	return asPlayer(data);
+}
+
+export async function setPlayerIsMonthly(
+	playerId: number,
+	isMonthly: boolean,
+): Promise<ChampionshipPlayer> {
+	const { data, error } = await supabase.rpc("set_player_is_monthly", {
+		player_id: playerId,
+		is_monthly: isMonthly,
 	});
 
 	if (error) {

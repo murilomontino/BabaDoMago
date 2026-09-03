@@ -165,3 +165,20 @@ export function withChampionshipPlayerGoalkeeper(
 		}),
 	};
 }
+
+export function withChampionshipPlayerMonthly(
+	championship: ChampionshipWithPlayers,
+	playerId: number,
+	isMonthly: boolean,
+): ChampionshipWithPlayers {
+	return {
+		...championship,
+		players: championship.players.map((player) => {
+			if (player.id !== playerId) {
+				return player;
+			}
+
+			return { ...player, is_monthly: isMonthly };
+		}),
+	};
+}

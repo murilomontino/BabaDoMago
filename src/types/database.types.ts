@@ -24,6 +24,7 @@ type ChampionshipPlayersRow = {
 	removed_at: string | null;
 	role: string;
 	is_goalkeeper: boolean;
+	is_monthly: boolean;
 	user_id: string | null;
 	wins: number;
 	losses: number;
@@ -534,6 +535,7 @@ export type Database = {
 					removed_at?: string | null;
 					role?: string;
 					is_goalkeeper?: boolean;
+					is_monthly?: boolean;
 					user_id?: string | null;
 					wins?: number;
 					losses?: number;
@@ -558,6 +560,7 @@ export type Database = {
 					removed_at?: string | null;
 					role?: string;
 					is_goalkeeper?: boolean;
+					is_monthly?: boolean;
 					user_id?: string | null;
 					wins?: number;
 					losses?: number;
@@ -840,6 +843,10 @@ export type Database = {
 			};
 			set_player_is_goalkeeper: {
 				Args: { player_id: number; is_goalkeeper: boolean };
+				Returns: Json;
+			};
+			set_player_is_monthly: {
+				Args: { player_id: number; is_monthly: boolean };
 				Returns: Json;
 			};
 			soft_delete_championship: {

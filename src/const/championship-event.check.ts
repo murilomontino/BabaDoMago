@@ -74,6 +74,7 @@ import {
 	keepTeamPlayersPresent,
 	matchPlayerIdsMissingFromAttendance,
 	mergePresentIdsForEnd,
+	monthlyPlayerIds,
 	nextEventDate,
 	nextEventTeamColor,
 	openChampionshipEvents,
@@ -623,6 +624,17 @@ check(pickTeamGoalkeeper([], 5), 0);
 check(areAllVisiblePresent([1, 2], [1, 2]), true);
 check(areAllVisiblePresent([1], [1, 2]), false);
 check(areAllVisiblePresent([1, 2, 3], []), false);
+check(
+	String(
+		monthlyPlayerIds([
+			{ id: 1, is_monthly: true },
+			{ id: 2, is_monthly: false },
+			{ id: 3, is_monthly: true },
+		]),
+	),
+	"1,3",
+);
+check(String(monthlyPlayerIds([])), "");
 check(
 	String(
 		filterAttendanceListPlayers([{ id: 1 }, { id: 2 }], [1], false).map(

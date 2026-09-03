@@ -572,6 +572,8 @@ export const ATTENDANCE_STATS_TEAM_FILTER_LABEL = {
 export const EVENT_ATTENDANCE_ACTION = {
 	selectAll: "Selecionar todos",
 	deselectAll: "Desselecionar todos",
+	selectMonthly: "Mensalistas",
+	deselectMonthly: "Desmarcar mensalistas",
 	hideSelected: "Ocultar selecionados",
 	selectedList: "Selecionados",
 	unselectAria: "Remover da presença",
@@ -2310,6 +2312,12 @@ export function compareByAttendanceCount(
 	}
 
 	return a.display_name.localeCompare(b.display_name, "pt-BR");
+}
+
+export function monthlyPlayerIds(
+	players: readonly { id: number; is_monthly: boolean }[],
+): number[] {
+	return players.flatMap((player) => (player.is_monthly ? [player.id] : []));
 }
 
 export function applyVisibleAttendance(

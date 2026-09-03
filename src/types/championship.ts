@@ -26,6 +26,7 @@ export type ChampionshipPlayer = {
 	rating: number;
 	role: string;
 	is_goalkeeper: boolean;
+	is_monthly: boolean;
 	deleted_at: string | null;
 	goals: number;
 	assists: number;

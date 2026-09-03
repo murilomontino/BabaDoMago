@@ -25,6 +25,7 @@ const player: ChampionshipPlayer = {
 	rating: 8,
 	role: "captain",
 	is_goalkeeper: false,
+	is_monthly: false,
 	deleted_at: null,
 	goals: 4,
 	assists: 2,

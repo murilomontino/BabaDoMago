@@ -17,6 +17,7 @@ export function fallbackRosterPlayer(
 		rating: 0,
 		role: CHAMPIONSHIP_ROLE.member,
 		is_goalkeeper: false,
+		is_monthly: false,
 		deleted_at: null,
 		goals: 0,
 		assists: 0,
