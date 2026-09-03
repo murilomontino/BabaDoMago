@@ -29,6 +29,7 @@ import {
 	listMyChampionshipEventPlayerVotes,
 	promoteChampionshipEventRsvpGoing,
 	reopenChampionshipEventMatch,
+	reopenChampionshipEventPlayerVotes,
 	saveChampionshipEventAttendance,
 	saveChampionshipEventAttendanceStats,
 	saveChampionshipEventTeams,
@@ -39,17 +40,19 @@ import {
 	swapChampionshipEventMatchTeam,
 	updateChampionshipEventTeam,
 	upsertChampionshipEventRsvp,
+	voidChampionshipEventPlayerVotes,
 	voteChampionshipEventPlayer,
 } from "@/services/championship-events";
 import type { ChampionshipEvent } from "@/types/championship-event";
 import {
-	CHAMPIONSHIP_EVENTS_QUERY_KEY,
 	championshipEventDetailQueryKey,
+	championshipEventMyVotesQueryKey,
 	championshipEventsListQueryKey,
 	eventIdFromDetailKey,
 	invalidateChampionshipEvent,
 	invalidateChampionshipEvents,
 	invalidateChampionshipQueries,
+	isChampionshipEventMyVotesKey,
 	patchCachedChampionshipEvent,
 } from "./championships-query-keys";
 import { CHAMPIONSHIP_AUDIT_QUERY_KEY } from "./use-championship-audit-logs";
@@ -476,7 +479,7 @@ export function useMyChampionshipEventPlayerVotes(eventId: number) {
 	const { user } = useAuth();
 
 	return useQuery({
-		queryKey: [...CHAMPIONSHIP_EVENTS_QUERY_KEY, "my-votes", eventId, user?.id],
+		queryKey: championshipEventMyVotesQueryKey(eventId, user?.id),
 		queryFn: () => listMyChampionshipEventPlayerVotes(eventId),
 		enabled: Number.isFinite(eventId) && Boolean(user),
 	});
@@ -510,6 +513,87 @@ export function useCloseChampionshipEventPlayerVotes(
 
 			await Promise.all([
 				invalidateChampionshipEvent(queryClient, championshipId, eventId),
+				invalidateChampionshipQueries(queryClient),
+			]);
+		},
+	});
+}
+
+export function useVoidChampionshipEventPlayerVotes(championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (eventId: number) => voidChampionshipEventPlayerVotes(eventId),
+		onSuccess: async (result) => {
+			queryClient.setQueriesData<ChampionshipEvent>(
+				{
+					predicate: (query) =>
+						eventIdFromDetailKey(query.queryKey) === result.event_id,
+				},
+				(current) => {
+					if (!current) {
+						return current;
+					}
+
+					return {
+						...current,
+						player_votes_voided_at: result.player_votes_voided_at,
+					};
+				},
+			);
+
+			await Promise.all([
+				invalidateChampionshipEvent(
+					queryClient,
+					championshipId,
+					result.event_id,
+				),
+				invalidateChampionshipQueries(queryClient),
+			]);
+		},
+	});
+}
+
+export function useReopenChampionshipEventPlayerVotes(championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (eventId: number) =>
+			reopenChampionshipEventPlayerVotes(eventId),
+		onSuccess: async (result) => {
+			queryClient.setQueriesData<ChampionshipEvent>(
+				{
+					predicate: (query) =>
+						eventIdFromDetailKey(query.queryKey) === result.event_id,
+				},
+				(current) => {
+					if (!current) {
+						return current;
+					}
+
+					return {
+						...current,
+						player_votes_voided_at: result.player_votes_voided_at,
+						player_votes_closed_at: result.player_votes_closed_at,
+						attendance: current.attendance.map((row) => ({
+							...row,
+							vote_rating_delta: 0,
+						})),
+					};
+				},
+			);
+
+			queryClient.removeQueries({
+				predicate: (query) =>
+					isChampionshipEventMyVotesKey(query.queryKey, result.event_id),
+			});
+
+			await Promise.all([
+				invalidateChampionshipEvent(
+					queryClient,
+					championshipId,
+					result.event_id,
+				),
 				invalidateChampionshipQueries(queryClient),
 			]);
 		},
@@ -560,7 +644,7 @@ export function useSubmitChampionshipEventPlayerVotes(
 			);
 
 			queryClient.setQueryData(
-				[...CHAMPIONSHIP_EVENTS_QUERY_KEY, "my-votes", eventId, user?.id],
+				championshipEventMyVotesQueryKey(eventId, user?.id),
 				result.votes,
 			);
 
@@ -615,7 +699,7 @@ export function useVoteChampionshipEventPlayer(
 			);
 
 			queryClient.setQueryData(
-				[...CHAMPIONSHIP_EVENTS_QUERY_KEY, "my-votes", eventId, user?.id],
+				championshipEventMyVotesQueryKey(eventId, user?.id),
 				(current: ChampionshipEventPlayerVoteRow[] | undefined) => {
 					const without = (current ?? []).filter(
 						(row) => row.target_player_id !== result.target_player_id,

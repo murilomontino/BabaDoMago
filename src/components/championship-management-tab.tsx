@@ -3,6 +3,7 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { AlertTriangle, ClipboardList, Users } from "lucide-react";
 import { useMemo } from "react";
 import { ChampionshipAuditLog } from "@/components/championship-audit-log";
+import { ChampionshipVotesHistory } from "@/components/championship-votes-history";
 import { EmptyState } from "@/components/empty-state";
 import { PlayerNameLink } from "@/components/molecules/player-name-link";
 import {
@@ -53,6 +54,7 @@ type ChampionshipManagementTabProps = {
 	events: readonly ChampionshipEvent[];
 	eventsPending: boolean;
 	eventsError: string | null;
+	canOverrideEnded: boolean;
 };
 
 function FrequencyTable({ rows }: { rows: ManagementFrequencyRow[] }) {
@@ -146,6 +148,7 @@ export function ChampionshipManagementTab({
 	events,
 	eventsPending,
 	eventsError,
+	canOverrideEnded,
 }: ChampionshipManagementTabProps) {
 	const summary = managementSummary(events);
 	const frequency = useMemo(
@@ -222,6 +225,11 @@ export function ChampionshipManagementTab({
 				)}
 				{frequency.length > 0 && <FrequencyTable rows={frequency} />}
 			</SectionCard>
+			<ChampionshipVotesHistory
+				championshipId={championshipId}
+				events={events}
+				canOverrideEnded={canOverrideEnded}
+			/>
 			<ChampionshipAuditLog championshipId={championshipId} />
 		</div>
 	);

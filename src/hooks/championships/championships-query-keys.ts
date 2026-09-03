@@ -23,11 +23,13 @@ export {
 	CHAMPIONSHIP_EVENTS_SCOPE,
 	CHAMPIONSHIPS_QUERY_KEY,
 	championshipEventDetailQueryKey,
+	championshipEventMyVotesQueryKey,
 	championshipEventsChampionshipQueryKey,
 	championshipEventsListQueryKey,
 	championshipIdFromEventsKey,
 	eventIdFromDetailKey,
 	isChampionshipEventDetailKey,
+	isChampionshipEventMyVotesKey,
 	isChampionshipEventsListKey,
 } from "@/const/championships-query-key";
 

@@ -37,6 +37,20 @@ export const EVENT_PLAYER_VOTE_LABEL = {
 	votesClosed: "Votação encerrada",
 	closeVotes: "Encerrar votação",
 	closeVotesFailed: "Não foi possível encerrar a votação",
+	historyTitle: "Histórico de votação",
+	historyEmpty: "Nenhuma rodada encerrada.",
+	statusOpen: "Aberta",
+	statusClosed: "Encerrada",
+	statusVoided: "Cancelada",
+	openHistory: "Abrir",
+	cancelVotes: "Cancelar efeito",
+	cancelVotesHint:
+		"Notas voltam ao valor pré-voto. Os votos ficam gravados até reabrir.",
+	cancelVotesFailed: "Não foi possível cancelar o efeito",
+	reopenVotes: "Reabrir votação",
+	reopenVotesHint: "Apaga os votos da rodada e abre a urna de novo.",
+	reopenVotesFailed: "Não foi possível reabrir a votação",
+	votesVoided: "Efeito da votação cancelado",
 	noTeam: "Sem time",
 	back: "Voltar",
 	goals: "G",
@@ -46,6 +60,8 @@ export const EVENT_PLAYER_VOTE_LABEL = {
 	voteFailed: "Não foi possível registrar o voto",
 	submitVotes: "Enviar votos",
 	submitVotesFailed: "Não foi possível enviar os votos",
+	votesSubmitted: "Votos enviados",
+	editVotes: "Alterar votos",
 	likeBudget: "Likes",
 	dislikeBudget: "Dislikes",
 } as const;
@@ -61,9 +77,20 @@ export const EVENT_PLAYER_VOTE_ERROR_MESSAGE = {
 	"player not present": "Jogador fora da presença",
 	"vote closed": "Voto deste jogador já fechou",
 	"player votes closed": "Votação encerrada",
+	"player votes voided": "Efeito da votação cancelado",
+	"votes not voided": "A votação não está cancelada",
 	"like budget exceeded": "No máximo 5 likes",
 	"dislike budget exceeded": "No máximo 5 dislikes",
 } as const;
+
+export const EVENT_PLAYER_VOTE_STATUS = {
+	open: "open",
+	closed: "closed",
+	voided: "voided",
+} as const;
+
+export type EventPlayerVoteStatus =
+	(typeof EVENT_PLAYER_VOTE_STATUS)[keyof typeof EVENT_PLAYER_VOTE_STATUS];
 
 export function eventPlayerVoteErrorMessage(message: string): string {
 	const known =
@@ -86,11 +113,7 @@ export function eventPlayerVoteAppliedDelta(
 	const likesAtQuorum = likeCount >= quorum;
 	const dislikesAtQuorum = dislikeCount >= quorum;
 
-	if (
-		likesAtQuorum &&
-		likeCount > dislikeCount &&
-		likeCount > maintainCount
-	) {
+	if (likesAtQuorum && likeCount > dislikeCount && likeCount > maintainCount) {
 		return EVENT_PLAYER_VOTE.delta;
 	}
 
@@ -129,16 +152,65 @@ export function isEventPlayerVotesClosed(
 	return playerVotesClosedAt !== null;
 }
 
+export function isEventPlayerVotesVoided(
+	playerVotesVoidedAt: string | null | undefined,
+): boolean {
+	return playerVotesVoidedAt != null;
+}
+
+export function eventPlayerVoteStatus(input: {
+	playerVotesClosedAt: string | null | undefined;
+	playerVotesVoidedAt: string | null | undefined;
+}): EventPlayerVoteStatus {
+	if (isEventPlayerVotesVoided(input.playerVotesVoidedAt)) {
+		return EVENT_PLAYER_VOTE_STATUS.voided;
+	}
+
+	if (isEventPlayerVotesClosed(input.playerVotesClosedAt ?? null)) {
+		return EVENT_PLAYER_VOTE_STATUS.closed;
+	}
+
+	return EVENT_PLAYER_VOTE_STATUS.open;
+}
+
+export function eventPlayerVoteStatusLabel(
+	status: EventPlayerVoteStatus,
+): string {
+	switch (status) {
+		case EVENT_PLAYER_VOTE_STATUS.open:
+			return EVENT_PLAYER_VOTE_LABEL.statusOpen;
+		case EVENT_PLAYER_VOTE_STATUS.closed:
+			return EVENT_PLAYER_VOTE_LABEL.statusClosed;
+		case EVENT_PLAYER_VOTE_STATUS.voided:
+			return EVENT_PLAYER_VOTE_LABEL.statusVoided;
+		default: {
+			const _exhaustive: never = status;
+			return _exhaustive;
+		}
+	}
+}
+
 export function canVoteEventPlayer(input: {
 	canVote: boolean;
 	eventEnded: boolean;
 	votesClosed: boolean;
+	votesVoided?: boolean;
 	voterPresent: boolean;
 	targetPlayerId: number;
 	voterPlayerId: number | null;
 	voteRatingDelta: number;
+	votingEnabled?: boolean;
 }): boolean {
-	if (!input.canVote || !input.eventEnded || input.votesClosed) {
+	if (input.votingEnabled === false) {
+		return false;
+	}
+
+	if (
+		!input.canVote ||
+		!input.eventEnded ||
+		input.votesClosed ||
+		input.votesVoided
+	) {
 		return false;
 	}
 
@@ -155,6 +227,36 @@ export function canVoteEventPlayer(input: {
 	}
 
 	return input.voterPlayerId !== input.targetPlayerId;
+}
+
+export function initialEventPlayerBallotLocked(
+	savedVoteCount: number,
+): boolean {
+	return savedVoteCount > 0;
+}
+
+export function canEditEventPlayerBallot(input: {
+	ballotLocked: boolean;
+	canSubmitVotes: boolean;
+}): boolean {
+	return input.ballotLocked && input.canSubmitVotes;
+}
+
+export function eventPlayerVoteChoiceLabel(
+	choice: EventPlayerVoteChoice,
+): string {
+	switch (choice) {
+		case EVENT_PLAYER_VOTE.like:
+			return EVENT_PLAYER_VOTE_LABEL.like;
+		case EVENT_PLAYER_VOTE.dislike:
+			return EVENT_PLAYER_VOTE_LABEL.dislike;
+		case EVENT_PLAYER_VOTE.maintain:
+			return EVENT_PLAYER_VOTE_LABEL.maintain;
+		default: {
+			const _exhaustive: never = choice;
+			return _exhaustive;
+		}
+	}
 }
 
 export function eventPlayerVoteUrl(
@@ -255,7 +357,9 @@ export function eventPlayerVoteDraftToSubmit(
 	});
 }
 
-export function eventPlayerVoteBudgetSummary(draft: EventPlayerVoteDraft): string {
+export function eventPlayerVoteBudgetSummary(
+	draft: EventPlayerVoteDraft,
+): string {
 	const likes = countEventPlayerVoteDraft(draft, EVENT_PLAYER_VOTE.like);
 	const dislikes = countEventPlayerVoteDraft(draft, EVENT_PLAYER_VOTE.dislike);
 

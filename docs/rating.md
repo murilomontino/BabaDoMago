@@ -119,6 +119,8 @@ Dono, capitão e admin presentes podem dar like, dislike ou **manter** em quem e
 | Manter sozinho | **0**, voto **permanece aberto** |
 | Sem voto em si | bloqueado |
 | Encerrar votação | só o **dono**; trava novos votos na rodada (`player_votes_closed_at`) |
+| Cancelar efeito | só o **dono**; soft-delete (`player_votes_voided_at`): notas voltam, votos **permanecem** até reabrir; histórico na aba **Gestão** |
+| Reabrir votação | só o **dono**, só com a rodada cancelada; **apaga** os votos, zera `vote_rating_delta` / `vote_rating_applied`, limpa void e close → urna **Aberta** |
 | 1 voto por admin por atleta | pode trocar ou limpar **só enquanto aberto** |
 
 O campo `championship_event_attendance.vote_rating_delta` guarda o resultado (±0,5 ou 0). **Não** entra em `eventRatingDelta` / aproveitamento. Depois de ±0,5, novos votos nesse alvo são recusados (`vote closed`).
@@ -126,7 +128,7 @@ O campo `championship_event_attendance.vote_rating_delta` guarda o resultado (±
 - Jogador já ranqueado (`rating ≠ 0`): aplica na hora no elenco.
 - Sentinela (`rating = 0`): só guarda o overlay; aplica depois da semente no encerrar (`vote_rating_applied` evita aplicar duas vezes).
 
-Fonte: [`src/const/event-player-vote.ts`](../src/const/event-player-vote.ts), RPC `submit_championship_event_player_votes`.
+Fonte: [`src/const/event-player-vote.ts`](../src/const/event-player-vote.ts), RPCs `submit_championship_event_player_votes`, `void_championship_event_player_votes`, `reopen_championship_event_player_votes`.
 
 ---
 
@@ -290,7 +292,7 @@ Recompute de stats: `rating − old_delta + new_delta` com o **snapshot** da pre
 | Postgres | `public.championship_event_rating_delta`, `public.championship_player_rating_apply`, `public.championship_event_mvp_bonus`, `public.championship_event_rating_team_goal_share`, `public.championship_event_rating_apply_drop_share` |
 | Persistência ao encerrar | `adjust_championship_player_ratings_for_event` |
 | Flag da liga | `championships.rating_drop_goal_share`, `championships.rating_drop_share_exclude_top` |
-| Voto do elenco | [`src/const/event-player-vote.ts`](../src/const/event-player-vote.ts), `submit_championship_event_player_votes`, `vote_rating_delta` |
+| Voto do elenco | [`src/const/event-player-vote.ts`](../src/const/event-player-vote.ts), `submit_championship_event_player_votes`, `void_championship_event_player_votes`, `reopen_championship_event_player_votes`, `vote_rating_delta` |
 | Recálculo manual (script) | [`supabase/scripts/recompute_ratings_from_attendance.sql`](../supabase/scripts/recompute_ratings_from_attendance.sql) |
 
 **SQL e TypeScript precisam ficar iguais.** Ao mudar a regra, atualize os dois lados e os checks.

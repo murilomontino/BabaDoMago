@@ -1,20 +1,27 @@
 import {
+	canEditEventPlayerBallot,
 	canSetEventPlayerVoteDraft,
 	canVoteEventPlayer,
 	copyEventPlayerVoteLinkLabel,
 	countEventPlayerVoteDraft,
 	EVENT_PLAYER_VOTE,
 	EVENT_PLAYER_VOTE_LABEL,
+	EVENT_PLAYER_VOTE_STATUS,
 	type EventPlayerVoteChoice,
 	eventPlayerVoteAppliedDelta,
 	eventPlayerVoteBudgetSummary,
 	eventPlayerVoteChipLabel,
+	eventPlayerVoteChoiceLabel,
 	eventPlayerVoteDraftToSubmit,
 	eventPlayerVoteErrorMessage,
+	eventPlayerVoteStatus,
+	eventPlayerVoteStatusLabel,
 	eventPlayerVoteTeamSections,
 	eventPlayerVoteUrl,
+	initialEventPlayerBallotLocked,
 	isEventPlayerVoteDraftDirty,
 	isEventPlayerVoteLocked,
+	isEventPlayerVotesVoided,
 	nextEventPlayerVoteValue,
 	savedEventPlayerVoteDraft,
 } from "./event-player-vote.ts";
@@ -38,6 +45,25 @@ check(EVENT_PLAYER_VOTE_LABEL.title === "Votar elenco", "title");
 check(EVENT_PLAYER_VOTE_LABEL.appliedUp === "+0,5", "chip up");
 check(EVENT_PLAYER_VOTE_LABEL.appliedDown === "−0,5", "chip down");
 check(EVENT_PLAYER_VOTE_LABEL.noTeam === "Sem time", "no team label");
+check(
+	EVENT_PLAYER_VOTE_LABEL.reopenVotes === "Reabrir votação",
+	"reopen votes label",
+);
+check(
+	EVENT_PLAYER_VOTE_LABEL.reopenVotesHint ===
+		"Apaga os votos da rodada e abre a urna de novo.",
+	"reopen votes hint",
+);
+check(
+	EVENT_PLAYER_VOTE_LABEL.reopenVotesFailed ===
+		"Não foi possível reabrir a votação",
+	"reopen votes failed",
+);
+check(
+	EVENT_PLAYER_VOTE_LABEL.cancelVotesHint ===
+		"Notas voltam ao valor pré-voto. Os votos ficam gravados até reabrir.",
+	"cancel votes hint",
+);
 
 check(
 	eventPlayerVoteTeamSections(
@@ -139,7 +165,12 @@ check(
 	"draft clean",
 );
 check(
-	eventPlayerVoteDraftToSubmit(new Map([[1, "like"], [2, null]])).length === 1,
+	eventPlayerVoteDraftToSubmit(
+		new Map([
+			[1, "like"],
+			[2, null],
+		]),
+	).length === 1,
 	"draft submit payload",
 );
 check(
@@ -287,7 +318,10 @@ check(
 	nextEventPlayerVoteValue("dislike", "dislike") === null,
 	"toggle off dislike",
 );
-check(nextEventPlayerVoteValue(null, "maintain") === "maintain", "press maintain");
+check(
+	nextEventPlayerVoteValue(null, "maintain") === "maintain",
+	"press maintain",
+);
 check(
 	nextEventPlayerVoteValue("maintain", "maintain") === null,
 	"toggle off maintain",
@@ -310,9 +344,60 @@ check(
 	"votes closed blocks vote",
 );
 check(
+	!canVoteEventPlayer({
+		canVote: true,
+		eventEnded: true,
+		votesClosed: false,
+		votesVoided: true,
+		voterPresent: true,
+		targetPlayerId: 2,
+		voterPlayerId: 1,
+		voteRatingDelta: 0,
+	}),
+	"votes voided blocks vote",
+);
+check(isEventPlayerVotesVoided("2026-09-03T12:00:00Z"), "voided true");
+check(!isEventPlayerVotesVoided(null), "voided false");
+check(
+	eventPlayerVoteStatus({
+		playerVotesClosedAt: null,
+		playerVotesVoidedAt: null,
+	}) === EVENT_PLAYER_VOTE_STATUS.open,
+	"status open",
+);
+check(
+	eventPlayerVoteStatus({
+		playerVotesClosedAt: "2026-09-03T12:00:00Z",
+		playerVotesVoidedAt: null,
+	}) === EVENT_PLAYER_VOTE_STATUS.closed,
+	"status closed",
+);
+check(
+	eventPlayerVoteStatus({
+		playerVotesClosedAt: "2026-09-03T12:00:00Z",
+		playerVotesVoidedAt: "2026-09-03T13:00:00Z",
+	}) === EVENT_PLAYER_VOTE_STATUS.voided,
+	"status voided wins",
+);
+check(
+	eventPlayerVoteStatusLabel(EVENT_PLAYER_VOTE_STATUS.voided) ===
+		EVENT_PLAYER_VOTE_LABEL.statusVoided,
+	"status voided label",
+);
+check(
 	eventPlayerVoteErrorMessage("player votes closed") ===
 		EVENT_PLAYER_VOTE_LABEL.votesClosed,
 	"player votes closed error",
+);
+check(
+	eventPlayerVoteErrorMessage("player votes voided") ===
+		EVENT_PLAYER_VOTE_LABEL.votesVoided,
+	"player votes voided error",
+);
+check(
+	eventPlayerVoteErrorMessage("votes not voided") ===
+		"A votação não está cancelada",
+	"votes not voided error",
 );
 
 check(
@@ -331,6 +416,35 @@ check(
 check(
 	eventPlayerVoteErrorMessage("weird") === EVENT_PLAYER_VOTE_LABEL.voteFailed,
 	"error fallback",
+);
+
+check(initialEventPlayerBallotLocked(0) === false, "ballot unlocked empty");
+check(initialEventPlayerBallotLocked(2) === true, "ballot locked with votes");
+check(
+	canEditEventPlayerBallot({ ballotLocked: true, canSubmitVotes: true }),
+	"can edit when locked and open",
+);
+check(
+	!canEditEventPlayerBallot({ ballotLocked: true, canSubmitVotes: false }),
+	"cannot edit when closed",
+);
+check(
+	!canEditEventPlayerBallot({ ballotLocked: false, canSubmitVotes: true }),
+	"no edit button while editing",
+);
+check(eventPlayerVoteChoiceLabel("like") === "Like", "choice like label");
+check(
+	!canVoteEventPlayer({
+		canVote: true,
+		eventEnded: true,
+		votesClosed: false,
+		voterPresent: true,
+		targetPlayerId: 2,
+		voterPlayerId: 1,
+		voteRatingDelta: 0,
+		votingEnabled: false,
+	}),
+	"votingEnabled false blocks",
 );
 
 console.log("event-player-vote.check.ts: ok");

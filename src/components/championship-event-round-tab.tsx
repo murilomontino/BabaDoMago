@@ -93,6 +93,7 @@ import {
 	EVENT_PLAYER_VOTE_LABEL,
 	eventPlayerVoteChipLabel,
 	eventPlayerVoteUrl,
+	isEventPlayerVotesVoided,
 } from "@/const/event-player-vote";
 import {
 	EVENT_RECAP_SHARE_LABEL,
@@ -784,7 +785,9 @@ export function ChampionshipEventRoundTab({
 								{EVENT_SECTION_LABEL.attendance}
 							</p>
 							<div className={SECTION_ACTION_GROUP_CLASS}>
-								{ended && event.attendance.length > 0 && (
+								{ended &&
+									!isEventPlayerVotesVoided(event.player_votes_voided_at) &&
+									event.attendance.length > 0 && (
 									<IconTooltipButton
 										showLabel
 										label={EVENT_PLAYER_VOTE_LABEL.open}
@@ -800,7 +803,9 @@ export function ChampionshipEventRoundTab({
 										}}
 									/>
 								)}
-								{ended && event.attendance.length > 0 && (
+								{ended &&
+									!isEventPlayerVotesVoided(event.player_votes_voided_at) &&
+									event.attendance.length > 0 && (
 									<IconTooltipButton
 										showLabel
 										label={copyEventPlayerVoteLinkLabel(copiedVoteLink)}

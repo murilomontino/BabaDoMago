@@ -871,6 +871,7 @@ export function ChampionshipDetailPage() {
 								events={eventsQuery.data ?? []}
 								eventsPending={eventsQuery.isPending}
 								eventsError={mutationErrorMessage(eventsQuery)}
+								canOverrideEnded={permissions.overrideEnded}
 							/>
 						</TabPanel>
 					)}
