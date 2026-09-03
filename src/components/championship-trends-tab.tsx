@@ -5,6 +5,7 @@ import {
 	ArrowUp,
 	ChartColumn,
 	Goal,
+	Grid2x2,
 	LineChart as LineChartIcon,
 	Scale,
 	Shield,
@@ -57,6 +58,10 @@ import {
 	parseEventHealthMetric,
 } from "@/const/championship-event-health";
 import {
+	championshipFormHeatmap,
+	FORM_HEATMAP_LABEL,
+} from "@/const/championship-form-heatmap";
+import {
 	championshipGoalkeeperRanking,
 	formatGoalkeeperAverage,
 	formatGoalkeeperCount,
@@ -73,6 +78,7 @@ import {
 	ROUND_GOALS_LABEL,
 } from "@/const/championship-round-goals";
 import {
+	championshipRecentForm,
 	formatRecentFormDelta,
 	formatRecentFormRate,
 	formatRecentFormStat,
@@ -111,6 +117,12 @@ import { FIELD_CLASS } from "@/const/ui";
 import { CHAMPIONSHIP_EVENTS_QUERY_KEY } from "@/hooks/championships/championships-query-keys";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type { ChampionshipEvent } from "@/types/championship-event";
+
+const ChampionshipFormHeatmap = lazy(() =>
+	import("@/components/molecules/championship-form-heatmap").then((m) => ({
+		default: m.ChampionshipFormHeatmap,
+	}),
+));
 
 const ChampionshipMetricHistoryChart = lazy(() =>
 	import("@/components/molecules/championship-rating-history-chart").then((m) => ({
@@ -476,6 +488,10 @@ export function ChampionshipTrendsTab({
 		[players, events, consistencyMetric],
 	);
 	const consistencyEmpty = championshipConsistencyEmptyLabel(consistencyPoints);
+	const formHeatmap = useMemo(
+		() => championshipFormHeatmap(players, windowEvents),
+		[players, windowEvents],
+	);
 	const roundGoals = useMemo(
 		() => championshipRoundGoals(windowEvents),
 		[windowEvents],
@@ -876,6 +892,31 @@ export function ChampionshipTrendsTab({
 									/>
 								</Suspense>
 							</>
+						)}
+					</section>
+
+					<section className="space-y-3">
+						<div className="space-y-1">
+							<div className="flex items-center gap-2">
+								<Grid2x2 className="size-4 text-pitch-fg" />
+								<h3 className="text-sm font-semibold text-fg">
+									{FORM_HEATMAP_LABEL.title}
+								</h3>
+							</div>
+							<p className="text-sm text-fg-muted">{FORM_HEATMAP_LABEL.hint}</p>
+							{formHeatmap.truncated && (
+								<p className="text-xs text-fg-muted">
+									{FORM_HEATMAP_LABEL.limitNote}
+								</p>
+							)}
+						</div>
+						{formHeatmap.rows.length === 0 && (
+							<p className="text-sm text-fg-muted">{FORM_HEATMAP_LABEL.empty}</p>
+						)}
+						{formHeatmap.rows.length > 0 && (
+							<Suspense fallback={<Skeleton className="h-48 w-full" />}>
+								<ChampionshipFormHeatmap grid={formHeatmap} />
+							</Suspense>
 						)}
 					</section>
 				</div>
