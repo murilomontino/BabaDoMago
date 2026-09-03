@@ -1,4 +1,9 @@
 import type { ChampionshipEvent } from "../types/championship-event.ts";
+import type { TrendsPlayerScope } from "./championship-trends-player-scope.ts";
+import {
+	trendsScopedEndedMatches,
+	trendsScopedGoalCount,
+} from "./championship-trends-player-scope.ts";
 import type { TrendLineChartPoint } from "./championship-trend-line-chart.ts";
 import {
 	formatRosterAverage,
@@ -27,21 +32,20 @@ export type RoundGoalsSummary = {
 
 export function championshipRoundGoals(
 	events: readonly ChampionshipEvent[],
+	playerIds: TrendsPlayerScope = null,
 ): RoundGoalsSummary {
 	const rows = events.flatMap((event) => {
 		if (event.ended_at === null) {
 			return [];
 		}
 
-		const endedMatches = event.matches.filter(
-			(match) => match.ended_at !== null,
-		);
+		const endedMatches = trendsScopedEndedMatches(event, playerIds);
 		if (endedMatches.length === 0) {
 			return [];
 		}
 
 		const totalGoals = endedMatches.reduce(
-			(sum, match) => sum + match.goals.length,
+			(sum, match) => sum + trendsScopedGoalCount(match.goals, playerIds),
 			0,
 		);
 

@@ -1,5 +1,11 @@
 import type { ChampionshipEvent } from "../types/championship-event.ts";
+import type { ChampionshipPlayer } from "../types/championship.ts";
 import { endedChampionshipHistoryEvents } from "./championship-rating-history.ts";
+import type { TrendsPlayerScope } from "./championship-trends-player-scope.ts";
+import {
+	trendsScopedPresentCount,
+	trendsScopedRosterSize,
+} from "./championship-trends-player-scope.ts";
 import type { TrendLineChartPoint } from "./championship-trend-line-chart.ts";
 import {
 	formatRosterAverage,
@@ -73,10 +79,12 @@ export function attendanceTrendMetricCaption(
 
 export function championshipAttendanceTrend(
 	events: readonly ChampionshipEvent[],
-	rosterSize: number,
+	players: readonly ChampionshipPlayer[],
+	playerIds: TrendsPlayerScope,
 ): AttendanceTrendSummary {
+	const rosterSize = trendsScopedRosterSize(players, playerIds);
 	const rows = endedChampionshipHistoryEvents(events).flatMap((event) => {
-		const presentCount = event.attendance.length;
+		const presentCount = trendsScopedPresentCount(event.attendance, playerIds);
 		if (presentCount === 0) {
 			return [];
 		}

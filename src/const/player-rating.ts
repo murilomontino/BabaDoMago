@@ -50,12 +50,38 @@ export function averageOrZero(total: number, count: number): number {
 	return total / count;
 }
 
+export function minOfficialRatingOrNull(
+	ratings: readonly number[],
+): number | null {
+	const official = ratings.flatMap((rating) => {
+		if (rating === PLAYER_RATING.default) {
+			return [];
+		}
+
+		return [rating];
+	});
+	if (official.length === 0) {
+		return null;
+	}
+
+	return Math.min(...official);
+}
+
 export function championshipRatingCeiling(ratings: readonly number[]): number {
 	const maxRating = maxOrZero(ratings);
 	return Math.min(
 		PLAYER_RATING.max,
 		Math.max(maxRating, PLAYER_RATING.initialCeiling),
 	);
+}
+
+export function championshipRatingFloor(ratings: readonly number[]): number {
+	const floor = minOfficialRatingOrNull(ratings);
+	if (floor === null) {
+		return PLAYER_RATING.floor;
+	}
+
+	return Math.max(PLAYER_RATING.floor, floor);
 }
 
 export function ratingToStarFill(rating: number, ceiling: number): number {

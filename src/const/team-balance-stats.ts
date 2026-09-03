@@ -85,6 +85,7 @@ function favoriteWonWhenDecided(
 
 export function eventTeamBalance(
 	event: ChampionshipEvent,
+	playerIds: ReadonlySet<number> | null = null,
 ): TeamBalanceEvent | null {
 	if (event.teams.length === 0) {
 		return null;
@@ -93,32 +94,43 @@ export function eventTeamBalance(
 	const attendanceByPlayer = new Map(
 		event.attendance.map((row) => [row.player_id, row] as const),
 	);
-	const drawRatings = eventDrawRatings(
-		event.teams.flatMap((team) =>
-			team.players.map((player) => ({
+	const teams = event.teams.flatMap((team) => {
+		const roster = playerIds
+			? team.players.filter((player) => playerIds.has(player.player_id))
+			: team.players;
+		if (playerIds && roster.length === 0) {
+			return [];
+		}
+
+		const drawRatings = eventDrawRatings(
+			roster.map((player) => ({
 				id: player.player_id,
 				rating: attendanceByPlayer.get(player.player_id)?.rating ?? 0,
 			})),
-		),
-	);
-	const ratingByPlayer = new Map(
-		drawRatings.map((player) => [player.id, player.rating] as const),
-	);
-	const teams = event.teams.map((team) => {
+		);
+		const ratingByPlayer = new Map(
+			drawRatings.map((player) => [player.id, player.rating] as const),
+		);
 		const record = teamMatchRecord(event, team.id);
-		const ratings = team.players.map(
+		const ratings = roster.map(
 			(player) => ratingByPlayer.get(player.player_id) ?? 0,
 		);
 
-		return {
-			teamId: team.id,
-			label: eventTeamName(team.color, team.sort_order),
-			predictedRating: eventTeamRatingAverage(ratings),
-			matches: record.matches,
-			wins: record.wins,
-			winRate: rosterWinRate(record.wins, record.matches),
-		};
+		return [
+			{
+				teamId: team.id,
+				label: eventTeamName(team.color, team.sort_order),
+				predictedRating: eventTeamRatingAverage(ratings),
+				matches: record.matches,
+				wins: record.wins,
+				winRate: rosterWinRate(record.wins, record.matches),
+			},
+		];
 	});
+	if (teams.length < 2) {
+		return null;
+	}
+
 	const predicted = teams.map((team) => team.predictedRating);
 	const highest = Math.max(...predicted);
 	const lowest = Math.min(...predicted);
@@ -146,13 +158,14 @@ export function eventTeamBalance(
 
 export function championshipTeamBalance(
 	events: readonly ChampionshipEvent[],
+	playerIds: ReadonlySet<number> | null = null,
 ): TeamBalanceSummary {
 	const rows = events.flatMap((event) => {
 		if (event.ended_at === null) {
 			return [];
 		}
 
-		const row = eventTeamBalance(event);
+		const row = eventTeamBalance(event, playerIds);
 		if (!row) {
 			return [];
 		}

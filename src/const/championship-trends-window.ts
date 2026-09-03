@@ -1,4 +1,5 @@
 import { endedChampionshipHistoryEvents } from "./championship-rating-history.ts";
+import type { ChampionshipPlayer } from "../types/championship.ts";
 
 export const TRENDS_WINDOW = {
 	last3: "last3",
@@ -30,6 +31,28 @@ export const TRENDS_RATING_HISTORY_LABEL = {
 	hint: "Nota ao longo das rodadas do recorte. Quem subiu nas últimas peladas.",
 } as const;
 
+export const TRENDS_AUDIENCE = {
+	all: "all",
+	monthly: "monthly",
+} as const;
+
+export type TrendsAudience =
+	(typeof TRENDS_AUDIENCE)[keyof typeof TRENDS_AUDIENCE];
+
+export const TRENDS_AUDIENCE_DEFAULT = TRENDS_AUDIENCE.all;
+
+export const TRENDS_AUDIENCE_OPTIONS = [
+	TRENDS_AUDIENCE.all,
+	TRENDS_AUDIENCE.monthly,
+] as const;
+
+export const TRENDS_AUDIENCE_LABEL = {
+	filter: "Elenco",
+	[TRENDS_AUDIENCE.all]: "Todos",
+	[TRENDS_AUDIENCE.monthly]: "Mensalistas",
+	emptyMonthly: "Nenhum mensalista com dados no recorte",
+} as const;
+
 export const TRENDS_WINDOW_OPTIONS = [
 	TRENDS_WINDOW.last3,
 	TRENDS_WINDOW.last5,
@@ -49,6 +72,50 @@ export function parseTrendsWindow(value: string): TrendsWindow {
 
 export function trendsWindowCaption(window: TrendsWindow): string {
 	return TRENDS_WINDOW_LABEL[window];
+}
+
+export function isTrendsAudience(value: string): value is TrendsAudience {
+	return TRENDS_AUDIENCE_OPTIONS.some((option) => option === value);
+}
+
+export function parseTrendsAudience(value: string): TrendsAudience {
+	if (isTrendsAudience(value)) {
+		return value;
+	}
+
+	return TRENDS_AUDIENCE_DEFAULT;
+}
+
+export function trendsAudienceCaption(audience: TrendsAudience): string {
+	return TRENDS_AUDIENCE_LABEL[audience];
+}
+
+export function trendsHasMonthlyPlayers(
+	players: readonly ChampionshipPlayer[],
+): boolean {
+	return players.some((player) => player.is_monthly);
+}
+
+export function trendsAudiencePlayers(
+	players: readonly ChampionshipPlayer[],
+	audience: TrendsAudience,
+): ChampionshipPlayer[] {
+	if (audience === TRENDS_AUDIENCE.monthly) {
+		return players.filter((player) => player.is_monthly);
+	}
+
+	return [...players];
+}
+
+export function trendsSectionEmptyLabel(
+	audience: TrendsAudience,
+	defaultLabel: string,
+): string {
+	if (audience === TRENDS_AUDIENCE.monthly) {
+		return TRENDS_AUDIENCE_LABEL.emptyMonthly;
+	}
+
+	return defaultLabel;
 }
 
 export function championshipTrendsEvents<

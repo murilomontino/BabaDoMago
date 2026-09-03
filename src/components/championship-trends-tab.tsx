@@ -7,13 +7,16 @@ import {
 	Goal,
 	Grid2x2,
 	LineChart as LineChartIcon,
+	LoaderCircle,
 	Scale,
+	Share2,
 	Shield,
 	TrendingUp,
 	Users,
 } from "lucide-react";
 import { lazy, Suspense, useMemo, useState } from "react";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
+import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
 import { PlayerNameLink } from "@/components/molecules/player-name-link";
 import {
@@ -62,6 +65,11 @@ import {
 	FORM_HEATMAP_LABEL,
 } from "@/const/championship-form-heatmap";
 import {
+	formHeatmapShareCard,
+	formHeatmapShareContext,
+	FORM_HEATMAP_SHARE_LABEL,
+} from "@/const/form-heatmap-share";
+import {
 	championshipGoalkeeperRanking,
 	formatGoalkeeperAverage,
 	formatGoalkeeperCount,
@@ -100,10 +108,20 @@ import {
 } from "@/const/championship-rating-history";
 import { TREND_LINE_CHART } from "@/const/championship-trend-line-chart";
 import { CHAMPIONSHIP_TAB_LABEL } from "@/const/championship-tab";
+import { trendsAudiencePlayerScope } from "@/const/championship-trends-player-scope";
 import {
 	championshipTrendsEvents,
 	championshipTrendsHasEnoughEnded,
+	parseTrendsAudience,
 	parseTrendsWindow,
+	TRENDS_AUDIENCE_DEFAULT,
+	TRENDS_AUDIENCE_LABEL,
+	TRENDS_AUDIENCE_OPTIONS,
+	type TrendsAudience,
+	trendsAudienceCaption,
+	trendsAudiencePlayers,
+	trendsHasMonthlyPlayers,
+	trendsSectionEmptyLabel,
 	TRENDS_WINDOW_DEFAULT,
 	TRENDS_WINDOW_LABEL,
 	TRENDS_WINDOW_OPTIONS,
@@ -113,8 +131,9 @@ import {
 } from "@/const/championship-trends-window";
 import { ROSTER_COLUMN } from "@/const/roster-stats";
 import { SKELETON_LABEL } from "@/const/skeleton";
-import { FIELD_CLASS } from "@/const/ui";
+import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
 import { CHAMPIONSHIP_EVENTS_QUERY_KEY } from "@/hooks/championships/championships-query-keys";
+import { shareFormHeatmapImage } from "@/lib/share-form-heatmap-image";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type { ChampionshipEvent } from "@/types/championship-event";
 
@@ -441,6 +460,7 @@ export function ChampionshipTrendsTab({
 	events,
 }: ChampionshipTrendsTabProps) {
 	const [window, setWindow] = useState<TrendsWindow>(TRENDS_WINDOW_DEFAULT);
+	const [audience, setAudience] = useState<TrendsAudience>(TRENDS_AUDIENCE_DEFAULT);
 	const [attendanceMetric, setAttendanceMetric] =
 		useState<AttendanceTrendMetric>(ATTENDANCE_TREND_METRIC_DEFAULT);
 	const [consistencyMetric, setConsistencyMetric] = useState<ConsistencyMetric>(
@@ -449,8 +469,24 @@ export function ChampionshipTrendsTab({
 	const [healthMetric, setHealthMetric] = useState<EventHealthMetric>(
 		EVENT_HEALTH_METRIC_DEFAULT,
 	);
+	const [isSharingHeatmap, setIsSharingHeatmap] = useState(false);
+	const [heatmapShareError, setHeatmapShareError] = useState<string | null>(
+		null,
+	);
 
 	const hasEnough = championshipTrendsHasEnoughEnded(events);
+	const hasMonthlyPlayers = useMemo(
+		() => trendsHasMonthlyPlayers(players),
+		[players],
+	);
+	const scopedPlayers = useMemo(
+		() => trendsAudiencePlayers(players, audience),
+		[players, audience],
+	);
+	const scopedPlayerIds = useMemo(
+		() => trendsAudiencePlayerScope(players, audience),
+		[players, audience],
+	);
 	const windowEvents = useMemo(
 		() => championshipTrendsEvents(events, window),
 		[events, window],
@@ -460,54 +496,76 @@ export function ChampionshipTrendsTab({
 		[events],
 	);
 	const attendance = useMemo(
-		() => championshipAttendanceTrend(allEndedEvents, players.length),
-		[allEndedEvents, players.length],
+		() =>
+			championshipAttendanceTrend(allEndedEvents, players, scopedPlayerIds),
+		[allEndedEvents, players, scopedPlayerIds],
 	);
 	const attendanceChart = useMemo(
 		() => championshipAttendanceTrendChart(attendance, attendanceMetric),
 		[attendance, attendanceMetric],
 	);
 	const inflation = useMemo(
-		() => championshipRatingInflation(players, allEndedEvents),
-		[players, allEndedEvents],
+		() =>
+			championshipRatingInflation(players, allEndedEvents, scopedPlayerIds),
+		[players, allEndedEvents, scopedPlayerIds],
 	);
 	const inflationChart = useMemo(
 		() => championshipRatingInflationChart(inflation),
 		[inflation],
 	);
 	const formRows = useMemo(
-		() => championshipRecentForm(players, windowEvents),
-		[players, windowEvents],
+		() => championshipRecentForm(scopedPlayers, windowEvents),
+		[scopedPlayers, windowEvents],
 	);
 	const goalkeeperRows = useMemo(
-		() => championshipGoalkeeperRanking(players, windowEvents),
-		[players, windowEvents],
+		() => championshipGoalkeeperRanking(scopedPlayers, windowEvents),
+		[scopedPlayers, windowEvents],
 	);
 	const consistencyPoints = useMemo(
-		() => championshipConsistencyPoints(players, events, consistencyMetric),
-		[players, events, consistencyMetric],
+		() => championshipConsistencyPoints(scopedPlayers, events, consistencyMetric),
+		[scopedPlayers, events, consistencyMetric],
 	);
 	const consistencyEmpty = championshipConsistencyEmptyLabel(consistencyPoints);
 	const formHeatmap = useMemo(
-		() => championshipFormHeatmap(players, windowEvents),
-		[players, windowEvents],
+		() => championshipFormHeatmap(scopedPlayers, windowEvents),
+		[scopedPlayers, windowEvents],
 	);
 	const roundGoals = useMemo(
-		() => championshipRoundGoals(windowEvents),
-		[windowEvents],
+		() => championshipRoundGoals(windowEvents, scopedPlayerIds),
+		[windowEvents, scopedPlayerIds],
 	);
 	const roundGoalsChart = useMemo(
 		() => championshipRoundGoalsChart(roundGoals),
 		[roundGoals],
 	);
 	const health = useMemo(
-		() => championshipEventHealth(windowEvents),
-		[windowEvents],
+		() => championshipEventHealth(windowEvents, scopedPlayerIds),
+		[windowEvents, scopedPlayerIds],
 	);
 	const healthChart = useMemo(
 		() => championshipEventHealthChart(health, healthMetric),
 		[health, healthMetric],
 	);
+
+	async function handleShareHeatmap() {
+		setIsSharingHeatmap(true);
+		setHeatmapShareError(null);
+		const context = formHeatmapShareContext([
+			trendsWindowCaption(window),
+			audience === TRENDS_AUDIENCE_DEFAULT
+				? null
+				: trendsAudienceCaption(audience),
+		]);
+		try {
+			await shareFormHeatmapImage(
+				formHeatmapShareCard(formHeatmap, championshipName, context),
+			);
+		} catch {
+			setHeatmapShareError(FORM_HEATMAP_SHARE_LABEL.shareFailed);
+		} finally {
+			setIsSharingHeatmap(false);
+		}
+	}
 
 	return (
 		<SectionCard
@@ -536,6 +594,27 @@ export function ChampionshipTrendsTab({
 				<p className="text-xs text-fg-muted">
 					{TRENDS_WINDOW_LABEL.windowCaption}
 				</p>
+				{hasMonthlyPlayers && (
+					<>
+						<p className="text-xs font-medium text-fg-muted">
+							{TRENDS_AUDIENCE_LABEL.filter}
+						</p>
+						<div className="flex flex-wrap gap-2">
+							{TRENDS_AUDIENCE_OPTIONS.map((option) => (
+								<button
+									key={option}
+									type="button"
+									className={filterChipClass(option === audience)}
+									onClick={() => {
+										setAudience(parseTrendsAudience(option));
+									}}
+								>
+									{trendsAudienceCaption(option)}
+								</button>
+							))}
+						</div>
+					</>
+				)}
 			</div>
 
 			{!hasEnough && (
@@ -584,7 +663,7 @@ export function ChampionshipTrendsTab({
 						</div>
 						{attendance.events === 0 && (
 							<p className="text-sm text-fg-muted">
-								{ATTENDANCE_TREND_LABEL.empty}
+								{trendsSectionEmptyLabel(audience, ATTENDANCE_TREND_LABEL.empty)}
 							</p>
 						)}
 						{attendance.events > 0 && (
@@ -635,7 +714,7 @@ export function ChampionshipTrendsTab({
 						</div>
 						{inflation.events === 0 && (
 							<p className="text-sm text-fg-muted">
-								{RATING_INFLATION_LABEL.empty}
+								{trendsSectionEmptyLabel(audience, RATING_INFLATION_LABEL.empty)}
 							</p>
 						)}
 						{inflation.events > 0 && (
@@ -676,7 +755,7 @@ export function ChampionshipTrendsTab({
 						>
 							<ChampionshipMetricHistoryChart
 								metric={ROSTER_COLUMN.rating}
-								players={players}
+								players={scopedPlayers}
 								events={windowEvents}
 								championshipName={championshipName}
 								nowIso={null}
@@ -693,7 +772,9 @@ export function ChampionshipTrendsTab({
 						</div>
 						<p className="text-sm text-fg-muted">{RECENT_FORM_LABEL.hint}</p>
 						{formRows.length === 0 && (
-							<p className="text-sm text-fg-muted">{RECENT_FORM_LABEL.empty}</p>
+							<p className="text-sm text-fg-muted">
+								{trendsSectionEmptyLabel(audience, RECENT_FORM_LABEL.empty)}
+							</p>
 						)}
 						{formRows.length > 0 && <RecentFormTable rows={formRows} />}
 					</section>
@@ -713,7 +794,10 @@ export function ChampionshipTrendsTab({
 						</p>
 						{goalkeeperRows.length === 0 && (
 							<p className="text-sm text-fg-muted">
-								{GOALKEEPER_RANKING_LABEL.empty}
+								{trendsSectionEmptyLabel(
+									audience,
+									GOALKEEPER_RANKING_LABEL.empty,
+								)}
 							</p>
 						)}
 						{goalkeeperRows.length > 0 && (
@@ -757,7 +841,9 @@ export function ChampionshipTrendsTab({
 							</label>
 						</div>
 						{consistencyEmpty && (
-							<p className="text-sm text-fg-muted">{consistencyEmpty}</p>
+							<p className="text-sm text-fg-muted">
+								{trendsSectionEmptyLabel(audience, consistencyEmpty)}
+							</p>
 						)}
 						{!consistencyEmpty && (
 							<Suspense
@@ -812,7 +898,7 @@ export function ChampionshipTrendsTab({
 						</div>
 						{health.events === 0 && (
 							<p className="text-sm text-fg-muted">
-								{EVENT_HEALTH_LABEL.empty}
+								{trendsSectionEmptyLabel(audience, EVENT_HEALTH_LABEL.empty)}
 							</p>
 						)}
 						{health.events > 0 && (
@@ -864,7 +950,9 @@ export function ChampionshipTrendsTab({
 							<p className="text-sm text-fg-muted">{ROUND_GOALS_LABEL.hint}</p>
 						</div>
 						{roundGoals.events === 0 && (
-							<p className="text-sm text-fg-muted">{ROUND_GOALS_LABEL.empty}</p>
+							<p className="text-sm text-fg-muted">
+								{trendsSectionEmptyLabel(audience, ROUND_GOALS_LABEL.empty)}
+							</p>
 						)}
 						{roundGoals.events > 0 && (
 							<>
@@ -896,22 +984,46 @@ export function ChampionshipTrendsTab({
 					</section>
 
 					<section className="space-y-3">
-						<div className="space-y-1">
-							<div className="flex items-center gap-2">
-								<Grid2x2 className="size-4 text-pitch-fg" />
-								<h3 className="text-sm font-semibold text-fg">
-									{FORM_HEATMAP_LABEL.title}
-								</h3>
+						<div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+							<div className="space-y-1">
+								<div className="flex items-center gap-2">
+									<Grid2x2 className="size-4 text-pitch-fg" />
+									<h3 className="text-sm font-semibold text-fg">
+										{FORM_HEATMAP_LABEL.title}
+									</h3>
+								</div>
+								<p className="text-sm text-fg-muted">{FORM_HEATMAP_LABEL.hint}</p>
+								{formHeatmap.truncated && (
+									<p className="text-xs text-fg-muted">
+										{FORM_HEATMAP_LABEL.limitNote}
+									</p>
+								)}
 							</div>
-							<p className="text-sm text-fg-muted">{FORM_HEATMAP_LABEL.hint}</p>
-							{formHeatmap.truncated && (
-								<p className="text-xs text-fg-muted">
-									{FORM_HEATMAP_LABEL.limitNote}
-								</p>
+							{formHeatmap.rows.length > 0 && (
+								<Button
+									variant={BUTTON_VARIANT.secondary}
+									className="w-full sm:w-auto"
+									disabled={isSharingHeatmap}
+									onClick={() => {
+										void handleShareHeatmap();
+									}}
+								>
+									{isSharingHeatmap && (
+										<LoaderCircle className="size-4 animate-spin" aria-hidden />
+									)}
+									{!isSharingHeatmap && <Share2 className="size-4" />}
+									{isSharingHeatmap && FORM_HEATMAP_SHARE_LABEL.sharing}
+									{!isSharingHeatmap && FORM_HEATMAP_SHARE_LABEL.share}
+								</Button>
 							)}
 						</div>
+						{heatmapShareError && (
+							<p className={ERROR_CLASS}>{heatmapShareError}</p>
+						)}
 						{formHeatmap.rows.length === 0 && (
-							<p className="text-sm text-fg-muted">{FORM_HEATMAP_LABEL.empty}</p>
+							<p className="text-sm text-fg-muted">
+								{trendsSectionEmptyLabel(audience, FORM_HEATMAP_LABEL.empty)}
+							</p>
 						)}
 						{formHeatmap.rows.length > 0 && (
 							<Suspense fallback={<Skeleton className="h-48 w-full" />}>

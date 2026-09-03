@@ -54,6 +54,10 @@ function inflationTooltipContent({
 				{RATING_INFLATION_LABEL.ceiling}:{" "}
 				{formatRatingInflationValue(point.ceiling)}
 			</p>
+			<p className="text-fg-muted">
+				{RATING_INFLATION_LABEL.floor}:{" "}
+				{formatRatingInflationValue(point.floor)}
+			</p>
 		</div>
 	);
 }
@@ -114,6 +118,28 @@ export function ChampionshipRatingInflationChart({
 						<LabelList
 							dataKey={RATING_INFLATION_CHART.averageLabelKey}
 							position="top"
+							offset={RATING_INFLATION_CHART.labelOffset}
+							fontSize={RATING_INFLATION_CHART.labelFontSize}
+							fill="currentColor"
+							className="tabular-nums text-fg"
+						/>
+					</Line>
+					<Line
+						type="monotone"
+						name={RATING_INFLATION_LABEL.floor}
+						dataKey={RATING_INFLATION_CHART.floorKey}
+						stroke={RATING_INFLATION_CHART.floorStroke}
+						strokeWidth={2}
+						strokeDasharray="6 4"
+						dot={{
+							r: RATING_INFLATION_CHART.dotRadius,
+							fill: RATING_INFLATION_CHART.floorStroke,
+						}}
+						isAnimationActive={false}
+					>
+						<LabelList
+							dataKey={RATING_INFLATION_CHART.floorLabelKey}
+							position="bottom"
 							offset={RATING_INFLATION_CHART.labelOffset}
 							fontSize={RATING_INFLATION_CHART.labelFontSize}
 							fill="currentColor"

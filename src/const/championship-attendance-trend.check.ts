@@ -1,3 +1,4 @@
+import type { ChampionshipPlayer } from "../types/championship.ts";
 import type { ChampionshipEvent } from "../types/championship-event.ts";
 import {
 	ATTENDANCE_TREND_METRIC,
@@ -5,6 +6,8 @@ import {
 	championshipAttendanceTrendChart,
 	formatAttendanceTrendKpi,
 } from "./championship-attendance-trend.ts";
+import { trendsAudiencePlayerScope } from "./championship-trends-player-scope.ts";
+import { TRENDS_AUDIENCE } from "./championship-trends-window.ts";
 
 function check(condition: boolean, message: string) {
 	if (!condition) {
@@ -61,10 +64,39 @@ const events = [
 	eventRow(4, "2026-01-22", 12, false),
 ];
 
-const summary = championshipAttendanceTrend(events, 12);
+const roster = Array.from({ length: 12 }, (_, index) => ({
+	id: index + 1,
+	championship_id: 1,
+	user_id: null,
+	display_name: `P${index + 1}`,
+	nickname: null,
+	nickname_tags: [],
+	avatar_url: null,
+	rating: 5,
+	role: "player",
+	is_goalkeeper: false,
+	is_monthly: index < 2,
+	deleted_at: null,
+	goals: 0,
+	assists: 0,
+	assisted_goals: 0,
+	own_goals: 0,
+	wins: 0,
+	losses: 0,
+	draws: 0,
+	matches: 0,
+	mvps: 0,
+})) satisfies ChampionshipPlayer[];
+
+const summary = championshipAttendanceTrend(events, roster, null);
 check(summary.events === 3, "three ended with attendance");
 check(summary.averagePresent === 8, "average present count");
 check(Math.abs(summary.averageShare - 8 / 12) < 0.001, "average share");
+
+const monthlyScope = trendsAudiencePlayerScope(roster, TRENDS_AUDIENCE.monthly);
+const monthlySummary = championshipAttendanceTrend(events, roster, monthlyScope);
+check(monthlySummary.rows[0]?.presentCount === 2, "monthly present count");
+check(monthlySummary.rows[1]?.presentCount === 2, "monthly present second event");
 
 const chart = championshipAttendanceTrendChart(
 	summary,

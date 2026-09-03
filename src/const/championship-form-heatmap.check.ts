@@ -5,6 +5,10 @@ import {
 	eventAttendanceFormCell,
 	FORM_HEATMAP_CELL,
 } from "./championship-form-heatmap.ts";
+import {
+	TRENDS_AUDIENCE,
+	trendsAudiencePlayers,
+} from "./championship-trends-window.ts";
 import { EVENT_RATING_ADJUSTMENT } from "./event-rating-adjustment.ts";
 
 function check(condition: boolean, message: string) {
@@ -133,12 +137,28 @@ const events = [
 	eventRow(2, "2026-01-08", []),
 ];
 const players = [player(1, "Ana"), player(2, "Bruno")];
+const monthlyPlayer: ChampionshipPlayer = {
+	...player(1, "Carla"),
+	is_monthly: true,
+};
 
 const grid = championshipFormHeatmap(players, events);
 check(grid.columns.length === 2, "two columns");
 check(grid.rows.length === 1, "one active player");
 check(grid.rows[0]?.cells[0]?.kind === FORM_HEATMAP_CELL.up, "present cell");
 check(grid.rows[0]?.cells[1]?.kind === FORM_HEATMAP_CELL.absent, "absent cell");
+
+const monthlyGrid = championshipFormHeatmap(
+	trendsAudiencePlayers([monthlyPlayer, player(2, "Bruno")], TRENDS_AUDIENCE.monthly),
+	events,
+);
+check(monthlyGrid.rows.length === 1, "monthly filter one row");
+check(monthlyGrid.rows[0]?.player.is_monthly === true, "monthly filter player");
+check(
+	trendsAudiencePlayers([monthlyPlayer, player(2, "Bruno")], TRENDS_AUDIENCE.monthly)
+		.length === 1,
+	"monthly audience players",
+);
 
 check(
 	EVENT_RATING_ADJUSTMENT.minMatches === 3,

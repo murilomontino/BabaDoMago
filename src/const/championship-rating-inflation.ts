@@ -4,17 +4,30 @@ import {
 	endedChampionshipHistoryEvents,
 	officialEventRating,
 } from "./championship-rating-history.ts";
+import type { TrendsPlayerScope } from "./championship-trends-player-scope.ts";
+import {
+	trendsPlayerInScope,
+	trendsScopedRosterPlayers,
+} from "./championship-trends-player-scope.ts";
 import {
 	applyEventRatingDelta,
 	formatEventRating,
 } from "./event-rating-adjustment.ts";
+import { playerProfileDelta } from "./player-profile.ts";
+import {
+	championshipRatingCeiling,
+	championshipRatingFloor,
+	PLAYER_RATING,
+} from "./player-rating.ts";
+import { rosterAverage } from "./roster-stats.ts";
 
 export const RATING_INFLATION_LABEL = {
 	title: "Inflação da nota",
 	empty: "Nenhuma rodada com presentes ranqueados",
-	hint: "Média dos presentes ranqueados e teto da fórmula após cada rodada. Não é culpa individual.",
+	hint: "Média dos presentes ranqueados, teto e piso do elenco após cada rodada.",
 	average: "Média",
 	ceiling: "Teto",
+	floor: "Piso",
 } as const;
 
 export const RATING_INFLATION_CHART = {
@@ -22,8 +35,10 @@ export const RATING_INFLATION_CHART = {
 	indexKey: "x",
 	averageKey: "averageRating",
 	ceilingKey: "ceiling",
+	floorKey: "floor",
 	averageLabelKey: "averageLabel",
 	ceilingLabelKey: "ceilingLabel",
+	floorLabelKey: "floorLabel",
 	margin: { top: 32, right: 28, bottom: 8, left: 0 },
 	axisWidth: 44,
 	labelFontSize: 12,
@@ -31,6 +46,7 @@ export const RATING_INFLATION_CHART = {
 	dotRadius: 4,
 	averageStroke: "#0f766e",
 	ceilingStroke: "#b45309",
+	floorStroke: "#475569",
 } as const;
 
 export type RatingInflationRow = {
@@ -38,6 +54,7 @@ export type RatingInflationRow = {
 	startsAt: string;
 	averageRating: number;
 	ceiling: number;
+	floor: number;
 };
 
 export type RatingInflationSummary = {
@@ -50,38 +67,50 @@ export type RatingInflationChartPoint = {
 	startsAt: string;
 	averageRating: number;
 	ceiling: number;
+	floor: number;
 	averageLabel: string;
 	ceilingLabel: string;
+	floorLabel: string;
 };
 
 export function championshipRatingInflation(
 	players: readonly ChampionshipPlayer[],
 	events: readonly ChampionshipEvent[],
+	playerIds: TrendsPlayerScope = null,
 ): RatingInflationSummary {
+	const roster = trendsScopedRosterPlayers(players, playerIds);
 	const ended = endedChampionshipHistoryEvents(events);
 	const playerRatings = new Map<number, number>();
 	const rows: RatingInflationRow[] = [];
 
 	for (const event of ended) {
 		for (const row of event.attendance) {
+			if (!trendsPlayerInScope(row.player_id, playerIds)) {
+				continue;
+			}
+
 			const ratingTo = attendanceRatingAfterEvent(row);
 			playerRatings.set(row.player_id, ratingTo);
 		}
 
-		const averageRating = presentAverageRating(event.attendance);
+		const scopedAttendance = event.attendance.filter((row) =>
+			trendsPlayerInScope(row.player_id, playerIds),
+		);
+		const averageRating = presentAverageRating(scopedAttendance);
 		if (averageRating === null) {
 			continue;
 		}
 
-		const ceiling = championshipRatingCeiling(
-			players.map((player) => playerRatings.get(player.id) ?? PLAYER_RATING.default),
+		const ratings = roster.map(
+			(player) => playerRatings.get(player.id) ?? PLAYER_RATING.default,
 		);
 
 		rows.push({
 			eventId: event.id,
 			startsAt: event.starts_at,
 			averageRating,
-			ceiling,
+			ceiling: championshipRatingCeiling(ratings),
+			floor: championshipRatingFloor(ratings),
 		});
 	}
 
@@ -99,8 +128,10 @@ export function championshipRatingInflationChart(
 		startsAt: row.startsAt,
 		averageRating: row.averageRating,
 		ceiling: row.ceiling,
+		floor: row.floor,
 		averageLabel: formatRatingInflationValue(row.averageRating),
 		ceilingLabel: formatRatingInflationValue(row.ceiling),
+		floorLabel: formatRatingInflationValue(row.floor),
 	}));
 }
 
@@ -114,7 +145,8 @@ function attendanceRatingAfterEvent(row: {
 	vote_rating_delta: number;
 }): number {
 	const ratingFrom = playerProfileDelta(row.rating);
-	const delta = playerProfileDelta(row.rating_delta) + playerProfileDelta(row.vote_rating_delta);
+	const delta =
+		playerProfileDelta(row.rating_delta) + playerProfileDelta(row.vote_rating_delta);
 	return applyEventRatingDelta(ratingFrom, delta);
 }
 
