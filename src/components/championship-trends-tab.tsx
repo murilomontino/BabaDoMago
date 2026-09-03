@@ -48,7 +48,6 @@ import {
 	formatGoalkeeperCount,
 	formatGoalkeeperWinRate,
 	GOALKEEPER_RANKING_LABEL,
-	GOALKEEPER_TREND,
 	type GoalkeeperRankingRow,
 	goalkeeperTrendLabel,
 } from "@/const/championship-goalkeeper-ranking";
@@ -92,12 +91,6 @@ const ChampionshipEventHealthChart = lazy(() =>
 	),
 );
 
-const ChampionshipGoalkeeperSparkline = lazy(() =>
-	import("@/components/molecules/championship-goalkeeper-sparkline").then(
-		(m) => ({ default: m.ChampionshipGoalkeeperSparkline }),
-	),
-);
-
 const FILTER_CHIP =
 	"inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium transition";
 const FILTER_CHIP_ON = `${FILTER_CHIP} bg-pitch text-white hover:bg-pitch-dark`;
@@ -131,34 +124,13 @@ function RecentFormTrendIcon({ trend }: { trend: RecentFormRow["trend"] }) {
 		case RECENT_FORM_TREND.up:
 			return <ArrowUp className="size-3.5 text-pitch-fg" aria-hidden />;
 		case RECENT_FORM_TREND.down:
-			return <ArrowDown className="size-3.5 text-red-600" aria-hidden />;
+			return <ArrowDown className="size-3.5 text-danger-fg" aria-hidden />;
 		case RECENT_FORM_TREND.deadZone:
 			return <ArrowRight className="size-3.5 text-fg-muted" aria-hidden />;
 		case RECENT_FORM_TREND.seed:
 			return <ArrowUp className="size-3.5 text-amber-600" aria-hidden />;
 		case RECENT_FORM_TREND.insufficient:
 			return <ArrowRight className="size-3.5 text-fg-muted" aria-hidden />;
-		default: {
-			const _never: never = trend;
-			return _never;
-		}
-	}
-}
-
-function GoalkeeperTrendIcon({
-	trend,
-}: {
-	trend: GoalkeeperRankingRow["trend"];
-}) {
-	switch (trend) {
-		case GOALKEEPER_TREND.up:
-			return <ArrowDown className="size-3.5 text-pitch-fg" aria-hidden />;
-		case GOALKEEPER_TREND.down:
-			return <ArrowUp className="size-3.5 text-red-600" aria-hidden />;
-		case GOALKEEPER_TREND.flat:
-			return <ArrowRight className="size-3.5 text-fg-muted" aria-hidden />;
-		case GOALKEEPER_TREND.none:
-			return null;
 		default: {
 			const _never: never = trend;
 			return _never;
@@ -376,21 +348,14 @@ function GoalkeeperTable({ rows }: { rows: GoalkeeperRankingRow[] }) {
 						</span>
 					),
 				}),
-				goalkeeperColumnHelper.display({
-					id: "spark",
+				goalkeeperColumnHelper.accessor("trend", {
+					id: "trend",
 					header: GOALKEEPER_RANKING_LABEL.trend,
+					meta: { title: GOALKEEPER_RANKING_LABEL.trend },
 					cell: ({ row }) => (
-						<div className="flex items-center gap-2">
-							<Suspense fallback={<Skeleton className="h-8 w-16" />}>
-								<ChampionshipGoalkeeperSparkline
-									averages={row.original.eventAverages}
-								/>
-							</Suspense>
-							<span className="inline-flex items-center gap-1 text-xs text-fg-muted">
-								<GoalkeeperTrendIcon trend={row.original.trend} />
-								{goalkeeperTrendLabel(row.original.trend)}
-							</span>
-						</div>
+						<span className="text-xs text-fg-muted">
+							{goalkeeperTrendLabel(row.original.trend)}
+						</span>
 					),
 				}),
 			]),

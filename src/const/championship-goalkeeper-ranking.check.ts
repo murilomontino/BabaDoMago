@@ -175,7 +175,6 @@ check(rows[0]?.goalsConcededAverage === 2, "average conceded");
 check(rows[0]?.wins === 2, "two wins");
 check(rows[0]?.losses === 1, "one loss");
 check(rows[0]?.trend === GOALKEEPER_TREND.up, "average falling is up");
-check(rows[0]?.eventAverages.length === 3, "three spark points");
 
 const rising = [
 	gkEvent(1, "2026-01-01", 1, 10),

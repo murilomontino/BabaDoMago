@@ -1,6 +1,6 @@
 import { Link, useParams } from "@tanstack/react-router";
 import { ArrowLeft, Square } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
 import { EventPlayerVoteList } from "@/components/event-player-vote-list";
@@ -14,7 +14,10 @@ import {
 import {
 	EVENT_PLAYER_VOTE_LABEL,
 	type EventPlayerVoteChoice,
+	eventPlayerVoteDraftToSubmit,
+	isEventPlayerVoteDraftDirty,
 	isEventPlayerVotesClosed,
+	savedEventPlayerVoteDraft,
 } from "@/const/event-player-vote";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import { ROUTES } from "@/const/routes";
@@ -26,7 +29,7 @@ import {
 	useChampionshipEventRealtime,
 	useCloseChampionshipEventPlayerVotes,
 	useMyChampionshipEventPlayerVotes,
-	useVoteChampionshipEventPlayer,
+	useSubmitChampionshipEventPlayerVotes,
 } from "@/hooks/championships/use-championship-events";
 import { useChampionship } from "@/hooks/championships/use-championships";
 import { caughtErrorMessage } from "@/lib/error-message";
@@ -47,13 +50,19 @@ export function ChampionshipEventVotePage() {
 	const eventQuery = useChampionshipEvent(championshipId, eventId);
 	useChampionshipEventRealtime(championshipId, eventId);
 	const myVotesQuery = useMyChampionshipEventPlayerVotes(eventId);
-	const voteMutation = useVoteChampionshipEventPlayer(championshipId, eventId);
+	const submitVotesMutation = useSubmitChampionshipEventPlayerVotes(
+		championshipId,
+		eventId,
+	);
 	const closeVotesMutation = useCloseChampionshipEventPlayerVotes(
 		championshipId,
 		eventId,
 	);
 	const matchOps = useAppSelector((state) => selectMatchOps(state, eventId));
 	const [localError, setLocalError] = useState<string | null>(null);
+	const [draftVotes, setDraftVotes] = useState<
+		Map<number, EventPlayerVoteChoice | null>
+	>(new Map());
 
 	const championship = championshipQuery.data;
 	const serverEvent = eventQuery.data;
@@ -85,13 +94,17 @@ export function ChampionshipEventVotePage() {
 	const ceiling = championshipRatingCeiling(
 		(championship?.players ?? []).map((player) => player.rating),
 	);
-	const myVotes = useMemo(() => {
+	const savedVotes = useMemo(() => {
 		const map = new Map<number, EventPlayerVoteChoice>();
 		for (const row of myVotesQuery.data ?? []) {
 			map.set(row.target_player_id, row.value);
 		}
 		return map;
 	}, [myVotesQuery.data]);
+
+	useEffect(() => {
+		setDraftVotes(savedEventPlayerVoteDraft(savedVotes));
+	}, [savedVotes]);
 
 	const loading =
 		championshipQuery.isLoading ||
@@ -102,6 +115,12 @@ export function ChampionshipEventVotePage() {
 		eventQuery.error?.message ??
 		myVotesQuery.error?.message ??
 		localError;
+	const canSubmitVotes =
+		canVoteRole &&
+		event?.ended_at !== null &&
+		!votesClosed &&
+		voterPresent;
+	const draftDirty = isEventPlayerVoteDraftDirty(draftVotes, savedVotes);
 
 	if (loading) {
 		return (
@@ -172,30 +191,50 @@ export function ChampionshipEventVotePage() {
 				votesClosed={votesClosed}
 				voterPresent={voterPresent}
 				voterPlayerId={voterPlayerId}
-				myVotes={myVotes}
-				pendingTargetId={
-					voteMutation.isPending
-						? (voteMutation.variables?.targetPlayerId ?? null)
-						: null
-				}
+				draftVotes={draftVotes}
+				showBudget={canSubmitVotes}
 				error={null}
-				onVote={(targetPlayerId, value) => {
-					setLocalError(null);
-					voteMutation.mutate(
-						{ targetPlayerId, value },
-						{
-							onError: (voteError) => {
-								setLocalError(
-									caughtErrorMessage(
-										voteError,
-										EVENT_PLAYER_VOTE_LABEL.voteFailed,
-									),
-								);
-							},
-						},
-					);
+				onDraftChange={(targetPlayerId, value) => {
+					setDraftVotes((current) => {
+						const next = new Map(current);
+						if (value === null) {
+							next.delete(targetPlayerId);
+							return next;
+						}
+
+						next.set(targetPlayerId, value);
+						return next;
+					});
 				}}
 			/>
+
+			{canSubmitVotes && (
+				<section className="border-t border-line pt-4">
+					<Button
+						variant={BUTTON_VARIANT.primary}
+						className="w-full"
+						disabled={!draftDirty || submitVotesMutation.isPending}
+						onClick={() => {
+							setLocalError(null);
+							submitVotesMutation.mutate(
+								eventPlayerVoteDraftToSubmit(draftVotes),
+								{
+									onError: (submitError) => {
+										setLocalError(
+											caughtErrorMessage(
+												submitError,
+												EVENT_PLAYER_VOTE_LABEL.submitVotesFailed,
+											),
+										);
+									},
+								},
+							);
+						}}
+					>
+						{EVENT_PLAYER_VOTE_LABEL.submitVotes}
+					</Button>
+				</section>
+			)}
 
 			{showCloseVotesButton && (
 				<section className="border-t border-line pt-4">

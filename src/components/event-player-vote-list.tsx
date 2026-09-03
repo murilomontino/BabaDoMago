@@ -4,9 +4,12 @@ import { EventTeamColorDot } from "@/components/event-team-player";
 import { PlayerRating } from "@/components/player-rating";
 import { resolveRosterPlayer } from "@/const/championship-event-roster";
 import {
+	canSetEventPlayerVoteDraft,
 	canVoteEventPlayer,
 	EVENT_PLAYER_VOTE_LABEL,
 	type EventPlayerVoteChoice,
+	type EventPlayerVoteDraft,
+	eventPlayerVoteBudgetSummary,
 	eventPlayerVoteChipLabel,
 	eventPlayerVoteTeamSections,
 	isEventPlayerVoteLocked,
@@ -32,10 +35,13 @@ type EventPlayerVoteListProps = {
 	votesClosed: boolean;
 	voterPresent: boolean;
 	voterPlayerId: number | null;
-	myVotes: ReadonlyMap<number, EventPlayerVoteChoice>;
-	pendingTargetId: number | null;
+	draftVotes: EventPlayerVoteDraft;
+	showBudget: boolean;
 	error: string | null;
-	onVote: (targetPlayerId: number, value: EventPlayerVoteChoice | null) => void;
+	onDraftChange: (
+		targetPlayerId: number,
+		value: EventPlayerVoteChoice | null,
+	) => void;
 };
 
 function VotePlayerAvatar({
@@ -73,10 +79,10 @@ export function EventPlayerVoteList({
 	votesClosed,
 	voterPresent,
 	voterPlayerId,
-	myVotes,
-	pendingTargetId,
+	draftVotes,
+	showBudget,
 	error,
-	onVote,
+	onDraftChange,
 }: EventPlayerVoteListProps) {
 	if (attendance.length === 0) {
 		return (
@@ -112,6 +118,11 @@ export function EventPlayerVoteList({
 					{EVENT_PLAYER_VOTE_LABEL.needPresent}
 				</p>
 			)}
+			{showBudget && (
+				<p className="text-sm text-fg-muted">
+					{eventPlayerVoteBudgetSummary(draftVotes)}
+				</p>
+			)}
 			{error && <p className={ERROR_CLASS}>{error}</p>}
 			{sections.map((section) => {
 				const cardStyle = eventTeamColorStyle(section.color);
@@ -142,7 +153,7 @@ export function EventPlayerVoteList({
 								);
 								const name = playerVisibleName(player);
 								const rating = player.rating;
-								const myVote = myVotes.get(row.player_id) ?? null;
+								const draftVote = draftVotes.get(row.player_id) ?? null;
 								const chip = eventPlayerVoteChipLabel(row.vote_rating_delta);
 								const canVote = canVoteEventPlayer({
 									canVote: canVoteRole,
@@ -153,9 +164,34 @@ export function EventPlayerVoteList({
 									voterPlayerId,
 									voteRatingDelta: row.vote_rating_delta,
 								});
-								const busy = pendingTargetId === row.player_id;
 								const isSelf = voterPlayerId === row.player_id;
 								const locked = isEventPlayerVoteLocked(row.vote_rating_delta);
+								const nextLike = nextEventPlayerVoteValue(draftVote, "like");
+								const nextDislike = nextEventPlayerVoteValue(
+									draftVote,
+									"dislike",
+								);
+								const nextMaintain = nextEventPlayerVoteValue(
+									draftVote,
+									"maintain",
+								);
+								const canLike =
+									canVote &&
+									canSetEventPlayerVoteDraft(draftVotes, row.player_id, nextLike);
+								const canDislike =
+									canVote &&
+									canSetEventPlayerVoteDraft(
+										draftVotes,
+										row.player_id,
+										nextDislike,
+									);
+								const canMaintain =
+									canVote &&
+									canSetEventPlayerVoteDraft(
+										draftVotes,
+										row.player_id,
+										nextMaintain,
+									);
 
 								return [
 									<li
@@ -204,18 +240,15 @@ export function EventPlayerVoteList({
 											<div className="flex shrink-0 gap-2">
 												<Button
 													variant={
-														myVote === "like"
+														draftVote === "like"
 															? BUTTON_VARIANT.primary
 															: BUTTON_VARIANT.secondary
 													}
-													disabled={busy}
-													aria-pressed={myVote === "like"}
+													disabled={!canLike}
+													aria-pressed={draftVote === "like"}
 													aria-label={EVENT_PLAYER_VOTE_LABEL.like}
 													onClick={() => {
-														onVote(
-															row.player_id,
-															nextEventPlayerVoteValue(myVote, "like"),
-														);
+														onDraftChange(row.player_id, nextLike);
 													}}
 												>
 													<ThumbsUp className="size-4" />
@@ -223,18 +256,15 @@ export function EventPlayerVoteList({
 												</Button>
 												<Button
 													variant={
-														myVote === "dislike"
+														draftVote === "dislike"
 															? BUTTON_VARIANT.danger
 															: BUTTON_VARIANT.secondary
 													}
-													disabled={busy}
-													aria-pressed={myVote === "dislike"}
+													disabled={!canDislike}
+													aria-pressed={draftVote === "dislike"}
 													aria-label={EVENT_PLAYER_VOTE_LABEL.dislike}
 													onClick={() => {
-														onVote(
-															row.player_id,
-															nextEventPlayerVoteValue(myVote, "dislike"),
-														);
+														onDraftChange(row.player_id, nextDislike);
 													}}
 												>
 													<ThumbsDown className="size-4" />
@@ -242,18 +272,15 @@ export function EventPlayerVoteList({
 												</Button>
 												<Button
 													variant={
-														myVote === "maintain"
+														draftVote === "maintain"
 															? BUTTON_VARIANT.primary
 															: BUTTON_VARIANT.secondary
 													}
-													disabled={busy}
-													aria-pressed={myVote === "maintain"}
+													disabled={!canMaintain}
+													aria-pressed={draftVote === "maintain"}
 													aria-label={EVENT_PLAYER_VOTE_LABEL.maintain}
 													onClick={() => {
-														onVote(
-															row.player_id,
-															nextEventPlayerVoteValue(myVote, "maintain"),
-														);
+														onDraftChange(row.player_id, nextMaintain);
 													}}
 												>
 													<Equal className="size-4" />

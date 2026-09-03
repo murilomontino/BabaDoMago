@@ -1,15 +1,22 @@
 import {
+	canSetEventPlayerVoteDraft,
 	canVoteEventPlayer,
 	copyEventPlayerVoteLinkLabel,
+	countEventPlayerVoteDraft,
 	EVENT_PLAYER_VOTE,
 	EVENT_PLAYER_VOTE_LABEL,
+	type EventPlayerVoteChoice,
 	eventPlayerVoteAppliedDelta,
+	eventPlayerVoteBudgetSummary,
 	eventPlayerVoteChipLabel,
+	eventPlayerVoteDraftToSubmit,
 	eventPlayerVoteErrorMessage,
 	eventPlayerVoteTeamSections,
 	eventPlayerVoteUrl,
+	isEventPlayerVoteDraftDirty,
 	isEventPlayerVoteLocked,
 	nextEventPlayerVoteValue,
+	savedEventPlayerVoteDraft,
 } from "./event-player-vote.ts";
 
 function check(condition: boolean, message: string) {
@@ -21,6 +28,8 @@ function check(condition: boolean, message: string) {
 const quorum = EVENT_PLAYER_VOTE.defaultQuorum;
 
 check(EVENT_PLAYER_VOTE.defaultQuorum === 3, "default quorum");
+check(EVENT_PLAYER_VOTE.likeBudget === 5, "like budget");
+check(EVENT_PLAYER_VOTE.dislikeBudget === 5, "dislike budget");
 check(EVENT_PLAYER_VOTE.delta === 0.5, "delta");
 check(EVENT_PLAYER_VOTE.like === "like", "like");
 check(EVENT_PLAYER_VOTE.dislike === "dislike", "dislike");
@@ -85,6 +94,63 @@ check(
 );
 check(eventPlayerVoteAppliedDelta(4, 0, 0, 5) === 0, "custom quorum not met");
 check(eventPlayerVoteAppliedDelta(5, 0, 0, 5) === 0.5, "custom quorum met");
+
+const draft = new Map<number, EventPlayerVoteChoice | null>([
+	[1, "like"],
+	[2, "like"],
+	[3, "dislike"],
+]);
+check(countEventPlayerVoteDraft(draft, "like") === 2, "draft like count");
+check(countEventPlayerVoteDraft(draft, "dislike") === 1, "draft dislike count");
+check(
+	canSetEventPlayerVoteDraft(draft, 4, "like"),
+	"can add like under budget",
+);
+check(
+	!canSetEventPlayerVoteDraft(
+		new Map([
+			[1, "like"],
+			[2, "like"],
+			[3, "like"],
+			[4, "like"],
+			[5, "like"],
+		]),
+		6,
+		"like",
+	),
+	"like budget blocks",
+);
+check(
+	eventPlayerVoteBudgetSummary(draft) === "Likes 2/5 · Dislikes 1/5",
+	"budget summary",
+);
+check(
+	isEventPlayerVoteDraftDirty(
+		new Map([[1, "like"]]),
+		new Map([[1, "dislike"]]),
+	),
+	"draft dirty",
+);
+check(
+	!isEventPlayerVoteDraftDirty(
+		savedEventPlayerVoteDraft(new Map([[1, "like"]])),
+		new Map([[1, "like"]]),
+	),
+	"draft clean",
+);
+check(
+	eventPlayerVoteDraftToSubmit(new Map([[1, "like"], [2, null]])).length === 1,
+	"draft submit payload",
+);
+check(
+	eventPlayerVoteErrorMessage("like budget exceeded") === "No máximo 5 likes",
+	"like budget error",
+);
+check(
+	eventPlayerVoteErrorMessage("dislike budget exceeded") ===
+		"No máximo 5 dislikes",
+	"dislike budget error",
+);
 
 check(eventPlayerVoteChipLabel(0.5) === "+0,5", "chip +");
 check(eventPlayerVoteChipLabel(-0.5) === "−0,5", "chip -");
