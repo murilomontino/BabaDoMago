@@ -1115,11 +1115,17 @@ export async function voidChampionshipEventPlayerVotes(
 	};
 }
 
-export async function restoreChampionshipEventPlayerVotes(
+export type ReopenChampionshipEventPlayerVotesResult = {
+	event_id: number;
+	player_votes_voided_at: string | null;
+	player_votes_closed_at: string | null;
+};
+
+export async function reopenChampionshipEventPlayerVotes(
 	eventId: number,
-): Promise<VoidChampionshipEventPlayerVotesResult> {
+): Promise<ReopenChampionshipEventPlayerVotesResult> {
 	const { data, error } = await supabase.rpc(
-		"restore_championship_event_player_votes",
+		"reopen_championship_event_player_votes",
 		{ event_id: eventId },
 	);
 
@@ -1131,5 +1137,6 @@ export async function restoreChampionshipEventPlayerVotes(
 	return {
 		event_id: Number(row.event_id ?? eventId),
 		player_votes_voided_at: optionalString(row.player_votes_voided_at),
+		player_votes_closed_at: optionalString(row.player_votes_closed_at),
 	};
 }

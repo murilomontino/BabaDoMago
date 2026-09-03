@@ -44,10 +44,12 @@ export const EVENT_PLAYER_VOTE_LABEL = {
 	statusVoided: "Cancelada",
 	openHistory: "Abrir",
 	cancelVotes: "Cancelar efeito",
-	cancelVotesHint: "Notas voltam ao valor pré-voto. Os votos ficam gravados.",
+	cancelVotesHint:
+		"Notas voltam ao valor pré-voto. Os votos ficam gravados até reabrir.",
 	cancelVotesFailed: "Não foi possível cancelar o efeito",
-	restoreVotes: "Reativar efeito",
-	restoreVotesFailed: "Não foi possível reativar o efeito",
+	reopenVotes: "Reabrir votação",
+	reopenVotesHint: "Apaga os votos da rodada e abre a urna de novo.",
+	reopenVotesFailed: "Não foi possível reabrir a votação",
 	votesVoided: "Efeito da votação cancelado",
 	noTeam: "Sem time",
 	back: "Voltar",
@@ -76,6 +78,7 @@ export const EVENT_PLAYER_VOTE_ERROR_MESSAGE = {
 	"vote closed": "Voto deste jogador já fechou",
 	"player votes closed": "Votação encerrada",
 	"player votes voided": "Efeito da votação cancelado",
+	"votes not voided": "A votação não está cancelada",
 	"like budget exceeded": "No máximo 5 likes",
 	"dislike budget exceeded": "No máximo 5 dislikes",
 } as const;
@@ -110,11 +113,7 @@ export function eventPlayerVoteAppliedDelta(
 	const likesAtQuorum = likeCount >= quorum;
 	const dislikesAtQuorum = dislikeCount >= quorum;
 
-	if (
-		likesAtQuorum &&
-		likeCount > dislikeCount &&
-		likeCount > maintainCount
-	) {
+	if (likesAtQuorum && likeCount > dislikeCount && likeCount > maintainCount) {
 		return EVENT_PLAYER_VOTE.delta;
 	}
 
@@ -174,7 +173,9 @@ export function eventPlayerVoteStatus(input: {
 	return EVENT_PLAYER_VOTE_STATUS.open;
 }
 
-export function eventPlayerVoteStatusLabel(status: EventPlayerVoteStatus): string {
+export function eventPlayerVoteStatusLabel(
+	status: EventPlayerVoteStatus,
+): string {
 	switch (status) {
 		case EVENT_PLAYER_VOTE_STATUS.open:
 			return EVENT_PLAYER_VOTE_LABEL.statusOpen;
@@ -228,7 +229,9 @@ export function canVoteEventPlayer(input: {
 	return input.voterPlayerId !== input.targetPlayerId;
 }
 
-export function initialEventPlayerBallotLocked(savedVoteCount: number): boolean {
+export function initialEventPlayerBallotLocked(
+	savedVoteCount: number,
+): boolean {
 	return savedVoteCount > 0;
 }
 
@@ -354,7 +357,9 @@ export function eventPlayerVoteDraftToSubmit(
 	});
 }
 
-export function eventPlayerVoteBudgetSummary(draft: EventPlayerVoteDraft): string {
+export function eventPlayerVoteBudgetSummary(
+	draft: EventPlayerVoteDraft,
+): string {
 	const likes = countEventPlayerVoteDraft(draft, EVENT_PLAYER_VOTE.like);
 	const dislikes = countEventPlayerVoteDraft(draft, EVENT_PLAYER_VOTE.dislike);
 

@@ -1,30 +1,41 @@
 import { AppDialog } from "@/components/atoms/app-dialog";
 import { Button } from "@/components/button";
 import { EVENT_PLAYER_VOTE_LABEL } from "@/const/event-player-vote";
-import { BUTTON_VARIANT, ERROR_CLASS, MODAL_CLASS } from "@/const/ui";
+import {
+	BUTTON_VARIANT,
+	type ButtonVariant,
+	ERROR_CLASS,
+	MODAL_CLASS,
+} from "@/const/ui";
 
-type VoidEventPlayerVotesModalProps = {
+type EventPlayerVotesConfirmModalProps = {
+	title: string;
+	hint: string;
+	confirmLabel: string;
+	confirmVariant: ButtonVariant;
 	isPending: boolean;
 	errorMessage: string | null;
 	onCancel: () => void;
 	onConfirm: () => void;
 };
 
-export function VoidEventPlayerVotesModal({
+export function EventPlayerVotesConfirmModal({
+	title,
+	hint,
+	confirmLabel,
+	confirmVariant,
 	isPending,
 	errorMessage,
 	onCancel,
 	onConfirm,
-}: VoidEventPlayerVotesModalProps) {
+}: EventPlayerVotesConfirmModalProps) {
 	return (
 		<AppDialog onClose={onCancel}>
 			<div className={MODAL_CLASS}>
 				<p className="mb-1 text-sm font-medium tracking-tight text-fg">
-					{EVENT_PLAYER_VOTE_LABEL.cancelVotes}
+					{title}
 				</p>
-				<p className="mb-3 text-sm text-fg-muted">
-					{EVENT_PLAYER_VOTE_LABEL.cancelVotesHint}
-				</p>
+				<p className="mb-3 text-sm text-fg-muted">{hint}</p>
 				{errorMessage && (
 					<p className={`mb-2 ${ERROR_CLASS}`}>{errorMessage}</p>
 				)}
@@ -34,14 +45,14 @@ export function VoidEventPlayerVotesModal({
 						onClick={onCancel}
 						disabled={isPending}
 					>
-						Voltar
+						{EVENT_PLAYER_VOTE_LABEL.back}
 					</Button>
 					<Button
-						variant={BUTTON_VARIANT.danger}
+						variant={confirmVariant}
 						onClick={onConfirm}
 						disabled={isPending}
 					>
-						{EVENT_PLAYER_VOTE_LABEL.cancelVotes}
+						{confirmLabel}
 					</Button>
 				</div>
 			</div>

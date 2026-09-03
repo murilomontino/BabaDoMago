@@ -824,7 +824,7 @@ export type Database = {
 				Args: { event_id: number };
 				Returns: Json;
 			};
-			restore_championship_event_player_votes: {
+			reopen_championship_event_player_votes: {
 				Args: { event_id: number };
 				Returns: Json;
 			};

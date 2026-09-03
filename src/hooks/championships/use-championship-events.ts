@@ -29,7 +29,7 @@ import {
 	listMyChampionshipEventPlayerVotes,
 	promoteChampionshipEventRsvpGoing,
 	reopenChampionshipEventMatch,
-	restoreChampionshipEventPlayerVotes,
+	reopenChampionshipEventPlayerVotes,
 	saveChampionshipEventAttendance,
 	saveChampionshipEventAttendanceStats,
 	saveChampionshipEventTeams,
@@ -45,13 +45,14 @@ import {
 } from "@/services/championship-events";
 import type { ChampionshipEvent } from "@/types/championship-event";
 import {
-	CHAMPIONSHIP_EVENTS_QUERY_KEY,
 	championshipEventDetailQueryKey,
+	championshipEventMyVotesQueryKey,
 	championshipEventsListQueryKey,
 	eventIdFromDetailKey,
 	invalidateChampionshipEvent,
 	invalidateChampionshipEvents,
 	invalidateChampionshipQueries,
+	isChampionshipEventMyVotesKey,
 	patchCachedChampionshipEvent,
 } from "./championships-query-keys";
 import { CHAMPIONSHIP_AUDIT_QUERY_KEY } from "./use-championship-audit-logs";
@@ -478,7 +479,7 @@ export function useMyChampionshipEventPlayerVotes(eventId: number) {
 	const { user } = useAuth();
 
 	return useQuery({
-		queryKey: [...CHAMPIONSHIP_EVENTS_QUERY_KEY, "my-votes", eventId, user?.id],
+		queryKey: championshipEventMyVotesQueryKey(eventId, user?.id),
 		queryFn: () => listMyChampionshipEventPlayerVotes(eventId),
 		enabled: Number.isFinite(eventId) && Boolean(user),
 	});
@@ -553,12 +554,12 @@ export function useVoidChampionshipEventPlayerVotes(championshipId: number) {
 	});
 }
 
-export function useRestoreChampionshipEventPlayerVotes(championshipId: number) {
+export function useReopenChampionshipEventPlayerVotes(championshipId: number) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: (eventId: number) =>
-			restoreChampionshipEventPlayerVotes(eventId),
+			reopenChampionshipEventPlayerVotes(eventId),
 		onSuccess: async (result) => {
 			queryClient.setQueriesData<ChampionshipEvent>(
 				{
@@ -573,9 +574,19 @@ export function useRestoreChampionshipEventPlayerVotes(championshipId: number) {
 					return {
 						...current,
 						player_votes_voided_at: result.player_votes_voided_at,
+						player_votes_closed_at: result.player_votes_closed_at,
+						attendance: current.attendance.map((row) => ({
+							...row,
+							vote_rating_delta: 0,
+						})),
 					};
 				},
 			);
+
+			queryClient.removeQueries({
+				predicate: (query) =>
+					isChampionshipEventMyVotesKey(query.queryKey, result.event_id),
+			});
 
 			await Promise.all([
 				invalidateChampionshipEvent(
@@ -633,7 +644,7 @@ export function useSubmitChampionshipEventPlayerVotes(
 			);
 
 			queryClient.setQueryData(
-				[...CHAMPIONSHIP_EVENTS_QUERY_KEY, "my-votes", eventId, user?.id],
+				championshipEventMyVotesQueryKey(eventId, user?.id),
 				result.votes,
 			);
 
@@ -688,7 +699,7 @@ export function useVoteChampionshipEventPlayer(
 			);
 
 			queryClient.setQueryData(
-				[...CHAMPIONSHIP_EVENTS_QUERY_KEY, "my-votes", eventId, user?.id],
+				championshipEventMyVotesQueryKey(eventId, user?.id),
 				(current: ChampionshipEventPlayerVoteRow[] | undefined) => {
 					const without = (current ?? []).filter(
 						(row) => row.target_player_id !== result.target_player_id,

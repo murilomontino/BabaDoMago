@@ -1,7 +1,7 @@
 import {
+	canEditEventPlayerBallot,
 	canSetEventPlayerVoteDraft,
 	canVoteEventPlayer,
-	canEditEventPlayerBallot,
 	copyEventPlayerVoteLinkLabel,
 	countEventPlayerVoteDraft,
 	EVENT_PLAYER_VOTE,
@@ -45,6 +45,25 @@ check(EVENT_PLAYER_VOTE_LABEL.title === "Votar elenco", "title");
 check(EVENT_PLAYER_VOTE_LABEL.appliedUp === "+0,5", "chip up");
 check(EVENT_PLAYER_VOTE_LABEL.appliedDown === "−0,5", "chip down");
 check(EVENT_PLAYER_VOTE_LABEL.noTeam === "Sem time", "no team label");
+check(
+	EVENT_PLAYER_VOTE_LABEL.reopenVotes === "Reabrir votação",
+	"reopen votes label",
+);
+check(
+	EVENT_PLAYER_VOTE_LABEL.reopenVotesHint ===
+		"Apaga os votos da rodada e abre a urna de novo.",
+	"reopen votes hint",
+);
+check(
+	EVENT_PLAYER_VOTE_LABEL.reopenVotesFailed ===
+		"Não foi possível reabrir a votação",
+	"reopen votes failed",
+);
+check(
+	EVENT_PLAYER_VOTE_LABEL.cancelVotesHint ===
+		"Notas voltam ao valor pré-voto. Os votos ficam gravados até reabrir.",
+	"cancel votes hint",
+);
 
 check(
 	eventPlayerVoteTeamSections(
@@ -146,7 +165,12 @@ check(
 	"draft clean",
 );
 check(
-	eventPlayerVoteDraftToSubmit(new Map([[1, "like"], [2, null]])).length === 1,
+	eventPlayerVoteDraftToSubmit(
+		new Map([
+			[1, "like"],
+			[2, null],
+		]),
+	).length === 1,
 	"draft submit payload",
 );
 check(
@@ -294,7 +318,10 @@ check(
 	nextEventPlayerVoteValue("dislike", "dislike") === null,
 	"toggle off dislike",
 );
-check(nextEventPlayerVoteValue(null, "maintain") === "maintain", "press maintain");
+check(
+	nextEventPlayerVoteValue(null, "maintain") === "maintain",
+	"press maintain",
+);
 check(
 	nextEventPlayerVoteValue("maintain", "maintain") === null,
 	"toggle off maintain",
@@ -366,6 +393,11 @@ check(
 	eventPlayerVoteErrorMessage("player votes voided") ===
 		EVENT_PLAYER_VOTE_LABEL.votesVoided,
 	"player votes voided error",
+);
+check(
+	eventPlayerVoteErrorMessage("votes not voided") ===
+		"A votação não está cancelada",
+	"votes not voided error",
 );
 
 check(

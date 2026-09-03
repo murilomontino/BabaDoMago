@@ -3,8 +3,8 @@ import { Vote } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
+import { EventPlayerVotesConfirmModal } from "@/components/event-player-votes-confirm-modal";
 import { SectionCard } from "@/components/section-card";
-import { VoidEventPlayerVotesModal } from "@/components/void-event-player-votes-modal";
 import {
 	compareStartsAtNewestFirst,
 	formatEventStartsAt,
@@ -18,13 +18,13 @@ import {
 import { ROUTES } from "@/const/routes";
 import {
 	BUTTON_VARIANT,
+	buttonClassName,
 	CHIP_CLASS,
 	ERROR_CLASS,
-	buttonClassName,
 } from "@/const/ui";
 import { CHAMPIONSHIP_EVENTS_QUERY_KEY } from "@/hooks/championships/championships-query-keys";
 import {
-	useRestoreChampionshipEventPlayerVotes,
+	useReopenChampionshipEventPlayerVotes,
 	useVoidChampionshipEventPlayerVotes,
 } from "@/hooks/championships/use-championship-events";
 import { caughtErrorMessage, mutationErrorMessage } from "@/lib/error-message";
@@ -42,8 +42,9 @@ export function ChampionshipVotesHistory({
 	canOverrideEnded,
 }: ChampionshipVotesHistoryProps) {
 	const voidVotes = useVoidChampionshipEventPlayerVotes(championshipId);
-	const restoreVotes = useRestoreChampionshipEventPlayerVotes(championshipId);
+	const reopenVotes = useReopenChampionshipEventPlayerVotes(championshipId);
 	const [voidEventId, setVoidEventId] = useState<number | null>(null);
+	const [reopenEventId, setReopenEventId] = useState<number | null>(null);
 	const [localError, setLocalError] = useState<string | null>(null);
 
 	const endedEvents = useMemo(
@@ -60,8 +61,8 @@ export function ChampionshipVotesHistory({
 			return voidVotes.variables;
 		}
 
-		if (restoreVotes.isPending && typeof restoreVotes.variables === "number") {
-			return restoreVotes.variables;
+		if (reopenVotes.isPending && typeof reopenVotes.variables === "number") {
+			return reopenVotes.variables;
 		}
 
 		return null;
@@ -143,19 +144,10 @@ export function ChampionshipVotesHistory({
 													disabled={busy}
 													onClick={() => {
 														setLocalError(null);
-														restoreVotes.mutate(event.id, {
-															onError: (restoreError) => {
-																setLocalError(
-																	caughtErrorMessage(
-																		restoreError,
-																		EVENT_PLAYER_VOTE_LABEL.restoreVotesFailed,
-																	),
-																);
-															},
-														});
+														setReopenEventId(event.id);
 													}}
 												>
-													{EVENT_PLAYER_VOTE_LABEL.restoreVotes}
+													{EVENT_PLAYER_VOTE_LABEL.reopenVotes}
 												</Button>
 											)}
 									</div>
@@ -166,11 +158,13 @@ export function ChampionshipVotesHistory({
 				)}
 			</SectionCard>
 			{voidEventId !== null && (
-				<VoidEventPlayerVotesModal
+				<EventPlayerVotesConfirmModal
+					title={EVENT_PLAYER_VOTE_LABEL.cancelVotes}
+					hint={EVENT_PLAYER_VOTE_LABEL.cancelVotesHint}
+					confirmLabel={EVENT_PLAYER_VOTE_LABEL.cancelVotes}
+					confirmVariant={BUTTON_VARIANT.danger}
 					isPending={voidVotes.isPending}
-					errorMessage={
-						localError ?? mutationErrorMessage(voidVotes)
-					}
+					errorMessage={localError ?? mutationErrorMessage(voidVotes)}
 					onCancel={() => {
 						setVoidEventId(null);
 						setLocalError(null);
@@ -187,6 +181,37 @@ export function ChampionshipVotesHistory({
 									caughtErrorMessage(
 										voidError,
 										EVENT_PLAYER_VOTE_LABEL.cancelVotesFailed,
+									),
+								);
+							},
+						});
+					}}
+				/>
+			)}
+			{reopenEventId !== null && (
+				<EventPlayerVotesConfirmModal
+					title={EVENT_PLAYER_VOTE_LABEL.reopenVotes}
+					hint={EVENT_PLAYER_VOTE_LABEL.reopenVotesHint}
+					confirmLabel={EVENT_PLAYER_VOTE_LABEL.reopenVotes}
+					confirmVariant={BUTTON_VARIANT.primary}
+					isPending={reopenVotes.isPending}
+					errorMessage={localError ?? mutationErrorMessage(reopenVotes)}
+					onCancel={() => {
+						setReopenEventId(null);
+						setLocalError(null);
+						reopenVotes.reset();
+					}}
+					onConfirm={() => {
+						setLocalError(null);
+						reopenVotes.mutate(reopenEventId, {
+							onSuccess: () => {
+								setReopenEventId(null);
+							},
+							onError: (reopenError) => {
+								setLocalError(
+									caughtErrorMessage(
+										reopenError,
+										EVENT_PLAYER_VOTE_LABEL.reopenVotesFailed,
 									),
 								);
 							},
