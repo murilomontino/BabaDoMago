@@ -11,6 +11,7 @@ import {
 	type EventPlayerVoteDraft,
 	eventPlayerVoteBudgetSummary,
 	eventPlayerVoteChipLabel,
+	eventPlayerVoteChoiceLabel,
 	eventPlayerVoteTeamSections,
 	isEventPlayerVoteLocked,
 	nextEventPlayerVoteValue,
@@ -37,6 +38,8 @@ type EventPlayerVoteListProps = {
 	voterPresent: boolean;
 	voterPlayerId: number | null;
 	draftVotes: EventPlayerVoteDraft;
+	votingEnabled: boolean;
+	ballotLocked: boolean;
 	showBudget: boolean;
 	error: string | null;
 	onDraftChange: (
@@ -82,6 +85,8 @@ export function EventPlayerVoteList({
 	voterPresent,
 	voterPlayerId,
 	draftVotes,
+	votingEnabled,
+	ballotLocked,
 	showBudget,
 	error,
 	onDraftChange,
@@ -127,6 +132,16 @@ export function EventPlayerVoteList({
 				!voterPresent && (
 				<p className="text-sm text-fg-muted">
 					{EVENT_PLAYER_VOTE_LABEL.needPresent}
+				</p>
+			)}
+			{ballotLocked &&
+				canVoteRole &&
+				eventEnded &&
+				!votesVoided &&
+				!votesClosed &&
+				voterPresent && (
+				<p className="text-sm text-fg-muted">
+					{EVENT_PLAYER_VOTE_LABEL.votesSubmitted}
 				</p>
 			)}
 			{showBudget && (
@@ -177,11 +192,14 @@ export function EventPlayerVoteList({
 									targetPlayerId: row.player_id,
 									voterPlayerId,
 									voteRatingDelta: row.vote_rating_delta,
+									votingEnabled,
 								});
 								const isSelf = voterPlayerId === row.player_id;
 								const locked =
 									!votesVoided &&
 									isEventPlayerVoteLocked(row.vote_rating_delta);
+								const showSubmittedChoice =
+									!votingEnabled && draftVote !== null && !isSelf;
 								const nextLike = nextEventPlayerVoteValue(draftVote, "like");
 								const nextDislike = nextEventPlayerVoteValue(
 									draftVote,
@@ -212,7 +230,7 @@ export function EventPlayerVoteList({
 								return [
 									<li
 										key={row.player_id}
-										className="flex flex-col gap-2 rounded-md bg-surface-muted px-2 py-2 text-fg sm:flex-row sm:items-center sm:justify-between"
+										className="flex flex-col gap-2 rounded-md bg-surface-muted px-2 py-2 text-fg"
 									>
 										<div className="flex min-w-0 items-start gap-3">
 											<VotePlayerAvatar
@@ -235,6 +253,11 @@ export function EventPlayerVoteList({
 															{EVENT_PLAYER_VOTE_LABEL.cannotVoteSelf}
 														</span>
 													)}
+													{showSubmittedChoice && draftVote && (
+														<span className={CHIP_CLASS}>
+															{eventPlayerVoteChoiceLabel(draftVote)}
+														</span>
+													)}
 												</div>
 												<div className="flex flex-wrap items-center gap-2 text-xs text-fg-muted">
 													<PlayerRating
@@ -253,13 +276,14 @@ export function EventPlayerVoteList({
 											</div>
 										</div>
 										{canVote && (
-											<div className="flex shrink-0 gap-2">
+											<div className="grid w-full min-w-0 grid-cols-3 gap-1">
 												<Button
 													variant={
 														draftVote === "like"
 															? BUTTON_VARIANT.primary
 															: BUTTON_VARIANT.secondary
 													}
+													className="min-w-0 gap-1 px-2 text-xs"
 													disabled={!canLike}
 													aria-pressed={draftVote === "like"}
 													aria-label={EVENT_PLAYER_VOTE_LABEL.like}
@@ -267,8 +291,10 @@ export function EventPlayerVoteList({
 														onDraftChange(row.player_id, nextLike);
 													}}
 												>
-													<ThumbsUp className="size-4" />
-													{EVENT_PLAYER_VOTE_LABEL.like}
+													<ThumbsUp className="size-4 shrink-0" />
+													<span className="truncate">
+														{EVENT_PLAYER_VOTE_LABEL.like}
+													</span>
 												</Button>
 												<Button
 													variant={
@@ -276,6 +302,7 @@ export function EventPlayerVoteList({
 															? BUTTON_VARIANT.danger
 															: BUTTON_VARIANT.secondary
 													}
+													className="min-w-0 gap-1 px-2 text-xs"
 													disabled={!canDislike}
 													aria-pressed={draftVote === "dislike"}
 													aria-label={EVENT_PLAYER_VOTE_LABEL.dislike}
@@ -283,8 +310,10 @@ export function EventPlayerVoteList({
 														onDraftChange(row.player_id, nextDislike);
 													}}
 												>
-													<ThumbsDown className="size-4" />
-													{EVENT_PLAYER_VOTE_LABEL.dislike}
+													<ThumbsDown className="size-4 shrink-0" />
+													<span className="truncate">
+														{EVENT_PLAYER_VOTE_LABEL.dislike}
+													</span>
 												</Button>
 												<Button
 													variant={
@@ -292,6 +321,7 @@ export function EventPlayerVoteList({
 															? BUTTON_VARIANT.primary
 															: BUTTON_VARIANT.secondary
 													}
+													className="min-w-0 gap-1 px-2 text-xs"
 													disabled={!canMaintain}
 													aria-pressed={draftVote === "maintain"}
 													aria-label={EVENT_PLAYER_VOTE_LABEL.maintain}
@@ -299,8 +329,10 @@ export function EventPlayerVoteList({
 														onDraftChange(row.player_id, nextMaintain);
 													}}
 												>
-													<Equal className="size-4" />
-													{EVENT_PLAYER_VOTE_LABEL.maintain}
+													<Equal className="size-4 shrink-0" />
+													<span className="truncate">
+														{EVENT_PLAYER_VOTE_LABEL.maintain}
+													</span>
 												</Button>
 											</div>
 										)}

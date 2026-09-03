@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
 import { EventPlayerVoteList } from "@/components/event-player-vote-list";
+import { EventPlayerVoteSubmitFab } from "@/components/molecules/event-player-vote-submit-fab";
 import { applyPlayOps } from "@/const/championship-event-match-ops";
 import {
 	CHAMPIONSHIP_ROLE,
@@ -14,7 +15,10 @@ import {
 import {
 	EVENT_PLAYER_VOTE_LABEL,
 	type EventPlayerVoteChoice,
+	canEditEventPlayerBallot,
+	eventPlayerVoteBudgetSummary,
 	eventPlayerVoteDraftToSubmit,
+	initialEventPlayerBallotLocked,
 	isEventPlayerVoteDraftDirty,
 	isEventPlayerVotesClosed,
 	isEventPlayerVotesVoided,
@@ -38,6 +42,7 @@ import { useAppSelector } from "@/store/hooks";
 import { selectMatchOps } from "@/store/match-ops/selectors";
 
 const VOTE_SHELL_CLASS = `${PAGE_SHELL_CLASS} max-w-2xl space-y-4`;
+const VOTE_SHELL_WITH_FAB_CLASS = `${VOTE_SHELL_CLASS} pb-28`;
 
 export function ChampionshipEventVotePage() {
 	const { championshipId: championshipIdParam, eventId: eventIdParam } =
@@ -64,6 +69,8 @@ export function ChampionshipEventVotePage() {
 	const [draftVotes, setDraftVotes] = useState<
 		Map<number, EventPlayerVoteChoice | null>
 	>(new Map());
+	const [ballotLocked, setBallotLocked] = useState(false);
+	const [ballotHydrated, setBallotHydrated] = useState(false);
 
 	const championship = championshipQuery.data;
 	const serverEvent = eventQuery.data;
@@ -92,9 +99,7 @@ export function ChampionshipEventVotePage() {
 	const votesClosed = isEventPlayerVotesClosed(
 		event?.player_votes_closed_at ?? null,
 	);
-	const votesVoided = isEventPlayerVotesVoided(
-		event?.player_votes_voided_at,
-	);
+	const votesVoided = isEventPlayerVotesVoided(event?.player_votes_voided_at);
 	const ceiling = championshipRatingCeiling(
 		(championship?.players ?? []).map((player) => player.rating),
 	);
@@ -108,7 +113,13 @@ export function ChampionshipEventVotePage() {
 
 	useEffect(() => {
 		setDraftVotes(savedEventPlayerVoteDraft(savedVotes));
-	}, [savedVotes]);
+		if (ballotHydrated || myVotesQuery.isLoading) {
+			return;
+		}
+
+		setBallotLocked(initialEventPlayerBallotLocked(savedVotes.size));
+		setBallotHydrated(true);
+	}, [savedVotes, ballotHydrated, myVotesQuery.isLoading]);
 
 	const loading =
 		championshipQuery.isLoading ||
@@ -126,6 +137,12 @@ export function ChampionshipEventVotePage() {
 		!votesVoided &&
 		voterPresent;
 	const draftDirty = isEventPlayerVoteDraftDirty(draftVotes, savedVotes);
+	const showSubmitFab = canSubmitVotes && !ballotLocked;
+	const showEditVotes = canEditEventPlayerBallot({
+		ballotLocked,
+		canSubmitVotes,
+	});
+	const votingEnabled = showSubmitFab;
 
 	if (loading) {
 		return (
@@ -162,9 +179,12 @@ export function ChampionshipEventVotePage() {
 		event.ended_at !== null &&
 		!votesClosed &&
 		!votesVoided;
+	const shellClass = showSubmitFab
+		? VOTE_SHELL_WITH_FAB_CLASS
+		: VOTE_SHELL_CLASS;
 
 	return (
-		<div className={VOTE_SHELL_CLASS}>
+		<div className={shellClass}>
 			<header className="flex items-center gap-3">
 				<Link
 					to={ROUTES.championshipEvent}
@@ -199,7 +219,9 @@ export function ChampionshipEventVotePage() {
 				voterPresent={voterPresent}
 				voterPlayerId={voterPlayerId}
 				draftVotes={draftVotes}
-				showBudget={canSubmitVotes}
+				votingEnabled={votingEnabled}
+				ballotLocked={ballotLocked && canSubmitVotes}
+				showBudget={false}
 				error={null}
 				onDraftChange={(targetPlayerId, value) => {
 					setDraftVotes((current) => {
@@ -215,30 +237,16 @@ export function ChampionshipEventVotePage() {
 				}}
 			/>
 
-			{canSubmitVotes && (
+			{showEditVotes && (
 				<section className="border-t border-line pt-4">
 					<Button
-						variant={BUTTON_VARIANT.primary}
+						variant={BUTTON_VARIANT.secondary}
 						className="w-full"
-						disabled={!draftDirty || submitVotesMutation.isPending}
 						onClick={() => {
-							setLocalError(null);
-							submitVotesMutation.mutate(
-								eventPlayerVoteDraftToSubmit(draftVotes),
-								{
-									onError: (submitError) => {
-										setLocalError(
-											caughtErrorMessage(
-												submitError,
-												EVENT_PLAYER_VOTE_LABEL.submitVotesFailed,
-											),
-										);
-									},
-								},
-							);
+							setBallotLocked(false);
 						}}
 					>
-						{EVENT_PLAYER_VOTE_LABEL.submitVotes}
+						{EVENT_PLAYER_VOTE_LABEL.editVotes}
 					</Button>
 				</section>
 			)}
@@ -278,6 +286,35 @@ export function ChampionshipEventVotePage() {
 				<p className="text-sm text-fg-muted">
 					{EVENT_PLAYER_VOTE_LABEL.votesClosed}
 				</p>
+			)}
+
+			{showSubmitFab && (
+				<EventPlayerVoteSubmitFab
+					budgetLabel={eventPlayerVoteBudgetSummary(draftVotes)}
+					disabled={!draftDirty}
+					pending={submitVotesMutation.isPending}
+					onClick={() => {
+						setLocalError(null);
+						submitVotesMutation.mutate(
+							eventPlayerVoteDraftToSubmit(draftVotes),
+							{
+								onSuccess: () => {
+									setBallotLocked(true);
+								},
+								onError: (submitError) => {
+									setLocalError(
+										caughtErrorMessage(
+											submitError,
+											EVENT_PLAYER_VOTE_LABEL.submitVotesFailed,
+										),
+									);
+								},
+							},
+						);
+					}}
+				>
+					{EVENT_PLAYER_VOTE_LABEL.submitVotes}
+				</EventPlayerVoteSubmitFab>
 			)}
 		</div>
 	);

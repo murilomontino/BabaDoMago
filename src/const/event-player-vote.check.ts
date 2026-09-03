@@ -1,6 +1,7 @@
 import {
 	canSetEventPlayerVoteDraft,
 	canVoteEventPlayer,
+	canEditEventPlayerBallot,
 	copyEventPlayerVoteLinkLabel,
 	countEventPlayerVoteDraft,
 	EVENT_PLAYER_VOTE,
@@ -10,12 +11,14 @@ import {
 	eventPlayerVoteAppliedDelta,
 	eventPlayerVoteBudgetSummary,
 	eventPlayerVoteChipLabel,
+	eventPlayerVoteChoiceLabel,
 	eventPlayerVoteDraftToSubmit,
 	eventPlayerVoteErrorMessage,
 	eventPlayerVoteStatus,
 	eventPlayerVoteStatusLabel,
 	eventPlayerVoteTeamSections,
 	eventPlayerVoteUrl,
+	initialEventPlayerBallotLocked,
 	isEventPlayerVoteDraftDirty,
 	isEventPlayerVoteLocked,
 	isEventPlayerVotesVoided,
@@ -381,6 +384,35 @@ check(
 check(
 	eventPlayerVoteErrorMessage("weird") === EVENT_PLAYER_VOTE_LABEL.voteFailed,
 	"error fallback",
+);
+
+check(initialEventPlayerBallotLocked(0) === false, "ballot unlocked empty");
+check(initialEventPlayerBallotLocked(2) === true, "ballot locked with votes");
+check(
+	canEditEventPlayerBallot({ ballotLocked: true, canSubmitVotes: true }),
+	"can edit when locked and open",
+);
+check(
+	!canEditEventPlayerBallot({ ballotLocked: true, canSubmitVotes: false }),
+	"cannot edit when closed",
+);
+check(
+	!canEditEventPlayerBallot({ ballotLocked: false, canSubmitVotes: true }),
+	"no edit button while editing",
+);
+check(eventPlayerVoteChoiceLabel("like") === "Like", "choice like label");
+check(
+	!canVoteEventPlayer({
+		canVote: true,
+		eventEnded: true,
+		votesClosed: false,
+		voterPresent: true,
+		targetPlayerId: 2,
+		voterPlayerId: 1,
+		voteRatingDelta: 0,
+		votingEnabled: false,
+	}),
+	"votingEnabled false blocks",
 );
 
 console.log("event-player-vote.check.ts: ok");

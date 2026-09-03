@@ -58,6 +58,8 @@ export const EVENT_PLAYER_VOTE_LABEL = {
 	voteFailed: "Não foi possível registrar o voto",
 	submitVotes: "Enviar votos",
 	submitVotesFailed: "Não foi possível enviar os votos",
+	votesSubmitted: "Votos enviados",
+	editVotes: "Alterar votos",
 	likeBudget: "Likes",
 	dislikeBudget: "Dislikes",
 } as const;
@@ -196,7 +198,12 @@ export function canVoteEventPlayer(input: {
 	targetPlayerId: number;
 	voterPlayerId: number | null;
 	voteRatingDelta: number;
+	votingEnabled?: boolean;
 }): boolean {
+	if (input.votingEnabled === false) {
+		return false;
+	}
+
 	if (
 		!input.canVote ||
 		!input.eventEnded ||
@@ -219,6 +226,34 @@ export function canVoteEventPlayer(input: {
 	}
 
 	return input.voterPlayerId !== input.targetPlayerId;
+}
+
+export function initialEventPlayerBallotLocked(savedVoteCount: number): boolean {
+	return savedVoteCount > 0;
+}
+
+export function canEditEventPlayerBallot(input: {
+	ballotLocked: boolean;
+	canSubmitVotes: boolean;
+}): boolean {
+	return input.ballotLocked && input.canSubmitVotes;
+}
+
+export function eventPlayerVoteChoiceLabel(
+	choice: EventPlayerVoteChoice,
+): string {
+	switch (choice) {
+		case EVENT_PLAYER_VOTE.like:
+			return EVENT_PLAYER_VOTE_LABEL.like;
+		case EVENT_PLAYER_VOTE.dislike:
+			return EVENT_PLAYER_VOTE_LABEL.dislike;
+		case EVENT_PLAYER_VOTE.maintain:
+			return EVENT_PLAYER_VOTE_LABEL.maintain;
+		default: {
+			const _exhaustive: never = choice;
+			return _exhaustive;
+		}
+	}
 }
 
 export function eventPlayerVoteUrl(
