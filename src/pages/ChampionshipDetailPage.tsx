@@ -14,6 +14,7 @@ import {
 import { AppDialog } from "@/components/atoms/app-dialog";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { ChampionshipDetailHeader } from "@/components/championship-detail-header";
+import { ChampionshipEventDrawSim } from "@/components/championship-event-draw-sim";
 import { ChampionshipEvents } from "@/components/championship-events";
 import { ChampionshipManagementTab } from "@/components/championship-management-tab";
 import { ChampionshipPodiumTab } from "@/components/championship-podium-tab";
@@ -29,7 +30,10 @@ import { MergeChampionshipPlayersModal } from "@/components/merge-championship-p
 import { DataTableSkeleton } from "@/components/molecules/data-table-skeleton";
 import { SectionCard } from "@/components/section-card";
 import { TabPanel, Tabs } from "@/components/tabs";
-import type { PlayerEventStatsDraft } from "@/const/championship-event";
+import {
+	countPlayerAttendance,
+	type PlayerEventStatsDraft,
+} from "@/const/championship-event";
 import { isMatchClockOnline } from "@/const/championship-event-match";
 import { assertChampionshipLogoSource } from "@/const/championship-logo";
 import {
@@ -259,6 +263,10 @@ export function ChampionshipDetailPage() {
 	const deactivatedPlayers = useMemo(
 		() => (players ?? []).filter((player) => player.deleted_at),
 		[players],
+	);
+	const attendanceCounts = useMemo(
+		() => countPlayerAttendance(eventsQuery.data ?? []),
+		[eventsQuery.data],
 	);
 	const canOpenSettings =
 		permissions.rename ||
@@ -840,6 +848,18 @@ export function ChampionshipDetailPage() {
 								championshipName={data.name}
 								players={activePlayers}
 								events={eventsQuery.data ?? []}
+							/>
+						</TabPanel>
+					)}
+					{mountedTabsRef.current.drawSim && (
+						<TabPanel active={selectedTab === CHAMPIONSHIP_TAB.drawSim}>
+							<ChampionshipEventDrawSim
+								players={activePlayers}
+								championshipName={data.name}
+								playersPerTeam={data.players_per_team}
+								eventWeekday={data.event_weekday}
+								attendanceCounts={attendanceCounts}
+								seedEvents={eventsQuery.data ?? []}
 							/>
 						</TabPanel>
 					)}

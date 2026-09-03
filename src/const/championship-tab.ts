@@ -6,6 +6,7 @@ export const CHAMPIONSHIP_TAB = {
 	standings: "standings",
 	podium: "podium",
 	trends: "trends",
+	drawSim: "drawSim",
 	management: "management",
 } as const;
 
@@ -24,6 +25,7 @@ export const CHAMPIONSHIP_TAB_LABEL = {
 	standings: "Classificação",
 	podium: "Pódio",
 	trends: "Tendências",
+	drawSim: "Sorteio",
 	management: "Gestão",
 	deactivated: "Desativados",
 	settings: "Configuração",
@@ -49,6 +51,10 @@ export const CHAMPIONSHIP_TABS = [
 	{
 		id: CHAMPIONSHIP_TAB.trends,
 		label: CHAMPIONSHIP_TAB_LABEL.trends,
+	},
+	{
+		id: CHAMPIONSHIP_TAB.drawSim,
+		label: CHAMPIONSHIP_TAB_LABEL.drawSim,
 	},
 ] as const;
 

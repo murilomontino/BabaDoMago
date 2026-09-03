@@ -32,6 +32,12 @@ check(
 	"trends stays for member",
 );
 check(CHAMPIONSHIP_TAB.trends === "trends", "trends tab id");
+check(CHAMPIONSHIP_TAB.drawSim === "drawSim", "drawSim tab id");
+check(
+	visibleChampionshipTab(CHAMPIONSHIP_TAB.drawSim, false) ===
+		CHAMPIONSHIP_TAB.drawSim,
+	"drawSim stays for member",
+);
 
 check(
 	keepChampionshipTabMounted(
