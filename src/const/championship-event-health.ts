@@ -4,13 +4,11 @@ import {
 	formatRosterAverage,
 	formatRosterCount,
 	rosterAverage,
-	rosterWinRate,
 } from "./roster-stats.ts";
 import {
 	championshipTeamBalance,
 	eventTeamBalance,
 	formatTeamBalanceSpread,
-	formatTeamBalanceWinRate,
 	TEAM_BALANCE_LABEL,
 } from "./team-balance-stats.ts";
 
@@ -19,7 +17,6 @@ export const EVENT_HEALTH_METRIC = {
 	goalsPerMatch: "goalsPerMatch",
 	playedMinutes: "playedMinutes",
 	spread: "spread",
-	favoriteRate: "favoriteRate",
 } as const;
 
 export type EventHealthMetric =
@@ -36,10 +33,8 @@ export const EVENT_HEALTH_LABEL = {
 	[EVENT_HEALTH_METRIC.goalsPerMatch]: "Gols / jogo",
 	[EVENT_HEALTH_METRIC.playedMinutes]: "Minutos jogados",
 	[EVENT_HEALTH_METRIC.spread]: TEAM_BALANCE_LABEL.spread,
-	[EVENT_HEALTH_METRIC.favoriteRate]: TEAM_BALANCE_LABEL.favorite,
 	avgMatches: "Média de partidas",
 	avgSpread: TEAM_BALANCE_LABEL.spread,
-	avgFavorite: TEAM_BALANCE_LABEL.favorite,
 } as const;
 
 export const EVENT_HEALTH_METRIC_HINT = {
@@ -51,8 +46,6 @@ export const EVENT_HEALTH_METRIC_HINT = {
 		"Média de minutos no cronômetro por partida. Não usa a duração configurada.",
 	[EVENT_HEALTH_METRIC.spread]:
 		"Diferença prevista de nota entre o time mais forte e o mais fraco no sorteio.",
-	[EVENT_HEALTH_METRIC.favoriteRate]:
-		"Taxa cumulativa: com que frequência o favorito do sorteio terminou na frente.",
 } as const;
 
 export const EVENT_HEALTH_METRIC_OPTIONS = [
@@ -60,7 +53,6 @@ export const EVENT_HEALTH_METRIC_OPTIONS = [
 	EVENT_HEALTH_METRIC.goalsPerMatch,
 	EVENT_HEALTH_METRIC.playedMinutes,
 	EVENT_HEALTH_METRIC.spread,
-	EVENT_HEALTH_METRIC.favoriteRate,
 ] as const;
 
 export const EVENT_HEALTH_CHART = {
@@ -82,14 +74,12 @@ export type EventHealthRow = {
 	goalsPerMatch: number;
 	playedSeconds: number;
 	spread: number;
-	favoriteWon: boolean | null;
 };
 
 export type EventHealthSummary = {
 	events: number;
 	averageMatches: number;
 	averageSpread: number;
-	favoriteWinRate: number;
 	rows: EventHealthRow[];
 };
 
@@ -153,7 +143,6 @@ export function championshipEventHealth(
 				goalsPerMatch: rosterAverage(goals, endedMatches.length),
 				playedSeconds: rosterAverage(playedSecondsTotal, endedMatches.length),
 				spread: balance?.spread ?? 0,
-				favoriteWon: balance?.favoriteWon ?? null,
 			},
 		];
 	});
@@ -167,7 +156,6 @@ export function championshipEventHealth(
 			rows.length,
 		),
 		averageSpread: balanceSummary.averageSpread,
-		favoriteWinRate: balanceSummary.favoriteWinRate,
 		rows,
 	};
 }
@@ -176,10 +164,6 @@ export function championshipEventHealthChart(
 	summary: EventHealthSummary,
 	metric: EventHealthMetric,
 ): EventHealthChartPoint[] {
-	if (metric === EVENT_HEALTH_METRIC.favoriteRate) {
-		return cumulativeFavoriteRate(summary.rows, metric);
-	}
-
 	return summary.rows.map((row, index) => {
 		const value = eventHealthMetricValue(row, metric);
 		return {
@@ -192,7 +176,7 @@ export function championshipEventHealthChart(
 }
 
 export function formatEventHealthKpi(
-	kind: "matches" | "spread" | "favorite",
+	kind: "matches" | "spread",
 	summary: EventHealthSummary,
 ): string {
 	switch (kind) {
@@ -200,8 +184,6 @@ export function formatEventHealthKpi(
 			return formatRosterAverage(summary.averageMatches);
 		case "spread":
 			return formatTeamBalanceSpread(summary.averageSpread);
-		case "favorite":
-			return formatTeamBalanceWinRate(summary.favoriteWinRate);
 		default: {
 			const _never: never = kind;
 			return _never;
@@ -222,8 +204,6 @@ export function formatEventHealthChartValue(
 			return formatRosterAverage(value);
 		case EVENT_HEALTH_METRIC.spread:
 			return formatTeamBalanceSpread(value);
-		case EVENT_HEALTH_METRIC.favoriteRate:
-			return formatTeamBalanceWinRate(value);
 		default: {
 			const _never: never = metric;
 			return _never;
@@ -233,7 +213,7 @@ export function formatEventHealthChartValue(
 
 function eventHealthMetricValue(
 	row: EventHealthRow,
-	metric: Exclude<EventHealthMetric, "favoriteRate">,
+	metric: EventHealthMetric,
 ): number {
 	switch (metric) {
 		case EVENT_HEALTH_METRIC.matches:
@@ -249,35 +229,4 @@ function eventHealthMetricValue(
 			return _never;
 		}
 	}
-}
-
-function cumulativeFavoriteRate(
-	rows: readonly EventHealthRow[],
-	metric: EventHealthMetric,
-): EventHealthChartPoint[] {
-	return rows.reduce<{
-		decided: number;
-		won: number;
-		points: EventHealthChartPoint[];
-	}>(
-		(state, row, index) => {
-			const decided = state.decided + Number(row.favoriteWon !== null);
-			const won = state.won + Number(row.favoriteWon === true);
-			const value = rosterWinRate(won, decided);
-			return {
-				decided,
-				won,
-				points: [
-					...state.points,
-					{
-						x: index,
-						startsAt: row.startsAt,
-						value,
-						label: formatEventHealthChartValue(metric, value),
-					},
-				],
-			};
-		},
-		{ decided: 0, won: 0, points: [] },
-	).points;
 }

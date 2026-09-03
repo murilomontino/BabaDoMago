@@ -152,9 +152,9 @@ function GoalkeeperTrendIcon({
 }) {
 	switch (trend) {
 		case GOALKEEPER_TREND.up:
-			return <ArrowUp className="size-3.5 text-pitch-fg" aria-hidden />;
+			return <ArrowDown className="size-3.5 text-pitch-fg" aria-hidden />;
 		case GOALKEEPER_TREND.down:
-			return <ArrowDown className="size-3.5 text-red-600" aria-hidden />;
+			return <ArrowUp className="size-3.5 text-red-600" aria-hidden />;
 		case GOALKEEPER_TREND.flat:
 			return <ArrowRight className="size-3.5 text-fg-muted" aria-hidden />;
 		case GOALKEEPER_TREND.none:
@@ -616,7 +616,7 @@ export function ChampionshipTrendsTab({
 						)}
 						{health.events > 0 && (
 							<>
-								<div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+								<div className="grid grid-cols-2 gap-3">
 									<div>
 										<p className="text-xs font-medium text-fg-muted">
 											{EVENT_HEALTH_LABEL.avgMatches}
@@ -631,14 +631,6 @@ export function ChampionshipTrendsTab({
 										</p>
 										<p className="text-lg font-semibold tabular-nums text-fg">
 											{formatEventHealthKpi("spread", health)}
-										</p>
-									</div>
-									<div>
-										<p className="text-xs font-medium text-fg-muted">
-											{EVENT_HEALTH_LABEL.avgFavorite}
-										</p>
-										<p className="text-lg font-semibold tabular-nums text-fg">
-											{formatEventHealthKpi("favorite", health)}
 										</p>
 									</div>
 								</div>
