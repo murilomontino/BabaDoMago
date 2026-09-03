@@ -111,8 +111,9 @@ Dono, capitão e admin presentes podem dar like, dislike ou **manter** em quem e
 
 | Regra | Valor |
 | --- | --- |
-| Like no quórum | 3+ likes, mais likes que dislikes **e** que maintains → **+0,5** e **fecha** |
-| Dislike no quórum | 3+ dislikes, mais dislikes que likes **e** que maintains → **−0,5** e **fecha** |
+| Quórum | `championships.player_vote_quorum` (config do baba, default **3**, faixa 1–10) |
+| Like no quórum | N+ likes (N = quórum), mais likes que dislikes **e** que maintains → **+0,5** e **fecha** |
+| Dislike no quórum | N+ dislikes, mais dislikes que likes **e** que maintains → **−0,5** e **fecha** |
 | Manter | conta na urna; bloqueia like/dislike se a contagem deles não supera maintains |
 | Manter sozinho | **0**, voto **permanece aberto** |
 | Sem voto em si | bloqueado |

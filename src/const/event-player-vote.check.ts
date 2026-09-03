@@ -18,7 +18,9 @@ function check(condition: boolean, message: string) {
 	}
 }
 
-check(EVENT_PLAYER_VOTE.quorum === 3, "quorum");
+const quorum = EVENT_PLAYER_VOTE.defaultQuorum;
+
+check(EVENT_PLAYER_VOTE.defaultQuorum === 3, "default quorum");
 check(EVENT_PLAYER_VOTE.delta === 0.5, "delta");
 check(EVENT_PLAYER_VOTE.like === "like", "like");
 check(EVENT_PLAYER_VOTE.dislike === "dislike", "dislike");
@@ -58,17 +60,31 @@ check(
 	"need present roles",
 );
 
-check(eventPlayerVoteAppliedDelta(0, 0, 0) === 0, "empty");
-check(eventPlayerVoteAppliedDelta(2, 0, 0) === 0, "likes below quorum");
-check(eventPlayerVoteAppliedDelta(3, 0, 0) === 0.5, "3 likes");
-check(eventPlayerVoteAppliedDelta(5, 2, 0) === 0.5, "likes win");
-check(eventPlayerVoteAppliedDelta(0, 3, 0) === -0.5, "3 dislikes");
-check(eventPlayerVoteAppliedDelta(2, 5, 0) === -0.5, "dislikes win");
-check(eventPlayerVoteAppliedDelta(3, 3, 0) === 0, "both quorum tied");
-check(eventPlayerVoteAppliedDelta(3, 0, 3) === 0, "like blocked by maintain");
-check(eventPlayerVoteAppliedDelta(4, 0, 3) === 0.5, "like beats maintain");
-check(eventPlayerVoteAppliedDelta(0, 3, 3) === 0, "dislike blocked by maintain");
-check(eventPlayerVoteAppliedDelta(3, 0, 2) === 0.5, "like beats lower maintain");
+check(eventPlayerVoteAppliedDelta(0, 0, 0, quorum) === 0, "empty");
+check(eventPlayerVoteAppliedDelta(2, 0, 0, quorum) === 0, "likes below quorum");
+check(eventPlayerVoteAppliedDelta(3, 0, 0, quorum) === 0.5, "3 likes");
+check(eventPlayerVoteAppliedDelta(5, 2, 0, quorum) === 0.5, "likes win");
+check(eventPlayerVoteAppliedDelta(0, 3, 0, quorum) === -0.5, "3 dislikes");
+check(eventPlayerVoteAppliedDelta(2, 5, 0, quorum) === -0.5, "dislikes win");
+check(eventPlayerVoteAppliedDelta(3, 3, 0, quorum) === 0, "both quorum tied");
+check(
+	eventPlayerVoteAppliedDelta(3, 0, 3, quorum) === 0,
+	"like blocked by maintain",
+);
+check(
+	eventPlayerVoteAppliedDelta(4, 0, 3, quorum) === 0.5,
+	"like beats maintain",
+);
+check(
+	eventPlayerVoteAppliedDelta(0, 3, 3, quorum) === 0,
+	"dislike blocked by maintain",
+);
+check(
+	eventPlayerVoteAppliedDelta(3, 0, 2, quorum) === 0.5,
+	"like beats lower maintain",
+);
+check(eventPlayerVoteAppliedDelta(4, 0, 0, 5) === 0, "custom quorum not met");
+check(eventPlayerVoteAppliedDelta(5, 0, 0, 5) === 0.5, "custom quorum met");
 
 check(eventPlayerVoteChipLabel(0.5) === "+0,5", "chip +");
 check(eventPlayerVoteChipLabel(-0.5) === "−0,5", "chip -");

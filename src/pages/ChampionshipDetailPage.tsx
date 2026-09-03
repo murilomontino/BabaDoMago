@@ -855,6 +855,7 @@ export function ChampionshipDetailPage() {
 					skipGuestGoalkeeperMatches={data.skip_guest_goalkeeper_matches}
 					ratingDropGoalShare={data.rating_drop_goal_share}
 					ratingDropShareExcludeTop={data.rating_drop_share_exclude_top}
+					playerVoteQuorum={data.player_vote_quorum}
 					isVisible={data.is_visible}
 					activePlayers={activePlayers}
 					canRename={permissions.rename}

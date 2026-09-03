@@ -14,6 +14,7 @@ import {
 	parseChampionshipLocation,
 	parseEventTime,
 	parseEventWeekday,
+	parsePlayerVoteQuorum,
 } from "@/const/championship-event";
 import {
 	CHAMPIONSHIP_VISIBILITY,
@@ -48,6 +49,7 @@ type ChampionshipSettingsTabProps = {
 	skipGuestGoalkeeperMatches: boolean;
 	ratingDropGoalShare: boolean;
 	ratingDropShareExcludeTop: boolean;
+	playerVoteQuorum: number;
 	isVisible: boolean;
 	activePlayers: ChampionshipPlayer[];
 	canRename: boolean;
@@ -80,6 +82,7 @@ type ChampionshipSettingsTabProps = {
 		skipGuestGoalkeeperMatches: boolean;
 		ratingDropGoalShare: boolean;
 		ratingDropShareExcludeTop: boolean;
+		playerVoteQuorum: number;
 	}) => Promise<void>;
 	onUpdateVisibility: (isVisible: boolean) => void;
 	onTransferOwner: (playerId: number) => Promise<void>;
@@ -98,6 +101,7 @@ export function ChampionshipSettingsTab({
 	skipGuestGoalkeeperMatches,
 	ratingDropGoalShare,
 	ratingDropShareExcludeTop,
+	playerVoteQuorum,
 	isVisible,
 	activePlayers,
 	canRename,
@@ -211,6 +215,7 @@ export function ChampionshipSettingsTab({
 									skipGuestGoalkeeperMatches,
 									ratingDropGoalShare,
 									ratingDropShareExcludeTop,
+									playerVoteQuorum,
 								}}
 								enableReinitialize
 								validationSchema={eventConfigFormSchema}
@@ -225,6 +230,9 @@ export function ChampionshipSettingsTab({
 										ratingDropGoalShare: values.ratingDropGoalShare,
 										ratingDropShareExcludeTop:
 											values.ratingDropShareExcludeTop,
+										playerVoteQuorum: parsePlayerVoteQuorum(
+											values.playerVoteQuorum,
+										),
 									});
 								}}
 							>
@@ -388,6 +396,25 @@ export function ChampionshipSettingsTab({
 										</Field>
 									</div>
 									<FormError name="ratingDropShareExcludeTop" />
+									<label
+										htmlFor="championship-player-vote-quorum"
+										className="block text-sm font-medium text-fg-muted"
+									>
+										{EVENT_CONFIG_LABEL.playerVoteQuorum}
+										<span className="mt-1 block font-normal text-fg-muted">
+											{EVENT_CONFIG_LABEL.playerVoteQuorumHint}
+										</span>
+										<Field
+											id="championship-player-vote-quorum"
+											name="playerVoteQuorum"
+											type="number"
+											inputMode="numeric"
+											min={CHAMPIONSHIP_EVENT.playerVoteQuorumMin}
+											max={CHAMPIONSHIP_EVENT.playerVoteQuorumMax}
+											className={`mt-1 ${FIELD_CLASS}`}
+										/>
+									</label>
+									<FormError name="playerVoteQuorum" />
 									<Button
 										type="submit"
 										variant={BUTTON_VARIANT.secondary}

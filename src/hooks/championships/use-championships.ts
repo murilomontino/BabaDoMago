@@ -177,6 +177,7 @@ export function useUpdateChampionshipEventConfig(championshipId: number) {
 			location,
 			ratingDropGoalShare,
 			ratingDropShareExcludeTop,
+			playerVoteQuorum,
 		}: {
 			eventTime: string;
 			playersPerTeam: number;
@@ -185,6 +186,7 @@ export function useUpdateChampionshipEventConfig(championshipId: number) {
 			location: string | null;
 			ratingDropGoalShare: boolean;
 			ratingDropShareExcludeTop: boolean;
+			playerVoteQuorum: number;
 		}) =>
 			updateChampionshipEventConfig(
 				championshipId,
@@ -195,6 +197,7 @@ export function useUpdateChampionshipEventConfig(championshipId: number) {
 				location,
 				ratingDropGoalShare,
 				ratingDropShareExcludeTop,
+				playerVoteQuorum,
 			),
 		onSuccess: async () => {
 			await invalidateChampionshipQueries(queryClient);

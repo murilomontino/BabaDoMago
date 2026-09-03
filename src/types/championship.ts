@@ -11,6 +11,7 @@ export type Championship = {
 	skip_guest_goalkeeper_matches: boolean;
 	rating_drop_goal_share: boolean;
 	rating_drop_share_exclude_top: boolean;
+	player_vote_quorum: number;
 	is_visible: boolean;
 };
 

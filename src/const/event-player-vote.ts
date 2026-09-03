@@ -5,7 +5,7 @@ export const EVENT_PLAYER_VOTE = {
 	like: "like",
 	dislike: "dislike",
 	maintain: "maintain",
-	quorum: 3,
+	defaultQuorum: 3,
 	delta: 0.5,
 } as const;
 
@@ -73,9 +73,10 @@ export function eventPlayerVoteAppliedDelta(
 	likeCount: number,
 	dislikeCount: number,
 	maintainCount: number,
+	quorum: number,
 ): number {
-	const likesAtQuorum = likeCount >= EVENT_PLAYER_VOTE.quorum;
-	const dislikesAtQuorum = dislikeCount >= EVENT_PLAYER_VOTE.quorum;
+	const likesAtQuorum = likeCount >= quorum;
+	const dislikesAtQuorum = dislikeCount >= quorum;
 
 	if (
 		likesAtQuorum &&
