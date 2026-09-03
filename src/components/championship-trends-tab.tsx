@@ -6,6 +6,7 @@ import {
 	ChartColumn,
 	Goal,
 	LineChart as LineChartIcon,
+	Scale,
 	Shield,
 	TrendingUp,
 	Users,
@@ -75,6 +76,12 @@ import {
 	type RecentFormRow,
 	recentFormTrendLabel,
 } from "@/const/championship-recent-form";
+import {
+	championshipRatingInflation,
+	championshipRatingInflationChart,
+	RATING_INFLATION_CHART,
+	RATING_INFLATION_LABEL,
+} from "@/const/championship-rating-inflation";
 import { endedChampionshipHistoryEvents } from "@/const/championship-rating-history";
 import { TREND_LINE_CHART } from "@/const/championship-trend-line-chart";
 import { CHAMPIONSHIP_TAB_LABEL } from "@/const/championship-tab";
@@ -93,6 +100,12 @@ import { FIELD_CLASS } from "@/const/ui";
 import { CHAMPIONSHIP_EVENTS_QUERY_KEY } from "@/hooks/championships/championships-query-keys";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type { ChampionshipEvent } from "@/types/championship-event";
+
+const ChampionshipRatingInflationChart = lazy(() =>
+	import("@/components/molecules/championship-rating-inflation-chart").then(
+		(m) => ({ default: m.ChampionshipRatingInflationChart }),
+	),
+);
 
 const ChampionshipTrendLineChart = lazy(() =>
 	import("@/components/molecules/championship-trend-line-chart").then((m) => ({
@@ -423,6 +436,14 @@ export function ChampionshipTrendsTab({
 		() => championshipAttendanceTrendChart(attendance, attendanceMetric),
 		[attendance, attendanceMetric],
 	);
+	const inflation = useMemo(
+		() => championshipRatingInflation(players, allEndedEvents),
+		[players, allEndedEvents],
+	);
+	const inflationChart = useMemo(
+		() => championshipRatingInflationChart(inflation),
+		[inflation],
+	);
 	const formRows = useMemo(
 		() => championshipRecentForm(players, windowEvents),
 		[players, windowEvents],
@@ -553,6 +574,39 @@ export function ChampionshipTrendsTab({
 									/>
 								</Suspense>
 							</>
+						)}
+					</section>
+
+					<section className="space-y-3">
+						<div className="space-y-1">
+							<div className="flex items-center gap-2">
+								<Scale className="size-4 text-pitch-fg" />
+								<h3 className="text-sm font-semibold text-fg">
+									{RATING_INFLATION_LABEL.title}
+								</h3>
+							</div>
+							<p className="text-sm text-fg-muted">{RATING_INFLATION_LABEL.hint}</p>
+							<p className="text-xs text-fg-muted">
+								{TRENDS_WINDOW_LABEL.allEndedCaption}
+							</p>
+						</div>
+						{inflation.events === 0 && (
+							<p className="text-sm text-fg-muted">
+								{RATING_INFLATION_LABEL.empty}
+							</p>
+						)}
+						{inflation.events > 0 && (
+							<Suspense
+								fallback={
+									<SkeletonRegion label={SKELETON_LABEL.chart}>
+										<div style={{ height: RATING_INFLATION_CHART.height }}>
+											<Skeleton className="h-full w-full" />
+										</div>
+									</SkeletonRegion>
+								}
+							>
+								<ChampionshipRatingInflationChart points={inflationChart} />
+							</Suspense>
 						)}
 					</section>
 
