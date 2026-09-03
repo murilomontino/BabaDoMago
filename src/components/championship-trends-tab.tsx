@@ -66,7 +66,13 @@ import {
 	goalkeeperTrendLabel,
 } from "@/const/championship-goalkeeper-ranking";
 import {
-	championshipRecentForm,
+	championshipRoundGoals,
+	championshipRoundGoalsChart,
+	formatRoundGoalsChartValue,
+	formatRoundGoalsKpi,
+	ROUND_GOALS_LABEL,
+} from "@/const/championship-round-goals";
+import {
 	formatRecentFormDelta,
 	formatRecentFormRate,
 	formatRecentFormStat,
@@ -470,6 +476,14 @@ export function ChampionshipTrendsTab({
 		[players, events, consistencyMetric],
 	);
 	const consistencyEmpty = championshipConsistencyEmptyLabel(consistencyPoints);
+	const roundGoals = useMemo(
+		() => championshipRoundGoals(windowEvents),
+		[windowEvents],
+	);
+	const roundGoalsChart = useMemo(
+		() => championshipRoundGoalsChart(roundGoals),
+		[roundGoals],
+	);
 	const health = useMemo(
 		() => championshipEventHealth(windowEvents),
 		[windowEvents],
@@ -817,6 +831,48 @@ export function ChampionshipTrendsTab({
 									<ChampionshipEventHealthChart
 										points={healthChart}
 										metric={healthMetric}
+									/>
+								</Suspense>
+							</>
+						)}
+					</section>
+
+					<section className="space-y-3">
+						<div className="space-y-1">
+							<div className="flex items-center gap-2">
+								<Goal className="size-4 text-pitch-fg" />
+								<h3 className="text-sm font-semibold text-fg">
+									{ROUND_GOALS_LABEL.title}
+								</h3>
+							</div>
+							<p className="text-sm text-fg-muted">{ROUND_GOALS_LABEL.hint}</p>
+						</div>
+						{roundGoals.events === 0 && (
+							<p className="text-sm text-fg-muted">{ROUND_GOALS_LABEL.empty}</p>
+						)}
+						{roundGoals.events > 0 && (
+							<>
+								<div>
+									<p className="text-xs font-medium text-fg-muted">
+										{ROUND_GOALS_LABEL.avgTotal}
+									</p>
+									<p className="text-lg font-semibold tabular-nums text-fg">
+										{formatRoundGoalsKpi(roundGoals)}
+									</p>
+								</div>
+								<Suspense
+									fallback={
+										<SkeletonRegion label={SKELETON_LABEL.chart}>
+											<div style={{ height: TREND_LINE_CHART.height }}>
+												<Skeleton className="h-full w-full" />
+											</div>
+										</SkeletonRegion>
+									}
+								>
+									<ChampionshipTrendLineChart
+										points={roundGoalsChart}
+										caption={ROUND_GOALS_LABEL.title}
+										formatValue={formatRoundGoalsChartValue}
 									/>
 								</Suspense>
 							</>
