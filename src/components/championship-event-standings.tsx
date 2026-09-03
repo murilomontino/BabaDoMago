@@ -4,6 +4,7 @@ import {
 	EVENT_TEAM_STANDINGS_LABEL,
 	eventTeamStandings,
 	formatStandingGoalDifference,
+	formatStandingPointsRate,
 } from "@/const/event-team-standings";
 import type {
 	ChampionshipEventMatch,
@@ -103,6 +104,13 @@ export function ChampionshipEventStandings({
 								>
 									{EVENT_TEAM_STANDINGS_ABBR.points}
 								</th>
+								<th
+									scope="col"
+									className={STAT_HEADER_CLASS}
+									title={EVENT_TEAM_STANDINGS_LABEL.pointsRate}
+								>
+									{EVENT_TEAM_STANDINGS_ABBR.pointsRate}
+								</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -128,6 +136,9 @@ export function ChampionshipEventStandings({
 									</td>
 									<td className={`${STAT_CELL_CLASS} font-semibold`}>
 										{row.points}
+									</td>
+									<td className={STAT_CELL_CLASS}>
+										{formatStandingPointsRate(row.pointsRate)}
 									</td>
 								</tr>
 							))}

@@ -5,6 +5,7 @@ import {
 	eventRatingDelta,
 	eventRatingDrawPoints,
 	eventRatingPreview,
+	eventRatingPreviewFrom,
 	formatEventRating,
 	playerEventRatingAfterSave,
 	previewRatingTos,
@@ -481,5 +482,35 @@ check(
 	"3.2",
 	"preview tos",
 );
+
+check(eventRatingPreviewFrom(4, 4.4), 4, "snapshot vence elenco");
+check(eventRatingPreviewFrom(undefined, 4.4), 4.4, "sem snapshot usa elenco");
+check(eventRatingPreviewFrom(undefined, undefined), 0, "sem nota vira sentinela");
+check(eventRatingPreviewFrom(0, 3.5), 0, "sentinela da presenca fica 0");
+
+const alreadyEvolvedPreview = eventRatingPreview({
+	attendance: [
+		{
+			player_id: 1,
+			display_name: "Joao",
+			wins: 4,
+			draws: 0,
+			losses: 2,
+			matches: 6,
+			rating: 4,
+		},
+	],
+	players: [
+		{
+			id: 1,
+			rating: 4.4,
+			nickname: "Joao",
+			display_name: "Joao Silva",
+		},
+	],
+	presentPlayerIds: null,
+});
+check(alreadyEvolvedPreview[0]?.from, 4, "preview after end usa presenca");
+check(alreadyEvolvedPreview[0]?.to, 4.4, "preview after end nao aplica de novo");
 
 console.log("event-rating-adjustment ok");

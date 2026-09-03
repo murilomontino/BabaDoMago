@@ -1,5 +1,6 @@
 import type {
 	ChampionshipEvent,
+	ChampionshipEventAttendance,
 	ChampionshipEventGoal,
 	ChampionshipEventMatch,
 	ChampionshipEventMatchPlayer,
@@ -9,6 +10,7 @@ export const EVENT_REALTIME_TABLE = {
 	matches: "championship_event_matches",
 	players: "championship_event_match_players",
 	goals: "championship_event_goals",
+	attendance: "championship_event_attendance",
 } as const;
 
 export const EVENT_REALTIME_CHANGE = {
@@ -267,6 +269,73 @@ function patchGoals(
 	};
 }
 
+function asAttendanceFromRow(
+	row: Record<string, unknown>,
+): ChampionshipEventAttendance | null {
+	const id = rowNumber(row, "id");
+	const eventId = rowNumber(row, "event_id");
+	const playerId = rowNumber(row, "player_id");
+	const displayName = rowString(row, "display_name");
+	if (
+		id === null ||
+		eventId === null ||
+		playerId === null ||
+		displayName === null
+	) {
+		return null;
+	}
+
+	return {
+		id,
+		event_id: eventId,
+		player_id: playerId,
+		display_name: displayName,
+		is_goalkeeper: row.is_goalkeeper === true,
+		event_date: rowString(row, "event_date") ?? "",
+		goals: rowNumber(row, "goals") ?? 0,
+		assists: rowNumber(row, "assists") ?? 0,
+		assisted_goals: rowNumber(row, "assisted_goals") ?? 0,
+		own_goals: rowNumber(row, "own_goals") ?? 0,
+		wins: rowNumber(row, "wins") ?? 0,
+		losses: rowNumber(row, "losses") ?? 0,
+		draws: rowNumber(row, "draws") ?? 0,
+		matches: rowNumber(row, "matches") ?? 0,
+		rating: rowNumber(row, "rating") ?? 0,
+		rating_delta: rowNumber(row, "rating_delta") ?? 0,
+		vote_rating_delta: rowNumber(row, "vote_rating_delta") ?? 0,
+		is_mvp: row.is_mvp === true,
+		mvp_overridden: row.mvp_overridden === true,
+	};
+}
+
+function patchAttendance(
+	event: ChampionshipEvent,
+	eventType: string,
+	row: Record<string, unknown>,
+): ChampionshipEvent {
+	const id = rowNumber(row, "id");
+	if (id === null) {
+		return event;
+	}
+
+	if (eventType === EVENT_REALTIME_CHANGE.delete) {
+		return {
+			...event,
+			attendance: event.attendance.filter((item) => item.id !== id),
+		};
+	}
+
+	const incoming = asAttendanceFromRow(row);
+	if (!incoming) {
+		return event;
+	}
+
+	return {
+		...event,
+		attendance: upsertById(event.attendance, incoming),
+	};
+}
+
 export function patchChampionshipEventRealtime(
 	event: ChampionshipEvent,
 	table: string,
@@ -280,6 +349,8 @@ export function patchChampionshipEventRealtime(
 			return patchMatchPlayers(event, eventType, row);
 		case EVENT_REALTIME_TABLE.goals:
 			return patchGoals(event, eventType, row);
+		case EVENT_REALTIME_TABLE.attendance:
+			return patchAttendance(event, eventType, row);
 		default:
 			return event;
 	}

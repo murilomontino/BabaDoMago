@@ -218,6 +218,21 @@ export function formatEventRating(rating: number): string {
 	return rating.toFixed(1);
 }
 
+export function eventRatingPreviewFrom(
+	snapshotRating: number | undefined,
+	playerRating: number | undefined,
+): number {
+	if (snapshotRating !== undefined) {
+		return snapshotRating;
+	}
+
+	if (playerRating !== undefined) {
+		return playerRating;
+	}
+
+	return PLAYER_RATING.default;
+}
+
 export function eventRatingPreview({
 	attendance,
 	players,
@@ -231,6 +246,7 @@ export function eventRatingPreview({
 		draws: number;
 		losses: number;
 		matches: number;
+		rating?: number;
 	}[];
 	players: readonly {
 		id: number;
@@ -252,7 +268,7 @@ export function eventRatingPreview({
 	return ids.map((playerId) => {
 		const player = playerById.get(playerId);
 		const stats = statsById.get(playerId);
-		const from = player?.rating ?? PLAYER_RATING.default;
+		const from = eventRatingPreviewFrom(stats?.rating, player?.rating);
 		const isMvp = mvpIds.has(playerId);
 		const to = applyEventRatingDelta(
 			from,

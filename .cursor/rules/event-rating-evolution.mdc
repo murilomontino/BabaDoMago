@@ -1,0 +1,32 @@
+---
+description: Rating e evolução do jogador depois da rodada — pipeline, camadas e superfícies.
+globs: docs/rating.md,src/const/event-rating-*.ts,src/const/event-player-vote*.ts,src/const/championship-rating-*.ts,src/const/player-rating*.ts,src/const/player-profile.ts,src/const/event-mvp.ts,src/components/**/*rating*,src/components/event-player-vote-list.tsx,src/pages/**/*Vote*,supabase/**/*rating*,supabase/**/*vote*
+alwaysApply: false
+---
+
+# Rating e evolução pós-rodada
+
+Doc: `docs/rating.md`. Fórmula: regra `event-rating-win-rate`. Não é Elo. SQL e TS iguais.
+
+A nota no elenco **só persiste no SQL**. `endEvent` pinta `ended_at` na hora; o cliente não grava `championship_players.rating`. Preview usa overlay local; não escrever no cache do React Query.
+
+## Pipeline
+
+1. Presença: snapshot `rating` (antes do evento).
+2. Preview: `eventRatingPreview` = aproveitamento + MVP. Snapshot vence elenco.
+3. Voto: overlay `vote_rating_delta` (±0,5). Ranqueado aplica na hora; sentinela espera semente (`vote_rating_applied`).
+4. Encerrar: `adjust_championship_player_ratings_for_event` grava `rating_delta`, depois voto pendente.
+5. Histórico: ficha (`playerProfileHistory`) e campeonato (`championshipRatingHistory`, **Evolução da nota**).
+
+Recompute: `rating − old_delta + new_delta` com o snapshot da presença.
+
+## Fontes
+
+- Delta: `src/const/event-rating-adjustment.ts`
+- MVP: `src/const/event-mvp.ts`
+- Voto: `src/const/event-player-vote.ts`, RPC `vote_championship_event_player`
+- Persistência: `adjust_championship_player_ratings_for_event`
+- UI preview: detalhe da rodada / Encerrar
+- Sim: `src/const/player-rating-sim.ts`
+
+Não inventar Elo, K-factor, ajuste por gols ou adversário. Voto não entra em `eventRatingDelta`.

@@ -105,6 +105,27 @@ Exemplos do bônus: `0.01 → 0.1`, `0.14 → 0.2`, nota `20 → +0.4`.
 
 ---
 
+## Voto do elenco (overlay)
+
+Dono, capitão e admin presentes podem dar like ou dislike em quem está na presença da **mesma** rodada, **só depois de encerrar**. A tela mostra a nota atual do elenco. Voto secreto: ninguém vê a urna, só o próprio voto.
+
+| Regra | Valor |
+| --- | --- |
+| Like no quórum | 3 likes e dislikes < 3 → **+0,5** e **fecha** o voto desse jogador |
+| Dislike no quórum | 3 dislikes e likes < 3 → **−0,5** e **fecha** o voto desse jogador |
+| Ambos no quórum | **0** (cancela) — na prática o primeiro lado a fechar trava |
+| Sem voto em si | bloqueado |
+| 1 voto por admin por atleta | pode trocar ou limpar **só enquanto aberto** |
+
+O campo `championship_event_attendance.vote_rating_delta` guarda o resultado (±0,5 ou 0). **Não** entra em `eventRatingDelta` / aproveitamento. Depois de ±0,5, novos votos nesse alvo são recusados (`vote closed`).
+
+- Jogador já ranqueado (`rating ≠ 0`): aplica na hora no elenco.
+- Sentinela (`rating = 0`): só guarda o overlay; aplica depois da semente no encerrar (`vote_rating_applied` evita aplicar duas vezes).
+
+Fonte: [`src/const/event-player-vote.ts`](../src/const/event-player-vote.ts), RPC `vote_championship_event_player`.
+
+---
+
 ## Exemplos
 
 Números vindos dos checks (`event-rating-adjustment.check.ts`). Colunas **V / E / D / J** = vitórias, empates, derrotas, jogos.
@@ -208,6 +229,30 @@ Zona morta (2V 2D), nota `4`, teto 5:
 
 ---
 
+## Evolução pós-rodada
+
+A nota no elenco **só persiste no SQL**. Encerrar a rodada (`endEvent`) pinta `ended_at` na hora; o cliente **não** grava `championship_players.rating`. A fila de ops não entra em `busy`.
+
+Pipeline:
+
+1. Presença guarda snapshot `rating` (nota **antes** do evento).
+2. Preview na UI: `eventRatingPreview` = aproveitamento + MVP. Snapshot vence o elenco.
+3. Voto do elenco: overlay `vote_rating_delta` (±0,5). Ranqueado aplica na hora; sentinela espera a semente.
+4. Encerrar: `adjust_championship_player_ratings_for_event` aplica delta, grava `rating_delta`, depois sincroniza voto pendente (`vote_rating_applied`).
+5. Histórico: ficha (`playerProfileHistory`) e campeonato (`championshipRatingHistory`, título **Evolução da nota**).
+
+Camadas na nota final (nessa ordem):
+
+| Camada | Entra em `eventRatingDelta`? | Onde |
+| --- | --- | --- |
+| Aproveitamento / semente | sim | `rating_delta` |
+| MVP (`2%`, mín. +0,1) | não; soma em cima | `rating_delta` (junto do delta) |
+| Voto ±0,5 | não | `vote_rating_delta` |
+
+Recompute de stats: `rating − old_delta + new_delta` com o **snapshot** da presença, não a nota atual do elenco.
+
+---
+
 ## Onde vive no código
 
 | Camada | Arquivo / função |
@@ -215,8 +260,11 @@ Zona morta (2V 2D), nota `4`, teto 5:
 | TypeScript (fonte da UI) | [`src/const/event-rating-adjustment.ts`](../src/const/event-rating-adjustment.ts) — `eventRatingDelta`, `applyEventRatingDelta`, `eventRatingPreview` |
 | Checks | [`src/const/event-rating-adjustment.check.ts`](../src/const/event-rating-adjustment.check.ts) |
 | Simulador (ficha do jogador) | [`src/const/player-rating-sim.ts`](../src/const/player-rating-sim.ts) — aba **Simulação** |
+| Evolução no campeonato | [`src/const/championship-rating-history.ts`](../src/const/championship-rating-history.ts) |
+| Evolução na ficha | [`src/const/player-profile.ts`](../src/const/player-profile.ts) — `playerProfileHistory` |
 | Postgres | `public.championship_event_rating_delta`, `public.championship_player_rating_apply`, `public.championship_event_mvp_bonus` |
 | Persistência ao encerrar | `adjust_championship_player_ratings_for_event` |
+| Voto do elenco | [`src/const/event-player-vote.ts`](../src/const/event-player-vote.ts), `vote_championship_event_player`, `vote_rating_delta` |
 | Recálculo manual (script) | [`supabase/scripts/recompute_ratings_from_attendance.sql`](../supabase/scripts/recompute_ratings_from_attendance.sql) |
 
 **SQL e TypeScript precisam ficar iguais.** Ao mudar a regra, atualize os dois lados e os checks.
@@ -231,6 +279,7 @@ A presença guarda `rating` (snapshot antes do evento) e `rating_delta`. Correç
 - Gols, assistências ou gol contra (contam em estatísticas e MVP, não no delta base)
 - Força do adversário
 - Duração ou placar da partida além do resultado V/E/D agregado na presença
+- Voto like/dislike (overlay em `vote_rating_delta`, fora do aproveitamento)
 
 ---
 

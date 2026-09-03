@@ -71,6 +71,7 @@ function attendance(
 		matches: 0,
 		rating: 3,
 		rating_delta: 0,
+		vote_rating_delta: 0,
 		is_mvp: false,
 		mvp_overridden: false,
 		...stats,

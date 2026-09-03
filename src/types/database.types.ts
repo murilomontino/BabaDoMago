@@ -96,6 +96,8 @@ export type Database = {
 					player_id: number;
 					rating: number;
 					rating_delta: number;
+					vote_rating_delta: number;
+					vote_rating_applied: number;
 					wins: number;
 					losses: number;
 					draws: number;
@@ -116,6 +118,8 @@ export type Database = {
 					player_id: number;
 					rating?: number;
 					rating_delta?: number;
+					vote_rating_delta?: number;
+					vote_rating_applied?: number;
 					wins?: number;
 					losses?: number;
 					draws?: number;
@@ -136,6 +140,8 @@ export type Database = {
 					player_id?: number;
 					rating?: number;
 					rating_delta?: number;
+					vote_rating_delta?: number;
+					vote_rating_applied?: number;
 					wins?: number;
 					losses?: number;
 					draws?: number;
@@ -155,6 +161,44 @@ export type Database = {
 						columns: ["player_id"];
 						isOneToOne: false;
 						referencedRelation: "championship_players";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			championship_event_player_votes: {
+				Row: {
+					created_at: string;
+					event_id: number;
+					id: number;
+					target_player_id: number;
+					updated_at: string;
+					value: string;
+					voter_player_id: number;
+				};
+				Insert: {
+					created_at?: string;
+					event_id: number;
+					id?: number;
+					target_player_id: number;
+					updated_at?: string;
+					value: string;
+					voter_player_id: number;
+				};
+				Update: {
+					created_at?: string;
+					event_id?: number;
+					id?: number;
+					target_player_id?: number;
+					updated_at?: string;
+					value?: string;
+					voter_player_id?: number;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "championship_event_player_votes_event_id_fkey";
+						columns: ["event_id"];
+						isOneToOne: false;
+						referencedRelation: "championship_events";
 						referencedColumns: ["id"];
 					},
 				];
@@ -753,6 +797,18 @@ export type Database = {
 			set_championship_event_mvps: {
 				Args: { event_id: number; player_ids: Json };
 				Returns: Json;
+			};
+			vote_championship_event_player: {
+				Args: {
+					event_id: number;
+					target_player_id: number;
+					value: string | null;
+				};
+				Returns: Json;
+			};
+			championship_event_player_vote_applied_delta: {
+				Args: { like_count: number; dislike_count: number };
+				Returns: number;
 			};
 			set_championship_event_team_active: {
 				Args: { team_id: number; is_active: boolean };

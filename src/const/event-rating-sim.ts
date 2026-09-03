@@ -131,7 +131,7 @@ export function eventRatingSimRows(input: {
 		.map((row) => {
 			const player = playerById.get(row.player_id);
 			const stats = statsById.get(row.player_id);
-			const from = player?.rating ?? 0;
+			const from = row.rating;
 			const wins = stats?.wins ?? 0;
 			const draws = stats?.draws ?? 0;
 			const losses = stats?.losses ?? 0;

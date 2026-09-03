@@ -146,6 +146,12 @@ export const EVENT_ERROR_MESSAGE = {
 	"team in open match": "Time em partida aberta",
 	"player conflict": "Jogadores já estão em outro time",
 	"shared player": "Times com jogador em comum",
+	"invalid vote": "Voto inválido",
+	"cannot vote self": "Não dá para votar em si",
+	"voter not present": "Você precisa estar na presença",
+	"not allowed": "Sem permissão",
+	"not authenticated": "Faça login",
+	"vote closed": "Voto deste jogador já fechou",
 } as const;
 
 export const EVENT_ACTION = {

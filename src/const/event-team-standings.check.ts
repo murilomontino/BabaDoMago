@@ -8,6 +8,8 @@ import { EVENT_TEAM_COLOR } from "./event-team-color.ts";
 import {
 	eventTeamStandings,
 	formatStandingGoalDifference,
+	formatStandingPointsRate,
+	standingPointsRate,
 } from "./event-team-standings.ts";
 
 function checkEq<T>(actual: T, expected: T, message: string) {
@@ -101,6 +103,12 @@ const red = team(30, EVENT_TEAM_COLOR.red, 2);
 checkEq(formatStandingGoalDifference(3), "+3", "sg positive");
 checkEq(formatStandingGoalDifference(0), "0", "sg zero");
 checkEq(formatStandingGoalDifference(-2), "-2", "sg negative");
+checkEq(standingPointsRate(3, 1), 1, "full points rate");
+checkEq(standingPointsRate(1, 1), 1 / 3, "draw points rate");
+checkEq(standingPointsRate(0, 0), 0, "zero matches rate");
+checkEq(formatStandingPointsRate(1), "100%", "format 100");
+checkEq(formatStandingPointsRate(1 / 3), "33%", "format 33");
+checkEq(formatStandingPointsRate(0), "0%", "format 0");
 
 const emptyRows = eventTeamStandings([white, black, red], []);
 checkEq(emptyRows.length, 3, "all teams without matches");
@@ -131,8 +139,10 @@ checkEq(whiteWin?.goalsFor, 2, "winner gp");
 checkEq(whiteWin?.goalsAgainst, 1, "winner gc");
 checkEq(whiteWin?.goalDifference, 1, "winner sg");
 checkEq(whiteWin?.points, 3, "winner points");
+checkEq(whiteWin?.pointsRate, 1, "winner points rate");
 checkEq(blackLoss?.losses, 1, "loser losses");
 checkEq(blackLoss?.points, 0, "loser points");
+checkEq(blackLoss?.pointsRate, 0, "loser points rate");
 
 const drawMatch = endedMatch({
 	id: 2,
@@ -149,6 +159,7 @@ const drawMatch = endedMatch({
 const drawRows = eventTeamStandings([white, black], [drawMatch]);
 checkEq(drawRows[0]?.draws, 1, "draw recorded");
 checkEq(drawRows[0]?.points, 1, "draw points");
+checkEq(drawRows[0]?.pointsRate, 1 / 3, "draw points rate");
 checkEq(drawRows[0]?.goalsFor, 1, "draw gp");
 checkEq(drawRows[1]?.draws, 1, "draw both sides");
 checkEq(drawRows[1]?.points, 1, "draw both points");
