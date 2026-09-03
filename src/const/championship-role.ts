@@ -243,8 +243,11 @@ export function canSetEventMvp(role: ChampionshipRole): boolean {
 	return championshipPermissions(role).setEventMvp;
 }
 
-export function canVoteEventPlayers(role: ChampionshipRole): boolean {
-	return championshipPermissions(role).voteEventPlayer;
+export function canVoteEventPlayers(
+	role: ChampionshipRole,
+	isMonthly = false,
+): boolean {
+	return championshipPermissions(role).voteEventPlayer || isMonthly;
 }
 
 export function canViewManagement(role: ChampionshipRole): boolean {
