@@ -825,6 +825,13 @@ export type Database = {
 				};
 				Returns: Json;
 			};
+			submit_championship_event_player_votes: {
+				Args: {
+					event_id: number;
+					votes: Json;
+				};
+				Returns: Json;
+			};
 			championship_event_player_vote_applied_delta: {
 				Args: {
 					like_count: number;

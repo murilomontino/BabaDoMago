@@ -35,6 +35,7 @@ import {
 	saveChampionshipPlayerEventStats,
 	setChampionshipEventMvps,
 	startChampionshipEventMatch,
+	submitChampionshipEventPlayerVotes,
 	swapChampionshipEventMatchTeam,
 	updateChampionshipEventTeam,
 	upsertChampionshipEventRsvp,
@@ -505,6 +506,62 @@ export function useCloseChampionshipEventPlayerVotes(
 						player_votes_closed_at: result.player_votes_closed_at,
 					};
 				},
+			);
+
+			await Promise.all([
+				invalidateChampionshipEvent(queryClient, championshipId, eventId),
+				invalidateChampionshipQueries(queryClient),
+			]);
+		},
+	});
+}
+
+export function useSubmitChampionshipEventPlayerVotes(
+	championshipId: number,
+	eventId: number,
+) {
+	const queryClient = useQueryClient();
+	const { user } = useAuth();
+
+	return useMutation({
+		mutationFn: (
+			votes: { target_player_id: number; value: EventPlayerVoteChoice }[],
+		) => submitChampionshipEventPlayerVotes(eventId, votes),
+		onSuccess: async (result) => {
+			const deltaByPlayerId = new Map(
+				result.attendance.map((row) => [row.player_id, row.vote_rating_delta]),
+			);
+
+			queryClient.setQueriesData<ChampionshipEvent>(
+				{
+					predicate: (query) =>
+						eventIdFromDetailKey(query.queryKey) === eventId,
+				},
+				(current) => {
+					if (!current) {
+						return current;
+					}
+
+					return {
+						...current,
+						attendance: current.attendance.map((row) => {
+							const voteRatingDelta = deltaByPlayerId.get(row.player_id);
+							if (voteRatingDelta === undefined) {
+								return row;
+							}
+
+							return {
+								...row,
+								vote_rating_delta: voteRatingDelta,
+							};
+						}),
+					};
+				},
+			);
+
+			queryClient.setQueryData(
+				[...CHAMPIONSHIP_EVENTS_QUERY_KEY, "my-votes", eventId, user?.id],
+				result.votes,
 			);
 
 			await Promise.all([

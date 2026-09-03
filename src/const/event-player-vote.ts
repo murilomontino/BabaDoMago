@@ -6,6 +6,8 @@ export const EVENT_PLAYER_VOTE = {
 	dislike: "dislike",
 	maintain: "maintain",
 	defaultQuorum: 3,
+	likeBudget: 5,
+	dislikeBudget: 5,
 	delta: 0.5,
 } as const;
 
@@ -42,6 +44,10 @@ export const EVENT_PLAYER_VOTE_LABEL = {
 	appliedUp: "+0,5",
 	appliedDown: "−0,5",
 	voteFailed: "Não foi possível registrar o voto",
+	submitVotes: "Enviar votos",
+	submitVotesFailed: "Não foi possível enviar os votos",
+	likeBudget: "Likes",
+	dislikeBudget: "Dislikes",
 } as const;
 
 export const EVENT_PLAYER_VOTE_ERROR_MESSAGE = {
@@ -55,6 +61,8 @@ export const EVENT_PLAYER_VOTE_ERROR_MESSAGE = {
 	"player not present": "Jogador fora da presença",
 	"vote closed": "Voto deste jogador já fechou",
 	"player votes closed": "Votação encerrada",
+	"like budget exceeded": "No máximo 5 likes",
+	"dislike budget exceeded": "No máximo 5 dislikes",
 } as const;
 
 export function eventPlayerVoteErrorMessage(message: string): string {
@@ -177,6 +185,92 @@ export function nextEventPlayerVoteValue(
 	}
 
 	return pressed;
+}
+
+export type EventPlayerVoteDraft = ReadonlyMap<
+	number,
+	EventPlayerVoteChoice | null
+>;
+
+export function countEventPlayerVoteDraft(
+	draft: EventPlayerVoteDraft,
+	choice: typeof EVENT_PLAYER_VOTE.like | typeof EVENT_PLAYER_VOTE.dislike,
+): number {
+	let count = 0;
+	for (const value of draft.values()) {
+		if (value === choice) {
+			count += 1;
+		}
+	}
+
+	return count;
+}
+
+export function canSetEventPlayerVoteDraft(
+	draft: EventPlayerVoteDraft,
+	targetPlayerId: number,
+	nextValue: EventPlayerVoteChoice | null,
+): boolean {
+	if (nextValue === null) {
+		return true;
+	}
+
+	const simulated = new Map(draft);
+	simulated.set(targetPlayerId, nextValue);
+
+	return (
+		countEventPlayerVoteDraft(simulated, EVENT_PLAYER_VOTE.like) <=
+			EVENT_PLAYER_VOTE.likeBudget &&
+		countEventPlayerVoteDraft(simulated, EVENT_PLAYER_VOTE.dislike) <=
+			EVENT_PLAYER_VOTE.dislikeBudget
+	);
+}
+
+export function isEventPlayerVoteDraftDirty(
+	draft: EventPlayerVoteDraft,
+	saved: ReadonlyMap<number, EventPlayerVoteChoice>,
+): boolean {
+	const targetIds = new Set([...draft.keys(), ...saved.keys()]);
+
+	for (const targetId of targetIds) {
+		const draftValue = draft.get(targetId) ?? null;
+		const savedValue = saved.get(targetId) ?? null;
+		if (draftValue !== savedValue) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+export function eventPlayerVoteDraftToSubmit(
+	draft: EventPlayerVoteDraft,
+): { target_player_id: number; value: EventPlayerVoteChoice }[] {
+	return [...draft.entries()].flatMap(([targetPlayerId, value]) => {
+		if (!value) {
+			return [];
+		}
+
+		return [{ target_player_id: targetPlayerId, value }];
+	});
+}
+
+export function eventPlayerVoteBudgetSummary(draft: EventPlayerVoteDraft): string {
+	const likes = countEventPlayerVoteDraft(draft, EVENT_PLAYER_VOTE.like);
+	const dislikes = countEventPlayerVoteDraft(draft, EVENT_PLAYER_VOTE.dislike);
+
+	return `${EVENT_PLAYER_VOTE_LABEL.likeBudget} ${likes}/${EVENT_PLAYER_VOTE.likeBudget} · ${EVENT_PLAYER_VOTE_LABEL.dislikeBudget} ${dislikes}/${EVENT_PLAYER_VOTE.dislikeBudget}`;
+}
+
+export function savedEventPlayerVoteDraft(
+	saved: ReadonlyMap<number, EventPlayerVoteChoice>,
+): Map<number, EventPlayerVoteChoice | null> {
+	return new Map(
+		[...saved.entries()].map(([targetPlayerId, value]) => [
+			targetPlayerId,
+			value,
+		]),
+	);
 }
 
 export type EventPlayerVoteTeamSection = {

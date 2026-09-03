@@ -1,5 +1,7 @@
 import type { ChampionshipEvent } from "../types/championship-event.ts";
 import { matchClockElapsedSeconds } from "./championship-event-match.ts";
+import type { TrendsPlayerScope } from "./championship-trends-player-scope.ts";
+import { trendsScopedEndedMatches, trendsScopedGoalCount } from "./championship-trends-player-scope.ts";
 import {
 	formatRosterAverage,
 	formatRosterCount,
@@ -112,28 +114,27 @@ export function eventHealthMetricHint(metric: EventHealthMetric): string {
 
 export function championshipEventHealth(
 	events: readonly ChampionshipEvent[],
+	playerIds: TrendsPlayerScope = null,
 ): EventHealthSummary {
 	const rows = events.flatMap((event) => {
 		if (event.ended_at === null) {
 			return [];
 		}
 
-		const endedMatches = event.matches.filter(
-			(match) => match.ended_at !== null,
-		);
+		const endedMatches = trendsScopedEndedMatches(event, playerIds);
 		if (endedMatches.length === 0) {
 			return [];
 		}
 
 		const goals = endedMatches.reduce(
-			(sum, match) => sum + match.goals.length,
+			(sum, match) => sum + trendsScopedGoalCount(match.goals, playerIds),
 			0,
 		);
 		const playedSecondsTotal = endedMatches.reduce((sum, match) => {
 			const endedAtMs = Date.parse(match.ended_at ?? "");
 			return sum + matchClockElapsedSeconds(match, endedAtMs);
 		}, 0);
-		const balance = eventTeamBalance(event);
+		const balance = eventTeamBalance(event, playerIds);
 
 		return [
 			{
@@ -147,7 +148,7 @@ export function championshipEventHealth(
 		];
 	});
 
-	const balanceSummary = championshipTeamBalance(events);
+	const balanceSummary = championshipTeamBalance(events, playerIds);
 
 	return {
 		events: rows.length,

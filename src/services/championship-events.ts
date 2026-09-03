@@ -15,7 +15,10 @@ import {
 	isEventTeamColor,
 	normalizeEventTeamColor,
 } from "@/const/event-team-color";
-import type { EventPlayerVoteChoice } from "@/const/event-player-vote";
+import {
+	eventPlayerVoteErrorMessage,
+	type EventPlayerVoteChoice,
+} from "@/const/event-player-vote";
 import { supabase } from "@/lib/supabase";
 import {
 	mapUnknownRows,
@@ -129,6 +132,10 @@ const EVENT_DETAIL_COLUMNS = `${EVENT_LIST_COLUMNS},
 
 function throwEventError(error: { message: string }): never {
 	throw new Error(championshipEventErrorMessage(error.message));
+}
+
+function throwVoteError(error: { message: string }): never {
+	throw new Error(eventPlayerVoteErrorMessage(error.message));
 }
 
 function asAttendance(value: unknown): ChampionshipEventAttendance {
@@ -966,6 +973,72 @@ export async function listMyChampionshipEventPlayerVotes(
 			},
 		];
 	});
+}
+
+export type SubmitChampionshipEventPlayerVotesResult = {
+	event_id: number;
+	votes: ChampionshipEventPlayerVoteRow[];
+	attendance: { player_id: number; vote_rating_delta: number }[];
+};
+
+export async function submitChampionshipEventPlayerVotes(
+	eventId: number,
+	votes: { target_player_id: number; value: EventPlayerVoteChoice }[],
+): Promise<SubmitChampionshipEventPlayerVotesResult> {
+	const { data, error } = await supabase.rpc(
+		"submit_championship_event_player_votes",
+		{
+			event_id: eventId,
+			votes: votes as unknown as Json,
+		},
+	);
+
+	if (error) {
+		throwVoteError(error);
+	}
+
+	const row = (data ?? {}) as Record<string, unknown>;
+	const voteRows = Array.isArray(row.votes) ? row.votes : [];
+	const attendanceRows = Array.isArray(row.attendance) ? row.attendance : [];
+
+	return {
+		event_id: Number(row.event_id ?? eventId),
+		votes: voteRows.flatMap((entry) => {
+			if (!entry || typeof entry !== "object") {
+				return [];
+			}
+
+			const vote = entry as Record<string, unknown>;
+			const value = asVoteChoice(vote.value);
+			if (!value) {
+				return [];
+			}
+
+			return [
+				{
+					target_player_id: Number(vote.target_player_id),
+					value,
+				},
+			];
+		}),
+		attendance: attendanceRows.flatMap((entry) => {
+			if (!entry || typeof entry !== "object") {
+				return [];
+			}
+
+			const attendance = entry as Record<string, unknown>;
+			if (typeof attendance.player_id !== "number") {
+				return [];
+			}
+
+			return [
+				{
+					player_id: attendance.player_id,
+					vote_rating_delta: Number(attendance.vote_rating_delta ?? 0),
+				},
+			];
+		}),
+	};
 }
 
 export async function voteChampionshipEventPlayer(

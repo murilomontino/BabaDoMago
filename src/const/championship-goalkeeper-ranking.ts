@@ -16,8 +16,8 @@ export const GOALKEEPER_RANKING_LABEL = {
 	empty: "Nenhum goleiro com 3 jogos na janela",
 	hint: GOALKEEPER_STATS_LABEL.hint,
 	winRateHint: "WinRate do gol (V/J), não o aproveitamento da nota.",
-	trendUp: "Média caindo",
-	trendDown: "Média subindo",
+	trendUp: "Em alta",
+	trendDown: "Em baixa",
 	trendFlat: "Média estável",
 	matches: GOALKEEPER_STATS_LABEL.matches,
 	wins: "V",
@@ -41,12 +41,6 @@ export type GoalkeeperTrend =
 
 export const GOALKEEPER_TREND_MIN_POINTS = 3 as const;
 
-export type GoalkeeperEventAverage = {
-	eventId: number;
-	startsAt: string;
-	average: number;
-};
-
 export type GoalkeeperRankingRow = {
 	player: ChampionshipPlayer;
 	matches: number;
@@ -56,7 +50,6 @@ export type GoalkeeperRankingRow = {
 	goalsConceded: number;
 	goalsConcededAverage: number;
 	winRate: number;
-	eventAverages: GoalkeeperEventAverage[];
 	trend: GoalkeeperTrend;
 };
 
@@ -118,7 +111,6 @@ export function championshipGoalkeeperRanking(
 			(sum, row) => sum + row.goalsConceded,
 			0,
 		);
-		const eventAverages = goalkeeperEventAverages(matches);
 		return [
 			{
 				player,
@@ -129,8 +121,9 @@ export function championshipGoalkeeperRanking(
 				goalsConceded,
 				goalsConcededAverage: rosterAverage(goalsConceded, matches.length),
 				winRate: rosterWinRate(wins, matches.length),
-				eventAverages,
-				trend: goalkeeperAverageTrend(eventAverages),
+				trend: goalkeeperAverageTrend(
+					goalkeeperEventAverages(matches),
+				),
 			},
 		];
 	});
@@ -163,7 +156,7 @@ export {
 
 function goalkeeperEventAverages(
 	matches: readonly GkMatchRow[],
-): GoalkeeperEventAverage[] {
+): { average: number }[] {
 	const byEvent = new Map<
 		number,
 		{ startsAt: string; goals: number; matches: number }
@@ -183,8 +176,7 @@ function goalkeeperEventAverages(
 	}
 
 	return [...byEvent.entries()]
-		.map(([eventId, value]) => ({
-			eventId,
+		.map(([, value]) => ({
 			startsAt: value.startsAt,
 			average: rosterAverage(value.goals, value.matches),
 		}))
@@ -192,7 +184,7 @@ function goalkeeperEventAverages(
 }
 
 function goalkeeperAverageTrend(
-	averages: readonly GoalkeeperEventAverage[],
+	averages: readonly { average: number }[],
 ): GoalkeeperTrend {
 	if (averages.length < GOALKEEPER_TREND_MIN_POINTS) {
 		return GOALKEEPER_TREND.none;
