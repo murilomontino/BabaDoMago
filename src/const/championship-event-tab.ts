@@ -2,6 +2,7 @@ import { parseAsStringEnum } from "nuqs";
 
 export const EVENT_TAB = {
 	event: "event",
+	sim: "sim",
 	podium: "podium",
 } as const;
 
@@ -9,6 +10,7 @@ export type EventTab = (typeof EVENT_TAB)[keyof typeof EVENT_TAB];
 
 export const EVENT_TAB_LABEL = {
 	event: "Rodada",
+	sim: "Simulação",
 	podium: "Pódio",
 } as const;
 
@@ -16,6 +18,10 @@ export const EVENT_TABS = [
 	{
 		id: EVENT_TAB.event,
 		label: EVENT_TAB_LABEL.event,
+	},
+	{
+		id: EVENT_TAB.sim,
+		label: EVENT_TAB_LABEL.sim,
 	},
 	{
 		id: EVENT_TAB.podium,
@@ -40,9 +46,9 @@ export function eventDetailSelectedTab(
 	showEventTabs: boolean,
 	tab: EventTab | null,
 ): EventTab {
-	if (showEventTabs && tab === EVENT_TAB.podium) {
-		return EVENT_TAB.podium;
+	if (!showEventTabs || tab === null || tab === EVENT_TAB.event) {
+		return EVENT_TAB.event;
 	}
 
-	return EVENT_TAB.event;
+	return tab;
 }

@@ -29,6 +29,8 @@ check(
 
 check(eventDetailSelectedTab(false, EVENT_TAB.podium), EVENT_TAB.event);
 check(eventDetailSelectedTab(true, EVENT_TAB.podium), EVENT_TAB.podium);
+check(eventDetailSelectedTab(true, EVENT_TAB.sim), EVENT_TAB.sim);
+check(eventDetailSelectedTab(false, EVENT_TAB.sim), EVENT_TAB.event);
 check(eventDetailSelectedTab(true, EVENT_TAB.event), EVENT_TAB.event);
 check(eventDetailSelectedTab(true, null), EVENT_TAB.event);
 
