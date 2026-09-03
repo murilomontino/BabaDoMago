@@ -19,6 +19,9 @@ export const CHAMPIONSHIP_EVENT = {
 	skipGuestGoalkeeperMatchesDefault: true,
 	ratingDropGoalShareDefault: false,
 	ratingDropShareExcludeTopDefault: false,
+	playerVoteQuorumMin: 1,
+	playerVoteQuorumMax: 10,
+	playerVoteQuorumDefault: 3,
 	locationMaxLength: 120,
 } as const;
 
@@ -67,6 +70,9 @@ export const EVENT_CONFIG_LABEL = {
 	ratingDropShareExcludeTop: "Não proteger os 10 melhores",
 	ratingDropShareExcludeTopHint:
 		"Os 10 com maior nota da liga não recebem o amortecimento de queda.",
+	playerVoteQuorum: "Votos para fechar jogador",
+	playerVoteQuorumHint:
+		"Like ou dislike precisa desse total (e superar o outro polo) para aplicar ±0,5.",
 } as const;
 
 export const EVENT_BUILDER_STEP = {
@@ -566,6 +572,8 @@ export const ATTENDANCE_STATS_TEAM_FILTER_LABEL = {
 export const EVENT_ATTENDANCE_ACTION = {
 	selectAll: "Selecionar todos",
 	deselectAll: "Desselecionar todos",
+	selectMonthly: "Mensalistas",
+	deselectMonthly: "Desmarcar mensalistas",
 	hideSelected: "Ocultar selecionados",
 	selectedList: "Selecionados",
 	unselectAria: "Remover da presença",
@@ -702,6 +710,19 @@ export function parsePlayersPerTeam(value: unknown): number {
 		parsed > CHAMPIONSHIP_EVENT.playersPerTeamMax
 	) {
 		return CHAMPIONSHIP_EVENT.playersPerTeamDefault;
+	}
+
+	return parsed;
+}
+
+export function parsePlayerVoteQuorum(value: unknown): number {
+	const parsed = Number(value);
+	if (
+		!Number.isInteger(parsed) ||
+		parsed < CHAMPIONSHIP_EVENT.playerVoteQuorumMin ||
+		parsed > CHAMPIONSHIP_EVENT.playerVoteQuorumMax
+	) {
+		return CHAMPIONSHIP_EVENT.playerVoteQuorumDefault;
 	}
 
 	return parsed;
@@ -2291,6 +2312,12 @@ export function compareByAttendanceCount(
 	}
 
 	return a.display_name.localeCompare(b.display_name, "pt-BR");
+}
+
+export function monthlyPlayerIds(
+	players: readonly { id: number; is_monthly: boolean }[],
+): number[] {
+	return players.flatMap((player) => (player.is_monthly ? [player.id] : []));
 }
 
 export function applyVisibleAttendance(

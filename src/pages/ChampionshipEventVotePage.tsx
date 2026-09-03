@@ -1,26 +1,30 @@
 import { Link, useParams } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Square } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
+import { Button } from "@/components/button";
 import { EventPlayerVoteList } from "@/components/event-player-vote-list";
 import { applyPlayOps } from "@/const/championship-event-match-ops";
 import {
 	CHAMPIONSHIP_ROLE,
+	canOverrideEndedEvent,
 	canVoteEventPlayers,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
 import {
 	EVENT_PLAYER_VOTE_LABEL,
 	type EventPlayerVoteChoice,
+	isEventPlayerVotesClosed,
 } from "@/const/event-player-vote";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import { ROUTES } from "@/const/routes";
 import { SKELETON_LABEL } from "@/const/skeleton";
-import { ERROR_CLASS, PAGE_SHELL_CLASS } from "@/const/ui";
+import { BUTTON_VARIANT, ERROR_CLASS, PAGE_SHELL_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
 import {
 	useChampionshipEvent,
 	useChampionshipEventRealtime,
+	useCloseChampionshipEventPlayerVotes,
 	useMyChampionshipEventPlayerVotes,
 	useVoteChampionshipEventPlayer,
 } from "@/hooks/championships/use-championship-events";
@@ -44,6 +48,10 @@ export function ChampionshipEventVotePage() {
 	useChampionshipEventRealtime(championshipId, eventId);
 	const myVotesQuery = useMyChampionshipEventPlayerVotes(eventId);
 	const voteMutation = useVoteChampionshipEventPlayer(championshipId, eventId);
+	const closeVotesMutation = useCloseChampionshipEventPlayerVotes(
+		championshipId,
+		eventId,
+	);
 	const matchOps = useAppSelector((state) => selectMatchOps(state, eventId));
 	const [localError, setLocalError] = useState<string | null>(null);
 
@@ -66,9 +74,13 @@ export function ChampionshipEventVotePage() {
 		currentPlayer?.role ?? CHAMPIONSHIP_ROLE.member,
 	);
 	const canVoteRole = canVoteEventPlayers(actorRole);
+	const canCloseVotesAsOwner = canOverrideEndedEvent(actorRole);
 	const voterPlayerId = currentPlayer?.id ?? null;
 	const voterPresent = Boolean(
 		event?.attendance.some((row) => row.player_id === voterPlayerId),
+	);
+	const votesClosed = isEventPlayerVotesClosed(
+		event?.player_votes_closed_at ?? null,
 	);
 	const ceiling = championshipRatingCeiling(
 		(championship?.players ?? []).map((player) => player.rating),
@@ -121,6 +133,11 @@ export function ChampionshipEventVotePage() {
 		);
 	}
 
+	const showCloseVotesButton =
+		canCloseVotesAsOwner &&
+		event.ended_at !== null &&
+		!votesClosed;
+
 	return (
 		<div className={VOTE_SHELL_CLASS}>
 			<header className="flex items-center gap-3">
@@ -152,6 +169,7 @@ export function ChampionshipEventVotePage() {
 				ceiling={ceiling}
 				canVoteRole={canVoteRole}
 				eventEnded={event.ended_at !== null}
+				votesClosed={votesClosed}
 				voterPresent={voterPresent}
 				voterPlayerId={voterPlayerId}
 				myVotes={myVotes}
@@ -178,6 +196,38 @@ export function ChampionshipEventVotePage() {
 					);
 				}}
 			/>
+
+			{showCloseVotesButton && (
+				<section className="border-t border-line pt-4">
+					<Button
+						variant={BUTTON_VARIANT.primary}
+						className="w-full"
+						disabled={closeVotesMutation.isPending}
+						onClick={() => {
+							setLocalError(null);
+							closeVotesMutation.mutate(undefined, {
+								onError: (closeError) => {
+									setLocalError(
+										caughtErrorMessage(
+											closeError,
+											EVENT_PLAYER_VOTE_LABEL.closeVotesFailed,
+										),
+									);
+								},
+							});
+						}}
+					>
+						<Square className="fill-current" />
+						{EVENT_PLAYER_VOTE_LABEL.closeVotes}
+					</Button>
+				</section>
+			)}
+
+			{canCloseVotesAsOwner && votesClosed && (
+				<p className="text-sm text-fg-muted">
+					{EVENT_PLAYER_VOTE_LABEL.votesClosed}
+				</p>
+			)}
 		</div>
 	);
 }

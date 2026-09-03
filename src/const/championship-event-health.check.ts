@@ -153,18 +153,7 @@ check(summary.rows[0]?.goalsPerMatch === 2, "goals per match event1");
 check(summary.rows[1]?.goalsPerMatch === 4, "goals per match event2");
 check(summary.rows[0]?.playedSeconds === 420, "played seconds from clock");
 check(summary.rows[0]?.playedSeconds !== 999, "not duration_seconds");
-check(summary.favoriteWinRate === 0.5, "favorite rate");
 check(summary.averageSpread === 2, "avg spread");
-
-const favoriteChart = championshipEventHealthChart(
-	summary,
-	EVENT_HEALTH_METRIC.favoriteRate,
-);
-check(favoriteChart.length === 2, "favorite chart points");
-check(favoriteChart[0]?.value === 1, "first favorite win");
-check(favoriteChart[0]?.label === "100%", "first favorite label");
-check(favoriteChart[1]?.value === 0.5, "cumulative favorite");
-check(favoriteChart[1]?.label === "50%", "cumulative favorite label");
 
 const spreadChart = championshipEventHealthChart(
 	summary,

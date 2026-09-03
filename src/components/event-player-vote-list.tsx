@@ -1,4 +1,4 @@
-import { ThumbsDown, ThumbsUp } from "lucide-react";
+import { Equal, ThumbsDown, ThumbsUp } from "lucide-react";
 import { Button } from "@/components/button";
 import { EventTeamColorDot } from "@/components/event-team-player";
 import { PlayerRating } from "@/components/player-rating";
@@ -29,6 +29,7 @@ type EventPlayerVoteListProps = {
 	ceiling: number;
 	canVoteRole: boolean;
 	eventEnded: boolean;
+	votesClosed: boolean;
 	voterPresent: boolean;
 	voterPlayerId: number | null;
 	myVotes: ReadonlyMap<number, EventPlayerVoteChoice>;
@@ -69,6 +70,7 @@ export function EventPlayerVoteList({
 	ceiling,
 	canVoteRole,
 	eventEnded,
+	votesClosed,
 	voterPresent,
 	voterPlayerId,
 	myVotes,
@@ -100,7 +102,12 @@ export function EventPlayerVoteList({
 					{EVENT_PLAYER_VOTE_LABEL.needPresent}
 				</p>
 			)}
-			{canVoteRole && eventEnded && !voterPresent && (
+			{canVoteRole && eventEnded && votesClosed && (
+				<p className="text-sm text-fg-muted">
+					{EVENT_PLAYER_VOTE_LABEL.votesClosed}
+				</p>
+			)}
+			{canVoteRole && eventEnded && !votesClosed && !voterPresent && (
 				<p className="text-sm text-fg-muted">
 					{EVENT_PLAYER_VOTE_LABEL.needPresent}
 				</p>
@@ -140,6 +147,7 @@ export function EventPlayerVoteList({
 								const canVote = canVoteEventPlayer({
 									canVote: canVoteRole,
 									eventEnded,
+									votesClosed,
 									voterPresent,
 									targetPlayerId: row.player_id,
 									voterPlayerId,
@@ -231,6 +239,25 @@ export function EventPlayerVoteList({
 												>
 													<ThumbsDown className="size-4" />
 													{EVENT_PLAYER_VOTE_LABEL.dislike}
+												</Button>
+												<Button
+													variant={
+														myVote === "maintain"
+															? BUTTON_VARIANT.primary
+															: BUTTON_VARIANT.secondary
+													}
+													disabled={busy}
+													aria-pressed={myVote === "maintain"}
+													aria-label={EVENT_PLAYER_VOTE_LABEL.maintain}
+													onClick={() => {
+														onVote(
+															row.player_id,
+															nextEventPlayerVoteValue(myVote, "maintain"),
+														);
+													}}
+												>
+													<Equal className="size-4" />
+													{EVENT_PLAYER_VOTE_LABEL.maintain}
 												</Button>
 											</div>
 										)}

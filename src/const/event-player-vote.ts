@@ -4,13 +4,15 @@ import { eventTeamName } from "./event-team-color.ts";
 export const EVENT_PLAYER_VOTE = {
 	like: "like",
 	dislike: "dislike",
-	quorum: 3,
+	maintain: "maintain",
+	defaultQuorum: 3,
 	delta: 0.5,
 } as const;
 
 export const EVENT_PLAYER_VOTE_VALUE = {
 	like: EVENT_PLAYER_VOTE.like,
 	dislike: EVENT_PLAYER_VOTE.dislike,
+	maintain: EVENT_PLAYER_VOTE.maintain,
 } as const;
 
 export type EventPlayerVoteChoice =
@@ -23,12 +25,16 @@ export const EVENT_PLAYER_VOTE_LABEL = {
 	copied: "Link copiado.",
 	like: "Like",
 	dislike: "Dislike",
+	maintain: "Manter",
 	clear: "Limpar voto",
 	empty: "Ninguém na presença.",
 	cannotVoteSelf: "Não dá para votar em si.",
 	needPresent: "Só dono, capitão ou admin presente vota.",
 	needEnded: "Voto só com a rodada encerrada.",
 	closed: "Voto fechado",
+	votesClosed: "Votação encerrada",
+	closeVotes: "Encerrar votação",
+	closeVotesFailed: "Não foi possível encerrar a votação",
 	noTeam: "Sem time",
 	back: "Voltar",
 	goals: "G",
@@ -48,6 +54,7 @@ export const EVENT_PLAYER_VOTE_ERROR_MESSAGE = {
 	"voter not present": "Você precisa estar na presença",
 	"player not present": "Jogador fora da presença",
 	"vote closed": "Voto deste jogador já fechou",
+	"player votes closed": "Votação encerrada",
 } as const;
 
 export function eventPlayerVoteErrorMessage(message: string): string {
@@ -65,15 +72,25 @@ export function eventPlayerVoteErrorMessage(message: string): string {
 export function eventPlayerVoteAppliedDelta(
 	likeCount: number,
 	dislikeCount: number,
+	maintainCount: number,
+	quorum: number,
 ): number {
-	const likesAtQuorum = likeCount >= EVENT_PLAYER_VOTE.quorum;
-	const dislikesAtQuorum = dislikeCount >= EVENT_PLAYER_VOTE.quorum;
+	const likesAtQuorum = likeCount >= quorum;
+	const dislikesAtQuorum = dislikeCount >= quorum;
 
-	if (likesAtQuorum && !dislikesAtQuorum) {
+	if (
+		likesAtQuorum &&
+		likeCount > dislikeCount &&
+		likeCount > maintainCount
+	) {
 		return EVENT_PLAYER_VOTE.delta;
 	}
 
-	if (dislikesAtQuorum && !likesAtQuorum) {
+	if (
+		dislikesAtQuorum &&
+		dislikeCount > likeCount &&
+		dislikeCount > maintainCount
+	) {
 		return -EVENT_PLAYER_VOTE.delta;
 	}
 
@@ -98,19 +115,30 @@ export function isEventPlayerVoteLocked(voteRatingDelta: number): boolean {
 	return voteRatingDelta !== 0;
 }
 
+export function isEventPlayerVotesClosed(
+	playerVotesClosedAt: string | null,
+): boolean {
+	return playerVotesClosedAt !== null;
+}
+
 export function canVoteEventPlayer(input: {
 	canVote: boolean;
 	eventEnded: boolean;
+	votesClosed: boolean;
 	voterPresent: boolean;
 	targetPlayerId: number;
 	voterPlayerId: number | null;
 	voteRatingDelta: number;
 }): boolean {
-	if (!input.canVote || !input.eventEnded || !input.voterPresent) {
+	if (!input.canVote || !input.eventEnded || input.votesClosed) {
 		return false;
 	}
 
 	if (input.voterPlayerId === null) {
+		return false;
+	}
+
+	if (!input.voterPresent) {
 		return false;
 	}
 

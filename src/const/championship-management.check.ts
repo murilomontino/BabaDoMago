@@ -37,6 +37,7 @@ function player(id: number, displayName: string): ChampionshipPlayer {
 		rating: 5,
 		role: "member",
 		is_goalkeeper: false,
+		is_monthly: false,
 		deleted_at: null,
 		goals: 0,
 		assists: 0,

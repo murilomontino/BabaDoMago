@@ -3,6 +3,7 @@ import {
 	parseChampionshipLocation,
 	parseEventTime,
 	parseEventWeekday,
+	parsePlayerVoteQuorum,
 	parsePlayersPerTeam,
 } from "@/const/championship-event";
 import {
@@ -27,10 +28,10 @@ import type {
 } from "@/types/championship";
 
 const PLAYER_COLUMNS =
-	"id, championship_id, user_id, display_name, nickname, nickname_tags, avatar_url, rating, role, is_goalkeeper, deleted_at, goals, assists, assisted_goals, own_goals, wins, losses, draws, matches, mvps" as const;
+	"id, championship_id, user_id, display_name, nickname, nickname_tags, avatar_url, rating, role, is_goalkeeper, is_monthly, deleted_at, goals, assists, assisted_goals, own_goals, wins, losses, draws, matches, mvps" as const;
 
 const CHAMPIONSHIP_COLUMNS =
-	"id, name, invite_code, created_by, logo_path, event_time, event_weekday, location, players_per_team, skip_guest_goalkeeper_matches, rating_drop_goal_share, rating_drop_share_exclude_top, is_visible" as const;
+	"id, name, invite_code, created_by, logo_path, event_time, event_weekday, location, players_per_team, skip_guest_goalkeeper_matches, rating_drop_goal_share, rating_drop_share_exclude_top, player_vote_quorum, is_visible" as const;
 
 function asChampionship(value: unknown): Championship {
 	if (!value || typeof value !== "object") {
@@ -55,6 +56,7 @@ function asChampionship(value: unknown): Championship {
 		skip_guest_goalkeeper_matches: row.skip_guest_goalkeeper_matches !== false,
 		rating_drop_goal_share: row.rating_drop_goal_share === true,
 		rating_drop_share_exclude_top: row.rating_drop_share_exclude_top === true,
+		player_vote_quorum: parsePlayerVoteQuorum(row.player_vote_quorum),
 		is_visible: row.is_visible !== false,
 	};
 }
@@ -95,6 +97,7 @@ function asPlayer(value: unknown): ChampionshipPlayer {
 		rating,
 		role: optionalString(row.role) ?? CHAMPIONSHIP_ROLE.member,
 		is_goalkeeper: row.is_goalkeeper === true,
+		is_monthly: row.is_monthly === true,
 		deleted_at: optionalString(row.deleted_at),
 		goals: rosterSafeCount(row.goals),
 		assists: rosterSafeCount(row.assists),
@@ -355,6 +358,7 @@ export async function updateChampionshipEventConfig(
 	location: string | null,
 	ratingDropGoalShare: boolean,
 	ratingDropShareExcludeTop: boolean,
+	playerVoteQuorum: number,
 ): Promise<Championship> {
 	const { data, error } = await supabase.rpc(
 		"update_championship_event_config",
@@ -367,6 +371,7 @@ export async function updateChampionshipEventConfig(
 			location,
 			rating_drop_goal_share: ratingDropGoalShare,
 			rating_drop_share_exclude_top: ratingDropShareExcludeTop,
+			player_vote_quorum: playerVoteQuorum,
 		},
 	);
 
@@ -416,6 +421,22 @@ export async function setPlayerIsGoalkeeper(
 	const { data, error } = await supabase.rpc("set_player_is_goalkeeper", {
 		player_id: playerId,
 		is_goalkeeper: isGoalkeeper,
+	});
+
+	if (error) {
+		throw error;
+	}
+
+	return asPlayer(data);
+}
+
+export async function setPlayerIsMonthly(
+	playerId: number,
+	isMonthly: boolean,
+): Promise<ChampionshipPlayer> {
+	const { data, error } = await supabase.rpc("set_player_is_monthly", {
+		player_id: playerId,
+		is_monthly: isMonthly,
 	});
 
 	if (error) {

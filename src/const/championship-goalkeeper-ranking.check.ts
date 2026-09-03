@@ -34,6 +34,7 @@ function player(id: number, name: string): ChampionshipPlayer {
 		matches: 0,
 		mvps: 0,
 		is_goalkeeper: true,
+		is_monthly: false,
 		deleted_at: null,
 	};
 }

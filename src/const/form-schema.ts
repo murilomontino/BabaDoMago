@@ -15,6 +15,7 @@ export const FORM_MESSAGE = {
 	eventWeekdayInvalid: "Dia inválido",
 	locationInvalid: "Local inválido",
 	playersPerTeamInvalid: "Limite inválido",
+	playerVoteQuorumInvalid: "Quórum inválido",
 	eventDateRequired: "Informe a data",
 	teamRequired: "Selecione o time",
 	teamsDistinct: "Escolha dois times",
@@ -129,6 +130,17 @@ export const eventConfigFormSchema = object({
 	skipGuestGoalkeeperMatches: boolean().required(),
 	ratingDropGoalShare: boolean().required(),
 	ratingDropShareExcludeTop: boolean().required(),
+	playerVoteQuorum: number()
+		.integer(FORM_MESSAGE.playerVoteQuorumInvalid)
+		.min(
+			CHAMPIONSHIP_EVENT.playerVoteQuorumMin,
+			FORM_MESSAGE.playerVoteQuorumInvalid,
+		)
+		.max(
+			CHAMPIONSHIP_EVENT.playerVoteQuorumMax,
+			FORM_MESSAGE.playerVoteQuorumInvalid,
+		)
+		.required(FORM_MESSAGE.playerVoteQuorumInvalid),
 });
 
 export const startEventFormSchema = object({

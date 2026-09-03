@@ -24,6 +24,7 @@ type ChampionshipPlayersRow = {
 	removed_at: string | null;
 	role: string;
 	is_goalkeeper: boolean;
+	is_monthly: boolean;
 	user_id: string | null;
 	wins: number;
 	losses: number;
@@ -475,6 +476,7 @@ export type Database = {
 					deleted_at: string | null;
 					ended_at: string | null;
 					id: number;
+					player_votes_closed_at: string | null;
 					players_per_team: number;
 					skip_guest_goalkeeper_matches: boolean;
 					starts_at: string;
@@ -486,6 +488,7 @@ export type Database = {
 					deleted_at?: string | null;
 					ended_at?: string | null;
 					id?: number;
+					player_votes_closed_at?: string | null;
 					players_per_team: number;
 					skip_guest_goalkeeper_matches?: boolean;
 					starts_at: string;
@@ -497,6 +500,7 @@ export type Database = {
 					deleted_at?: string | null;
 					ended_at?: string | null;
 					id?: number;
+					player_votes_closed_at?: string | null;
 					players_per_team?: number;
 					skip_guest_goalkeeper_matches?: boolean;
 					starts_at?: string;
@@ -531,6 +535,7 @@ export type Database = {
 					removed_at?: string | null;
 					role?: string;
 					is_goalkeeper?: boolean;
+					is_monthly?: boolean;
 					user_id?: string | null;
 					wins?: number;
 					losses?: number;
@@ -555,6 +560,7 @@ export type Database = {
 					removed_at?: string | null;
 					role?: string;
 					is_goalkeeper?: boolean;
+					is_monthly?: boolean;
 					user_id?: string | null;
 					wins?: number;
 					losses?: number;
@@ -587,6 +593,7 @@ export type Database = {
 					players_per_team: number;
 					rating_drop_goal_share: boolean;
 					rating_drop_share_exclude_top: boolean;
+					player_vote_quorum: number;
 					skip_guest_goalkeeper_matches: boolean;
 				};
 				Insert: {
@@ -604,6 +611,7 @@ export type Database = {
 					players_per_team?: number;
 					rating_drop_goal_share?: boolean;
 					rating_drop_share_exclude_top?: boolean;
+					player_vote_quorum?: number;
 					skip_guest_goalkeeper_matches?: boolean;
 				};
 				Update: {
@@ -621,6 +629,7 @@ export type Database = {
 					players_per_team?: number;
 					rating_drop_goal_share?: boolean;
 					rating_drop_share_exclude_top?: boolean;
+					player_vote_quorum?: number;
 					skip_guest_goalkeeper_matches?: boolean;
 				};
 				Relationships: [];
@@ -804,6 +813,10 @@ export type Database = {
 				Args: { event_id: number; player_ids: Json };
 				Returns: Json;
 			};
+			close_championship_event_player_votes: {
+				Args: { event_id: number };
+				Returns: Json;
+			};
 			vote_championship_event_player: {
 				Args: {
 					event_id: number;
@@ -813,7 +826,11 @@ export type Database = {
 				Returns: Json;
 			};
 			championship_event_player_vote_applied_delta: {
-				Args: { like_count: number; dislike_count: number };
+				Args: {
+					like_count: number;
+					dislike_count: number;
+					maintain_count: number;
+				};
 				Returns: number;
 			};
 			set_championship_event_team_active: {
@@ -826,6 +843,10 @@ export type Database = {
 			};
 			set_player_is_goalkeeper: {
 				Args: { player_id: number; is_goalkeeper: boolean };
+				Returns: Json;
+			};
+			set_player_is_monthly: {
+				Args: { player_id: number; is_monthly: boolean };
 				Returns: Json;
 			};
 			soft_delete_championship: {
@@ -1000,6 +1021,7 @@ export type Database = {
 					location?: string | null;
 					rating_drop_goal_share?: boolean;
 					rating_drop_share_exclude_top?: boolean;
+					player_vote_quorum?: number;
 				};
 				Returns: Json;
 			};

@@ -59,6 +59,7 @@ function player(id: number, name: string, rating: number): ChampionshipPlayer {
 		rating,
 		role: "player",
 		is_goalkeeper: false,
+		is_monthly: false,
 		deleted_at: null,
 		goals: 0,
 		assists: 0,

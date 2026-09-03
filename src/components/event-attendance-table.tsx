@@ -26,6 +26,7 @@ import {
 	EVENT_ATTENDANCE_COLUMN,
 	EVENT_ATTENDANCE_COLUMN_LABEL,
 	filterAttendanceListPlayers,
+	monthlyPlayerIds,
 } from "@/const/championship-event";
 import { DATA_TABLE_ROW_EXIT } from "@/const/data-table";
 import { playerVisibleName } from "@/const/player-name";
@@ -316,6 +317,9 @@ export function EventAttendanceTable({
 	]);
 	const visibleIds = rows.map((row) => row.id);
 	const allVisiblePresent = areAllVisiblePresent(presentIds, visibleIds);
+	const monthlyIds = useMemo(() => monthlyPlayerIds(players), [players]);
+	const allMonthlyPresent = areAllVisiblePresent(presentIds, monthlyIds);
+	const hasMonthlyPlayers = monthlyIds.length > 0;
 
 	const columns = useMemo(() => {
 		const playerColumn = attendanceColumnHelper.accessor("display_name", {
@@ -487,6 +491,18 @@ export function EventAttendanceTable({
 								{allVisiblePresent
 									? EVENT_ATTENDANCE_ACTION.deselectAll
 									: EVENT_ATTENDANCE_ACTION.selectAll}
+							</Button>
+						)}
+						{selectable && hasMonthlyPlayers && onSetPresent && (
+							<Button
+								variant={BUTTON_VARIANT.secondary}
+								onClick={() => {
+									onSetPresent(monthlyIds, !allMonthlyPresent);
+								}}
+							>
+								{allMonthlyPresent
+									? EVENT_ATTENDANCE_ACTION.deselectMonthly
+									: EVENT_ATTENDANCE_ACTION.selectMonthly}
 							</Button>
 						)}
 						{showSeedActions && onSeedAttendance && (

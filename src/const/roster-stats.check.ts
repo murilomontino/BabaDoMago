@@ -120,6 +120,7 @@ const player: ChampionshipPlayer = {
 	rating: 5,
 	role: "member",
 	is_goalkeeper: false,
+	is_monthly: false,
 	deleted_at: null,
 	goals: 4,
 	assists: 2,

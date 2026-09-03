@@ -92,6 +92,7 @@ import {
 	useRemovePlayer,
 	useRenameChampionship,
 	useSetPlayerIsGoalkeeper,
+	useSetPlayerIsMonthly,
 	useSetPlayerRole,
 	useTransferChampionshipOwner,
 	useUnlinkPlayer,
@@ -183,6 +184,7 @@ export function ChampionshipDetailPage() {
 	const updateVisibility = useUpdateChampionshipVisibility(championshipId);
 	const setPlayerRole = useSetPlayerRole();
 	const setPlayerIsGoalkeeper = useSetPlayerIsGoalkeeper();
+	const setPlayerIsMonthly = useSetPlayerIsMonthly();
 	const deleteChampionship = useDeleteChampionship();
 	const transferOwner = useTransferChampionshipOwner();
 	const uploadLogo = useUploadChampionshipLogo(championshipId);
@@ -530,6 +532,13 @@ export function ChampionshipDetailPage() {
 		[setPlayerIsGoalkeeper.mutate],
 	);
 
+	const handleChangeMonthly = useCallback(
+		(playerId: number, isMonthly: boolean) => {
+			setPlayerIsMonthly.mutate({ playerId, isMonthly });
+		},
+		[setPlayerIsMonthly.mutate],
+	);
+
 	const handleAddPlayer = useCallback(
 		async (values: Parameters<typeof addPlayer.mutateAsync>[0]) => {
 			await addPlayer.mutateAsync(values);
@@ -762,6 +771,7 @@ export function ChampionshipDetailPage() {
 								}
 								roleError={mutationErrorMessage(setPlayerRole)}
 								goalkeeperError={mutationErrorMessage(setPlayerIsGoalkeeper)}
+								monthlyError={mutationErrorMessage(setPlayerIsMonthly)}
 								unlinkingPlayerId={pendingMutationId(unlinkPlayer)}
 								unlinkError={mutationErrorMessage(unlinkPlayer)}
 								canMerge={permissions.merge}
@@ -787,6 +797,7 @@ export function ChampionshipDetailPage() {
 								}
 								onChangeRole={handleChangeRole}
 								onChangeGoalkeeper={handleChangeGoalkeeper}
+								onChangeMonthly={handleChangeMonthly}
 								onUnlink={handleUnlink}
 								onMerge={handleMerge}
 								onDeactivate={handleDeactivate}
@@ -855,6 +866,7 @@ export function ChampionshipDetailPage() {
 					skipGuestGoalkeeperMatches={data.skip_guest_goalkeeper_matches}
 					ratingDropGoalShare={data.rating_drop_goal_share}
 					ratingDropShareExcludeTop={data.rating_drop_share_exclude_top}
+					playerVoteQuorum={data.player_vote_quorum}
 					isVisible={data.is_visible}
 					activePlayers={activePlayers}
 					canRename={permissions.rename}
