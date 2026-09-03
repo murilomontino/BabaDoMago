@@ -194,12 +194,11 @@ export function EventPlayerVoteList({
 									voteRatingDelta: row.vote_rating_delta,
 									votingEnabled,
 								});
-								const isSelf = voterPlayerId === row.player_id;
 								const locked =
 									!votesVoided &&
 									isEventPlayerVoteLocked(row.vote_rating_delta);
 								const showSubmittedChoice =
-									!votingEnabled && draftVote !== null && !isSelf;
+									!votingEnabled && draftVote !== null;
 								const nextLike = nextEventPlayerVoteValue(draftVote, "like");
 								const nextDislike = nextEventPlayerVoteValue(
 									draftVote,
@@ -246,11 +245,6 @@ export function EventPlayerVoteList({
 													{locked && (
 														<span className={CHIP_CLASS}>
 															{EVENT_PLAYER_VOTE_LABEL.closed}
-														</span>
-													)}
-													{isSelf && (
-														<span className={CHIP_CLASS}>
-															{EVENT_PLAYER_VOTE_LABEL.cannotVoteSelf}
 														</span>
 													)}
 													{showSubmittedChoice && draftVote && (

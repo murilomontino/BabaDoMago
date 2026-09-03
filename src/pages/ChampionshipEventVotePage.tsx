@@ -85,17 +85,18 @@ export function ChampionshipEventVotePage() {
 	const currentPlayer = championship?.players.find(
 		(player) => player.user_id === user?.id,
 	);
+	const isMonthly = currentPlayer?.is_monthly === true;
 	const actorRole = resolveChampionshipRole(
 		championship?.created_by ?? "",
 		user?.id ?? null,
 		currentPlayer?.role ?? CHAMPIONSHIP_ROLE.member,
 	);
-	const canVoteRole = canVoteEventPlayers(actorRole);
+	const canVoteRole = canVoteEventPlayers(actorRole, isMonthly);
 	const canCloseVotesAsOwner = canOverrideEndedEvent(actorRole);
 	const voterPlayerId = currentPlayer?.id ?? null;
-	const voterPresent = Boolean(
-		event?.attendance.some((row) => row.player_id === voterPlayerId),
-	);
+	const voterPresent =
+		Boolean(event?.attendance.some((row) => row.player_id === voterPlayerId)) ||
+		isMonthly;
 	const votesClosed = isEventPlayerVotesClosed(
 		event?.player_votes_closed_at ?? null,
 	);

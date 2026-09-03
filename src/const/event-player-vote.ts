@@ -30,8 +30,7 @@ export const EVENT_PLAYER_VOTE_LABEL = {
 	maintain: "Manter",
 	clear: "Limpar voto",
 	empty: "Ninguém na presença.",
-	cannotVoteSelf: "Não dá para votar em si.",
-	needPresent: "Só dono, capitão ou admin presente vota.",
+	needPresent: "Só dono, capitão, admin presente ou mensalista vota.",
 	needEnded: "Voto só com a rodada encerrada.",
 	closed: "Voto fechado",
 	votesClosed: "Votação encerrada",
@@ -68,11 +67,10 @@ export const EVENT_PLAYER_VOTE_LABEL = {
 
 export const EVENT_PLAYER_VOTE_ERROR_MESSAGE = {
 	"not authenticated": "Faça login para votar",
-	"not allowed": "Só dono, capitão ou admin presente pode votar",
+	"not allowed": "Só dono, capitão, admin presente ou mensalista pode votar",
 	"event not found": "Rodada não encontrada",
 	"event still open": "Voto só com a rodada encerrada",
 	"invalid vote": "Voto inválido",
-	"cannot vote self": "Não dá para votar em si",
 	"voter not present": "Você precisa estar na presença",
 	"player not present": "Jogador fora da presença",
 	"vote closed": "Voto deste jogador já fechou",
@@ -226,7 +224,7 @@ export function canVoteEventPlayer(input: {
 		return false;
 	}
 
-	return input.voterPlayerId !== input.targetPlayerId;
+	return true;
 }
 
 export function initialEventPlayerBallotLocked(

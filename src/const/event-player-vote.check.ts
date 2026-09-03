@@ -91,7 +91,8 @@ check(
 	"sections by team",
 );
 check(
-	EVENT_PLAYER_VOTE_LABEL.needPresent.includes("dono"),
+	EVENT_PLAYER_VOTE_LABEL.needPresent.includes("dono") &&
+		EVENT_PLAYER_VOTE_LABEL.needPresent.includes("mensalista"),
 	"need present roles",
 );
 
@@ -205,7 +206,7 @@ check(
 	"can vote other",
 );
 check(
-	!canVoteEventPlayer({
+	canVoteEventPlayer({
 		canVote: true,
 		eventEnded: true,
 		votesClosed: false,
@@ -214,7 +215,7 @@ check(
 		voterPlayerId: 1,
 		voteRatingDelta: 0,
 	}),
-	"cannot vote self",
+	"can vote self",
 );
 check(
 	!canVoteEventPlayer({
@@ -401,8 +402,9 @@ check(
 );
 
 check(
-	eventPlayerVoteErrorMessage("cannot vote self") === "Não dá para votar em si",
-	"error map",
+	eventPlayerVoteErrorMessage("not allowed") ===
+		"Só dono, capitão, admin presente ou mensalista pode votar",
+	"not allowed error",
 );
 check(
 	eventPlayerVoteErrorMessage("vote closed") === "Voto deste jogador já fechou",

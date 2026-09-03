@@ -12,6 +12,7 @@ import {
 	canSetEventMvp,
 	canSetRoles,
 	canTransferOwnership,
+	canVoteEventPlayers,
 	canUnlinkPlayer,
 	canUpdateEventConfig,
 	canUpdateNickname,
@@ -48,6 +49,7 @@ check(canUpdateEventConfig(owner), "owner updates event config");
 check(canUpdateVisibility(owner), "owner updates visibility");
 check(canOverrideEndedEvent(owner), "owner overrides ended event");
 check(canSetEventMvp(owner), "owner sets mvp");
+check(canVoteEventPlayers(owner), "owner votes");
 check(canViewManagement(owner), "owner views management");
 
 check(!canDeleteChampionship(captain), "captain cannot delete");
@@ -66,6 +68,7 @@ check(canUpdateEventConfig(captain), "captain updates event config");
 check(canUpdateVisibility(captain), "captain updates visibility");
 check(!canOverrideEndedEvent(captain), "captain cannot override ended event");
 check(canSetEventMvp(captain), "captain sets mvp");
+check(canVoteEventPlayers(captain), "captain votes");
 check(canViewManagement(captain), "captain views management");
 
 check(!canDeleteChampionship(admin), "admin cannot delete");
@@ -84,6 +87,7 @@ check(!canUpdateEventConfig(admin), "admin cannot update event config");
 check(!canUpdateVisibility(admin), "admin cannot update visibility");
 check(!canOverrideEndedEvent(admin), "admin cannot override ended event");
 check(!canSetEventMvp(admin), "admin cannot set mvp");
+check(canVoteEventPlayers(admin), "admin votes");
 check(canViewManagement(admin), "admin views management");
 
 check(!canDeleteChampionship(member), "member cannot delete");
@@ -102,6 +106,8 @@ check(!canUpdateEventConfig(member), "member cannot update event config");
 check(!canUpdateVisibility(member), "member cannot update visibility");
 check(!canOverrideEndedEvent(member), "member cannot override ended event");
 check(!canSetEventMvp(member), "member cannot set mvp");
+check(!canVoteEventPlayers(member), "member cannot vote");
+check(canVoteEventPlayers(member, true), "monthly member votes");
 check(!canViewManagement(member), "member cannot view management");
 
 check(
