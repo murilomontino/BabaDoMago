@@ -3,7 +3,9 @@ import { parseAsStringEnum } from "nuqs";
 export const CHAMPIONSHIP_TAB = {
 	roster: "roster",
 	events: "events",
+	standings: "standings",
 	podium: "podium",
+	trends: "trends",
 	management: "management",
 } as const;
 
@@ -19,7 +21,9 @@ export const CHAMPIONSHIP_TAB_SEARCH = {
 export const CHAMPIONSHIP_TAB_LABEL = {
 	roster: "Elenco",
 	events: "Rodadas",
+	standings: "Classificação",
 	podium: "Pódio",
+	trends: "Tendências",
 	management: "Gestão",
 	deactivated: "Desativados",
 	settings: "Configuração",
@@ -35,8 +39,16 @@ export const CHAMPIONSHIP_TABS = [
 		label: CHAMPIONSHIP_TAB_LABEL.events,
 	},
 	{
+		id: CHAMPIONSHIP_TAB.standings,
+		label: CHAMPIONSHIP_TAB_LABEL.standings,
+	},
+	{
 		id: CHAMPIONSHIP_TAB.podium,
 		label: CHAMPIONSHIP_TAB_LABEL.podium,
+	},
+	{
+		id: CHAMPIONSHIP_TAB.trends,
+		label: CHAMPIONSHIP_TAB_LABEL.trends,
 	},
 ] as const;
 

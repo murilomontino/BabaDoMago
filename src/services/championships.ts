@@ -30,7 +30,7 @@ const PLAYER_COLUMNS =
 	"id, championship_id, user_id, display_name, nickname, nickname_tags, avatar_url, rating, role, is_goalkeeper, deleted_at, goals, assists, assisted_goals, own_goals, wins, losses, draws, matches, mvps" as const;
 
 const CHAMPIONSHIP_COLUMNS =
-	"id, name, invite_code, created_by, logo_path, event_time, event_weekday, location, players_per_team, skip_guest_goalkeeper_matches, is_visible" as const;
+	"id, name, invite_code, created_by, logo_path, event_time, event_weekday, location, players_per_team, skip_guest_goalkeeper_matches, rating_drop_goal_share, rating_drop_share_exclude_top, is_visible" as const;
 
 function asChampionship(value: unknown): Championship {
 	if (!value || typeof value !== "object") {
@@ -53,6 +53,8 @@ function asChampionship(value: unknown): Championship {
 		location: parseChampionshipLocation(row.location),
 		players_per_team: parsePlayersPerTeam(row.players_per_team),
 		skip_guest_goalkeeper_matches: row.skip_guest_goalkeeper_matches !== false,
+		rating_drop_goal_share: row.rating_drop_goal_share === true,
+		rating_drop_share_exclude_top: row.rating_drop_share_exclude_top === true,
 		is_visible: row.is_visible !== false,
 	};
 }
@@ -351,6 +353,8 @@ export async function updateChampionshipEventConfig(
 	skipGuestGoalkeeperMatches: boolean,
 	eventWeekday: number | null,
 	location: string | null,
+	ratingDropGoalShare: boolean,
+	ratingDropShareExcludeTop: boolean,
 ): Promise<Championship> {
 	const { data, error } = await supabase.rpc(
 		"update_championship_event_config",
@@ -361,6 +365,8 @@ export async function updateChampionshipEventConfig(
 			skip_guest_goalkeeper_matches: skipGuestGoalkeeperMatches,
 			event_weekday: eventWeekday,
 			location,
+			rating_drop_goal_share: ratingDropGoalShare,
+			rating_drop_share_exclude_top: ratingDropShareExcludeTop,
 		},
 	);
 

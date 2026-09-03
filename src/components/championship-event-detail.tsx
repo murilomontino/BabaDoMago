@@ -40,6 +40,8 @@ type ChampionshipEventDetailProps = {
 	canManage: boolean;
 	canOverrideEnded: boolean;
 	canSetMvp: boolean;
+	ratingDropGoalShare: boolean;
+	ratingDropShareExcludeTop: boolean;
 	onSaveTeams: (values: {
 		presentPlayerIds: number[];
 		goalkeeperPlayerIds: number[];
@@ -121,6 +123,8 @@ export function ChampionshipEventDetail({
 	canManage,
 	canOverrideEnded,
 	canSetMvp,
+	ratingDropGoalShare,
+	ratingDropShareExcludeTop,
 	onSaveTeams,
 	onSaveAttendance,
 	onEnsureAttendance,
@@ -214,6 +218,8 @@ export function ChampionshipEventDetail({
 				showTeamBuilder={showTeamBuilder}
 				status={status}
 				draftPresentIdsRef={draftPresentIdsRef}
+				ratingDropGoalShare={ratingDropGoalShare}
+				ratingDropShareExcludeTop={ratingDropShareExcludeTop}
 				onEnd={onEnd}
 				onDelete={onDelete}
 				ending={ending}
@@ -300,6 +306,8 @@ export function ChampionshipEventDetail({
 					event={event}
 					players={players}
 					canSetMvp={canSetMvp}
+					ratingDropGoalShare={ratingDropGoalShare}
+					ratingDropShareExcludeTop={ratingDropShareExcludeTop}
 				/>
 			)}
 			{showEventTabs && selectedTab === EVENT_TAB.podium && (

@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router";
 import {
 	Award,
 	ChartColumn,
@@ -6,6 +7,7 @@ import {
 	Pencil,
 	Plus,
 	Share2,
+	ThumbsUp,
 	UserCheck,
 	UserPlus,
 	Users,
@@ -86,6 +88,12 @@ import {
 	EVENT_MVP_LABEL,
 	eventMvpPickCandidates,
 } from "@/const/event-mvp";
+import {
+	copyEventPlayerVoteLinkLabel,
+	EVENT_PLAYER_VOTE_LABEL,
+	eventPlayerVoteChipLabel,
+	eventPlayerVoteUrl,
+} from "@/const/event-player-vote";
 import {
 	EVENT_RECAP_SHARE_LABEL,
 	eventRecapShareRatingChangesFromAttendance,
@@ -183,6 +191,8 @@ function AttendanceStatLine({
 		},
 	] as const;
 
+	const voteChip = eventPlayerVoteChipLabel(row.vote_rating_delta);
+
 	return (
 		<div className="mt-0.5 space-y-0.5">
 			<div className="flex items-center gap-2">
@@ -193,6 +203,7 @@ function AttendanceStatLine({
 				>
 					{row.rating}
 				</span>
+				{voteChip && <span className={CHIP_CLASS}>{voteChip}</span>}
 				{row.is_mvp && (
 					<span
 						className={CHIP_CLASS}
@@ -375,6 +386,8 @@ export function ChampionshipEventRoundTab({
 	const [isSharing, setIsSharing] = useState(false);
 	const [shareError, setShareError] = useState<string | null>(null);
 	const [copiedDrawLink, setCopiedDrawLink] = useState(false);
+	const [copiedVoteLink, setCopiedVoteLink] = useState(false);
+	const navigate = useNavigate();
 	const [isSharingRecap, setIsSharingRecap] = useState(false);
 	const [recapError, setRecapError] = useState<string | null>(null);
 	const [isMvpOpen, setIsMvpOpen] = useState(false);
@@ -436,6 +449,17 @@ export function ChampionshipEventRoundTab({
 		);
 		await navigator.clipboard.writeText(url);
 		setCopiedDrawLink(true);
+	}
+
+	async function handleCopyVoteLink() {
+		const url = eventPlayerVoteUrl(
+			window.location.origin,
+			event.championship_id,
+			event.id,
+			ROUTES.championshipEventVote,
+		);
+		await navigator.clipboard.writeText(url);
+		setCopiedVoteLink(true);
 	}
 
 	const recapRatingChanges = eventRecapShareRatingChangesFromAttendance(
@@ -760,6 +784,32 @@ export function ChampionshipEventRoundTab({
 								{EVENT_SECTION_LABEL.attendance}
 							</p>
 							<div className={SECTION_ACTION_GROUP_CLASS}>
+								{ended && event.attendance.length > 0 && (
+									<IconTooltipButton
+										showLabel
+										label={EVENT_PLAYER_VOTE_LABEL.open}
+										icon={<ThumbsUp className="size-4" />}
+										onClick={() => {
+											void navigate({
+												to: ROUTES.championshipEventVote,
+												params: {
+													championshipId: String(event.championship_id),
+													eventId: String(event.id),
+												},
+											});
+										}}
+									/>
+								)}
+								{ended && event.attendance.length > 0 && (
+									<IconTooltipButton
+										showLabel
+										label={copyEventPlayerVoteLinkLabel(copiedVoteLink)}
+										icon={<Link2 className="size-4" />}
+										onClick={() => {
+											void handleCopyVoteLink();
+										}}
+									/>
+								)}
 								{canSetMvp && ended && event.attendance.length > 0 && (
 									<IconTooltipButton
 										showLabel

@@ -46,6 +46,8 @@ type ChampionshipSettingsTabProps = {
 	location: string | null;
 	playersPerTeam: number;
 	skipGuestGoalkeeperMatches: boolean;
+	ratingDropGoalShare: boolean;
+	ratingDropShareExcludeTop: boolean;
 	isVisible: boolean;
 	activePlayers: ChampionshipPlayer[];
 	canRename: boolean;
@@ -76,6 +78,8 @@ type ChampionshipSettingsTabProps = {
 		location: string | null;
 		playersPerTeam: number;
 		skipGuestGoalkeeperMatches: boolean;
+		ratingDropGoalShare: boolean;
+		ratingDropShareExcludeTop: boolean;
 	}) => Promise<void>;
 	onUpdateVisibility: (isVisible: boolean) => void;
 	onTransferOwner: (playerId: number) => Promise<void>;
@@ -92,6 +96,8 @@ export function ChampionshipSettingsTab({
 	location,
 	playersPerTeam,
 	skipGuestGoalkeeperMatches,
+	ratingDropGoalShare,
+	ratingDropShareExcludeTop,
 	isVisible,
 	activePlayers,
 	canRename,
@@ -203,6 +209,8 @@ export function ChampionshipSettingsTab({
 									location: location ?? "",
 									playersPerTeam,
 									skipGuestGoalkeeperMatches,
+									ratingDropGoalShare,
+									ratingDropShareExcludeTop,
 								}}
 								enableReinitialize
 								validationSchema={eventConfigFormSchema}
@@ -214,6 +222,9 @@ export function ChampionshipSettingsTab({
 										playersPerTeam: Number(values.playersPerTeam),
 										skipGuestGoalkeeperMatches:
 											values.skipGuestGoalkeeperMatches,
+										ratingDropGoalShare: values.ratingDropGoalShare,
+										ratingDropShareExcludeTop:
+											values.ratingDropShareExcludeTop,
 									});
 								}}
 							>
@@ -315,6 +326,68 @@ export function ChampionshipSettingsTab({
 										</Field>
 									</div>
 									<FormError name="skipGuestGoalkeeperMatches" />
+									<div className="flex items-start justify-between gap-4">
+										<span className="min-w-0 text-sm">
+											<label
+												htmlFor="championship-rating-drop-goal-share"
+												className="font-medium text-fg"
+											>
+												{EVENT_CONFIG_LABEL.ratingDropGoalShare}
+											</label>
+											<span className="mt-1 block text-fg-muted">
+												{EVENT_CONFIG_LABEL.ratingDropGoalShareHint}
+											</span>
+										</span>
+										<Field name="ratingDropGoalShare">
+											{(props: FieldProps<boolean>) => (
+												<Switch
+													id="championship-rating-drop-goal-share"
+													checked={
+														props.field.value ??
+														CHAMPIONSHIP_EVENT.ratingDropGoalShareDefault
+													}
+													onCheckedChange={(checked) => {
+														void props.form.setFieldValue(
+															props.field.name,
+															checked,
+														);
+													}}
+												/>
+											)}
+										</Field>
+									</div>
+									<FormError name="ratingDropGoalShare" />
+									<div className="flex items-start justify-between gap-4">
+										<span className="min-w-0 text-sm">
+											<label
+												htmlFor="championship-rating-drop-share-exclude-top"
+												className="font-medium text-fg"
+											>
+												{EVENT_CONFIG_LABEL.ratingDropShareExcludeTop}
+											</label>
+											<span className="mt-1 block text-fg-muted">
+												{EVENT_CONFIG_LABEL.ratingDropShareExcludeTopHint}
+											</span>
+										</span>
+										<Field name="ratingDropShareExcludeTop">
+											{(props: FieldProps<boolean>) => (
+												<Switch
+													id="championship-rating-drop-share-exclude-top"
+													checked={
+														props.field.value ??
+														CHAMPIONSHIP_EVENT.ratingDropShareExcludeTopDefault
+													}
+													onCheckedChange={(checked) => {
+														void props.form.setFieldValue(
+															props.field.name,
+															checked,
+														);
+													}}
+												/>
+											)}
+										</Field>
+									</div>
+									<FormError name="ratingDropShareExcludeTop" />
 									<Button
 										type="submit"
 										variant={BUTTON_VARIANT.secondary}

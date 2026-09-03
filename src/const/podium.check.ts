@@ -345,6 +345,7 @@ function attendanceRow(
 		is_goalkeeper: false,
 		event_date: "2026-03-15",
 		rating_delta: 0,
+		vote_rating_delta: 0,
 		...stats,
 		losses: stats.losses ?? 0,
 		draws: stats.draws ?? 0,

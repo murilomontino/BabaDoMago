@@ -9,6 +9,8 @@ export type Championship = {
 	location: string | null;
 	players_per_team: number;
 	skip_guest_goalkeeper_matches: boolean;
+	rating_drop_goal_share: boolean;
+	rating_drop_share_exclude_top: boolean;
 	is_visible: boolean;
 };
 

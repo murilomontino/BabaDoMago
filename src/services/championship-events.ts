@@ -77,6 +77,7 @@ const EVENT_DETAIL_COLUMNS = `${EVENT_LIST_COLUMNS},
 		matches,
 		rating,
 		rating_delta,
+		vote_rating_delta,
 		is_mvp,
 		mvp_overridden
 	),
@@ -155,6 +156,7 @@ function asAttendance(value: unknown): ChampionshipEventAttendance {
 		matches: Number(row.matches ?? 0),
 		rating: Number(row.rating ?? 0),
 		rating_delta: Number(row.rating_delta ?? 0),
+		vote_rating_delta: Number(row.vote_rating_delta ?? 0),
 		is_mvp: row.is_mvp === true,
 		mvp_overridden: row.mvp_overridden === true,
 	};
@@ -914,4 +916,75 @@ export async function saveEventDrawAudit(params: {
 	}
 
 	return data as number;
+}
+
+export type ChampionshipEventPlayerVoteRow = {
+	target_player_id: number;
+	value: "like" | "dislike";
+};
+
+export type VoteChampionshipEventPlayerResult = {
+	event_id: number;
+	target_player_id: number;
+	my_value: "like" | "dislike" | null;
+	vote_rating_delta: number;
+};
+
+function asVoteChoice(value: unknown): "like" | "dislike" | null {
+	if (value === "like" || value === "dislike") {
+		return value;
+	}
+
+	return null;
+}
+
+export async function listMyChampionshipEventPlayerVotes(
+	eventId: number,
+): Promise<ChampionshipEventPlayerVoteRow[]> {
+	const { data, error } = await supabase
+		.from("championship_event_player_votes")
+		.select("target_player_id, value")
+		.eq("event_id", eventId);
+
+	if (error) {
+		throwEventError(error);
+	}
+
+	return (data ?? []).flatMap((row) => {
+		const value = asVoteChoice(row.value);
+		if (!value) {
+			return [];
+		}
+
+		return [
+			{
+				target_player_id: Number(row.target_player_id),
+				value,
+			},
+		];
+	});
+}
+
+export async function voteChampionshipEventPlayer(
+	eventId: number,
+	targetPlayerId: number,
+	value: "like" | "dislike" | null,
+): Promise<VoteChampionshipEventPlayerResult> {
+	const { data, error } = await supabase.rpc("vote_championship_event_player", {
+		event_id: eventId,
+		target_player_id: targetPlayerId,
+		value,
+	});
+
+	if (error) {
+		throwEventError(error);
+	}
+
+	const row = (data ?? {}) as Record<string, unknown>;
+	return {
+		event_id: Number(row.event_id ?? eventId),
+		target_player_id: Number(row.target_player_id ?? targetPlayerId),
+		my_value: asVoteChoice(row.my_value),
+		vote_rating_delta: Number(row.vote_rating_delta ?? 0),
+	};
 }

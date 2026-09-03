@@ -1,4 +1,5 @@
 import type {
+	ChampionshipEvent,
 	ChampionshipEventMatch,
 	ChampionshipEventTeam,
 } from "../types/championship-event.ts";
@@ -7,6 +8,8 @@ import {
 	matchTeamPlayers,
 } from "./championship-event-match.ts";
 import { eventTeamName, type EventTeamColor } from "./event-team-color.ts";
+import { averageOrZero } from "./player-rating.ts";
+import { formatRosterWinRate } from "./roster-stats.ts";
 
 export const EVENT_TEAM_STANDINGS_POINTS = {
 	win: 3,
@@ -26,6 +29,7 @@ export const EVENT_TEAM_STANDINGS_LABEL = {
 	goalsAgainst: "Gols sofridos",
 	goalDifference: "Saldo de gols",
 	points: "Pontos",
+	pointsRate: "Aproveitamento",
 } as const;
 
 export const EVENT_TEAM_STANDINGS_ABBR = {
@@ -37,6 +41,7 @@ export const EVENT_TEAM_STANDINGS_ABBR = {
 	goalsAgainst: "GC",
 	goalDifference: "SG",
 	points: "Pts",
+	pointsRate: "%",
 } as const;
 
 export type EventTeamStandingRow = {
@@ -52,6 +57,7 @@ export type EventTeamStandingRow = {
 	goalsAgainst: number;
 	goalDifference: number;
 	points: number;
+	pointsRate: number;
 };
 
 type StandingAcc = {
@@ -79,6 +85,10 @@ function standingPoints(wins: number, draws: number): number {
 		wins * EVENT_TEAM_STANDINGS_POINTS.win +
 		draws * EVENT_TEAM_STANDINGS_POINTS.draw
 	);
+}
+
+export function standingPointsRate(points: number, matches: number): number {
+	return averageOrZero(points, matches * EVENT_TEAM_STANDINGS_POINTS.win);
 }
 
 function applyMatchResult(
@@ -199,6 +209,10 @@ export function formatStandingGoalDifference(value: number): string {
 	return String(value);
 }
 
+export function formatStandingPointsRate(value: number): string {
+	return formatRosterWinRate(value);
+}
+
 export function eventTeamStandings(
 	teams: readonly ChampionshipEventTeam[],
 	matches: readonly ChampionshipEventMatch[],
@@ -208,6 +222,7 @@ export function eventTeamStandings(
 	return teams
 		.map((team) => {
 			const acc = byTeam.get(team.id) ?? emptyStandingAcc();
+			const points = standingPoints(acc.wins, acc.draws);
 
 			return {
 				teamId: team.id,
@@ -221,8 +236,35 @@ export function eventTeamStandings(
 				goalsFor: acc.goalsFor,
 				goalsAgainst: acc.goalsAgainst,
 				goalDifference: acc.goalsFor - acc.goalsAgainst,
-				points: standingPoints(acc.wins, acc.draws),
+				points,
+				pointsRate: standingPointsRate(points, acc.matches),
 			};
 		})
 		.sort(compareStandingRows);
+}
+
+export type ChampionshipRoundStanding = {
+	eventId: number;
+	championshipId: number;
+	startsAt: string;
+	teams: readonly ChampionshipEventTeam[];
+	matches: readonly ChampionshipEventMatch[];
+	rows: EventTeamStandingRow[];
+};
+
+function eventHasEndedMatch(event: ChampionshipEvent): boolean {
+	return event.matches.some((match) => match.ended_at !== null);
+}
+
+export function championshipRoundStandings(
+	events: readonly ChampionshipEvent[],
+): ChampionshipRoundStanding[] {
+	return events.filter(eventHasEndedMatch).map((event) => ({
+		eventId: event.id,
+		championshipId: event.championship_id,
+		startsAt: event.starts_at,
+		teams: event.teams,
+		matches: event.matches,
+		rows: eventTeamStandings(event.teams, event.matches),
+	}));
 }

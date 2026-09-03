@@ -22,6 +22,7 @@ function checkEq<T>(actual: T, expected: T, message: string) {
 function attendance(
 	playerId: number,
 	displayName: string,
+	rating = 4,
 ): ChampionshipEventAttendance {
 	return {
 		id: playerId,
@@ -38,8 +39,9 @@ function attendance(
 		losses: 0,
 		draws: 0,
 		matches: 0,
-		rating: 0,
+		rating,
 		rating_delta: 0,
+		vote_rating_delta: 0,
 		is_mvp: false,
 		mvp_overridden: false,
 	};
@@ -212,6 +214,22 @@ checkEq(
 		(ana?.to ?? 0),
 	true,
 	"mvp raises to",
+);
+
+const evolvedPlayers = [player(1, "Ana", ana?.to ?? 0), player(2, "Bruno", 4)];
+const evolvedRows = eventRatingSimRows({
+	attendance: [attendance(1, "Ana", 4), attendance(2, "Bruno", 4)],
+	players: evolvedPlayers,
+	matches: threeWins,
+	teams,
+	skipGuestGoalkeeperMatches: true,
+	mvpPlayerIds: [],
+});
+checkEq(evolvedRows.find((row) => row.playerId === 1)?.from, 4, "sim usa presenca");
+checkEq(
+	evolvedRows.find((row) => row.playerId === 1)?.to,
+	ana?.to,
+	"sim nao aplica delta de novo",
 );
 
 console.log("event-rating-sim ok");

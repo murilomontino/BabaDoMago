@@ -19,6 +19,8 @@ import { ChampionshipManagementTab } from "@/components/championship-management-
 import { ChampionshipPodiumTab } from "@/components/championship-podium-tab";
 import { ChampionshipRosterTab } from "@/components/championship-roster-tab";
 import { ChampionshipSettingsTab } from "@/components/championship-settings-tab";
+import { ChampionshipStandingsTab } from "@/components/championship-standings-tab";
+import { ChampionshipTrendsTab } from "@/components/championship-trends-tab";
 import { ConfirmRatingModal } from "@/components/confirm-rating-modal";
 import { DeleteChampionshipModal } from "@/components/delete-championship-modal";
 import { EditPlayerEventStatsModal } from "@/components/edit-player-event-stats-modal";
@@ -802,7 +804,14 @@ export function ChampionshipDetailPage() {
 								players={activePlayers}
 								canManage={permissions.manageEvent}
 								canSetMvp={permissions.setMvp}
+								ratingDropGoalShare={data.rating_drop_goal_share}
+								ratingDropShareExcludeTop={data.rating_drop_share_exclude_top}
 							/>
+						</TabPanel>
+					)}
+					{mountedTabsRef.current.standings && (
+						<TabPanel active={selectedTab === CHAMPIONSHIP_TAB.standings}>
+							<ChampionshipStandingsTab events={eventsQuery.data ?? []} />
 						</TabPanel>
 					)}
 					{mountedTabsRef.current.podium && (
@@ -810,6 +819,14 @@ export function ChampionshipDetailPage() {
 							<ChampionshipPodiumTab
 								players={activePlayers}
 								championshipName={data.name}
+								events={eventsQuery.data ?? []}
+							/>
+						</TabPanel>
+					)}
+					{mountedTabsRef.current.trends && (
+						<TabPanel active={selectedTab === CHAMPIONSHIP_TAB.trends}>
+							<ChampionshipTrendsTab
+								players={activePlayers}
 								events={eventsQuery.data ?? []}
 							/>
 						</TabPanel>
@@ -836,6 +853,8 @@ export function ChampionshipDetailPage() {
 					location={data.location}
 					playersPerTeam={data.players_per_team}
 					skipGuestGoalkeeperMatches={data.skip_guest_goalkeeper_matches}
+					ratingDropGoalShare={data.rating_drop_goal_share}
+					ratingDropShareExcludeTop={data.rating_drop_share_exclude_top}
 					isVisible={data.is_visible}
 					activePlayers={activePlayers}
 					canRename={permissions.rename}

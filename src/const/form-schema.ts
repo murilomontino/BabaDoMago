@@ -127,6 +127,8 @@ export const eventConfigFormSchema = object({
 		)
 		.required(FORM_MESSAGE.playersPerTeamInvalid),
 	skipGuestGoalkeeperMatches: boolean().required(),
+	ratingDropGoalShare: boolean().required(),
+	ratingDropShareExcludeTop: boolean().required(),
 });
 
 export const startEventFormSchema = object({

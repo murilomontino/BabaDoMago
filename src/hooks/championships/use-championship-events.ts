@@ -14,6 +14,7 @@ import { useAuth } from "@/contexts/auth";
 import { supabase } from "@/lib/supabase";
 import {
 	addChampionshipEventTeam,
+	type ChampionshipEventPlayerVoteRow,
 	createChampionshipEvent,
 	deleteChampionshipEvent,
 	deleteChampionshipEventMatch,
@@ -23,6 +24,7 @@ import {
 	ensureChampionshipEventAttendancePlayer,
 	getChampionshipEventById,
 	listChampionshipEvents,
+	listMyChampionshipEventPlayerVotes,
 	promoteChampionshipEventRsvpGoing,
 	reopenChampionshipEventMatch,
 	saveChampionshipEventAttendance,
@@ -34,10 +36,14 @@ import {
 	swapChampionshipEventMatchTeam,
 	updateChampionshipEventTeam,
 	upsertChampionshipEventRsvp,
+	voteChampionshipEventPlayer,
 } from "@/services/championship-events";
+import type { ChampionshipEvent } from "@/types/championship-event";
 import {
+	CHAMPIONSHIP_EVENTS_QUERY_KEY,
 	championshipEventDetailQueryKey,
 	championshipEventsListQueryKey,
+	eventIdFromDetailKey,
 	invalidateChampionshipEvent,
 	invalidateChampionshipEvents,
 	invalidateChampionshipQueries,
@@ -463,6 +469,86 @@ export function useDeleteChampionshipEvent(championshipId: number) {
 	});
 }
 
+export function useMyChampionshipEventPlayerVotes(eventId: number) {
+	const { user } = useAuth();
+
+	return useQuery({
+		queryKey: [...CHAMPIONSHIP_EVENTS_QUERY_KEY, "my-votes", eventId, user?.id],
+		queryFn: () => listMyChampionshipEventPlayerVotes(eventId),
+		enabled: Number.isFinite(eventId) && Boolean(user),
+	});
+}
+
+export function useVoteChampionshipEventPlayer(
+	championshipId: number,
+	eventId: number,
+) {
+	const queryClient = useQueryClient();
+	const { user } = useAuth();
+
+	return useMutation({
+		mutationFn: ({
+			targetPlayerId,
+			value,
+		}: {
+			targetPlayerId: number;
+			value: "like" | "dislike" | null;
+		}) => voteChampionshipEventPlayer(eventId, targetPlayerId, value),
+		onSuccess: async (result) => {
+			queryClient.setQueriesData<ChampionshipEvent>(
+				{
+					predicate: (query) =>
+						eventIdFromDetailKey(query.queryKey) === eventId,
+				},
+				(current) => {
+					if (!current) {
+						return current;
+					}
+
+					return {
+						...current,
+						attendance: current.attendance.map((row) => {
+							if (row.player_id !== result.target_player_id) {
+								return row;
+							}
+
+							return {
+								...row,
+								vote_rating_delta: result.vote_rating_delta,
+							};
+						}),
+					};
+				},
+			);
+
+			queryClient.setQueryData(
+				[...CHAMPIONSHIP_EVENTS_QUERY_KEY, "my-votes", eventId, user?.id],
+				(current: ChampionshipEventPlayerVoteRow[] | undefined) => {
+					const without = (current ?? []).filter(
+						(row) => row.target_player_id !== result.target_player_id,
+					);
+					if (!result.my_value) {
+						return without;
+					}
+
+					return [
+						...without,
+						{
+							target_player_id: result.target_player_id,
+							value: result.my_value,
+						},
+					];
+				},
+			);
+
+			await Promise.all([
+				invalidateChampionshipEvent(queryClient, championshipId, eventId),
+				invalidateChampionshipQueries(queryClient),
+			]);
+		},
+	});
+}
+
 const EVENT_MATCH_REALTIME_DEBOUNCE_MS = 500;
 
 type EventRealtimePayload = {
@@ -512,6 +598,18 @@ function subscribeEventMatchChannel(
 			},
 			(payload) => {
 				onChange("championship_event_goals", payload);
+			},
+		)
+		.on(
+			"postgres_changes",
+			{
+				event: "*",
+				schema: "public",
+				table: "championship_event_attendance",
+				filter,
+			},
+			(payload) => {
+				onChange("championship_event_attendance", payload);
 			},
 		)
 		.subscribe();
