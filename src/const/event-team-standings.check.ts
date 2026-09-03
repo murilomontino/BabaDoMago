@@ -1,4 +1,5 @@
 import type {
+	ChampionshipEvent,
 	ChampionshipEventGoal,
 	ChampionshipEventMatch,
 	ChampionshipEventMatchPlayer,
@@ -6,6 +7,7 @@ import type {
 } from "../types/championship-event.ts";
 import { EVENT_TEAM_COLOR } from "./event-team-color.ts";
 import {
+	championshipRoundStandings,
 	eventTeamStandings,
 	formatStandingGoalDifference,
 	formatStandingPointsRate,
@@ -18,14 +20,21 @@ function checkEq<T>(actual: T, expected: T, message: string) {
 	}
 }
 
+function check(condition: boolean, message: string) {
+	if (!condition) {
+		throw new Error(message);
+	}
+}
+
 function team(
 	id: number,
 	color: (typeof EVENT_TEAM_COLOR)[keyof typeof EVENT_TEAM_COLOR],
 	sortOrder: number,
+	eventId = 1,
 ): ChampionshipEventTeam {
 	return {
 		id,
-		event_id: 1,
+		event_id: eventId,
 		color,
 		sort_order: sortOrder,
 		is_active: true,
@@ -78,10 +87,11 @@ function endedMatch(input: {
 	winnerTeamId: number | null;
 	players: ChampionshipEventMatchPlayer[];
 	goals: ChampionshipEventGoal[];
+	eventId?: number;
 }): ChampionshipEventMatch {
 	return {
 		id: input.id,
-		event_id: 1,
+		event_id: input.eventId ?? 1,
 		team_a_id: input.teamAId,
 		team_b_id: input.teamBId,
 		created_at: "2026-08-01T22:00:00.000Z",
@@ -201,5 +211,88 @@ checkEq(tieOnPoints[1]?.teamId, 10, "white second same points");
 checkEq(tieOnPoints[1]?.goalDifference, 1, "white sg +1");
 checkEq(tieOnPoints[0]?.goalsFor, 2, "black more gf breaks sg tie");
 checkEq(tieOnPoints[2]?.teamId, 30, "red last");
+
+function eventRow(input: {
+	id: number;
+	startsAt: string;
+	teams: ChampionshipEventTeam[];
+	matches: ChampionshipEventMatch[];
+}): ChampionshipEvent {
+	return {
+		id: input.id,
+		championship_id: 1,
+		starts_at: input.startsAt,
+		players_per_team: 5,
+		skip_guest_goalkeeper_matches: false,
+		ended_at: null,
+		attendance: [],
+		rsvps: [],
+		teams: input.teams,
+		matches: input.matches,
+	};
+}
+
+const olderWhite = team(110, EVENT_TEAM_COLOR.white, 0, 2);
+const olderBlack = team(120, EVENT_TEAM_COLOR.black, 1, 2);
+const newerWhite = team(210, EVENT_TEAM_COLOR.white, 0, 3);
+const newerBlack = team(220, EVENT_TEAM_COLOR.black, 1, 3);
+
+const openOnly = eventRow({
+	id: 1,
+	startsAt: "2026-08-22T22:00:00.000Z",
+	teams: [white, black],
+	matches: [openMatch],
+});
+
+const olderEnded = eventRow({
+	id: 2,
+	startsAt: "2026-08-08T22:00:00.000Z",
+	teams: [olderWhite, olderBlack],
+	matches: [
+		endedMatch({
+			id: 10,
+			eventId: 2,
+			teamAId: 110,
+			teamBId: 120,
+			winnerTeamId: 110,
+			players: [matchPlayer(11, 110, 1), matchPlayer(12, 120, 2)],
+			goals: [goal(11, 1)],
+		}),
+	],
+});
+
+const newerEnded = eventRow({
+	id: 3,
+	startsAt: "2026-08-15T22:00:00.000Z",
+	teams: [newerWhite, newerBlack],
+	matches: [
+		endedMatch({
+			id: 20,
+			eventId: 3,
+			teamAId: 210,
+			teamBId: 220,
+			winnerTeamId: 220,
+			players: [matchPlayer(21, 210, 1), matchPlayer(22, 220, 2)],
+			goals: [goal(21, 2), goal(22, 2)],
+		}),
+	],
+});
+
+const roundList = championshipRoundStandings([
+	openOnly,
+	newerEnded,
+	olderEnded,
+]);
+checkEq(roundList.length, 2, "skips round without ended match");
+checkEq(roundList[0]?.eventId, 3, "keeps list order: newer first");
+checkEq(roundList[1]?.eventId, 2, "older second");
+checkEq(roundList[0]?.rows[0]?.teamId, 220, "newer round black won");
+checkEq(roundList[0]?.rows[0]?.points, 3, "newer round points stay local");
+checkEq(roundList[1]?.rows[0]?.teamId, 110, "older round white won");
+checkEq(roundList[1]?.rows[0]?.points, 3, "older round points stay local");
+check(
+	roundList[0]?.rows.every((row) => row.matches <= 1) === true,
+	"does not mix points across events",
+);
 
 console.log("event-team-standings ok");

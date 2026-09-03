@@ -19,6 +19,7 @@ import { ChampionshipManagementTab } from "@/components/championship-management-
 import { ChampionshipPodiumTab } from "@/components/championship-podium-tab";
 import { ChampionshipRosterTab } from "@/components/championship-roster-tab";
 import { ChampionshipSettingsTab } from "@/components/championship-settings-tab";
+import { ChampionshipStandingsTab } from "@/components/championship-standings-tab";
 import { ConfirmRatingModal } from "@/components/confirm-rating-modal";
 import { DeleteChampionshipModal } from "@/components/delete-championship-modal";
 import { EditPlayerEventStatsModal } from "@/components/edit-player-event-stats-modal";
@@ -803,6 +804,11 @@ export function ChampionshipDetailPage() {
 								canManage={permissions.manageEvent}
 								canSetMvp={permissions.setMvp}
 							/>
+						</TabPanel>
+					)}
+					{mountedTabsRef.current.standings && (
+						<TabPanel active={selectedTab === CHAMPIONSHIP_TAB.standings}>
+							<ChampionshipStandingsTab events={eventsQuery.data ?? []} />
 						</TabPanel>
 					)}
 					{mountedTabsRef.current.podium && (

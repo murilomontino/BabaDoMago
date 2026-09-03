@@ -21,6 +21,11 @@ check(
 		CHAMPIONSHIP_TAB.events,
 	"other tabs stay",
 );
+check(
+	visibleChampionshipTab(CHAMPIONSHIP_TAB.standings, false) ===
+		CHAMPIONSHIP_TAB.standings,
+	"standings stays",
+);
 
 check(
 	keepChampionshipTabMounted(

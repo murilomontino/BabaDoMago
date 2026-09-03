@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { EventTeamChip } from "@/components/event-team-player";
 import {
 	EVENT_TEAM_STANDINGS_ABBR,
@@ -14,15 +15,25 @@ import type {
 type ChampionshipEventStandingsProps = {
 	teams: readonly ChampionshipEventTeam[];
 	matches: readonly ChampionshipEventMatch[];
+	title?: ReactNode;
 };
 
 const STAT_HEADER_CLASS =
 	"px-2 py-1.5 text-right text-xs font-medium text-fg-muted";
 const STAT_CELL_CLASS = "px-2 py-1.5 text-right tabular-nums text-fg";
 
+function standingsTitle(title: ReactNode | undefined): ReactNode {
+	if (title === undefined) {
+		return EVENT_TEAM_STANDINGS_LABEL.title;
+	}
+
+	return title;
+}
+
 export function ChampionshipEventStandings({
 	teams,
 	matches,
+	title,
 }: ChampionshipEventStandingsProps) {
 	const rows = eventTeamStandings(teams, matches);
 	const hasEndedMatches = matches.some((match) => match.ended_at !== null);
@@ -30,7 +41,7 @@ export function ChampionshipEventStandings({
 	return (
 		<div>
 			<p className="mb-1 text-xs font-medium uppercase tracking-wide text-fg-muted">
-				{EVENT_TEAM_STANDINGS_LABEL.title}
+				{standingsTitle(title)}
 			</p>
 			{!hasEndedMatches && (
 				<p className="text-sm text-fg-muted">

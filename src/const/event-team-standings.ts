@@ -1,4 +1,5 @@
 import type {
+	ChampionshipEvent,
 	ChampionshipEventMatch,
 	ChampionshipEventTeam,
 } from "../types/championship-event.ts";
@@ -240,4 +241,30 @@ export function eventTeamStandings(
 			};
 		})
 		.sort(compareStandingRows);
+}
+
+export type ChampionshipRoundStanding = {
+	eventId: number;
+	championshipId: number;
+	startsAt: string;
+	teams: readonly ChampionshipEventTeam[];
+	matches: readonly ChampionshipEventMatch[];
+	rows: EventTeamStandingRow[];
+};
+
+function eventHasEndedMatch(event: ChampionshipEvent): boolean {
+	return event.matches.some((match) => match.ended_at !== null);
+}
+
+export function championshipRoundStandings(
+	events: readonly ChampionshipEvent[],
+): ChampionshipRoundStanding[] {
+	return events.filter(eventHasEndedMatch).map((event) => ({
+		eventId: event.id,
+		championshipId: event.championship_id,
+		startsAt: event.starts_at,
+		teams: event.teams,
+		matches: event.matches,
+		rows: eventTeamStandings(event.teams, event.matches),
+	}));
 }
