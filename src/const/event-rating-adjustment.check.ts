@@ -1,17 +1,24 @@
 import {
 	applyEventRatingDelta,
 	EVENT_RATING_ADJUSTMENT,
+	EVENT_RATING_DROP_SHARE,
 	EVENT_RATING_INITIAL,
+	eventRatingApplyDropShare,
 	eventRatingDelta,
 	eventRatingDrawPoints,
+	eventRatingDropShareExcludedPlayerIds,
+	eventRatingInDeadZone,
 	eventRatingPreview,
 	eventRatingPreviewFrom,
+	eventRatingRate,
+	eventRatingTeamGoalShare,
 	formatEventRating,
 	playerEventRatingAfterSave,
 	previewRatingTos,
 	recomputePlayerEventRating,
 } from "./event-rating-adjustment.ts";
 import { PLAYER_RATING } from "./player-rating.ts";
+import { rosterGoalInvolvement } from "./roster-stats.ts";
 
 function check(actual: unknown, expected: unknown, message: string): void {
 	if (actual !== expected) {
@@ -32,6 +39,11 @@ check(eventRatingDrawPoints(1, 2), 1, "E < D usa 1");
 check(EVENT_RATING_INITIAL.low, 2.7, "semente baixa");
 check(EVENT_RATING_INITIAL.mid, 3, "semente media");
 check(EVENT_RATING_INITIAL.high, 3.5, "semente alta");
+check(eventRatingRate(0, 0, 0, 0), 0, "rate zero matches");
+check(eventRatingRate(4, 0, 2, 6), 12 / 18, "rate 4V/2D");
+check(eventRatingInDeadZone(2, 0, 2, 4), true, "dead zone 50%");
+check(eventRatingInDeadZone(4, 0, 2, 6), false, "not dead zone 66%");
+check(eventRatingInDeadZone(1, 0, 0, 1), false, "below min matches");
 
 check(eventRatingDelta(4, 0, 0, 6, 4, 5), 0.4, "teto 5 4V/6J");
 check(eventRatingDelta(1, 0, 2, 3, 3.5, 5), -0.4, "teto 5 1V/3J");
@@ -512,5 +524,195 @@ const alreadyEvolvedPreview = eventRatingPreview({
 });
 check(alreadyEvolvedPreview[0]?.from, 4, "preview after end usa presenca");
 check(alreadyEvolvedPreview[0]?.to, 4.4, "preview after end nao aplica de novo");
+
+check(EVENT_RATING_DROP_SHARE.cap, 1, "drop share cap");
+check(EVENT_RATING_DROP_SHARE.excludeTop, 10, "exclude top n");
+check(EVENT_RATING_DROP_SHARE.minShare, 0.4, "min share");
+check(eventRatingTeamGoalShare(4, 10), 0, "40% nao passa do minimo");
+check(eventRatingTeamGoalShare(5, 10), 0.5, "50% passa do minimo");
+check(eventRatingTeamGoalShare(0, 10), 0, "sem participacao");
+check(eventRatingTeamGoalShare(4, 0), 0, "time zerado");
+check(eventRatingTeamGoalShare(12, 10), 1, "share nao passa de 1");
+check(eventRatingApplyDropShare(-0.6, 0.5), -0.3, "-0.6 * 0.5 = -0.3");
+check(eventRatingApplyDropShare(-0.6, 0), -0.6, "share 0 nao muda");
+check(eventRatingApplyDropShare(0.4, 0.5), 0.4, "delta positivo nao amortece");
+check(eventRatingApplyDropShare(0, 0.5), 0, "delta zero nao amortece");
+
+const excludedTop = eventRatingDropShareExcludedPlayerIds(
+	[
+		{ id: 1, rating: 5 },
+		{ id: 2, rating: 4.5 },
+		{ id: 3, rating: 4 },
+		{ id: 4, rating: 0 },
+	],
+	2,
+);
+check(excludedTop.has(1), true, "top 1 excluido");
+check(excludedTop.has(2), true, "top 2 excluido");
+check(excludedTop.has(3), false, "3o nao excluido");
+check(excludedTop.has(4), false, "sentinela nao entra no top");
+check(
+	[...eventRatingDropShareExcludedPlayerIds(
+		[
+			{ id: 10, rating: 5 },
+			{ id: 2, rating: 5 },
+		],
+		1,
+	)][0],
+	2,
+	"empate de nota desempatado por id",
+);
+
+const dropSharePreview = eventRatingPreview({
+	attendance: [
+		{
+			player_id: 1,
+			display_name: "Joao",
+			wins: 1,
+			draws: 0,
+			losses: 2,
+			matches: 3,
+			rating: 4,
+			goals: 5,
+			assists: 0,
+		},
+		{
+			player_id: 2,
+			display_name: "Pedro",
+			wins: 1,
+			draws: 0,
+			losses: 2,
+			matches: 3,
+			rating: 4,
+			goals: 5,
+			assists: 0,
+		},
+	],
+	players: [
+		{
+			id: 1,
+			rating: 4,
+			nickname: "Joao",
+			display_name: "Joao Silva",
+		},
+		{
+			id: 2,
+			rating: 4,
+			nickname: "Pedro",
+			display_name: "Pedro",
+		},
+	],
+	presentPlayerIds: null,
+	ratingDropGoalShare: true,
+	teams: [
+		{
+			id: 10,
+			color: "#ffffff",
+			sort_order: 0,
+			players: [{ player_id: 1 }, { player_id: 2 }],
+		},
+	],
+});
+check(eventRatingDelta(1, 0, 2, 3, 4, 5), -0.4, "queda base teto 5");
+check(
+	rosterGoalInvolvement(5, 0) / rosterGoalInvolvement(10, 0),
+	0.5,
+	"joao 50% do time",
+);
+check(dropSharePreview[0]?.to, 3.8, "preview com share 50% em -0.4");
+check(
+	eventRatingPreview({
+		attendance: dropSharePreview.map((row) => ({
+			player_id: row.playerId,
+			display_name: row.name,
+			wins: 1,
+			draws: 0,
+			losses: 2,
+			matches: 3,
+			rating: 4,
+			goals: 5,
+			assists: 0,
+		})),
+		players: [
+			{
+				id: 1,
+				rating: 4,
+				nickname: "Joao",
+				display_name: "Joao Silva",
+			},
+			{
+				id: 2,
+				rating: 4,
+				nickname: "Pedro",
+				display_name: "Pedro",
+			},
+		],
+		presentPlayerIds: null,
+		ratingDropGoalShare: false,
+		teams: [
+			{
+				id: 10,
+				color: "#ffffff",
+				sort_order: 0,
+				players: [{ player_id: 1 }, { player_id: 2 }],
+			},
+		],
+	})[0]?.to,
+	3.6,
+	"flag off nao amortece",
+);
+
+const excludeTopPreview = eventRatingPreview({
+	attendance: [
+		{
+			player_id: 1,
+			display_name: "Joao",
+			wins: 1,
+			draws: 0,
+			losses: 2,
+			matches: 3,
+			rating: 5,
+			goals: 4,
+			assists: 0,
+		},
+		{
+			player_id: 2,
+			display_name: "Pedro",
+			wins: 1,
+			draws: 0,
+			losses: 2,
+			matches: 3,
+			rating: 3,
+			goals: 6,
+			assists: 0,
+		},
+	],
+	players: [
+		{ id: 1, rating: 5, nickname: "Joao", display_name: "Joao" },
+		{ id: 2, rating: 3, nickname: "Pedro", display_name: "Pedro" },
+		{ id: 3, rating: 4.9, nickname: "A", display_name: "A" },
+		{ id: 4, rating: 4.8, nickname: "B", display_name: "B" },
+		{ id: 5, rating: 4.7, nickname: "C", display_name: "C" },
+		{ id: 6, rating: 4.6, nickname: "D", display_name: "D" },
+		{ id: 7, rating: 4.5, nickname: "E", display_name: "E" },
+		{ id: 8, rating: 4.4, nickname: "F", display_name: "F" },
+		{ id: 9, rating: 4.3, nickname: "G", display_name: "G" },
+		{ id: 10, rating: 4.2, nickname: "H", display_name: "H" },
+		{ id: 11, rating: 4.1, nickname: "I", display_name: "I" },
+	],
+	presentPlayerIds: null,
+	ratingDropGoalShare: true,
+	ratingDropShareExcludeTop: true,
+	teams: [
+		{
+			id: 10,
+			color: "#ffffff",
+			sort_order: 0,
+			players: [{ player_id: 1 }, { player_id: 2 }],
+		},
+	],
+});
+check(excludeTopPreview[0]?.to, 4.6, "top 1 nao amortece com exclude");
+check(excludeTopPreview[1]?.to, 2.8, "fora do top ainda amortece");
 
 console.log("event-rating-adjustment ok");

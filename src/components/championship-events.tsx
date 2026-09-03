@@ -88,6 +88,8 @@ type ChampionshipEventsProps = {
 	players: ChampionshipPlayer[];
 	canManage: boolean;
 	canSetMvp: boolean;
+	ratingDropGoalShare: boolean;
+	ratingDropShareExcludeTop: boolean;
 };
 
 type EventListFlow = "actions" | "delete" | "end" | "mvp";
@@ -130,6 +132,8 @@ export function ChampionshipEvents({
 	players,
 	canManage,
 	canSetMvp,
+	ratingDropGoalShare,
+	ratingDropShareExcludeTop,
 }: ChampionshipEventsProps) {
 	const navigate = useNavigate();
 	const eventsQuery = useChampionshipEvents(championshipId);
@@ -174,6 +178,9 @@ export function ChampionshipEvents({
 			players,
 			presentPlayerIds: endIds?.presentPlayerIds ?? null,
 			mvpPlayerIds,
+			ratingDropGoalShare,
+			ratingDropShareExcludeTop,
+			teams: flowEvent.teams,
 		});
 	const previewCeiling = championshipRatingCeiling([
 		...players.map((player) => player.rating),

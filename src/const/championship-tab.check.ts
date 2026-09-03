@@ -26,6 +26,12 @@ check(
 		CHAMPIONSHIP_TAB.standings,
 	"standings stays",
 );
+check(
+	visibleChampionshipTab(CHAMPIONSHIP_TAB.trends, false) ===
+		CHAMPIONSHIP_TAB.trends,
+	"trends stays for member",
+);
+check(CHAMPIONSHIP_TAB.trends === "trends", "trends tab id");
 
 check(
 	keepChampionshipTabMounted(

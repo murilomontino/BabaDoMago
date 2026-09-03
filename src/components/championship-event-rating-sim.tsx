@@ -26,6 +26,8 @@ type ChampionshipEventRatingSimProps = {
 	event: ChampionshipEvent;
 	players: ChampionshipPlayer[];
 	canSetMvp: boolean;
+	ratingDropGoalShare: boolean;
+	ratingDropShareExcludeTop: boolean;
 };
 
 function RatingSnapshot({
@@ -178,6 +180,8 @@ export function ChampionshipEventRatingSim({
 	event,
 	players,
 	canSetMvp,
+	ratingDropGoalShare,
+	ratingDropShareExcludeTop,
 }: ChampionshipEventRatingSimProps) {
 	const [mvpPlayerIds, setMvpPlayerIds] = useState(() =>
 		attendanceMvpPlayerIds(event.attendance),
@@ -199,6 +203,8 @@ export function ChampionshipEventRatingSim({
 		teams: event.teams,
 		skipGuestGoalkeeperMatches: event.skip_guest_goalkeeper_matches,
 		mvpPlayerIds,
+		ratingDropGoalShare,
+		ratingDropShareExcludeTop,
 	});
 	const selectedMvpCount = rows.filter((row) => row.isMvp).length;
 

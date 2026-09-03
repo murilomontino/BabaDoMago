@@ -17,6 +17,8 @@ export const CHAMPIONSHIP_EVENT = {
 	minTeams: 2,
 	minAttendance: 2,
 	skipGuestGoalkeeperMatchesDefault: true,
+	ratingDropGoalShareDefault: false,
+	ratingDropShareExcludeTopDefault: false,
 	locationMaxLength: 120,
 } as const;
 
@@ -59,6 +61,12 @@ export const EVENT_CONFIG_LABEL = {
 	skipGuestGoalkeeperMatches: "Goleiro de outro time",
 	skipGuestGoalkeeperMatchesHint:
 		"Partida do goleiro emprestado só conta se o time vencer.",
+	ratingDropGoalShare: "Amortecer queda por gols",
+	ratingDropGoalShareHint:
+		"Quem cai de nota perde menos se tiver mais de 40% dos gols do próprio time (G+A).",
+	ratingDropShareExcludeTop: "Não proteger os 10 melhores",
+	ratingDropShareExcludeTopHint:
+		"Os 10 com maior nota da liga não recebem o amortecimento de queda.",
 } as const;
 
 export const EVENT_BUILDER_STEP = {

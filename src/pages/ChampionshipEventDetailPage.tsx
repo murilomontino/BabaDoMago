@@ -66,7 +66,10 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { requestMatchOp } from "@/store/match-ops/actions";
 import { selectMatchOps } from "@/store/match-ops/selectors";
 import type { ChampionshipPlayer } from "@/types/championship";
-import type { ChampionshipEventAttendance } from "@/types/championship-event";
+import type {
+	ChampionshipEvent,
+	ChampionshipEventAttendance,
+} from "@/types/championship-event";
 
 function queuedMvpIds(ids: readonly number[] | null): number[] {
 	if (ids === null) {
@@ -80,6 +83,9 @@ function eventRatingPreviewWhenQueued(
 	endOp: MatchOp | undefined,
 	attendance: readonly ChampionshipEventAttendance[],
 	players: readonly ChampionshipPlayer[],
+	teams: ChampionshipEvent["teams"],
+	ratingDropGoalShare: boolean,
+	ratingDropShareExcludeTop: boolean,
 ) {
 	if (!endOp || endOp.kind !== MATCH_OP.endEvent) {
 		return [];
@@ -90,6 +96,9 @@ function eventRatingPreviewWhenQueued(
 		players,
 		presentPlayerIds: endOp.presentPlayerIds,
 		mvpPlayerIds: queuedMvpIds(endOp.mvpPlayerIds),
+		ratingDropGoalShare,
+		ratingDropShareExcludeTop,
+		teams,
 	});
 }
 
@@ -187,6 +196,9 @@ export function ChampionshipEventDetailPage() {
 		endOp,
 		event.attendance,
 		activePlayers,
+		event.teams,
+		championshipQuery.data?.rating_drop_goal_share === true,
+		championshipQuery.data?.rating_drop_share_exclude_top === true,
 	);
 
 	return (
@@ -228,6 +240,12 @@ export function ChampionshipEventDetailPage() {
 					canManage={canManage}
 					canOverrideEnded={canOverrideEnded}
 					canSetMvp={canSetMvp}
+					ratingDropGoalShare={
+						championshipQuery.data?.rating_drop_goal_share === true
+					}
+					ratingDropShareExcludeTop={
+						championshipQuery.data?.rating_drop_share_exclude_top === true
+					}
 					savingTeams={saveTeams.isPending}
 					saveTeamsError={mutationErrorMessage(saveTeams)}
 					savingAttendance={savingAttendance}

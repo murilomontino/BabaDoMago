@@ -158,6 +158,8 @@ check(
 		eventTime: "19:00",
 		playersPerTeam: CHAMPIONSHIP_EVENT.playersPerTeamDefault,
 		skipGuestGoalkeeperMatches: true,
+		ratingDropGoalShare: false,
+		ratingDropShareExcludeTop: false,
 	}),
 	"event config ok",
 );
@@ -165,8 +167,10 @@ check(
 	!eventConfigFormSchema.isValidSync({
 		eventTime: "19:00",
 		playersPerTeam: CHAMPIONSHIP_EVENT.playersPerTeamDefault,
+		skipGuestGoalkeeperMatches: true,
+		ratingDropGoalShare: false,
 	}),
-	"event config needs guest keeper flag",
+	"event config needs exclude top flag",
 );
 
 const deleteSchema = deleteChampionshipSchema("Baba do Mago");

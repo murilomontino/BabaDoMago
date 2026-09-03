@@ -4,8 +4,15 @@ import type {
 	ChampionshipEventMatch,
 	ChampionshipEventTeam,
 } from "../types/championship-event.ts";
+import { eventTeamByPlayerId } from "./championship-event.ts";
 import { eventMatchPlayerStats } from "./event-match-player-stats.ts";
 import { eventMvpCandidates } from "./event-mvp.ts";
+import {
+	applyEventRatingDelta,
+	eventRatingApplyDropShare,
+	eventRatingDropShareExcludedPlayerIds,
+	eventRatingTeamGoalShare,
+} from "./event-rating-adjustment.ts";
 import { playerVisibleName } from "./player-name.ts";
 import { championshipRatingCeiling } from "./player-rating.ts";
 import {
@@ -13,6 +20,7 @@ import {
 	PLAYER_RATING_SIM_LABEL,
 	simulatePlayerEventRating,
 } from "./player-rating-sim.ts";
+import { rosterGoalInvolvement } from "./roster-stats.ts";
 
 export const EVENT_RATING_SIM_LABEL = {
 	title: "Simulação",
@@ -112,6 +120,8 @@ export function eventRatingSimRows(input: {
 	teams: readonly ChampionshipEventTeam[];
 	skipGuestGoalkeeperMatches: boolean;
 	mvpPlayerIds: readonly number[];
+	ratingDropGoalShare?: boolean;
+	ratingDropShareExcludeTop?: boolean;
 }): EventRatingSimRow[] {
 	const playerById = new Map(
 		input.players.map((player) => [player.id, player] as const),
@@ -126,6 +136,26 @@ export function eventRatingSimRows(input: {
 		skipGuestGoalkeeperMatches: input.skipGuestGoalkeeperMatches,
 		playerIds: input.attendance.map((row) => row.player_id),
 	});
+	const teamByPlayerId = eventTeamByPlayerId(input.teams);
+	const teamInvolvementById = input.attendance.reduce((totals, row) => {
+		const team = teamByPlayerId.get(row.player_id);
+		if (!team) {
+			return totals;
+		}
+
+		const stats = statsById.get(row.player_id);
+		const involvement = rosterGoalInvolvement(
+			stats?.goals ?? 0,
+			stats?.assists ?? 0,
+		);
+		totals.set(team.team_id, (totals.get(team.team_id) ?? 0) + involvement);
+		return totals;
+	}, new Map<number, number>());
+	const dropShareEnabled = Boolean(input.ratingDropGoalShare);
+	const excludedPlayerIds =
+		dropShareEnabled && input.ratingDropShareExcludeTop
+			? eventRatingDropShareExcludedPlayerIds(input.players)
+			: new Set<number>();
 
 	return input.attendance
 		.map((row) => {
@@ -144,6 +174,19 @@ export function eventRatingSimRows(input: {
 				ceiling,
 				isMvp,
 			});
+			const team = teamByPlayerId.get(row.player_id);
+			const share = excludedPlayerIds.has(row.player_id)
+				? 0
+				: eventRatingTeamGoalShare(
+						rosterGoalInvolvement(stats?.goals ?? 0, stats?.assists ?? 0),
+						team ? (teamInvolvementById.get(team.team_id) ?? 0) : 0,
+					);
+			const delta = dropShareEnabled
+				? eventRatingApplyDropShare(result.delta, share)
+				: result.delta;
+			const to = dropShareEnabled
+				? applyEventRatingDelta(from, delta)
+				: result.to;
 
 			return {
 				playerId: row.player_id,
@@ -158,9 +201,9 @@ export function eventRatingSimRows(input: {
 				losses,
 				matches: result.matches,
 				rate: result.rate,
-				delta: result.delta,
+				delta,
 				from: result.from,
-				to: result.to,
+				to,
 				isMvp,
 				belowMinMatches: result.belowMinMatches,
 				inDeadZone: result.inDeadZone,

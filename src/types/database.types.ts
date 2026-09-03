@@ -585,6 +585,8 @@ export type Database = {
 					logo_path: string | null;
 					name: string;
 					players_per_team: number;
+					rating_drop_goal_share: boolean;
+					rating_drop_share_exclude_top: boolean;
 					skip_guest_goalkeeper_matches: boolean;
 				};
 				Insert: {
@@ -600,6 +602,8 @@ export type Database = {
 					logo_path?: string | null;
 					name: string;
 					players_per_team?: number;
+					rating_drop_goal_share?: boolean;
+					rating_drop_share_exclude_top?: boolean;
 					skip_guest_goalkeeper_matches?: boolean;
 				};
 				Update: {
@@ -615,6 +619,8 @@ export type Database = {
 					logo_path?: string | null;
 					name?: string;
 					players_per_team?: number;
+					rating_drop_goal_share?: boolean;
+					rating_drop_share_exclude_top?: boolean;
 					skip_guest_goalkeeper_matches?: boolean;
 				};
 				Relationships: [];
@@ -992,6 +998,8 @@ export type Database = {
 					skip_guest_goalkeeper_matches?: boolean;
 					event_weekday?: number | null;
 					location?: string | null;
+					rating_drop_goal_share?: boolean;
+					rating_drop_share_exclude_top?: boolean;
 				};
 				Returns: Json;
 			};

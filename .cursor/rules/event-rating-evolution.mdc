@@ -13,12 +13,18 @@ A nota no elenco **só persiste no SQL**. `endEvent` pinta `ended_at` na hora; o
 ## Pipeline
 
 1. Presença: snapshot `rating` (antes do evento).
-2. Preview: `eventRatingPreview` = aproveitamento + MVP. Snapshot vence elenco.
+2. Preview: `eventRatingPreview` = aproveitamento + MVP (+ drop share se flag on). Snapshot vence elenco.
 3. Voto: overlay `vote_rating_delta` (±0,5). Ranqueado aplica na hora; sentinela espera semente (`vote_rating_applied`).
 4. Encerrar: `adjust_championship_player_ratings_for_event` grava `rating_delta`, depois voto pendente.
 5. Histórico: ficha (`playerProfileHistory`) e campeonato (`championshipRatingHistory`, **Evolução da nota**).
 
 Recompute: `rating − old_delta + new_delta` com o snapshot da presença.
+
+## Amortecimento de queda (flag)
+
+`championships.rating_drop_goal_share` (default false). Só em delta negativo e share **> 40%**: `share = G+A jogador / G+A do time`; `delta *= (1 − share)`. Helpers: `eventRatingTeamGoalShare`, `eventRatingApplyDropShare`.
+
+`championships.rating_drop_share_exclude_top` (default false): top 10 da liga por `rating` não entram no amortecimento (`eventRatingDropShareExcludedPlayerIds`).
 
 ## Fontes
 
@@ -27,6 +33,6 @@ Recompute: `rating − old_delta + new_delta` com o snapshot da presença.
 - Voto: `src/const/event-player-vote.ts`, RPC `vote_championship_event_player`
 - Persistência: `adjust_championship_player_ratings_for_event`
 - UI preview: detalhe da rodada / Encerrar
-- Sim: `src/const/player-rating-sim.ts`
+- Sim: `src/const/player-rating-sim.ts` / `event-rating-sim.ts`
 
-Não inventar Elo, K-factor, ajuste por gols ou adversário. Voto não entra em `eventRatingDelta`.
+Não inventar Elo, K-factor, ajuste por gols na fórmula base ou adversário. Voto e drop share não entram em `eventRatingDelta`.

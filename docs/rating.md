@@ -236,7 +236,7 @@ A nota no elenco **só persiste no SQL**. Encerrar a rodada (`endEvent`) pinta `
 Pipeline:
 
 1. Presença guarda snapshot `rating` (nota **antes** do evento).
-2. Preview na UI: `eventRatingPreview` = aproveitamento + MVP. Snapshot vence o elenco.
+2. Preview na UI: `eventRatingPreview` = aproveitamento + MVP (+ amortecimento de queda se a flag da liga estiver ligada). Snapshot vence o elenco.
 3. Voto do elenco: overlay `vote_rating_delta` (±0,5). Ranqueado aplica na hora; sentinela espera a semente.
 4. Encerrar: `adjust_championship_player_ratings_for_event` aplica delta, grava `rating_delta`, depois sincroniza voto pendente (`vote_rating_applied`).
 5. Histórico: ficha (`playerProfileHistory`) e campeonato (`championshipRatingHistory`, título **Evolução da nota**).
@@ -247,7 +247,28 @@ Camadas na nota final (nessa ordem):
 | --- | --- | --- |
 | Aproveitamento / semente | sim | `rating_delta` |
 | MVP (`2%`, mín. +0,1) | não; soma em cima | `rating_delta` (junto do delta) |
+| Amortecimento de queda (flag) | não; só se delta &lt; 0 | `rating_delta` (reduz a queda) |
 | Voto ±0,5 | não | `vote_rating_delta` |
+
+### Amortecimento de queda por participação em gols
+
+Flag da liga: `championships.rating_drop_goal_share` (padrão **desligada**). Configurações → “Amortecer queda por gols”.
+
+Flag extra: `championships.rating_drop_share_exclude_top` (padrão **desligada**). Configurações → “Não proteger os 10 melhores”. Com as duas ligadas, os 10 com maior `championship_players.rating` (empate por `id`) **não** recebem o amortecimento.
+
+Só age quando o delta líquido (aproveitamento + MVP) é **negativo**:
+
+```text
+share = (gols + assists do jogador) / (gols + assists do time do elenco)
+se share ≤ 40% → sem amortecimento
+delta = round(delta × (1 − share), 1)
+```
+
+- Participação no **próprio time** (`championship_event_team_players`).
+- Sem time, time com 0 G+A, flag off, share ≤ 40%, ou top 10 com exclude on → `share = 0`.
+- Só **acima de 40%** (`EVENT_RATING_DROP_SHARE.minShare`) entra no amortecimento.
+- `share` clamp 0–1. Gol **não** sobe nota; só reduz perda.
+- Ex.: queda −0,6 e 50% do G+A do time → −0,3.
 
 Recompute de stats: `rating − old_delta + new_delta` com o **snapshot** da presença, não a nota atual do elenco.
 
@@ -257,13 +278,14 @@ Recompute de stats: `rating − old_delta + new_delta` com o **snapshot** da pre
 
 | Camada | Arquivo / função |
 | --- | --- |
-| TypeScript (fonte da UI) | [`src/const/event-rating-adjustment.ts`](../src/const/event-rating-adjustment.ts) — `eventRatingDelta`, `applyEventRatingDelta`, `eventRatingPreview` |
+| TypeScript (fonte da UI) | [`src/const/event-rating-adjustment.ts`](../src/const/event-rating-adjustment.ts) — `eventRatingDelta`, `applyEventRatingDelta`, `eventRatingPreview`, `eventRatingApplyDropShare` |
 | Checks | [`src/const/event-rating-adjustment.check.ts`](../src/const/event-rating-adjustment.check.ts) |
 | Simulador (ficha do jogador) | [`src/const/player-rating-sim.ts`](../src/const/player-rating-sim.ts) — aba **Simulação** |
 | Evolução no campeonato | [`src/const/championship-rating-history.ts`](../src/const/championship-rating-history.ts) |
 | Evolução na ficha | [`src/const/player-profile.ts`](../src/const/player-profile.ts) — `playerProfileHistory` |
-| Postgres | `public.championship_event_rating_delta`, `public.championship_player_rating_apply`, `public.championship_event_mvp_bonus` |
+| Postgres | `public.championship_event_rating_delta`, `public.championship_player_rating_apply`, `public.championship_event_mvp_bonus`, `public.championship_event_rating_team_goal_share`, `public.championship_event_rating_apply_drop_share` |
 | Persistência ao encerrar | `adjust_championship_player_ratings_for_event` |
+| Flag da liga | `championships.rating_drop_goal_share`, `championships.rating_drop_share_exclude_top` |
 | Voto do elenco | [`src/const/event-player-vote.ts`](../src/const/event-player-vote.ts), `vote_championship_event_player`, `vote_rating_delta` |
 | Recálculo manual (script) | [`supabase/scripts/recompute_ratings_from_attendance.sql`](../supabase/scripts/recompute_ratings_from_attendance.sql) |
 
@@ -276,7 +298,7 @@ A presença guarda `rating` (snapshot antes do evento) e `rating_delta`. Correç
 ## O que **não** entra na nota
 
 - Elo / confrontos 1x1
-- Gols, assistências ou gol contra (contam em estatísticas e MVP, não no delta base)
+- Gols, assistências ou gol contra na **fórmula base** (contam em estatísticas e MVP; com a flag da liga, G+A do time só **amortece queda**)
 - Força do adversário
 - Duração ou placar da partida além do resultado V/E/D agregado na presença
 - Voto like/dislike (overlay em `vote_rating_delta`, fora do aproveitamento)

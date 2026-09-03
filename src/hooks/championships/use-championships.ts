@@ -175,12 +175,16 @@ export function useUpdateChampionshipEventConfig(championshipId: number) {
 			skipGuestGoalkeeperMatches,
 			eventWeekday,
 			location,
+			ratingDropGoalShare,
+			ratingDropShareExcludeTop,
 		}: {
 			eventTime: string;
 			playersPerTeam: number;
 			skipGuestGoalkeeperMatches: boolean;
 			eventWeekday: number | null;
 			location: string | null;
+			ratingDropGoalShare: boolean;
+			ratingDropShareExcludeTop: boolean;
 		}) =>
 			updateChampionshipEventConfig(
 				championshipId,
@@ -189,6 +193,8 @@ export function useUpdateChampionshipEventConfig(championshipId: number) {
 				skipGuestGoalkeeperMatches,
 				eventWeekday,
 				location,
+				ratingDropGoalShare,
+				ratingDropShareExcludeTop,
 			),
 		onSuccess: async () => {
 			await invalidateChampionshipQueries(queryClient);

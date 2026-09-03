@@ -43,6 +43,8 @@ type ChampionshipEventDetailActionsProps = {
 	showTeamBuilder: boolean;
 	status: EventStatus;
 	draftPresentIdsRef: RefObject<number[]>;
+	ratingDropGoalShare: boolean;
+	ratingDropShareExcludeTop: boolean;
 	onEnd: (
 		presentPlayerIds: number[] | null,
 		mvpPlayerIds: number[] | null,
@@ -63,6 +65,8 @@ export function ChampionshipEventDetailActions({
 	showTeamBuilder,
 	status,
 	draftPresentIdsRef,
+	ratingDropGoalShare,
+	ratingDropShareExcludeTop,
 	onEnd,
 	onDelete,
 	ending,
@@ -106,6 +110,9 @@ export function ChampionshipEventDetailActions({
 		players,
 		presentPlayerIds: presentPlayerIdsForEnd,
 		mvpPlayerIds,
+		ratingDropGoalShare,
+		ratingDropShareExcludeTop,
+		teams: event.teams,
 	});
 	const previewCeiling = championshipRatingCeiling([
 		...players.map((player) => player.rating),
