@@ -22,6 +22,7 @@ check(EVENT_PLAYER_VOTE.quorum === 3, "quorum");
 check(EVENT_PLAYER_VOTE.delta === 0.5, "delta");
 check(EVENT_PLAYER_VOTE.like === "like", "like");
 check(EVENT_PLAYER_VOTE.dislike === "dislike", "dislike");
+check(EVENT_PLAYER_VOTE.maintain === "maintain", "maintain");
 check(EVENT_PLAYER_VOTE_LABEL.title === "Votar elenco", "title");
 check(EVENT_PLAYER_VOTE_LABEL.appliedUp === "+0,5", "chip up");
 check(EVENT_PLAYER_VOTE_LABEL.appliedDown === "−0,5", "chip down");
@@ -57,14 +58,17 @@ check(
 	"need present roles",
 );
 
-check(eventPlayerVoteAppliedDelta(0, 0) === 0, "empty");
-check(eventPlayerVoteAppliedDelta(2, 0) === 0, "likes below quorum");
-check(eventPlayerVoteAppliedDelta(3, 0) === 0.5, "3 likes");
-check(eventPlayerVoteAppliedDelta(5, 2) === 0.5, "likes win");
-check(eventPlayerVoteAppliedDelta(0, 3) === -0.5, "3 dislikes");
-check(eventPlayerVoteAppliedDelta(2, 5) === -0.5, "dislikes win");
-check(eventPlayerVoteAppliedDelta(3, 3) === 0, "both quorum cancel");
-check(eventPlayerVoteAppliedDelta(4, 3) === 0, "both still cancel");
+check(eventPlayerVoteAppliedDelta(0, 0, 0) === 0, "empty");
+check(eventPlayerVoteAppliedDelta(2, 0, 0) === 0, "likes below quorum");
+check(eventPlayerVoteAppliedDelta(3, 0, 0) === 0.5, "3 likes");
+check(eventPlayerVoteAppliedDelta(5, 2, 0) === 0.5, "likes win");
+check(eventPlayerVoteAppliedDelta(0, 3, 0) === -0.5, "3 dislikes");
+check(eventPlayerVoteAppliedDelta(2, 5, 0) === -0.5, "dislikes win");
+check(eventPlayerVoteAppliedDelta(3, 3, 0) === 0, "both quorum tied");
+check(eventPlayerVoteAppliedDelta(3, 0, 3) === 0, "like blocked by maintain");
+check(eventPlayerVoteAppliedDelta(4, 0, 3) === 0.5, "like beats maintain");
+check(eventPlayerVoteAppliedDelta(0, 3, 3) === 0, "dislike blocked by maintain");
+check(eventPlayerVoteAppliedDelta(3, 0, 2) === 0.5, "like beats lower maintain");
 
 check(eventPlayerVoteChipLabel(0.5) === "+0,5", "chip +");
 check(eventPlayerVoteChipLabel(-0.5) === "−0,5", "chip -");
@@ -79,6 +83,7 @@ check(
 	canVoteEventPlayer({
 		canVote: true,
 		eventEnded: true,
+		votesClosed: false,
 		voterPresent: true,
 		targetPlayerId: 2,
 		voterPlayerId: 1,
@@ -90,6 +95,7 @@ check(
 	!canVoteEventPlayer({
 		canVote: true,
 		eventEnded: true,
+		votesClosed: false,
 		voterPresent: true,
 		targetPlayerId: 1,
 		voterPlayerId: 1,
@@ -101,6 +107,7 @@ check(
 	!canVoteEventPlayer({
 		canVote: false,
 		eventEnded: true,
+		votesClosed: false,
 		voterPresent: true,
 		targetPlayerId: 2,
 		voterPlayerId: 1,
@@ -112,6 +119,7 @@ check(
 	!canVoteEventPlayer({
 		canVote: true,
 		eventEnded: true,
+		votesClosed: false,
 		voterPresent: false,
 		targetPlayerId: 2,
 		voterPlayerId: 1,
@@ -123,6 +131,7 @@ check(
 	!canVoteEventPlayer({
 		canVote: true,
 		eventEnded: false,
+		votesClosed: false,
 		voterPresent: true,
 		targetPlayerId: 2,
 		voterPlayerId: 1,
@@ -134,6 +143,7 @@ check(
 	!canVoteEventPlayer({
 		canVote: true,
 		eventEnded: true,
+		votesClosed: false,
 		voterPresent: true,
 		targetPlayerId: 2,
 		voterPlayerId: null,
@@ -145,6 +155,7 @@ check(
 	!canVoteEventPlayer({
 		canVote: true,
 		eventEnded: true,
+		votesClosed: false,
 		voterPresent: true,
 		targetPlayerId: 2,
 		voterPlayerId: 1,
@@ -156,6 +167,7 @@ check(
 	!canVoteEventPlayer({
 		canVote: true,
 		eventEnded: true,
+		votesClosed: false,
 		voterPresent: true,
 		targetPlayerId: 2,
 		voterPlayerId: 1,
@@ -192,6 +204,33 @@ check(
 check(
 	nextEventPlayerVoteValue("dislike", "dislike") === null,
 	"toggle off dislike",
+);
+check(nextEventPlayerVoteValue(null, "maintain") === "maintain", "press maintain");
+check(
+	nextEventPlayerVoteValue("maintain", "maintain") === null,
+	"toggle off maintain",
+);
+check(
+	nextEventPlayerVoteValue("like", "maintain") === "maintain",
+	"switch to maintain",
+);
+
+check(
+	!canVoteEventPlayer({
+		canVote: true,
+		eventEnded: true,
+		votesClosed: true,
+		voterPresent: true,
+		targetPlayerId: 2,
+		voterPlayerId: 1,
+		voteRatingDelta: 0,
+	}),
+	"votes closed blocks vote",
+);
+check(
+	eventPlayerVoteErrorMessage("player votes closed") ===
+		EVENT_PLAYER_VOTE_LABEL.votesClosed,
+	"player votes closed error",
 );
 
 check(

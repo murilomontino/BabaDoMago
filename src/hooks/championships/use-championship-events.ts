@@ -10,6 +10,7 @@ import {
 	matchDurationSeconds,
 } from "@/const/championship-event-match";
 import type { EventTeamColor } from "@/const/event-team-color";
+import type { EventPlayerVoteChoice } from "@/const/event-player-vote";
 import { useAuth } from "@/contexts/auth";
 import { supabase } from "@/lib/supabase";
 import {
@@ -24,6 +25,7 @@ import {
 	ensureChampionshipEventAttendancePlayer,
 	getChampionshipEventById,
 	listChampionshipEvents,
+	closeChampionshipEventPlayerVotes,
 	listMyChampionshipEventPlayerVotes,
 	promoteChampionshipEventRsvpGoing,
 	reopenChampionshipEventMatch,
@@ -479,6 +481,40 @@ export function useMyChampionshipEventPlayerVotes(eventId: number) {
 	});
 }
 
+export function useCloseChampionshipEventPlayerVotes(
+	championshipId: number,
+	eventId: number,
+) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: () => closeChampionshipEventPlayerVotes(eventId),
+		onSuccess: async (result) => {
+			queryClient.setQueriesData<ChampionshipEvent>(
+				{
+					predicate: (query) =>
+						eventIdFromDetailKey(query.queryKey) === eventId,
+				},
+				(current) => {
+					if (!current) {
+						return current;
+					}
+
+					return {
+						...current,
+						player_votes_closed_at: result.player_votes_closed_at,
+					};
+				},
+			);
+
+			await Promise.all([
+				invalidateChampionshipEvent(queryClient, championshipId, eventId),
+				invalidateChampionshipQueries(queryClient),
+			]);
+		},
+	});
+}
+
 export function useVoteChampionshipEventPlayer(
 	championshipId: number,
 	eventId: number,
@@ -492,7 +528,7 @@ export function useVoteChampionshipEventPlayer(
 			value,
 		}: {
 			targetPlayerId: number;
-			value: "like" | "dislike" | null;
+			value: EventPlayerVoteChoice | null;
 		}) => voteChampionshipEventPlayer(eventId, targetPlayerId, value),
 		onSuccess: async (result) => {
 			queryClient.setQueriesData<ChampionshipEvent>(

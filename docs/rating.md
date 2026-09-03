@@ -107,14 +107,16 @@ Exemplos do bônus: `0.01 → 0.1`, `0.14 → 0.2`, nota `20 → +0.4`.
 
 ## Voto do elenco (overlay)
 
-Dono, capitão e admin presentes podem dar like ou dislike em quem está na presença da **mesma** rodada, **só depois de encerrar**. A tela mostra a nota atual do elenco. Voto secreto: ninguém vê a urna, só o próprio voto.
+Dono, capitão e admin presentes podem dar like, dislike ou **manter** em quem está na presença da **mesma** rodada, **só depois de encerrar**. A tela mostra a nota atual do elenco. Voto secreto: ninguém vê a urna, só o próprio voto.
 
 | Regra | Valor |
 | --- | --- |
-| Like no quórum | 3 likes e dislikes < 3 → **+0,5** e **fecha** o voto desse jogador |
-| Dislike no quórum | 3 dislikes e likes < 3 → **−0,5** e **fecha** o voto desse jogador |
-| Ambos no quórum | **0** (cancela) — na prática o primeiro lado a fechar trava |
+| Like no quórum | 3+ likes, mais likes que dislikes **e** que maintains → **+0,5** e **fecha** |
+| Dislike no quórum | 3+ dislikes, mais dislikes que likes **e** que maintains → **−0,5** e **fecha** |
+| Manter | conta na urna; bloqueia like/dislike se a contagem deles não supera maintains |
+| Manter sozinho | **0**, voto **permanece aberto** |
 | Sem voto em si | bloqueado |
+| Encerrar votação | só o **dono**; trava novos votos na rodada (`player_votes_closed_at`) |
 | 1 voto por admin por atleta | pode trocar ou limpar **só enquanto aberto** |
 
 O campo `championship_event_attendance.vote_rating_delta` guarda o resultado (±0,5 ou 0). **Não** entra em `eventRatingDelta` / aproveitamento. Depois de ±0,5, novos votos nesse alvo são recusados (`vote closed`).
@@ -301,7 +303,7 @@ A presença guarda `rating` (snapshot antes do evento) e `rating_delta`. Correç
 - Gols, assistências ou gol contra na **fórmula base** (contam em estatísticas e MVP; com a flag da liga, G+A do time só **amortece queda**)
 - Força do adversário
 - Duração ou placar da partida além do resultado V/E/D agregado na presença
-- Voto like/dislike (overlay em `vote_rating_delta`, fora do aproveitamento)
+- Voto like/dislike/manter (overlay em `vote_rating_delta`, fora do aproveitamento)
 
 ---
 

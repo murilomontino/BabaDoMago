@@ -475,6 +475,7 @@ export type Database = {
 					deleted_at: string | null;
 					ended_at: string | null;
 					id: number;
+					player_votes_closed_at: string | null;
 					players_per_team: number;
 					skip_guest_goalkeeper_matches: boolean;
 					starts_at: string;
@@ -486,6 +487,7 @@ export type Database = {
 					deleted_at?: string | null;
 					ended_at?: string | null;
 					id?: number;
+					player_votes_closed_at?: string | null;
 					players_per_team: number;
 					skip_guest_goalkeeper_matches?: boolean;
 					starts_at: string;
@@ -497,6 +499,7 @@ export type Database = {
 					deleted_at?: string | null;
 					ended_at?: string | null;
 					id?: number;
+					player_votes_closed_at?: string | null;
 					players_per_team?: number;
 					skip_guest_goalkeeper_matches?: boolean;
 					starts_at?: string;
@@ -804,6 +807,10 @@ export type Database = {
 				Args: { event_id: number; player_ids: Json };
 				Returns: Json;
 			};
+			close_championship_event_player_votes: {
+				Args: { event_id: number };
+				Returns: Json;
+			};
 			vote_championship_event_player: {
 				Args: {
 					event_id: number;
@@ -813,7 +820,11 @@ export type Database = {
 				Returns: Json;
 			};
 			championship_event_player_vote_applied_delta: {
-				Args: { like_count: number; dislike_count: number };
+				Args: {
+					like_count: number;
+					dislike_count: number;
+					maintain_count: number;
+				};
 				Returns: number;
 			};
 			set_championship_event_team_active: {
