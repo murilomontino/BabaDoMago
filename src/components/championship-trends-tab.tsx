@@ -8,6 +8,7 @@ import {
 	LineChart as LineChartIcon,
 	Shield,
 	TrendingUp,
+	Users,
 } from "lucide-react";
 import { lazy, Suspense, useMemo, useState } from "react";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
@@ -18,6 +19,18 @@ import {
 	type DataTableFeatures,
 } from "@/components/organisms/data-table";
 import { SectionCard } from "@/components/section-card";
+import {
+	ATTENDANCE_TREND_LABEL,
+	ATTENDANCE_TREND_METRIC_DEFAULT,
+	ATTENDANCE_TREND_METRIC_OPTIONS,
+	type AttendanceTrendMetric,
+	attendanceTrendMetricCaption,
+	championshipAttendanceTrend,
+	championshipAttendanceTrendChart,
+	formatAttendanceTrendChartValue,
+	formatAttendanceTrendKpi,
+	parseAttendanceTrendMetric,
+} from "@/const/championship-attendance-trend";
 import {
 	CONSISTENCY_CHART,
 	CONSISTENCY_LABEL,
@@ -62,6 +75,8 @@ import {
 	type RecentFormRow,
 	recentFormTrendLabel,
 } from "@/const/championship-recent-form";
+import { endedChampionshipHistoryEvents } from "@/const/championship-rating-history";
+import { TREND_LINE_CHART } from "@/const/championship-trend-line-chart";
 import { CHAMPIONSHIP_TAB_LABEL } from "@/const/championship-tab";
 import {
 	championshipTrendsEvents,
@@ -78,6 +93,12 @@ import { FIELD_CLASS } from "@/const/ui";
 import { CHAMPIONSHIP_EVENTS_QUERY_KEY } from "@/hooks/championships/championships-query-keys";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type { ChampionshipEvent } from "@/types/championship-event";
+
+const ChampionshipTrendLineChart = lazy(() =>
+	import("@/components/molecules/championship-trend-line-chart").then((m) => ({
+		default: m.ChampionshipTrendLineChart,
+	}),
+));
 
 const ChampionshipConsistencyScatterChart = lazy(() =>
 	import("@/components/molecules/championship-consistency-scatter-chart").then(
@@ -376,6 +397,8 @@ export function ChampionshipTrendsTab({
 	events,
 }: ChampionshipTrendsTabProps) {
 	const [window, setWindow] = useState<TrendsWindow>(TRENDS_WINDOW_DEFAULT);
+	const [attendanceMetric, setAttendanceMetric] =
+		useState<AttendanceTrendMetric>(ATTENDANCE_TREND_METRIC_DEFAULT);
 	const [consistencyMetric, setConsistencyMetric] = useState<ConsistencyMetric>(
 		CONSISTENCY_METRIC_DEFAULT,
 	);
@@ -387,6 +410,18 @@ export function ChampionshipTrendsTab({
 	const windowEvents = useMemo(
 		() => championshipTrendsEvents(events, window),
 		[events, window],
+	);
+	const allEndedEvents = useMemo(
+		() => endedChampionshipHistoryEvents(events),
+		[events],
+	);
+	const attendance = useMemo(
+		() => championshipAttendanceTrend(allEndedEvents, players.length),
+		[allEndedEvents, players.length],
+	);
+	const attendanceChart = useMemo(
+		() => championshipAttendanceTrendChart(attendance, attendanceMetric),
+		[attendance, attendanceMetric],
 	);
 	const formRows = useMemo(
 		() => championshipRecentForm(players, windowEvents),
@@ -448,6 +483,79 @@ export function ChampionshipTrendsTab({
 
 			{hasEnough && (
 				<div className="space-y-10">
+					<section className="space-y-3">
+						<div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+							<div className="space-y-1">
+								<div className="flex items-center gap-2">
+									<Users className="size-4 text-pitch-fg" />
+									<h3 className="text-sm font-semibold text-fg">
+										{ATTENDANCE_TREND_LABEL.title}
+									</h3>
+								</div>
+								<p className="text-sm text-fg-muted">
+									{ATTENDANCE_TREND_LABEL.hint}
+								</p>
+								<p className="text-xs text-fg-muted">
+									{TRENDS_WINDOW_LABEL.allEndedCaption}
+								</p>
+							</div>
+							<label className="block max-w-xs text-xs text-fg-muted">
+								{ATTENDANCE_TREND_LABEL.filter}
+								<select
+									value={attendanceMetric}
+									className={`mt-1 ${FIELD_CLASS}`}
+									onChange={(event) => {
+										setAttendanceMetric(
+											parseAttendanceTrendMetric(event.target.value),
+										);
+									}}
+								>
+									{ATTENDANCE_TREND_METRIC_OPTIONS.map((option) => (
+										<option key={option} value={option}>
+											{attendanceTrendMetricCaption(option)}
+										</option>
+									))}
+								</select>
+							</label>
+						</div>
+						{attendance.events === 0 && (
+							<p className="text-sm text-fg-muted">
+								{ATTENDANCE_TREND_LABEL.empty}
+							</p>
+						)}
+						{attendance.events > 0 && (
+							<>
+								<div>
+									<p className="text-xs font-medium text-fg-muted">
+										{attendanceMetric === ATTENDANCE_TREND_METRIC_DEFAULT
+											? ATTENDANCE_TREND_LABEL.avgPresent
+											: ATTENDANCE_TREND_LABEL.avgShare}
+									</p>
+									<p className="text-lg font-semibold tabular-nums text-fg">
+										{formatAttendanceTrendKpi(attendanceMetric, attendance)}
+									</p>
+								</div>
+								<Suspense
+									fallback={
+										<SkeletonRegion label={SKELETON_LABEL.chart}>
+											<div style={{ height: TREND_LINE_CHART.height }}>
+												<Skeleton className="h-full w-full" />
+											</div>
+										</SkeletonRegion>
+									}
+								>
+									<ChampionshipTrendLineChart
+										points={attendanceChart}
+										caption={attendanceTrendMetricCaption(attendanceMetric)}
+										formatValue={(value) =>
+											formatAttendanceTrendChartValue(attendanceMetric, value)
+										}
+									/>
+								</Suspense>
+							</>
+						)}
+					</section>
+
 					<section className="space-y-3">
 						<div className="flex items-center gap-2">
 							<ChartColumn className="size-4 text-pitch-fg" />
