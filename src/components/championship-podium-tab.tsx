@@ -10,6 +10,16 @@ import {
 import { CHAMPIONSHIP_RATING_HISTORY_CHART } from "@/const/championship-rating-history";
 import { CHAMPIONSHIP_RATING_SCATTER_CHART } from "@/const/championship-rating-scatter";
 import { CHAMPIONSHIP_STAT_SCATTER_CHART } from "@/const/championship-stat-scatter";
+import {
+	TRENDS_AUDIENCE_DEFAULT,
+	TRENDS_AUDIENCE_LABEL,
+	TRENDS_AUDIENCE_OPTIONS,
+	type TrendsAudience,
+	parseTrendsAudience,
+	trendsAudienceCaption,
+	trendsAudiencePlayers,
+	trendsHasMonthlyPlayers,
+} from "@/const/championship-trends-window";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import {
 	championshipSynergyRanking,
@@ -130,6 +140,9 @@ export function ChampionshipPodiumTab({
 	const [metric, setMetric] = useState<PodiumMetricId>(PODIUM_DEFAULT_METRIC);
 	const [semester, setSemester] = useState<PodiumSemester | null>(null);
 	const [months, setMonths] = useState<PodiumMonth[]>([]);
+	const [audience, setAudience] = useState<TrendsAudience>(
+		TRENDS_AUDIENCE_DEFAULT,
+	);
 	const [yearParam, setYearParam] = usePodiumYear();
 	const [isSharing, setIsSharing] = useState<PodiumShareMode | null>(null);
 	const [shareError, setShareError] = useState<string | null>(null);
@@ -137,6 +150,10 @@ export function ChampionshipPodiumTab({
 	const includeSynergy = !eventStartsAt;
 	const metricOptions = podiumMetricOptions(includeSynergy);
 	const showPeriodFilters = Boolean(events) && includeSynergy;
+	const hasMonthlyPlayers = useMemo(
+		() => trendsHasMonthlyPlayers(players),
+		[players],
+	);
 	const availableYears = useMemo(
 		() => podiumAvailableYears(events ?? []),
 		[events],
@@ -157,31 +174,34 @@ export function ChampionshipPodiumTab({
 	}, [eventStartsAt, events, months, semester, year]);
 	const podiumPlayers = useMemo(() => {
 		if (!events || eventStartsAt) {
-			return players;
+			return trendsAudiencePlayers(players, audience);
 		}
 
-		return aggregatePodiumPlayersFromEvents(
-			players,
-			events,
-			year,
-			semester,
-			months,
+		return trendsAudiencePlayers(
+			aggregatePodiumPlayersFromEvents(
+				players,
+				events,
+				year,
+				semester,
+				months,
+			),
+			audience,
 		);
-	}, [eventStartsAt, events, months, players, semester, year]);
+	}, [audience, eventStartsAt, events, months, players, semester, year]);
 	const synergyPairs = useMemo(() => {
 		if (!includeSynergy) {
 			return [];
 		}
 
-		return championshipSynergyRanking(periodEvents, players);
-	}, [includeSynergy, periodEvents, players]);
+		return championshipSynergyRanking(periodEvents, podiumPlayers);
+	}, [includeSynergy, periodEvents, podiumPlayers]);
 	const worstPairs = useMemo(() => {
 		if (!includeSynergy) {
 			return [];
 		}
 
-		return championshipSynergyWorst(periodEvents, players);
-	}, [includeSynergy, periodEvents, players]);
+		return championshipSynergyWorst(periodEvents, podiumPlayers);
+	}, [includeSynergy, periodEvents, podiumPlayers]);
 	const teamBalance = useMemo(() => {
 		if (!includeSynergy) {
 			return null;
@@ -374,6 +394,27 @@ export function ChampionshipPodiumTab({
 					</div>
 				</div>
 			)}
+			{hasMonthlyPlayers && (
+				<div className="mb-4 space-y-2">
+					<p className="text-xs font-medium text-fg-muted">
+						{TRENDS_AUDIENCE_LABEL.filter}
+					</p>
+					<div className="flex flex-wrap gap-2">
+						{TRENDS_AUDIENCE_OPTIONS.map((option) => (
+							<button
+								key={option}
+								type="button"
+								className={filterChipClass(option === audience)}
+								onClick={() => {
+									setAudience(parseTrendsAudience(option));
+								}}
+							>
+								{trendsAudienceCaption(option)}
+							</button>
+						))}
+					</div>
+				</div>
+			)}
 			<div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 				<label className="block max-w-xs text-sm text-fg-muted">
 					{PODIUM_LABEL.metric}
@@ -470,7 +511,7 @@ export function ChampionshipPodiumTab({
 					<ChampionshipMetricHistoryChart
 						key={metric}
 						metric={historyMetric}
-						players={players}
+						players={podiumPlayers}
 						events={periodEvents}
 						championshipName={championshipName}
 						nowIso={historyNowIso}
@@ -479,12 +520,18 @@ export function ChampionshipPodiumTab({
 			)}
 			{events && includeSynergy && (
 				<Suspense fallback={<PodiumRatingScatterSkeleton />}>
-					<ChampionshipRatingScatterChart players={players} events={events} />
+					<ChampionshipRatingScatterChart
+						players={podiumPlayers}
+						events={events}
+					/>
 				</Suspense>
 			)}
 			{events && includeSynergy && (
 				<Suspense fallback={<PodiumStatScatterSkeleton />}>
-					<ChampionshipStatScatterChart players={players} events={events} />
+					<ChampionshipStatScatterChart
+						players={podiumPlayers}
+						events={events}
+					/>
 				</Suspense>
 			)}
 			{teamBalance && teamBalance.events > 0 && (

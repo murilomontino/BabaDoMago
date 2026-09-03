@@ -25,7 +25,7 @@ export const CONSISTENCY_METRIC_DEFAULT = CONSISTENCY_METRIC.goalsPerMatch;
 export const CONSISTENCY_LABEL = {
 	title: "Consistência × volume",
 	empty: "Precisa de pelo menos 3 presenças",
-	hint: "Canto inferior: estável. Direita alta: irregular. Esquerda: pouco volume.",
+	hint: "Desvio = variação da métrica entre rodadas (desvio-padrão amostral). Baixo: estável. Alto: sobe e desce. Canto inferior: estável. Direita alta: irregular. Esquerda: pouco volume.",
 	filter: "Métrica",
 	[CONSISTENCY_METRIC.goalsPerMatch]: "Gols / jogo",
 	[CONSISTENCY_METRIC.assistsPerMatch]: "Assistências / jogo",

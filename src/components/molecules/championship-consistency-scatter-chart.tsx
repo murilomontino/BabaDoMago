@@ -26,39 +26,44 @@ type ScatterTooltipPayload = {
 	payload?: ConsistencyPoint;
 };
 
-function scatterTooltipContent({
-	active,
-	payload,
-}: {
-	active?: boolean;
-	payload?: readonly ScatterTooltipPayload[];
-}) {
-	if (!active) {
-		return null;
-	}
+function scatterTooltipForMetric(metric: ConsistencyMetric) {
+	return function scatterTooltipContent({
+		active,
+		payload,
+	}: {
+		active?: boolean;
+		payload?: readonly ScatterTooltipPayload[];
+	}) {
+		if (!active) {
+			return null;
+		}
 
-	const point = payload?.[0]?.payload;
-	if (!point) {
-		return null;
-	}
+		const point = payload?.[0]?.payload;
+		if (!point) {
+			return null;
+		}
 
-	return (
-		<div className="rounded-md border border-black/10 bg-surface px-2.5 py-2 text-xs shadow-sm">
-			<p className="font-medium text-fg">{point.name}</p>
-			<p className="text-fg-muted">
-				{CONSISTENCY_LABEL.volume}: {point.volume}
-			</p>
-			<p className="text-fg-muted">
-				{CONSISTENCY_LABEL.deviation}: {point.deviation.toFixed(2)}
-			</p>
-			<p className="text-fg-muted">
-				{CONSISTENCY_LABEL.mean}: {point.mean.toFixed(2)}
-			</p>
-			<p className="text-fg-muted">
-				{CONSISTENCY_LABEL.presences}: {point.presences}
-			</p>
-		</div>
-	);
+		return (
+			<div className="max-w-56 rounded-md border border-black/10 bg-surface px-2.5 py-2 text-xs shadow-sm">
+				<p className="font-medium text-fg">{point.name}</p>
+				<p className="text-fg-muted">
+					{CONSISTENCY_LABEL.filter}: {consistencyMetricCaption(metric)}
+				</p>
+				<p className="text-fg-muted">
+					{CONSISTENCY_LABEL.volume}: {point.volume}
+				</p>
+				<p className="text-fg-muted">
+					{CONSISTENCY_LABEL.deviation}: {point.deviation.toFixed(2)}
+				</p>
+				<p className="text-fg-muted">
+					{CONSISTENCY_LABEL.mean}: {point.mean.toFixed(2)}
+				</p>
+				<p className="text-fg-muted">
+					{CONSISTENCY_LABEL.presences}: {point.presences}
+				</p>
+			</div>
+		);
+	};
 }
 
 function ScatterDot(props: {
@@ -89,7 +94,6 @@ export function ChampionshipConsistencyScatterChart({
 }: ChampionshipConsistencyScatterChartProps) {
 	const xDomain = consistencyDomain(points, "volume");
 	const yDomain = consistencyDomain(points, "deviation");
-	const yLabel = consistencyMetricCaption(metric);
 
 	return (
 		<div className="w-full text-pitch-fg">
@@ -122,13 +126,13 @@ export function ChampionshipConsistencyScatterChart({
 						width={CONSISTENCY_CHART.axisWidth}
 						tick={{ fontSize: 12 }}
 						label={{
-							value: yLabel,
+							value: CONSISTENCY_LABEL.deviation,
 							angle: -90,
 							position: "insideLeft",
 							fontSize: 11,
 						}}
 					/>
-					<Tooltip content={scatterTooltipContent} />
+					<Tooltip content={scatterTooltipForMetric(metric)} />
 					<Scatter data={[...points]} shape={ScatterDot}>
 						<LabelList
 							dataKey={CONSISTENCY_CHART.nameKey}
