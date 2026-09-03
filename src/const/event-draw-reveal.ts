@@ -10,6 +10,7 @@ export const EVENT_DRAW_REVEAL = {
 
 export const EVENT_DRAW_REVEAL_LABEL = {
 	title: "Sorteio dos times",
+	potTitle: "Sorteio por potes",
 	start: "Iniciar",
 	replay: "Ver de novo",
 	shareShort: "Compartilhar",
@@ -59,6 +60,14 @@ export const EVENT_DRAW_REVEAL_PAGE = {
 
 export type EventDrawRevealPageStatus =
 	(typeof EVENT_DRAW_REVEAL_PAGE)[keyof typeof EVENT_DRAW_REVEAL_PAGE];
+
+export function eventDrawRevealHeading(title: string | undefined): string {
+	if (title) {
+		return title;
+	}
+
+	return EVENT_DRAW_REVEAL_LABEL.title;
+}
 
 export function eventDrawUrl(
 	origin: string,
@@ -197,6 +206,28 @@ export function eventDrawRevealCanNext(
 	total: number,
 ): boolean {
 	return visibleCount < total;
+}
+
+export function eventDrawRevealAdvanceEnabled(
+	canAdvance: boolean | undefined,
+	visibleCount: number,
+	total: number,
+): boolean {
+	if (canAdvance === undefined) {
+		return eventDrawRevealCanNext(visibleCount, total);
+	}
+
+	return canAdvance;
+}
+
+export function eventDrawRevealShowsPosition(
+	showPosition: boolean | undefined,
+): boolean {
+	if (showPosition === false) {
+		return false;
+	}
+
+	return true;
 }
 
 export function eventDrawRevealShouldTick(input: {

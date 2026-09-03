@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { ChampionshipEventDetailActions } from "@/components/championship-event-detail-actions";
+import { ChampionshipEventRatingSim } from "@/components/championship-event-rating-sim";
 import { ChampionshipEventRoundTab } from "@/components/championship-event-round-tab";
 import { ChampionshipPodiumTab } from "@/components/championship-podium-tab";
 import { Tabs } from "@/components/tabs";
@@ -292,6 +293,13 @@ export function ChampionshipEventDetail({
 					onAddPlayer={onAddPlayer}
 					isAddingPlayer={isAddingPlayer}
 					addPlayerError={addPlayerError}
+				/>
+			)}
+			{showEventTabs && selectedTab === EVENT_TAB.sim && (
+				<ChampionshipEventRatingSim
+					event={event}
+					players={players}
+					canSetMvp={canSetMvp}
 				/>
 			)}
 			{showEventTabs && selectedTab === EVENT_TAB.podium && (

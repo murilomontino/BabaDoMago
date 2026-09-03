@@ -17,9 +17,18 @@ import {
 import {
 	EVENT_DRAW_VIDEO_CONFIG,
 	eventDrawCompleteTimeSec,
+	eventDrawPotRevealTimesSec,
 	eventDrawRevealTimesSec,
 	eventDrawTotalDurationSec,
 } from "./event-draw-video-timeline.ts";
+
+function videoPotCount(data: EventDrawRenderData): number {
+	if (!data.pots) {
+		return 0;
+	}
+
+	return data.pots.length;
+}
 
 const FRAMES_PER_BACKPRESSURE_AWAIT = 15;
 
@@ -87,7 +96,8 @@ export async function generateEventDrawVideo(
 		? AVC_COMPATIBLE_CODEC
 		: undefined;
 
-	const totalDurationSec = eventDrawTotalDurationSec(data.cards);
+	const potCount = videoPotCount(data);
+	const totalDurationSec = eventDrawTotalDurationSec(data.cards, potCount);
 	const totalFrames = Math.ceil(totalDurationSec * fps);
 
 	const hasAudio = await ensureAacEncoder();
@@ -132,8 +142,11 @@ export async function generateEventDrawVideo(
 		// alimentar o audio depois trava a geracao.
 		if (audioSource) {
 			const buffer = await renderEventDrawAudioTrack({
-				revealTimesSec: eventDrawRevealTimesSec(data.cards),
-				completeTimeSec: eventDrawCompleteTimeSec(data.cards),
+				revealTimesSec: [
+					...eventDrawPotRevealTimesSec(potCount),
+					...eventDrawRevealTimesSec(data.cards, potCount),
+				],
+				completeTimeSec: eventDrawCompleteTimeSec(data.cards, potCount),
 				durationSec: totalDurationSec,
 			});
 			if (buffer) {

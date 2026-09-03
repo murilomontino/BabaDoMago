@@ -5,6 +5,7 @@ import {
 	EVENT_DRAW_REVEAL_LABEL,
 	EVENT_DRAW_REVEAL_PAGE,
 	EVENT_DRAW_REVEAL_PHASE,
+	eventDrawRevealAdvanceEnabled,
 	eventDrawRevealAuditChannelName,
 	eventDrawRevealCanNext,
 	eventDrawRevealCardKey,
@@ -13,6 +14,7 @@ import {
 	eventDrawRevealCountAfterStart,
 	eventDrawRevealDelayMs,
 	eventDrawRevealGridClass,
+	eventDrawRevealHeading,
 	eventDrawRevealItemCount,
 	eventDrawRevealNextPlayerCount,
 	eventDrawRevealPageSettled,
@@ -24,6 +26,7 @@ import {
 	eventDrawRevealShouldTick,
 	eventDrawRevealShowControls,
 	eventDrawRevealShowShare,
+	eventDrawRevealShowsPosition,
 	eventDrawRevealSlotIsGoalkeeper,
 	eventDrawRevealViewersFromPresence,
 	eventDrawRevealViewingBadgeCount,
@@ -176,6 +179,13 @@ check(eventDrawRevealNextPlayerCount(roundRobinCards, 4), 5);
 check(eventDrawRevealNextPlayerCount(roundRobinCards, 5), 5);
 check(eventDrawRevealCanNext(4, 5), true);
 check(eventDrawRevealCanNext(5, 5), false);
+check(eventDrawRevealAdvanceEnabled(undefined, 4, 5), true);
+check(eventDrawRevealAdvanceEnabled(undefined, 5, 5), false);
+check(eventDrawRevealAdvanceEnabled(true, 5, 5), true);
+check(eventDrawRevealAdvanceEnabled(false, 4, 5), false);
+check(eventDrawRevealShowsPosition(undefined), true);
+check(eventDrawRevealShowsPosition(true), true);
+check(eventDrawRevealShowsPosition(false), false);
 check(eventDrawRevealGridClass(1), "grid-cols-1");
 check(eventDrawRevealGridClass(4), "grid-cols-2");
 
@@ -233,6 +243,13 @@ check(EVENT_DRAW_REVEAL_LABEL.pause, "Pausar sorteio");
 check(EVENT_DRAW_REVEAL_LABEL.play, "Play sorteio");
 check(EVENT_DRAW_REVEAL_LABEL.next, "Próximo jogador sorteado");
 check(EVENT_ACTION.openDraw, "Abrir sorteio");
+check(EVENT_ACTION.openPotDraw, "Sorteio por potes");
+check(EVENT_DRAW_REVEAL_LABEL.potTitle, "Sorteio por potes");
+check(eventDrawRevealHeading(undefined), EVENT_DRAW_REVEAL_LABEL.title);
+check(
+	eventDrawRevealHeading(EVENT_DRAW_REVEAL_LABEL.potTitle),
+	EVENT_DRAW_REVEAL_LABEL.potTitle,
+);
 check(eventDrawRevealWaitingHint(true), EVENT_DRAW_REVEAL_LABEL.waitingHost);
 check(eventDrawRevealWaitingHint(false), EVENT_DRAW_REVEAL_LABEL.waitingGuest);
 check(eventDrawRevealPageSettled(EVENT_DRAW_REVEAL_PAGE.loading), false);
@@ -305,6 +322,15 @@ check(
 		"/championships/$championshipId/events/$eventId/draw",
 	),
 	"https://baba.test/championships/3/events/9/draw",
+);
+check(
+	eventDrawUrl(
+		"https://baba.test",
+		3,
+		9,
+		"/championships/$championshipId/events/$eventId/draw-pots",
+	),
+	"https://baba.test/championships/3/events/9/draw-pots",
 );
 
 check(copyDrawLinkLabel(false), EVENT_ACTION.copyDrawLink);

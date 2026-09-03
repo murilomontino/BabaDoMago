@@ -325,7 +325,11 @@ export function ChampionshipEventBuilder({
 		}
 	}
 
-	async function openDrawCeremony() {
+	async function openDrawCeremony(
+		to:
+			| typeof ROUTES.championshipEventDraw
+			| typeof ROUTES.championshipEventPotDraw,
+	) {
 		const invalid = validateEventAttendance(presentIds, rosterIds);
 		if (invalid) {
 			setAttendanceError(invalid);
@@ -336,7 +340,7 @@ export function ChampionshipEventBuilder({
 		try {
 			await onSaveAttendance(presentIds, presentGoalkeeperIds);
 			await navigate({
-				to: ROUTES.championshipEventDraw,
+				to,
 				params: {
 					championshipId: String(championshipId),
 					eventId: String(eventId),
@@ -548,7 +552,11 @@ export function ChampionshipEventBuilder({
 					}
 
 					function openCeremony() {
-						void openDrawCeremony();
+						void openDrawCeremony(ROUTES.championshipEventDraw);
+					}
+
+					function openPotCeremony() {
+						void openDrawCeremony(ROUTES.championshipEventPotDraw);
 					}
 
 					return (
@@ -603,6 +611,15 @@ export function ChampionshipEventBuilder({
 												{EVENT_ACTION.openDraw}
 											</Button>
 										</span>
+										<span className="hidden md:inline-flex">
+											<Button
+												variant={BUTTON_VARIANT.secondary}
+												disabled={busy}
+												onClick={openPotCeremony}
+											>
+												{EVENT_ACTION.openPotDraw}
+											</Button>
+										</span>
 									</div>
 									<AttendanceFloatingSave
 										selected={presentIds.length}
@@ -611,14 +628,25 @@ export function ChampionshipEventBuilder({
 										type="button"
 										onClick={openCeremony}
 										secondary={
-											<Button
-												type="submit"
-												variant={BUTTON_VARIANT.secondary}
-												disabled={busy}
-												className="shadow-md"
-											>
-												{EVENT_ACTION.continue}
-											</Button>
+											<>
+												<Button
+													type="submit"
+													variant={BUTTON_VARIANT.secondary}
+													disabled={busy}
+													className="shadow-md"
+												>
+													{EVENT_ACTION.continue}
+												</Button>
+												<Button
+													type="button"
+													variant={BUTTON_VARIANT.secondary}
+													disabled={busy}
+													className="shadow-md"
+													onClick={openPotCeremony}
+												>
+													{EVENT_ACTION.openPotDraw}
+												</Button>
+											</>
 										}
 									>
 										{EVENT_ACTION.openDraw}

@@ -16,6 +16,7 @@ import { AddEventTeamModal } from "@/components/add-event-team-modal";
 import { Button } from "@/components/button";
 import { ChampionshipEventBuilder } from "@/components/championship-event-builder";
 import { ChampionshipEventMatchHistory } from "@/components/championship-event-match-history";
+import { ChampionshipEventStandings } from "@/components/championship-event-standings";
 import { DeleteEventAttendanceModal } from "@/components/delete-event-attendance-modal";
 import { DeleteEventMatchModal } from "@/components/delete-event-match-modal";
 import { DeleteEventTeamModal } from "@/components/delete-event-team-modal";
@@ -677,6 +678,12 @@ export function ChampionshipEventRoundTab({
 						})}
 					</ul>
 				</div>
+			)}
+			{!showTeamBuilder && event.teams.length > 0 && (
+				<ChampionshipEventStandings
+					teams={event.teams}
+					matches={event.matches}
+				/>
 			)}
 			{!showTeamBuilder && (
 				<ChampionshipEventMatchHistory

@@ -157,6 +157,14 @@ check(chart.rows[4]?.startsAt === nowIso, "now point");
 check(chart.rows[4]?.p7 === 51, "player 7 current");
 check(chart.rows[4]?.p8 === 41.2, "player 8 current");
 check(
+	championshipRatingHistoryChart(
+		[player(7, 51, "Ana"), player(8, 41.2), player(9, 0)],
+		[openEvent, endedOlder, endedNewer, sentinelEvent],
+		null,
+	).rows.length === 4,
+	"no now row outside period",
+);
+check(
 	championshipRatingHistoryTickLabel(chart.rows, 0) === "",
 	"hidden duplicate entry tick",
 );

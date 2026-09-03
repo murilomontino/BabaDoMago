@@ -1,0 +1,800 @@
+import { Link, useParams } from "@tanstack/react-router";
+import { ArrowLeft, LoaderCircle, RefreshCw, Video } from "lucide-react";
+import { useReducedMotion } from "motion/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AppDialog } from "@/components/atoms/app-dialog";
+import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
+import { Button } from "@/components/button";
+import {
+	EventDrawReveal,
+	EventDrawWaiting,
+} from "@/components/event-draw-reveal";
+import { EventDrawViewers } from "@/components/event-draw-viewers";
+import { EventTeamDrawLog } from "@/components/event-team-draw-log";
+import { TeamCardSkeleton } from "@/components/molecules/team-card-skeleton";
+import {
+	attendanceGoalkeeperIds,
+	builderTeamsFromEvent,
+	EVENT_TEAM_MESSAGE,
+	eventTeamsAreReady,
+	formatEventStartsAt,
+	keepGoalkeepersPresent,
+	validateEventAttendance,
+	validateEventTeams,
+	validateTeamsInAttendance,
+} from "@/const/championship-event";
+import {
+	CHAMPIONSHIP_ROLE,
+	canManageEvent,
+	resolveChampionshipRole,
+} from "@/const/championship-role";
+import {
+	EVENT_DRAW_REVEAL_LABEL,
+	EVENT_DRAW_REVEAL_PAGE,
+	EVENT_DRAW_REVEAL_PHASE,
+	eventDrawRevealCanNext,
+	eventDrawRevealCards,
+	eventDrawRevealCountAfterStart,
+	eventDrawRevealDelayMs,
+	eventDrawRevealItemCount,
+	eventDrawRevealNextPlayerCount,
+	eventDrawRevealPageSettled,
+	eventDrawRevealPageStatus,
+	eventDrawRevealShouldAutoStart,
+	eventDrawRevealShouldTick,
+	eventDrawUrl,
+} from "@/const/event-draw-reveal";
+import {
+	builderTeamsFromPotDrafts,
+	EVENT_POT_DRAW_STAGE,
+	type EventPotDrawStage,
+	eventPotDrawAdvanceOverride,
+	eventPotDrawCeremonyCards,
+	eventPotDrawCeremonyTitle,
+	eventPotDrawCeremonyVisibleCount,
+	eventPotDrawIsPotsStage,
+	eventPotDrawNextCount,
+	eventPotDrawPots,
+	eventPotDrawPotsComplete,
+	eventPotDrawRevealPhase,
+	eventPotDrawShareCards,
+	eventPotDrawShowsPosition,
+} from "@/const/event-team-pot-draw";
+import {
+	EVENT_TEAM_SHARE_LABEL,
+	type EventTeamShareCard,
+	eventTeamsShareCards,
+} from "@/const/event-team-share";
+import { championshipRatingCeiling } from "@/const/player-rating";
+import { ROUTES } from "@/const/routes";
+import { SKELETON_LABEL } from "@/const/skeleton";
+import { BUTTON_VARIANT, ERROR_CLASS, MODAL_CLASS } from "@/const/ui";
+import { useAuth } from "@/contexts/auth";
+import {
+	useChampionshipEvent,
+	useSaveChampionshipEventTeams,
+} from "@/hooks/championships/use-championship-events";
+import { useChampionship } from "@/hooks/championships/use-championships";
+import { useEventDrawPresence } from "@/hooks/championships/use-event-draw-presence";
+import { useWakeLock } from "@/hooks/use-wake-lock";
+import { caughtErrorMessage } from "@/lib/error-message";
+import { generateEventDrawVideo } from "@/lib/event-draw-video";
+import { eventTeamDrawHash } from "@/lib/event-team-draw-hash";
+import { runEventTeamPotDraw } from "@/lib/event-team-pot-draw";
+import { mulberry32 } from "@/lib/prng";
+import { shareEventTeamsImage } from "@/lib/share-event-teams-image";
+import { saveEventDrawAudit } from "@/services/championship-events";
+import type { ChampionshipPlayer } from "@/types/championship";
+
+const DRAW_SHELL_CLASS =
+	"flex h-dvh flex-col overflow-hidden overscroll-contain select-none touch-manipulation pt-[max(0.75rem,env(safe-area-inset-top))] pr-[max(0.75rem,env(safe-area-inset-right))] pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))]";
+
+const DRAW_HEADER_CLASS =
+	"grid shrink-0 grid-cols-[3.25rem_minmax(0,1fr)_3.25rem] items-center";
+
+export function ChampionshipEventPotDrawPage() {
+	const { championshipId: championshipIdParam, eventId: eventIdParam } =
+		useParams({
+			from: "/_authenticated/championships/$championshipId/events/$eventId/draw-pots",
+		});
+	const championshipId = Number(championshipIdParam);
+	const eventId = Number(eventIdParam);
+	const { user } = useAuth();
+	const championshipQuery = useChampionship(championshipId);
+	const eventQuery = useChampionshipEvent(championshipId, eventId);
+	const saveTeams = useSaveChampionshipEventTeams(championshipId);
+	const reduceMotion = useReducedMotion();
+	const [frozenCards, setFrozenCards] = useState<EventTeamShareCard[] | null>(
+		null,
+	);
+	const [frozenPotCards, setFrozenPotCards] = useState<
+		EventTeamShareCard[] | null
+	>(null);
+	const [ceremonyStage, setCeremonyStage] = useState<EventPotDrawStage>(
+		EVENT_POT_DRAW_STAGE.pots,
+	);
+	const [potVisibleCount, setPotVisibleCount] = useState(0);
+	const [visibleCount, setVisibleCount] = useState(0);
+	const [autoplay, setAutoplay] = useState(true);
+	const [isSharing, setIsSharing] = useState(false);
+	const [shareError, setShareError] = useState<string | null>(null);
+	const [copiedDrawLink, setCopiedDrawLink] = useState(false);
+	const [isDrawing, setIsDrawing] = useState(false);
+	const [drawError, setDrawError] = useState<string | null>(null);
+	const [videoStatus, setVideoStatus] = useState<
+		"idle" | "generating" | "ready" | "error"
+	>("idle");
+	const [videoProgress, setVideoProgress] = useState(0);
+	const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
+	const [videoHasAudio, setVideoHasAudio] = useState(true);
+	const videoAbortRef = useRef<AbortController | null>(null);
+	const drawWorkerRef = useRef<Worker | null>(null);
+	const readyRef = useRef<boolean | null>(null);
+
+	const event = eventQuery.data ?? null;
+	const championship = championshipQuery.data ?? null;
+	const activePlayers = (championship?.players ?? []).filter(
+		(player: ChampionshipPlayer) => !player.deleted_at,
+	);
+	const rosterById = useMemo(
+		() => new Map(activePlayers.map((player) => [player.id, player])),
+		[activePlayers],
+	);
+	const currentPlayer = useMemo(() => {
+		if (!user) {
+			return null;
+		}
+
+		return activePlayers.find((player) => player.user_id === user.id) ?? null;
+	}, [activePlayers, user]);
+	const actorRole = resolveChampionshipRole(
+		championship?.created_by ?? "",
+		user?.id ?? null,
+		currentPlayer?.role ?? CHAMPIONSHIP_ROLE.member,
+	);
+	const canDraw = canManageEvent(actorRole);
+	const viewers = useEventDrawPresence(
+		eventId,
+		currentPlayer,
+		user?.id ?? null,
+	);
+	const liveCards = useMemo(() => {
+		if (!event) {
+			return [];
+		}
+
+		return eventDrawRevealCards(
+			eventTeamsShareCards(
+				builderTeamsFromEvent(
+					event.teams,
+					event.players_per_team,
+					event.attendance.length,
+				),
+				activePlayers,
+			),
+		);
+	}, [activePlayers, event]);
+	const livePotCards = useMemo(() => {
+		if (!event) {
+			return [];
+		}
+
+		const present = new Set(event.attendance.map((row) => row.player_id));
+		const drawPlayers = activePlayers.flatMap((player) => {
+			if (!present.has(player.id)) {
+				return [];
+			}
+
+			return [{ id: player.id, rating: player.rating }];
+		});
+
+		return eventDrawRevealCards(
+			eventPotDrawShareCards(
+				eventPotDrawPots(drawPlayers, event.players_per_team, () => 0),
+				activePlayers,
+			),
+		);
+	}, [activePlayers, event]);
+	const teamCards = frozenCards ?? liveCards;
+	const potCards = frozenPotCards ?? livePotCards;
+	const ceremonyCards = eventPotDrawCeremonyCards(
+		ceremonyStage,
+		potCards,
+		potVisibleCount,
+		teamCards,
+	);
+	const teamTotal = eventDrawRevealItemCount(teamCards);
+	const visibleCountForReveal = eventPotDrawCeremonyVisibleCount(
+		ceremonyStage,
+		ceremonyCards,
+		visibleCount,
+	);
+	const phase = eventPotDrawRevealPhase(
+		ceremonyStage,
+		potVisibleCount,
+		visibleCount,
+		teamTotal,
+	);
+	const playing = phase === EVENT_DRAW_REVEAL_PHASE.playing;
+	useWakeLock(playing);
+
+	const pageStatus = eventDrawRevealPageStatus({
+		championshipPending: championshipQuery.isPending,
+		eventPending: eventQuery.isPending,
+		championshipError: championshipQuery.isError,
+		eventError: eventQuery.isError,
+		teamsReady: event ? eventTeamsAreReady(event.teams) : false,
+	});
+	const teamsReady = pageStatus === EVENT_DRAW_REVEAL_PAGE.ready;
+
+	useEffect(() => {
+		return () => {
+			drawWorkerRef.current?.terminate();
+		};
+	}, []);
+
+	useEffect(() => {
+		if (
+			!eventDrawRevealShouldTick({
+				phase,
+				autoplay,
+				reduceMotion: Boolean(reduceMotion),
+			})
+		) {
+			return;
+		}
+
+		const delay = eventDrawRevealDelayMs(Boolean(reduceMotion));
+		if (eventPotDrawIsPotsStage(ceremonyStage)) {
+			const timer = window.setTimeout(() => {
+				if (eventPotDrawPotsComplete(potVisibleCount, potCards.length)) {
+					setCeremonyStage(EVENT_POT_DRAW_STAGE.teams);
+					setVisibleCount(
+						eventDrawRevealCountAfterStart(teamTotal, Boolean(reduceMotion)),
+					);
+					return;
+				}
+
+				setPotVisibleCount((count) =>
+					eventPotDrawNextCount(count, potCards.length),
+				);
+			}, delay);
+
+			return () => {
+				window.clearTimeout(timer);
+			};
+		}
+
+		if (visibleCount >= teamTotal) {
+			return;
+		}
+
+		const timer = window.setTimeout(() => {
+			setVisibleCount((count) => count + 1);
+		}, delay);
+
+		return () => {
+			window.clearTimeout(timer);
+		};
+	}, [
+		autoplay,
+		ceremonyStage,
+		phase,
+		potCards.length,
+		potVisibleCount,
+		reduceMotion,
+		teamTotal,
+		visibleCount,
+	]);
+
+	const beginCeremony = useCallback(
+		(teamSnapshot: EventTeamShareCard[], potSnapshot: EventTeamShareCard[]) => {
+			setFrozenCards(teamSnapshot);
+			setFrozenPotCards(potSnapshot);
+			setAutoplay(true);
+			if (reduceMotion) {
+				setCeremonyStage(EVENT_POT_DRAW_STAGE.teams);
+				setPotVisibleCount(potSnapshot.length);
+				setVisibleCount(eventDrawRevealItemCount(teamSnapshot));
+				return;
+			}
+
+			if (potSnapshot.length === 0) {
+				setCeremonyStage(EVENT_POT_DRAW_STAGE.teams);
+				setVisibleCount(
+					eventDrawRevealCountAfterStart(
+						eventDrawRevealItemCount(teamSnapshot),
+						false,
+					),
+				);
+				return;
+			}
+
+			setCeremonyStage(EVENT_POT_DRAW_STAGE.pots);
+			setVisibleCount(0);
+			setPotVisibleCount(
+				eventDrawRevealCountAfterStart(potSnapshot.length, false),
+			);
+		},
+		[reduceMotion],
+	);
+
+	const startReveal = useCallback(() => {
+		beginCeremony(frozenCards ?? liveCards, frozenPotCards ?? livePotCards);
+	}, [beginCeremony, frozenCards, frozenPotCards, liveCards, livePotCards]);
+
+	useEffect(() => {
+		const settled = eventDrawRevealPageSettled(pageStatus);
+		if (
+			!eventDrawRevealShouldAutoStart({
+				previousReady: readyRef.current,
+				ready: teamsReady,
+				visibleCount,
+				settled,
+			})
+		) {
+			if (settled) {
+				readyRef.current = teamsReady;
+			}
+			return;
+		}
+
+		readyRef.current = teamsReady;
+		startReveal();
+	}, [pageStatus, startReveal, teamsReady, visibleCount]);
+
+	function replayReveal() {
+		setCeremonyStage(EVENT_POT_DRAW_STAGE.pots);
+		setPotVisibleCount(0);
+		setVisibleCount(0);
+	}
+
+	function pauseReveal() {
+		setAutoplay(false);
+	}
+
+	function resumeReveal() {
+		setAutoplay(true);
+	}
+
+	function nextReveal() {
+		if (eventPotDrawIsPotsStage(ceremonyStage)) {
+			if (eventPotDrawPotsComplete(potVisibleCount, potCards.length)) {
+				setCeremonyStage(EVENT_POT_DRAW_STAGE.teams);
+				setVisibleCount(
+					eventDrawRevealCountAfterStart(teamTotal, Boolean(reduceMotion)),
+				);
+				return;
+			}
+
+			setPotVisibleCount(
+				eventPotDrawNextCount(potVisibleCount, potCards.length),
+			);
+			return;
+		}
+
+		if (!eventDrawRevealCanNext(visibleCount, teamTotal)) {
+			return;
+		}
+
+		setVisibleCount(eventDrawRevealNextPlayerCount(teamCards, visibleCount));
+	}
+
+	async function copyDrawLink() {
+		const url = eventDrawUrl(
+			window.location.origin,
+			championshipId,
+			eventId,
+			ROUTES.championshipEventPotDraw,
+		);
+		await navigator.clipboard.writeText(url);
+		setCopiedDrawLink(true);
+	}
+
+	async function startVideoGeneration(params: {
+		seed: number;
+		algorithmVersion: number;
+		inputHash: string;
+		cards: readonly EventTeamShareCard[];
+		pots: readonly EventTeamShareCard[];
+		ceiling: number;
+		championshipName: string;
+		eventDateLabel: string;
+	}) {
+		if (videoAbortRef.current) {
+			videoAbortRef.current.abort();
+		}
+		const controller = new AbortController();
+		videoAbortRef.current = controller;
+
+		setVideoStatus("generating");
+		setVideoProgress(0);
+		setVideoBlob(null);
+		setVideoHasAudio(true);
+
+		try {
+			const result = await generateEventDrawVideo({
+				data: {
+					championshipName: params.championshipName,
+					eventDateLabel: params.eventDateLabel,
+					algorithmVersion: params.algorithmVersion,
+					seed: params.seed,
+					inputHash: params.inputHash,
+					cards: params.cards,
+					pots: params.pots,
+					ceiling: params.ceiling,
+					title: EVENT_DRAW_REVEAL_LABEL.potTitle,
+				},
+				onProgress: (percent) => setVideoProgress(percent),
+				signal: controller.signal,
+			});
+
+			if (result) {
+				setVideoBlob(result.blob);
+				setVideoHasAudio(result.hasAudio);
+				setVideoStatus("ready");
+			} else {
+				setVideoStatus("error");
+			}
+		} catch {
+			if (!controller.signal.aborted) {
+				setVideoStatus("error");
+			}
+		}
+	}
+
+	async function drawTeams() {
+		if (!event || !championship) {
+			return;
+		}
+
+		const championshipEntityId = championship.id;
+		const presentIds = event.attendance.map((row) => row.player_id);
+		const rosterIds = activePlayers.map((player) => player.id);
+		const attendanceInvalid = validateEventAttendance(presentIds, rosterIds);
+		if (attendanceInvalid) {
+			setDrawError(attendanceInvalid);
+			return;
+		}
+
+		const present = new Set(presentIds);
+		const volunteerIds = keepGoalkeepersPresent(
+			attendanceGoalkeeperIds(event.attendance),
+			presentIds,
+		);
+		setIsDrawing(true);
+		setDrawError(null);
+		try {
+			const drawPlayers = activePlayers.flatMap((player) => {
+				if (!present.has(player.id)) {
+					return [];
+				}
+
+				return [{ id: player.id, rating: player.rating }];
+			});
+			const { worker, done } = runEventTeamPotDraw({
+				players: drawPlayers,
+				playersPerTeam: event.players_per_team,
+				volunteerIds,
+			});
+			drawWorkerRef.current = worker;
+			const { teams: drafts, seed, algorithmVersion } = await done;
+			const teamsInvalid =
+				validateEventTeams(drafts, event.players_per_team) ??
+				validateTeamsInAttendance(drafts, presentIds);
+			if (teamsInvalid) {
+				setDrawError(teamsInvalid);
+				return;
+			}
+
+			await saveTeams.mutateAsync({
+				eventId,
+				presentPlayerIds: presentIds,
+				teams: drafts,
+				goalkeeperPlayerIds: volunteerIds,
+				isDraw: true,
+			});
+
+			// Cards do sorteio recem-feito: a query do evento ainda nao refletiu
+			// o resultado, entao o video usa os drafts diretamente.
+			const drawnCards = eventDrawRevealCards(
+				eventTeamsShareCards(
+					builderTeamsFromPotDrafts(drafts, event.players_per_team),
+					activePlayers,
+				),
+			);
+			const drawnPots = eventDrawRevealCards(
+				eventPotDrawShareCards(
+					eventPotDrawPots(
+						drawPlayers,
+						event.players_per_team,
+						mulberry32(seed),
+					),
+					activePlayers,
+				),
+			);
+			beginCeremony(drawnCards, drawnPots);
+			const drawnCeiling = championshipRatingCeiling(
+				activePlayers.map((player) => player.rating),
+			);
+			const drawnWhen = formatEventStartsAt(event.starts_at);
+
+			void eventTeamDrawHash({
+				seed,
+				algorithmVersion,
+				players: drawPlayers,
+				playersPerTeam: event.players_per_team,
+				volunteerIds,
+			}).then(async (inputHash) => {
+				// O video nao depende da auditoria: se o registro falhar,
+				// o sorteio ja aconteceu e o video precisa sair mesmo assim.
+				const audit = saveEventDrawAudit({
+					eventId,
+					championshipId: championshipEntityId,
+					seed,
+					algorithmVersion,
+					inputSnapshot: {
+						players: drawPlayers,
+						playersPerTeam: event.players_per_team,
+						volunteerIds,
+					},
+					outputSnapshot: {
+						teams: drafts.map((team) => ({
+							playerIds: [...team.playerIds],
+							goalkeeperId: team.goalkeeperId,
+						})),
+					},
+					inputHash,
+				}).catch(console.error);
+
+				await startVideoGeneration({
+					seed,
+					algorithmVersion,
+					inputHash,
+					cards: drawnCards,
+					pots: drawnPots,
+					ceiling: drawnCeiling,
+					championshipName: championship.name,
+					eventDateLabel: `${drawnWhen.date} · ${drawnWhen.time}`,
+				});
+
+				await audit;
+			});
+		} catch (error) {
+			setDrawError(caughtErrorMessage(error, EVENT_TEAM_MESSAGE.drawFailed));
+		} finally {
+			drawWorkerRef.current?.terminate();
+			drawWorkerRef.current = null;
+			setIsDrawing(false);
+		}
+	}
+
+	if (pageStatus === EVENT_DRAW_REVEAL_PAGE.loading) {
+		return <ChampionshipEventDrawPageSkeleton />;
+	}
+
+	if (pageStatus === EVENT_DRAW_REVEAL_PAGE.championshipError) {
+		return (
+			<main className={DRAW_SHELL_CLASS}>
+				<p className={ERROR_CLASS}>
+					Erro ao carregar campeonato: {championshipQuery.error?.message}
+				</p>
+			</main>
+		);
+	}
+
+	if (pageStatus === EVENT_DRAW_REVEAL_PAGE.eventError) {
+		return (
+			<main className={DRAW_SHELL_CLASS}>
+				<p className={ERROR_CLASS}>
+					Erro ao carregar rodada: {eventQuery.error?.message}
+				</p>
+			</main>
+		);
+	}
+
+	if (!championship || !event) {
+		return <ChampionshipEventDrawPageSkeleton />;
+	}
+
+	const when = formatEventStartsAt(event.starts_at);
+	const ceiling = championshipRatingCeiling(
+		activePlayers.map((player) => player.rating),
+	);
+	const championshipName = championship.name;
+	const startsAt = event.starts_at;
+
+	async function shareTeams() {
+		setIsSharing(true);
+		setShareError(null);
+
+		try {
+			await shareEventTeamsImage(teamCards, ceiling, {
+				championshipName,
+				startsAt,
+			});
+		} catch {
+			setShareError(EVENT_TEAM_SHARE_LABEL.shareFailed);
+		} finally {
+			setIsSharing(false);
+		}
+	}
+
+	async function handleShareVideo() {
+		if (!videoBlob) return;
+		const fileName =
+			`sorteio-${championship?.name ?? "baba"}-${event?.id ?? 0}.mp4`
+				.toLowerCase()
+				.replace(/[^a-z0-9.]+/g, "-");
+		const file = new File([videoBlob], fileName, { type: "video/mp4" });
+
+		if (navigator.canShare && navigator.canShare({ files: [file] })) {
+			try {
+				await navigator.share({
+					files: [file],
+					title: "Sorteio de Times Auditado",
+					text: `Confira o sorteio auditado do ${championship?.name ?? "campeonato"}!`,
+				});
+				return;
+			} catch {
+				// Fallback se o usuario cancelar
+			}
+		}
+
+		const url = URL.createObjectURL(videoBlob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = fileName;
+		a.click();
+		URL.revokeObjectURL(url);
+	}
+
+	return (
+		<main className={DRAW_SHELL_CLASS}>
+			{isDrawing && (
+				<AppDialog onClose={() => undefined}>
+					<div
+						className={`${MODAL_CLASS} max-w-sm text-center`}
+						role="status"
+						aria-live="polite"
+					>
+						<LoaderCircle
+							className="mx-auto size-8 animate-spin text-pitch"
+							aria-hidden
+						/>
+						<p className="mt-3 text-sm font-medium text-fg">
+							{EVENT_TEAM_MESSAGE.drawing}
+						</p>
+					</div>
+				</AppDialog>
+			)}
+			<header className={DRAW_HEADER_CLASS}>
+				<Link
+					to={ROUTES.championshipEvent}
+					params={{
+						championshipId: String(championshipId),
+						eventId: String(eventId),
+					}}
+					aria-label={EVENT_DRAW_REVEAL_LABEL.back}
+					className="inline-flex size-11 items-center justify-center justify-self-start rounded-lg text-fg-muted hover:bg-surface-muted"
+				>
+					<ArrowLeft className="size-5" />
+				</Link>
+				<EventTeamDrawLog
+					championshipId={championshipId}
+					eventId={eventId}
+					showWhenEmpty
+					compact
+				/>
+				<div className="justify-self-end">
+					<EventDrawViewers viewers={viewers} rosterById={rosterById} />
+				</div>
+			</header>
+			{pageStatus === EVENT_DRAW_REVEAL_PAGE.empty && (
+				<EventDrawWaiting
+					championshipName={championshipName}
+					dateLabel={when.date}
+					canDraw={canDraw}
+					copied={copiedDrawLink}
+					isDrawing={isDrawing}
+					drawError={drawError}
+					onCopyLink={() => {
+						void copyDrawLink();
+					}}
+					onDraw={() => {
+						void drawTeams();
+					}}
+				/>
+			)}
+			{pageStatus === EVENT_DRAW_REVEAL_PAGE.ready && (
+				<EventDrawReveal
+					championshipName={championshipName}
+					startsAt={startsAt}
+					cards={ceremonyCards}
+					visibleCount={visibleCountForReveal}
+					phase={phase}
+					autoplay={autoplay}
+					ceiling={ceiling}
+					rosterById={rosterById}
+					onStart={startReveal}
+					onReplay={replayReveal}
+					onPause={pauseReveal}
+					onPlay={resumeReveal}
+					onNext={nextReveal}
+					onShare={() => {
+						void shareTeams();
+					}}
+					isSharing={isSharing}
+					shareError={shareError}
+					title={eventPotDrawCeremonyTitle(ceremonyStage)}
+					showPosition={eventPotDrawShowsPosition(ceremonyStage)}
+					canAdvance={eventPotDrawAdvanceOverride(ceremonyStage)}
+				/>
+			)}
+			{videoStatus === "generating" && (
+				<div className="mx-auto w-full max-w-sm rounded-xl border border-border bg-surface-elevated p-4 text-center my-4 shadow-sm">
+					<div className="flex justify-between text-xs font-medium text-fg-muted mb-2">
+						<span>Gerando vídeo auditável...</span>
+						<span>{videoProgress}%</span>
+					</div>
+					<div className="h-2 w-full overflow-hidden rounded-full bg-surface-muted">
+						<div
+							className="h-full bg-pitch transition-all duration-300"
+							style={{ width: `${videoProgress}%` }}
+						/>
+					</div>
+				</div>
+			)}
+			{videoStatus === "ready" && (
+				<div className="mx-auto w-full max-w-sm text-center my-4">
+					<Button
+						type="button"
+						onClick={() => {
+							void handleShareVideo();
+						}}
+						className="w-full justify-center gap-2 bg-pitch text-pitch-fg hover:bg-pitch-hover font-semibold py-3"
+					>
+						<Video className="size-5" />
+						Compartilhar vídeo MP4
+					</Button>
+					{!videoHasAudio && (
+						<p className="mt-2 text-xs text-fg-muted">
+							Vídeo sem som: este navegador não gera áudio AAC.
+						</p>
+					)}
+				</div>
+			)}
+			{videoStatus === "error" && (
+				<div className="mx-auto w-full max-w-sm text-center my-4">
+					<Button
+						type="button"
+						variant={BUTTON_VARIANT.secondary}
+						onClick={() => {
+							setVideoStatus("idle");
+						}}
+						className="w-full justify-center gap-2 text-fg-muted border-border"
+					>
+						<RefreshCw className="size-4" />
+						Vídeo indisponível
+					</Button>
+				</div>
+			)}
+		</main>
+	);
+}
+
+function ChampionshipEventDrawPageSkeleton() {
+	return (
+		<SkeletonRegion label={SKELETON_LABEL.event}>
+			<main className={DRAW_SHELL_CLASS}>
+				<div className="flex flex-col gap-2">
+					<Skeleton className="h-10 w-10" />
+					<Skeleton className="mx-auto h-6 w-40" />
+					<Skeleton className="mx-auto h-4 w-28" />
+					<TeamCardSkeleton />
+					<TeamCardSkeleton />
+				</div>
+			</main>
+		</SkeletonRegion>
+	);
+}
