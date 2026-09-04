@@ -22,6 +22,7 @@ export const CHAMPIONSHIP_EVENT = {
 	playerVoteQuorumMin: 1,
 	playerVoteQuorumMax: 10,
 	playerVoteQuorumDefault: 3,
+	playerVoteAllowSelfDefault: true,
 	locationMaxLength: 120,
 } as const;
 
@@ -73,6 +74,9 @@ export const EVENT_CONFIG_LABEL = {
 	playerVoteQuorum: "Votos para fechar jogador",
 	playerVoteQuorumHint:
 		"Like ou dislike precisa desse total (e superar o outro polo) para aplicar ±0,5.",
+	playerVoteAllowSelf: "Permitir voto em si",
+	playerVoteAllowSelfHint:
+		"Quem vota pode dar like, dislike ou manter na própria linha.",
 } as const;
 
 export const EVENT_BUILDER_STEP = {

@@ -10,11 +10,15 @@ import {
 	matchDurationSeconds,
 } from "@/const/championship-event-match";
 import type { EventTeamColor } from "@/const/event-team-color";
-import type { EventPlayerVoteChoice } from "@/const/event-player-vote";
+import {
+	EVENT_PLAYER_VOTE,
+	type EventPlayerVoteChoice,
+} from "@/const/event-player-vote";
 import { useAuth } from "@/contexts/auth";
 import { supabase } from "@/lib/supabase";
 import {
 	addChampionshipEventTeam,
+	type ChampionshipEventPlayerVoteCountRow,
 	type ChampionshipEventPlayerVoteRow,
 	createChampionshipEvent,
 	deleteChampionshipEvent,
@@ -25,6 +29,7 @@ import {
 	ensureChampionshipEventAttendancePlayer,
 	getChampionshipEventById,
 	listChampionshipEvents,
+	listChampionshipEventPlayerVoteCounts,
 	closeChampionshipEventPlayerVotes,
 	listMyChampionshipEventPlayerVotes,
 	promoteChampionshipEventRsvpGoing,
@@ -47,6 +52,7 @@ import type { ChampionshipEvent } from "@/types/championship-event";
 import {
 	championshipEventDetailQueryKey,
 	championshipEventMyVotesQueryKey,
+	championshipEventVoteCountsQueryKey,
 	championshipEventsListQueryKey,
 	eventIdFromDetailKey,
 	invalidateChampionshipEvent,
@@ -485,6 +491,20 @@ export function useMyChampionshipEventPlayerVotes(eventId: number) {
 	});
 }
 
+export function useChampionshipEventPlayerVoteCounts(
+	eventId: number,
+	enabled: boolean,
+	live: boolean,
+) {
+	return useQuery<ChampionshipEventPlayerVoteCountRow[]>({
+		queryKey: championshipEventVoteCountsQueryKey(eventId),
+		queryFn: () => listChampionshipEventPlayerVoteCounts(eventId),
+		enabled: Number.isFinite(eventId) && enabled,
+		refetchInterval:
+			enabled && live ? EVENT_PLAYER_VOTE.ownerCountsPollMs : false,
+	});
+}
+
 export function useCloseChampionshipEventPlayerVotes(
 	championshipId: number,
 	eventId: number,
@@ -649,6 +669,9 @@ export function useSubmitChampionshipEventPlayerVotes(
 			);
 
 			await Promise.all([
+				queryClient.invalidateQueries({
+					queryKey: championshipEventVoteCountsQueryKey(eventId),
+				}),
 				invalidateChampionshipEvent(queryClient, championshipId, eventId),
 				invalidateChampionshipQueries(queryClient),
 			]);

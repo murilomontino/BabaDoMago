@@ -977,6 +977,48 @@ export async function listMyChampionshipEventPlayerVotes(
 	});
 }
 
+export type ChampionshipEventPlayerVoteCountRow = {
+	player_id: number;
+	likes: number;
+	dislikes: number;
+};
+
+export async function listChampionshipEventPlayerVoteCounts(
+	eventId: number,
+): Promise<ChampionshipEventPlayerVoteCountRow[]> {
+	const { data, error } = await supabase.rpc(
+		"list_championship_event_player_vote_counts",
+		{ event_id: eventId },
+	);
+
+	if (error) {
+		throwVoteError(error);
+	}
+
+	if (!Array.isArray(data)) {
+		return [];
+	}
+
+	return data.flatMap((entry) => {
+		if (!entry || typeof entry !== "object") {
+			return [];
+		}
+
+		const row = entry as Record<string, unknown>;
+		if (typeof row.player_id !== "number") {
+			return [];
+		}
+
+		return [
+			{
+				player_id: row.player_id,
+				likes: Number(row.likes ?? 0),
+				dislikes: Number(row.dislikes ?? 0),
+			},
+		];
+	});
+}
+
 export type SubmitChampionshipEventPlayerVotesResult = {
 	event_id: number;
 	votes: ChampionshipEventPlayerVoteRow[];

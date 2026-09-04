@@ -9,6 +9,7 @@ export const EVENT_PLAYER_VOTE = {
 	likeBudget: 5,
 	dislikeBudget: 5,
 	delta: 0.5,
+	ownerCountsPollMs: 4000,
 } as const;
 
 export const EVENT_PLAYER_VOTE_VALUE = {
@@ -19,6 +20,11 @@ export const EVENT_PLAYER_VOTE_VALUE = {
 
 export type EventPlayerVoteChoice =
 	(typeof EVENT_PLAYER_VOTE_VALUE)[keyof typeof EVENT_PLAYER_VOTE_VALUE];
+
+export type EventPlayerVoteCount = {
+	likes: number;
+	dislikes: number;
+};
 
 export const EVENT_PLAYER_VOTE_LABEL = {
 	title: "Votar elenco",
@@ -31,6 +37,7 @@ export const EVENT_PLAYER_VOTE_LABEL = {
 	clear: "Limpar voto",
 	empty: "Ninguém na presença.",
 	needPresent: "Só dono, capitão, admin presente ou mensalista vota.",
+	cannotVoteSelf: "Não dá para votar em si.",
 	needEnded: "Voto só com a rodada encerrada.",
 	closed: "Voto fechado",
 	votesClosed: "Votação encerrada",
@@ -71,6 +78,7 @@ export const EVENT_PLAYER_VOTE_ERROR_MESSAGE = {
 	"event not found": "Rodada não encontrada",
 	"event still open": "Voto só com a rodada encerrada",
 	"invalid vote": "Voto inválido",
+	"cannot vote self": "Não dá para votar em si",
 	"voter not present": "Você precisa estar na presença",
 	"player not present": "Jogador fora da presença",
 	"vote closed": "Voto deste jogador já fechou",
@@ -198,6 +206,7 @@ export function canVoteEventPlayer(input: {
 	voterPlayerId: number | null;
 	voteRatingDelta: number;
 	votingEnabled?: boolean;
+	allowSelfVote?: boolean;
 }): boolean {
 	if (input.votingEnabled === false) {
 		return false;
@@ -224,7 +233,33 @@ export function canVoteEventPlayer(input: {
 		return false;
 	}
 
+	if (input.allowSelfVote === false) {
+		return input.voterPlayerId !== input.targetPlayerId;
+	}
+
 	return true;
+}
+
+export function ownerEventPlayerVoteCounts(
+	isOwner: boolean,
+	rows:
+		| readonly {
+				player_id: number;
+				likes: number;
+				dislikes: number;
+		  }[]
+		| undefined,
+): Map<number, EventPlayerVoteCount> | null {
+	if (!isOwner || !rows) {
+		return null;
+	}
+
+	return new Map(
+		rows.map((row) => [
+			row.player_id,
+			{ likes: row.likes, dislikes: row.dislikes },
+		]),
+	);
 }
 
 export function initialEventPlayerBallotLocked(

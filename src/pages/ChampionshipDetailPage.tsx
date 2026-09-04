@@ -889,6 +889,7 @@ export function ChampionshipDetailPage() {
 					ratingDropGoalShare={data.rating_drop_goal_share}
 					ratingDropShareExcludeTop={data.rating_drop_share_exclude_top}
 					playerVoteQuorum={data.player_vote_quorum}
+					playerVoteAllowSelf={data.player_vote_allow_self}
 					isVisible={data.is_visible}
 					activePlayers={activePlayers}
 					canRename={permissions.rename}

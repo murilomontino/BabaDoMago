@@ -23,6 +23,7 @@ import {
 	isEventPlayerVoteLocked,
 	isEventPlayerVotesVoided,
 	nextEventPlayerVoteValue,
+	ownerEventPlayerVoteCounts,
 	savedEventPlayerVoteDraft,
 } from "./event-player-vote.ts";
 
@@ -38,6 +39,18 @@ check(EVENT_PLAYER_VOTE.defaultQuorum === 3, "default quorum");
 check(EVENT_PLAYER_VOTE.likeBudget === 5, "like budget");
 check(EVENT_PLAYER_VOTE.dislikeBudget === 5, "dislike budget");
 check(EVENT_PLAYER_VOTE.delta === 0.5, "delta");
+check(EVENT_PLAYER_VOTE.ownerCountsPollMs === 4000, "owner counts poll");
+check(
+	ownerEventPlayerVoteCounts(false, [{ player_id: 1, likes: 2, dislikes: 1 }]) ===
+		null,
+	"owner counts hidden",
+);
+check(
+	ownerEventPlayerVoteCounts(true, [
+		{ player_id: 1, likes: 2, dislikes: 1 },
+	])?.get(1)?.likes === 2,
+	"owner counts map likes",
+);
 check(EVENT_PLAYER_VOTE.like === "like", "like");
 check(EVENT_PLAYER_VOTE.dislike === "dislike", "dislike");
 check(EVENT_PLAYER_VOTE.maintain === "maintain", "maintain");
@@ -216,6 +229,19 @@ check(
 		voteRatingDelta: 0,
 	}),
 	"can vote self",
+);
+check(
+	!canVoteEventPlayer({
+		canVote: true,
+		eventEnded: true,
+		votesClosed: false,
+		voterPresent: true,
+		targetPlayerId: 1,
+		voterPlayerId: 1,
+		voteRatingDelta: 0,
+		allowSelfVote: false,
+	}),
+	"flag blocks vote self",
 );
 check(
 	!canVoteEventPlayer({
@@ -401,6 +427,10 @@ check(
 	"votes not voided error",
 );
 
+check(
+	eventPlayerVoteErrorMessage("cannot vote self") === "Não dá para votar em si",
+	"cannot vote self error",
+);
 check(
 	eventPlayerVoteErrorMessage("not allowed") ===
 		"Só dono, capitão, admin presente ou mensalista pode votar",
