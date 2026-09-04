@@ -83,7 +83,7 @@ check(EVENT_PLAYER_VOTE.like === "like", "like");
 check(EVENT_PLAYER_VOTE.dislike === "dislike", "dislike");
 check(EVENT_PLAYER_VOTE.maintain === "maintain", "maintain");
 check(EVENT_PLAYER_VOTE.blank === "blank", "blank");
-check(EVENT_PLAYER_VOTE_LABEL.blank === "Nulo", "blank label");
+check(EVENT_PLAYER_VOTE_LABEL.blank === "Não votar", "blank label");
 check(EVENT_PLAYER_VOTE_LABEL.title === "Votar elenco", "title");
 check(EVENT_PLAYER_VOTE_LABEL.appliedUp === "+0,5", "chip up");
 check(EVENT_PLAYER_VOTE_LABEL.appliedDown === "−0,5", "chip down");
@@ -447,7 +447,10 @@ check(
 	nextEventPlayerVoteValue("like", "blank") === "blank",
 	"switch to blank",
 );
-check(eventPlayerVoteChoiceLabel("blank") === "Nulo", "choice blank label");
+check(
+	eventPlayerVoteChoiceLabel("blank") === "Não votar",
+	"choice blank label",
+);
 
 check(
 	!canVoteEventPlayer({

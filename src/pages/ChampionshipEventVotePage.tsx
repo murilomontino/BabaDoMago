@@ -35,9 +35,14 @@ import { SKELETON_LABEL } from "@/const/skeleton";
 import { BUTTON_VARIANT, ERROR_CLASS, PAGE_SHELL_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
 import {
+	championshipTrendsEvents,
+	TRENDS_WINDOW_DEFAULT,
+} from "@/const/championship-trends-window";
+import {
 	useChampionshipEvent,
 	useChampionshipEventPlayerVoteCounts,
 	useChampionshipEventRealtime,
+	useChampionshipEvents,
 	useCloseChampionshipEventPlayerVotes,
 	useMyChampionshipEventPlayerVotes,
 	useSubmitChampionshipEventPlayerVotes,
@@ -61,6 +66,7 @@ export function ChampionshipEventVotePage() {
 	const { user } = useAuth();
 	const championshipQuery = useChampionship(championshipId);
 	const eventQuery = useChampionshipEvent(championshipId, eventId);
+	const eventsQuery = useChampionshipEvents(championshipId);
 	useChampionshipEventRealtime(championshipId, eventId);
 	const myVotesQuery = useMyChampionshipEventPlayerVotes(eventId);
 	const submitVotesMutation = useSubmitChampionshipEventPlayerVotes(
@@ -137,6 +143,14 @@ export function ChampionshipEventVotePage() {
 	);
 	const ceiling = championshipRatingCeiling(
 		(championship?.players ?? []).map((player) => player.rating),
+	);
+	const formWindowEvents = useMemo(
+		() =>
+			championshipTrendsEvents(
+				eventsQuery.data ?? [],
+				TRENDS_WINDOW_DEFAULT,
+			),
+		[eventsQuery.data],
 	);
 	const savedVotes = useMemo(() => {
 		const map = new Map<number, EventPlayerVoteChoice>();
@@ -260,6 +274,7 @@ export function ChampionshipEventVotePage() {
 				attendance={event.attendance}
 				teams={event.teams}
 				players={championship.players}
+				formWindowEvents={formWindowEvents}
 				ceiling={ceiling}
 				canVoteRole={canVoteRole}
 				eventEnded={event.ended_at !== null}

@@ -4,6 +4,7 @@ import {
 	championshipFormHeatmap,
 	eventAttendanceFormCell,
 	FORM_HEATMAP_CELL,
+	playerFormHeatmapCells,
 } from "./championship-form-heatmap.ts";
 import {
 	TRENDS_AUDIENCE,
@@ -141,6 +142,12 @@ const monthlyPlayer: ChampionshipPlayer = {
 	...player(1, "Carla"),
 	is_monthly: true,
 };
+
+const strip = playerFormHeatmapCells(1, events);
+check(strip.length === 2, "player strip two cells");
+check(strip[0]?.kind === FORM_HEATMAP_CELL.up, "player strip present");
+check(strip[1]?.kind === FORM_HEATMAP_CELL.absent, "player strip absent");
+check(playerFormHeatmapCells(99, []).length === 0, "empty window strip");
 
 const grid = championshipFormHeatmap(players, events);
 check(grid.columns.length === 2, "two columns");

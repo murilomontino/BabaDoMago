@@ -107,7 +107,7 @@ Exemplos do bônus: `0.01 → 0.1`, `0.14 → 0.2`, nota `20 → +0.4`.
 
 ## Voto do elenco (overlay)
 
-Dono, capitão e admin **presentes**, ou **mensalista** (mesmo ausente), podem dar like, dislike, **manter** ou **nulo** em quem está na presença da **mesma** rodada, **só depois de encerrar**. Voto em si é flag da liga (`player_vote_allow_self`, default ligado). A tela mostra a nota atual do elenco. Voto secreto: ninguém vê a urna, só o próprio voto. O **dono** vê totais de like/dislike por jogador ao vivo, sem ver quem votou.
+Dono, capitão e admin **presentes**, ou **mensalista** (mesmo ausente), podem dar like, dislike, **manter** ou **nulo** em quem está na presença da **mesma** rodada, **só depois de encerrar**. Voto em si é flag da liga (`player_vote_allow_self`, default ligado). A tela mostra a nota atual do elenco e, no card, o **heatmap de forma** das últimas 5 rodadas encerradas (mesmo recorte de Tendências). Voto secreto: ninguém vê a urna, só o próprio voto. O **dono** vê totais de like/dislike por jogador ao vivo, sem ver quem votou.
 
 | Regra | Valor |
 | --- | --- |
@@ -119,7 +119,7 @@ Dono, capitão e admin **presentes**, ou **mensalista** (mesmo ausente), podem d
 | Dislike no quórum | N+ dislikes, mais dislikes que likes **e** que maintains → **−0,5** e **fecha** |
 | Manter | conta na urna; bloqueia like/dislike se a contagem deles não supera maintains |
 | Manter sozinho | **0**, voto **permanece aberto** |
-| Nulo (`blank`) | grava a urna; **não** entra em like, dislike nem maintain; distinto de limpar o voto |
+| Nulo (`blank`, UI **Não votar**) | grava a urna; **não** entra em like, dislike nem maintain; distinto de limpar o voto |
 | Encerrar votação | só o **dono** (manual); **criar nova rodada** também fecha urnas abertas das rodadas já encerradas (`player_votes_closed_at`) |
 | Cancelar efeito | só o **dono**; soft-delete (`player_votes_voided_at`): notas voltam, votos **permanecem** até reabrir; histórico na aba **Gestão** |
 | Reabrir votação | só o **dono**, só com a rodada cancelada; **apaga** os votos, zera `vote_rating_delta` / `vote_rating_applied`, limpa void e close → urna **Aberta** |
