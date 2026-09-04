@@ -15,7 +15,7 @@ O baba precisa de uma nota que:
 3. **Trate empate com justiça** — quem empata mais do que perde não deve ser tratado igual a quem só empata “no meio” de muitas derrotas.
 4. **Escale com a liga** — o tamanho do ajuste acompanha o teto do campeonato (o maior rating entre os jogadores, no mínimo 5).
 
-Resultado: uma métrica única, a mesma no TypeScript e no Postgres, usada no preview da UI, no encerramento da rodada e no simulador da ficha do jogador.
+Resultado: duas métricas paralelas (linha e goleiro), a mesma fórmula no TypeScript e no Postgres, usadas no preview da UI, no encerramento da rodada e no sorteio (nota vigente conforme goleiro da presença).
 
 ---
 
@@ -23,12 +23,16 @@ Resultado: uma métrica única, a mesma no TypeScript e no Postgres, usada no pr
 
 | Conceito | Significado |
 | --- | --- |
-| `rating` | Nota do jogador no campeonato (`championship_players.rating`) |
-| `0` (sentinela) | Jogador ainda sem nota “oficial”. No sorteio/média vira a média dos presentes com nota; no banco continua `0` até a primeira semente |
-| Teto (`ceiling`) | `max(maior rating do elenco, 5)`, limitado a 100 |
+| `rating` | Nota de linha no campeonato (`championship_players.rating`) |
+| `goalkeeper_rating` | Nota de goleiro (`championship_players.goalkeeper_rating`) |
+| Track vigente | Se `attendance.is_goalkeeper`, ajuste/voto/MVP usam `goalkeeper_rating`; senão usam `rating` |
+| `0` (sentinela) | Jogador ainda sem nota “oficial” naquele track. No sorteio/média vira a média dos presentes com nota no valor usado; no banco continua `0` até a primeira semente |
+| Teto (`ceiling`) | Por track: `max(maior nota do track na rodada, 5)`, limitado a 100 |
 | Piso | `0.1` para quem já tem nota; `0` só como sentinela |
-| Delta | Quanto a nota muda na rodada (ou a semente, na primeira vez) |
-| MVP | `2%` da nota snapshot, ceil em 1 casa, mínimo `+0.1` |
+| Delta | Quanto a nota vigente muda na rodada (ou a semente, na primeira vez) |
+| MVP | `2%` da nota snapshot vigente, ceil em 1 casa, mínimo `+0.1` |
+
+No **sorteio**, voluntários de goleiro (`attendance.is_goalkeeper`) equilibram com `goalkeeper_rating`; os demais com `rating`. As duas notas crescem de forma independente.
 
 Pontuação da rodada (como futebol):
 
@@ -107,24 +111,25 @@ Exemplos do bônus: `0.01 → 0.1`, `0.14 → 0.2`, nota `20 → +0.4`.
 
 ## Voto do elenco (overlay)
 
-Dono, capitão e admin **presentes**, ou **mensalista** (mesmo ausente), podem dar like, dislike ou **manter** em quem está na presença da **mesma** rodada, **só depois de encerrar**. Voto em si é flag da liga (`player_vote_allow_self`, default ligado). A tela mostra a nota atual do elenco. Voto secreto: ninguém vê a urna, só o próprio voto. O **dono** vê totais de like/dislike por jogador ao vivo, sem ver quem votou.
+Dono, capitão e admin **presentes**, ou **mensalista** (mesmo ausente), podem dar like, dislike, **manter** ou **nulo** em quem está na presença da **mesma** rodada, **só depois de encerrar**. Voto em si é flag da liga (`player_vote_allow_self`, default ligado). A tela mostra a nota atual do elenco e, no card, o **heatmap de forma** das últimas 5 rodadas encerradas (mesmo recorte de Tendências). Voto secreto: ninguém vê a urna, só o próprio voto. O **dono** vê totais de like/dislike por jogador ao vivo, sem ver quem votou.
 
 | Regra | Valor |
 | --- | --- |
 | Quórum | `championships.player_vote_quorum` (config do baba, default **3**, faixa 1–10) |
 | Voto em si | `championships.player_vote_allow_self` (config do baba, default **ligado**) |
 | Totais da urna | só o **dono**, ao vivo; likes e dislikes por alvo; sem quem votou |
-| Orçamento do votante | **5 likes** e **5 dislikes** no total; **manter** ilimitado; envio em lote (**Enviar votos**) |
+| Orçamento do votante | **5 likes** e **5 dislikes** no total; **manter** e **nulo** ilimitados; envio em lote (**Enviar votos**) |
 | Like no quórum | N+ likes (N = quórum), mais likes que dislikes **e** que maintains → **+0,5** e **fecha** |
 | Dislike no quórum | N+ dislikes, mais dislikes que likes **e** que maintains → **−0,5** e **fecha** |
 | Manter | conta na urna; bloqueia like/dislike se a contagem deles não supera maintains |
 | Manter sozinho | **0**, voto **permanece aberto** |
-| Encerrar votação | só o **dono**; trava novos votos na rodada (`player_votes_closed_at`) |
+| Nulo (`blank`, UI **Não votar**) | grava a urna; **não** entra em like, dislike nem maintain; distinto de limpar o voto |
+| Encerrar votação | só o **dono** (manual); **criar nova rodada** também fecha urnas abertas das rodadas já encerradas (`player_votes_closed_at`) |
 | Cancelar efeito | só o **dono**; soft-delete (`player_votes_voided_at`): notas voltam, votos **permanecem** até reabrir; histórico na aba **Gestão** |
 | Reabrir votação | só o **dono**, só com a rodada cancelada; **apaga** os votos, zera `vote_rating_delta` / `vote_rating_applied`, limpa void e close → urna **Aberta** |
-| 1 voto por admin por atleta | pode trocar ou limpar **só enquanto aberto** |
+| 1 voto por admin por atleta | pode trocar ou limpar **só enquanto aberto**; reenvio **não** altera alvo já fechado por quórum |
 
-O campo `championship_event_attendance.vote_rating_delta` guarda o resultado (±0,5 ou 0). **Não** entra em `eventRatingDelta` / aproveitamento. Depois de ±0,5, novos votos nesse alvo são recusados (`vote closed`).
+O campo `championship_event_attendance.vote_rating_delta` guarda o resultado (±0,5 ou 0). **Não** entra em `eventRatingDelta` / aproveitamento. Depois de ±0,5, o alvo **não** troca nem some no reenvio (mesmo voto = no-op; omitir não apaga). Troca em alvo fechado continua `vote closed`.
 
 - Jogador já ranqueado (`rating ≠ 0`): aplica na hora no elenco.
 - Sentinela (`rating = 0`): só guarda o overlay; aplica depois da semente no encerrar (`vote_rating_applied` evita aplicar duas vezes).
@@ -308,7 +313,7 @@ A presença guarda `rating` (snapshot antes do evento) e `rating_delta`. Correç
 - Gols, assistências ou gol contra na **fórmula base** (contam em estatísticas e MVP; com a flag da liga, G+A do time só **amortece queda**)
 - Força do adversário
 - Duração ou placar da partida além do resultado V/E/D agregado na presença
-- Voto like/dislike/manter (overlay em `vote_rating_delta`, fora do aproveitamento)
+- Voto like/dislike/manter/nulo (overlay em `vote_rating_delta`, fora do aproveitamento)
 
 ---
 

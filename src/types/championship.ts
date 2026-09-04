@@ -25,6 +25,7 @@ export type ChampionshipPlayer = {
 	nickname_tags: string[];
 	avatar_url: string | null;
 	rating: number;
+	goalkeeper_rating: number;
 	role: string;
 	is_goalkeeper: boolean;
 	is_monthly: boolean;

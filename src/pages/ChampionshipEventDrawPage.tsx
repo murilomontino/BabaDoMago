@@ -17,6 +17,7 @@ import {
 	builderTeamsFromDrafts,
 	builderTeamsFromEvent,
 	EVENT_TEAM_MESSAGE,
+	eventDrawInputRating,
 	eventTeamsAreReady,
 	formatEventStartsAt,
 	keepGoalkeepersPresent,
@@ -332,12 +333,21 @@ export function ChampionshipEventDrawPage() {
 		setIsDrawing(true);
 		setDrawError(null);
 		try {
+			const volunteerSet = new Set(volunteerIds);
 			const drawPlayers = activePlayers.flatMap((player) => {
 				if (!present.has(player.id)) {
 					return [];
 				}
 
-				return [{ id: player.id, rating: player.rating }];
+				return [
+					{
+						id: player.id,
+						rating: eventDrawInputRating(
+							player,
+							volunteerSet.has(player.id),
+						),
+					},
+				];
 			});
 			const { worker, done } = runEventTeamDraw({
 				players: drawPlayers,

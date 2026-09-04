@@ -302,7 +302,11 @@ function asAttendanceFromRow(
 		matches: rowNumber(row, "matches") ?? 0,
 		rating: rowNumber(row, "rating") ?? 0,
 		rating_delta: rowNumber(row, "rating_delta") ?? 0,
+		goalkeeper_rating: rowNumber(row, "goalkeeper_rating") ?? 0,
+		goalkeeper_rating_delta: rowNumber(row, "goalkeeper_rating_delta") ?? 0,
 		vote_rating_delta: rowNumber(row, "vote_rating_delta") ?? 0,
+		goalkeeper_vote_rating_delta:
+			rowNumber(row, "goalkeeper_vote_rating_delta") ?? 0,
 		is_mvp: row.is_mvp === true,
 		mvp_overridden: row.mvp_overridden === true,
 	};

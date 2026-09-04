@@ -5,6 +5,7 @@ export const EVENT_PLAYER_VOTE = {
 	like: "like",
 	dislike: "dislike",
 	maintain: "maintain",
+	blank: "blank",
 	defaultQuorum: 3,
 	likeBudget: 5,
 	dislikeBudget: 5,
@@ -16,6 +17,7 @@ export const EVENT_PLAYER_VOTE_VALUE = {
 	like: EVENT_PLAYER_VOTE.like,
 	dislike: EVENT_PLAYER_VOTE.dislike,
 	maintain: EVENT_PLAYER_VOTE.maintain,
+	blank: EVENT_PLAYER_VOTE.blank,
 } as const;
 
 export type EventPlayerVoteChoice =
@@ -34,6 +36,8 @@ export const EVENT_PLAYER_VOTE_LABEL = {
 	like: "Like",
 	dislike: "Dislike",
 	maintain: "Manter",
+	blank: "Não votar",
+	legend: "Legenda",
 	clear: "Limpar voto",
 	empty: "Ninguém na presença.",
 	needPresent: "Só dono, capitão, admin presente ou mensalista vota.",
@@ -153,6 +157,36 @@ export function isEventPlayerVoteLocked(voteRatingDelta: number): boolean {
 	return voteRatingDelta !== 0;
 }
 
+export function eventPlayerVoteLockedTargetIds(
+	attendance: readonly { player_id: number; vote_rating_delta: number }[],
+): Set<number> {
+	return new Set(
+		attendance.flatMap((row) => {
+			if (!isEventPlayerVoteLocked(row.vote_rating_delta)) {
+				return [];
+			}
+
+			return [row.player_id];
+		}),
+	);
+}
+
+export function eventPlayerVoteShowsSavedChoice(input: {
+	draftVote: EventPlayerVoteChoice | null;
+	locked: boolean;
+	votingEnabled: boolean;
+}): boolean {
+	if (input.draftVote === null) {
+		return false;
+	}
+
+	if (input.locked) {
+		return true;
+	}
+
+	return !input.votingEnabled;
+}
+
 export function isEventPlayerVotesClosed(
 	playerVotesClosedAt: string | null,
 ): boolean {
@@ -163,6 +197,71 @@ export function isEventPlayerVotesVoided(
 	playerVotesVoidedAt: string | null | undefined,
 ): boolean {
 	return playerVotesVoidedAt != null;
+}
+
+export function canOpenEventPlayerVoteShortcut(input: {
+	endedAt: string | null;
+	playerVotesClosedAt: string | null | undefined;
+	playerVotesVoidedAt: string | null | undefined;
+	attendanceCount: number;
+}): boolean {
+	if (input.endedAt === null) {
+		return false;
+	}
+
+	if (input.attendanceCount === 0) {
+		return false;
+	}
+
+	if (isEventPlayerVotesVoided(input.playerVotesVoidedAt)) {
+		return false;
+	}
+
+	if (isEventPlayerVotesClosed(input.playerVotesClosedAt ?? null)) {
+		return false;
+	}
+
+	return true;
+}
+
+export function latestOpenEventPlayerVoteEvent<
+	T extends {
+		id: number;
+		starts_at: string;
+		ended_at: string | null;
+		player_votes_closed_at?: string | null;
+		player_votes_voided_at?: string | null;
+		attendance: readonly unknown[];
+	},
+>(events: readonly T[]): T | null {
+	const open = events.filter((event) =>
+		canOpenEventPlayerVoteShortcut({
+			endedAt: event.ended_at,
+			playerVotesClosedAt: event.player_votes_closed_at,
+			playerVotesVoidedAt: event.player_votes_voided_at,
+			attendanceCount: event.attendance.length,
+		}),
+	);
+
+	if (open.length === 0) {
+		return null;
+	}
+
+	return open.reduce((latest, event) => {
+		if (event.starts_at > latest.starts_at) {
+			return event;
+		}
+
+		if (event.starts_at < latest.starts_at) {
+			return latest;
+		}
+
+		if (event.id > latest.id) {
+			return event;
+		}
+
+		return latest;
+	});
 }
 
 export function eventPlayerVoteStatus(input: {
@@ -317,6 +416,8 @@ export function eventPlayerVoteChoiceLabel(
 			return EVENT_PLAYER_VOTE_LABEL.dislike;
 		case EVENT_PLAYER_VOTE.maintain:
 			return EVENT_PLAYER_VOTE_LABEL.maintain;
+		case EVENT_PLAYER_VOTE.blank:
+			return EVENT_PLAYER_VOTE_LABEL.blank;
 		default: {
 			const _exhaustive: never = choice;
 			return _exhaustive;
@@ -396,10 +497,15 @@ export function canSetEventPlayerVoteDraft(
 export function isEventPlayerVoteDraftDirty(
 	draft: EventPlayerVoteDraft,
 	saved: ReadonlyMap<number, EventPlayerVoteChoice>,
+	lockedTargetIds: ReadonlySet<number> = new Set(),
 ): boolean {
 	const targetIds = new Set([...draft.keys(), ...saved.keys()]);
 
 	for (const targetId of targetIds) {
+		if (lockedTargetIds.has(targetId)) {
+			continue;
+		}
+
 		const draftValue = draft.get(targetId) ?? null;
 		const savedValue = saved.get(targetId) ?? null;
 		if (draftValue !== savedValue) {
@@ -412,9 +518,14 @@ export function isEventPlayerVoteDraftDirty(
 
 export function eventPlayerVoteDraftToSubmit(
 	draft: EventPlayerVoteDraft,
+	lockedTargetIds: ReadonlySet<number> = new Set(),
 ): { target_player_id: number; value: EventPlayerVoteChoice }[] {
 	return [...draft.entries()].flatMap(([targetPlayerId, value]) => {
 		if (!value) {
+			return [];
+		}
+
+		if (lockedTargetIds.has(targetPlayerId)) {
 			return [];
 		}
 

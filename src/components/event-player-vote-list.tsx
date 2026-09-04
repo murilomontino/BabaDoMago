@@ -1,11 +1,18 @@
-import { Equal, ThumbsDown, ThumbsUp } from "lucide-react";
+import { CircleOff, Equal, ThumbsDown, ThumbsUp } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/button";
 import { EventTeamColorDot } from "@/components/event-team-player";
+import { FormHeatmapPlayerStrip } from "@/components/molecules/championship-form-heatmap";
 import { PlayerRating } from "@/components/player-rating";
 import { resolveRosterPlayer } from "@/const/championship-event-roster";
 import {
+	formHeatmapEndedColumns,
+	playerFormHeatmapCells,
+} from "@/const/championship-form-heatmap";
+import {
 	canSetEventPlayerVoteDraft,
 	canVoteEventPlayer,
+	EVENT_PLAYER_VOTE,
 	EVENT_PLAYER_VOTE_LABEL,
 	type EventPlayerVoteChoice,
 	type EventPlayerVoteCount,
@@ -13,25 +20,47 @@ import {
 	eventPlayerVoteBudgetSummary,
 	eventPlayerVoteChipLabel,
 	eventPlayerVoteChoiceLabel,
+	eventPlayerVoteShowsSavedChoice,
 	eventPlayerVoteTeamSections,
 	isEventPlayerVoteLocked,
 	nextEventPlayerVoteValue,
 } from "@/const/event-player-vote";
+import { eventActivePlayerRating } from "@/const/event-rating-adjustment";
 import { eventTeamColorStyle } from "@/const/event-team-color";
 import { playerVisibleName } from "@/const/player-name";
-import { PLAYER_STAR_CLASS } from "@/const/player-rating";
+import {
+	PLAYER_STAR_CLASS,
+	PLAYER_STAR_FILL_CLASS,
+} from "@/const/player-rating";
 import { BUTTON_VARIANT, CHIP_CLASS, ERROR_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type {
+	ChampionshipEvent,
 	ChampionshipEventAttendance,
 	ChampionshipEventTeam,
 } from "@/types/championship-event";
+
+const EVENT_PLAYER_VOTE_CHOICE_ICON = {
+	[EVENT_PLAYER_VOTE.like]: ThumbsUp,
+	[EVENT_PLAYER_VOTE.dislike]: ThumbsDown,
+	[EVENT_PLAYER_VOTE.maintain]: Equal,
+	[EVENT_PLAYER_VOTE.blank]: CircleOff,
+} as const satisfies Record<EventPlayerVoteChoice, LucideIcon>;
+
+const EVENT_PLAYER_VOTE_LEGEND_ITEMS = [
+	EVENT_PLAYER_VOTE.like,
+	EVENT_PLAYER_VOTE.dislike,
+	EVENT_PLAYER_VOTE.maintain,
+	EVENT_PLAYER_VOTE.blank,
+] as const;
 
 type EventPlayerVoteListProps = {
 	attendance: readonly ChampionshipEventAttendance[];
 	teams: readonly ChampionshipEventTeam[];
 	players: readonly ChampionshipPlayer[];
+	formWindowEvents: readonly ChampionshipEvent[];
 	ceiling: number;
+	goalkeeperCeiling: number;
 	canVoteRole: boolean;
 	eventEnded: boolean;
 	votesClosed: boolean;
@@ -76,11 +105,37 @@ function VotePlayerAvatar({
 	);
 }
 
+function EventPlayerVoteChoiceLegend() {
+	return (
+		<div className="rounded-lg border border-line bg-surface px-2 py-2">
+			<p className="mb-1.5 text-xs font-medium text-fg-muted">
+				{EVENT_PLAYER_VOTE_LABEL.legend}
+			</p>
+			<ul className="flex flex-wrap gap-x-4 gap-y-2">
+				{EVENT_PLAYER_VOTE_LEGEND_ITEMS.map((choice) => {
+					const Icon = EVENT_PLAYER_VOTE_CHOICE_ICON[choice];
+					return (
+						<li
+							key={choice}
+							className="inline-flex items-center gap-1.5 text-xs text-fg-muted"
+						>
+							<Icon className="size-3.5 shrink-0" aria-hidden />
+							{eventPlayerVoteChoiceLabel(choice)}
+						</li>
+					);
+				})}
+			</ul>
+		</div>
+	);
+}
+
 export function EventPlayerVoteList({
 	attendance,
 	teams,
 	players,
+	formWindowEvents,
 	ceiling,
+	goalkeeperCeiling,
 	canVoteRole,
 	eventEnded,
 	votesClosed,
@@ -106,6 +161,9 @@ export function EventPlayerVoteList({
 	const sections = eventPlayerVoteTeamSections(attendance, teams);
 	const attendanceByPlayerId = new Map(
 		attendance.map((row) => [row.player_id, row] as const),
+	);
+	const formColumnIds = formHeatmapEndedColumns(formWindowEvents).map(
+		(column) => column.eventId,
 	);
 
 	return (
@@ -155,6 +213,7 @@ export function EventPlayerVoteList({
 				</p>
 			)}
 			{error && <p className={ERROR_CLASS}>{error}</p>}
+			{votingEnabled && <EventPlayerVoteChoiceLegend />}
 			{sections.map((section) => {
 				const cardStyle = eventTeamColorStyle(section.color);
 
@@ -183,7 +242,15 @@ export function EventPlayerVoteList({
 									rosterById,
 								);
 								const name = playerVisibleName(player);
-								const rating = player.rating;
+								const isGoalkeeper = row.is_goalkeeper === true;
+								const rating = eventActivePlayerRating(
+									isGoalkeeper,
+									player.rating,
+									player.goalkeeper_rating,
+								);
+								const ratingCeiling = isGoalkeeper
+									? goalkeeperCeiling
+									: ceiling;
 								const draftVote = draftVotes.get(row.player_id) ?? null;
 								const chip = votesVoided
 									? null
@@ -205,8 +272,11 @@ export function EventPlayerVoteList({
 								const locked =
 									!votesVoided &&
 									isEventPlayerVoteLocked(row.vote_rating_delta);
-								const showSubmittedChoice =
-									!votingEnabled && draftVote !== null;
+								const showSubmittedChoice = eventPlayerVoteShowsSavedChoice({
+									draftVote,
+									locked,
+									votingEnabled,
+								});
 								const nextLike = nextEventPlayerVoteValue(draftVote, "like");
 								const nextDislike = nextEventPlayerVoteValue(
 									draftVote,
@@ -216,6 +286,7 @@ export function EventPlayerVoteList({
 									draftVote,
 									"maintain",
 								);
+								const nextBlank = nextEventPlayerVoteValue(draftVote, "blank");
 								const canLike =
 									canVote &&
 									canSetEventPlayerVoteDraft(draftVotes, row.player_id, nextLike);
@@ -232,6 +303,13 @@ export function EventPlayerVoteList({
 										draftVotes,
 										row.player_id,
 										nextMaintain,
+									);
+								const canBlank =
+									canVote &&
+									canSetEventPlayerVoteDraft(
+										draftVotes,
+										row.player_id,
+										nextBlank,
 									);
 
 								return [
@@ -277,11 +355,22 @@ export function EventPlayerVoteList({
 													)}
 												</div>
 												<div className="flex flex-wrap items-center gap-2 text-xs text-fg-muted">
-													<PlayerRating
-														rating={rating}
-														ceiling={ceiling}
-														starClassName={PLAYER_STAR_CLASS.compact}
-													/>
+													{isGoalkeeper && (
+														<PlayerRating
+															rating={rating}
+															ceiling={ratingCeiling}
+															starClassName={PLAYER_STAR_CLASS.compact}
+															fillClassName={PLAYER_STAR_FILL_CLASS.goalkeeper}
+														/>
+													)}
+													{!isGoalkeeper && (
+														<PlayerRating
+															rating={rating}
+															ceiling={ratingCeiling}
+															starClassName={PLAYER_STAR_CLASS.compact}
+															fillClassName={PLAYER_STAR_FILL_CLASS.line}
+														/>
+													)}
 													<span className={CHIP_CLASS}>{rating}</span>
 													<span>
 														{EVENT_PLAYER_VOTE_LABEL.goals} {row.goals}
@@ -290,17 +379,24 @@ export function EventPlayerVoteList({
 														{EVENT_PLAYER_VOTE_LABEL.assists} {row.assists}
 													</span>
 												</div>
+												<FormHeatmapPlayerStrip
+													cells={playerFormHeatmapCells(
+														row.player_id,
+														formWindowEvents,
+													)}
+													columnIds={formColumnIds}
+												/>
 											</div>
 										</div>
 										{canVote && (
-											<div className="grid w-full min-w-0 grid-cols-3 gap-1">
+											<div className="grid w-full min-w-0 grid-cols-4 gap-1">
 												<Button
 													variant={
 														draftVote === "like"
 															? BUTTON_VARIANT.primary
 															: BUTTON_VARIANT.secondary
 													}
-													className="min-w-0 gap-1 px-2 text-xs"
+													className="min-w-0 px-2"
 													disabled={!canLike}
 													aria-pressed={draftVote === "like"}
 													aria-label={EVENT_PLAYER_VOTE_LABEL.like}
@@ -309,9 +405,6 @@ export function EventPlayerVoteList({
 													}}
 												>
 													<ThumbsUp className="size-4 shrink-0" />
-													<span className="truncate">
-														{EVENT_PLAYER_VOTE_LABEL.like}
-													</span>
 												</Button>
 												<Button
 													variant={
@@ -319,7 +412,7 @@ export function EventPlayerVoteList({
 															? BUTTON_VARIANT.danger
 															: BUTTON_VARIANT.secondary
 													}
-													className="min-w-0 gap-1 px-2 text-xs"
+													className="min-w-0 px-2"
 													disabled={!canDislike}
 													aria-pressed={draftVote === "dislike"}
 													aria-label={EVENT_PLAYER_VOTE_LABEL.dislike}
@@ -328,17 +421,14 @@ export function EventPlayerVoteList({
 													}}
 												>
 													<ThumbsDown className="size-4 shrink-0" />
-													<span className="truncate">
-														{EVENT_PLAYER_VOTE_LABEL.dislike}
-													</span>
 												</Button>
 												<Button
 													variant={
 														draftVote === "maintain"
-															? BUTTON_VARIANT.primary
+															? BUTTON_VARIANT.soft
 															: BUTTON_VARIANT.secondary
 													}
-													className="min-w-0 gap-1 px-2 text-xs"
+													className="min-w-0 px-2"
 													disabled={!canMaintain}
 													aria-pressed={draftVote === "maintain"}
 													aria-label={EVENT_PLAYER_VOTE_LABEL.maintain}
@@ -347,9 +437,22 @@ export function EventPlayerVoteList({
 													}}
 												>
 													<Equal className="size-4 shrink-0" />
-													<span className="truncate">
-														{EVENT_PLAYER_VOTE_LABEL.maintain}
-													</span>
+												</Button>
+												<Button
+													variant={
+														draftVote === "blank"
+															? BUTTON_VARIANT.muted
+															: BUTTON_VARIANT.secondary
+													}
+													className="min-w-0 px-2"
+													disabled={!canBlank}
+													aria-pressed={draftVote === "blank"}
+													aria-label={EVENT_PLAYER_VOTE_LABEL.blank}
+													onClick={() => {
+														onDraftChange(row.player_id, nextBlank);
+													}}
+												>
+													<CircleOff className="size-4 shrink-0" />
 												</Button>
 											</div>
 										)}
@@ -360,6 +463,7 @@ export function EventPlayerVoteList({
 					</section>
 				);
 			})}
+			{votingEnabled && <EventPlayerVoteChoiceLegend />}
 		</div>
 	);
 }

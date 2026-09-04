@@ -505,19 +505,16 @@ export function useChampionshipEventPlayerVoteCounts(
 	});
 }
 
-export function useCloseChampionshipEventPlayerVotes(
-	championshipId: number,
-	eventId: number,
-) {
+export function useCloseChampionshipEventPlayerVotes(championshipId: number) {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: () => closeChampionshipEventPlayerVotes(eventId),
+		mutationFn: (eventId: number) => closeChampionshipEventPlayerVotes(eventId),
 		onSuccess: async (result) => {
 			queryClient.setQueriesData<ChampionshipEvent>(
 				{
 					predicate: (query) =>
-						eventIdFromDetailKey(query.queryKey) === eventId,
+						eventIdFromDetailKey(query.queryKey) === result.event_id,
 				},
 				(current) => {
 					if (!current) {
@@ -532,7 +529,11 @@ export function useCloseChampionshipEventPlayerVotes(
 			);
 
 			await Promise.all([
-				invalidateChampionshipEvent(queryClient, championshipId, eventId),
+				invalidateChampionshipEvent(
+					queryClient,
+					championshipId,
+					result.event_id,
+				),
 				invalidateChampionshipQueries(queryClient),
 			]);
 		},

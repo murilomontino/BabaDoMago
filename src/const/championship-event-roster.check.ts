@@ -62,6 +62,8 @@ const fromAttendance = playersFromEventAttendance(
 			matches: 5,
 			is_mvp: true,
 			rating: 3.5,
+			rating_delta: 0.5,
+			vote_rating_delta: 0.5,
 		},
 	],
 	byId,
@@ -74,6 +76,7 @@ check(fromAttendance?.assists, 1);
 check(fromAttendance?.assisted_goals, 3);
 check(fromAttendance?.mvps, 1);
 check(fromAttendance?.rating, 8);
+check(fromAttendance?.ratingEvolution, 1);
 
 const missing = playersFromEventAttendance(
 	[

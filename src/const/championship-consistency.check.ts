@@ -26,6 +26,7 @@ function player(id: number, name: string): ChampionshipPlayer {
 		avatar_url: null,
 		role: "member",
 		rating: 3,
+		goalkeeper_rating: 0,
 		goals: 0,
 		assists: 0,
 		assisted_goals: 0,
@@ -65,7 +66,10 @@ function attendance(
 		matches,
 		rating: 3,
 		rating_delta: ratingDelta,
+		goalkeeper_rating: 0,
+		goalkeeper_rating_delta: 0,
 		vote_rating_delta: 0,
+		goalkeeper_vote_rating_delta: 0,
 		is_mvp: false,
 		mvp_overridden: false,
 	};

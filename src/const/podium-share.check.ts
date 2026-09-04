@@ -62,6 +62,7 @@ function player(
 		matches: 0,
 		mvps: 0,
 		...stats,
+		goalkeeper_rating: stats.goalkeeper_rating ?? 0,
 	};
 }
 
@@ -69,6 +70,10 @@ check(podiumShareHeading(ROSTER_COLUMN.goals), "Pódio · Gols");
 check(
 	podiumShareHeading(ROSTER_COLUMN.assisted_goals),
 	"Pódio · O mais servido",
+);
+check(
+	podiumShareHeading(ROSTER_COLUMN.ratingEvolution),
+	"Pódio · Evolução da nota",
 );
 check(podiumShareHeading(PODIUM_METRIC.synergy), "Pódio · Sinergia");
 check(podiumSharePeriodSlug(2026, null, []), "Temporada 2026");

@@ -103,10 +103,16 @@ export function eventTeamBalance(
 		}
 
 		const drawRatings = eventDrawRatings(
-			roster.map((player) => ({
-				id: player.player_id,
-				rating: attendanceByPlayer.get(player.player_id)?.rating ?? 0,
-			})),
+			roster.map((player) => {
+				const attendance = attendanceByPlayer.get(player.player_id);
+				const isGoalkeeper = attendance?.is_goalkeeper === true;
+				const rating = attendance?.rating ?? 0;
+				const goalkeeperRating = attendance?.goalkeeper_rating ?? 0;
+				return {
+					id: player.player_id,
+					rating: isGoalkeeper ? goalkeeperRating : rating,
+				};
+			}),
 		);
 		const ratingByPlayer = new Map(
 			drawRatings.map((player) => [player.id, player.rating] as const),

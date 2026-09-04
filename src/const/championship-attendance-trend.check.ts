@@ -38,7 +38,10 @@ function eventRow(
 		matches: 0,
 		rating: 0,
 		rating_delta: 0,
+		goalkeeper_rating: 0,
+		goalkeeper_rating_delta: 0,
 		vote_rating_delta: 0,
+		goalkeeper_vote_rating_delta: 0,
 		is_mvp: false,
 		mvp_overridden: false,
 	}));
@@ -73,6 +76,7 @@ const roster = Array.from({ length: 12 }, (_, index) => ({
 	nickname_tags: [],
 	avatar_url: null,
 	rating: 5,
+	goalkeeper_rating: 0,
 	role: "player",
 	is_goalkeeper: false,
 	is_monthly: index < 2,

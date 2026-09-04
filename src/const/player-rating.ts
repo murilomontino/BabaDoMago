@@ -9,11 +9,19 @@ export const PLAYER_RATING = {
 
 export const PLAYER_RATING_INPUT = {
 	ariaLabel: "Corrigir nota",
+	goalkeeperAriaLabel: "Corrigir nota goleiro",
+	lineLabel: "Nota",
+	goalkeeperLabel: "Nota goleiro",
 } as const;
 
 export const PLAYER_STAR_CLASS = {
 	default: "h-5 w-5 shrink-0 fill-current",
 	compact: "h-3.5 w-3.5 shrink-0 fill-current",
+} as const;
+
+export const PLAYER_STAR_FILL_CLASS = {
+	line: "text-amber-400",
+	goalkeeper: "text-danger",
 } as const;
 
 export const PLAYER_STAR_PATH =

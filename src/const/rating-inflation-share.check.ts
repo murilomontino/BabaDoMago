@@ -41,7 +41,10 @@ function attendance(playerId: number, rating: number) {
 		matches: 3,
 		rating,
 		rating_delta: 0,
+		goalkeeper_rating: 0,
+		goalkeeper_rating_delta: 0,
 		vote_rating_delta: 0,
+		goalkeeper_vote_rating_delta: 0,
 		is_mvp: false,
 		mvp_overridden: false,
 	};
@@ -76,6 +79,7 @@ function player(id: number, name: string, rating: number): ChampionshipPlayer {
 		nickname_tags: [],
 		avatar_url: null,
 		rating,
+		goalkeeper_rating: 0,
 		role: "player",
 		is_goalkeeper: false,
 		is_monthly: false,

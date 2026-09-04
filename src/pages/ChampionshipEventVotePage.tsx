@@ -19,6 +19,7 @@ import {
 	eventPlayerMonthlyCount,
 	eventPlayerVoteBudgetSummary,
 	eventPlayerVoteDraftToSubmit,
+	eventPlayerVoteLockedTargetIds,
 	eventPlayerVotesSubmittedLabel,
 	initialEventPlayerBallotLocked,
 	isEventPlayerVoteDraftDirty,
@@ -34,9 +35,14 @@ import { SKELETON_LABEL } from "@/const/skeleton";
 import { BUTTON_VARIANT, ERROR_CLASS, PAGE_SHELL_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
 import {
+	championshipTrendsEvents,
+	TRENDS_WINDOW_DEFAULT,
+} from "@/const/championship-trends-window";
+import {
 	useChampionshipEvent,
 	useChampionshipEventPlayerVoteCounts,
 	useChampionshipEventRealtime,
+	useChampionshipEvents,
 	useCloseChampionshipEventPlayerVotes,
 	useMyChampionshipEventPlayerVotes,
 	useSubmitChampionshipEventPlayerVotes,
@@ -60,16 +66,15 @@ export function ChampionshipEventVotePage() {
 	const { user } = useAuth();
 	const championshipQuery = useChampionship(championshipId);
 	const eventQuery = useChampionshipEvent(championshipId, eventId);
+	const eventsQuery = useChampionshipEvents(championshipId);
 	useChampionshipEventRealtime(championshipId, eventId);
 	const myVotesQuery = useMyChampionshipEventPlayerVotes(eventId);
 	const submitVotesMutation = useSubmitChampionshipEventPlayerVotes(
 		championshipId,
 		eventId,
 	);
-	const closeVotesMutation = useCloseChampionshipEventPlayerVotes(
-		championshipId,
-		eventId,
-	);
+	const closeVotesMutation =
+		useCloseChampionshipEventPlayerVotes(championshipId);
 	const matchOps = useAppSelector((state) => selectMatchOps(state, eventId));
 	const [localError, setLocalError] = useState<string | null>(null);
 	const [draftVotes, setDraftVotes] = useState<
@@ -137,6 +142,17 @@ export function ChampionshipEventVotePage() {
 	const ceiling = championshipRatingCeiling(
 		(championship?.players ?? []).map((player) => player.rating),
 	);
+	const goalkeeperCeiling = championshipRatingCeiling(
+		(championship?.players ?? []).map((player) => player.goalkeeper_rating),
+	);
+	const formWindowEvents = useMemo(
+		() =>
+			championshipTrendsEvents(
+				eventsQuery.data ?? [],
+				TRENDS_WINDOW_DEFAULT,
+			),
+		[eventsQuery.data],
+	);
 	const savedVotes = useMemo(() => {
 		const map = new Map<number, EventPlayerVoteChoice>();
 		for (const row of myVotesQuery.data ?? []) {
@@ -171,7 +187,15 @@ export function ChampionshipEventVotePage() {
 		!votesClosed &&
 		!votesVoided &&
 		voterPresent;
-	const draftDirty = isEventPlayerVoteDraftDirty(draftVotes, savedVotes);
+	const lockedTargetIds = useMemo(
+		() => eventPlayerVoteLockedTargetIds(event?.attendance ?? []),
+		[event?.attendance],
+	);
+	const draftDirty = isEventPlayerVoteDraftDirty(
+		draftVotes,
+		savedVotes,
+		lockedTargetIds,
+	);
 	const showSubmitFab = canSubmitVotes && !ballotLocked;
 	const showEditVotes = canEditEventPlayerBallot({
 		ballotLocked,
@@ -251,7 +275,9 @@ export function ChampionshipEventVotePage() {
 				attendance={event.attendance}
 				teams={event.teams}
 				players={championship.players}
+				formWindowEvents={formWindowEvents}
 				ceiling={ceiling}
+				goalkeeperCeiling={goalkeeperCeiling}
 				canVoteRole={canVoteRole}
 				eventEnded={event.ended_at !== null}
 				votesClosed={votesClosed}
@@ -301,7 +327,7 @@ export function ChampionshipEventVotePage() {
 						disabled={closeVotesMutation.isPending}
 						onClick={() => {
 							setLocalError(null);
-							closeVotesMutation.mutate(undefined, {
+							closeVotesMutation.mutate(eventId, {
 								onError: (closeError) => {
 									setLocalError(
 										caughtErrorMessage(
@@ -338,7 +364,7 @@ export function ChampionshipEventVotePage() {
 					onClick={() => {
 						setLocalError(null);
 						submitVotesMutation.mutate(
-							eventPlayerVoteDraftToSubmit(draftVotes),
+							eventPlayerVoteDraftToSubmit(draftVotes, lockedTargetIds),
 							{
 								onSuccess: () => {
 									setBallotLocked(true);

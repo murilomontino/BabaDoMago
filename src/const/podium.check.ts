@@ -76,7 +76,11 @@ check(parsePodiumMetric("rating") === ROSTER_COLUMN.rating, "parse rating");
 check(parsePodiumMetric("synergy") === PODIUM_METRIC.synergy, "parse synergy");
 check(parsePodiumMetric("nope") === PODIUM_DEFAULT_METRIC, "parse fallback");
 check(PODIUM_METRICS[0] === ROSTER_COLUMN.rating, "rating first in select");
-check(PODIUM_METRICS.length === 13, "podium metrics frozen");
+check(
+	PODIUM_METRICS[1] === ROSTER_COLUMN.ratingEvolution,
+	"rating evolution second in select",
+);
+check(PODIUM_METRICS.length === 14, "podium metrics frozen");
 check(
 	PODIUM_PLAYER_METRIC_OPTIONS.length === PODIUM_METRICS.length - 1,
 	"event podium skips synergy",
@@ -86,8 +90,25 @@ check(!isPodiumPlayerMetric(PODIUM_METRIC.synergy), "synergy is not player");
 check(formatPodiumMetric(ROSTER_COLUMN.rating, 8) === "8", "format rating");
 check(formatPodiumMetric(ROSTER_COLUMN.goals, 4) === "4", "format goals");
 check(
+	formatPodiumMetric(ROSTER_COLUMN.ratingEvolution, 1.2) === "+1.2",
+	"format rating evolution",
+);
+check(
+	formatPodiumMetric(ROSTER_COLUMN.ratingEvolution, -0.5) === "−0.5",
+	"format rating evolution down",
+);
+check(
 	formatPodiumMetric(PODIUM_METRIC.synergy, 0.5) === "50%",
 	"format synergy",
+);
+check(
+	podiumMetricLabel(ROSTER_COLUMN.ratingEvolution) ===
+		PODIUM_LABEL.ratingEvolution,
+	"rating evolution podium label",
+);
+check(
+	PODIUM_LABEL.ratingEvolution === "Evolução da nota",
+	"rating evolution name",
 );
 
 function player(
@@ -118,6 +139,7 @@ function player(
 		matches: 0,
 		mvps: 0,
 		...stats,
+		goalkeeper_rating: stats.goalkeeper_rating ?? 0,
 	};
 }
 
@@ -336,6 +358,8 @@ function attendanceRow(
 		matches: number;
 		rating: number;
 		is_mvp?: boolean;
+		rating_delta?: number;
+		vote_rating_delta?: number;
 	},
 ) {
 	return {
@@ -346,7 +370,10 @@ function attendanceRow(
 		is_goalkeeper: false,
 		event_date: "2026-03-15",
 		rating_delta: 0,
+		goalkeeper_rating: 0,
+		goalkeeper_rating_delta: 0,
 		vote_rating_delta: 0,
+		goalkeeper_vote_rating_delta: 0,
 		...stats,
 		losses: stats.losses ?? 0,
 		draws: stats.draws ?? 0,
@@ -503,6 +530,95 @@ const julyOnly = aggregatePodiumPlayersFromEvents(
 );
 check(julyOnly.length === 1, "july month drops ana");
 check(julyOnly[0]?.id === 2, "july month keeps bruno");
+
+const evolutionMonth = aggregatePodiumPlayersFromEvents(
+	[anaPlayer, brunoPlayer],
+	[
+		eventAt(1, march, [
+			attendanceRow(1, {
+				goals: 1,
+				assists: 0,
+				own_goals: 0,
+				wins: 1,
+				matches: 3,
+				rating: 5,
+				rating_delta: 0.5,
+				vote_rating_delta: 0,
+			}),
+		]),
+		eventAt(2, "2026-03-20T15:00:00.000Z", [
+			attendanceRow(1, {
+				goals: 0,
+				assists: 0,
+				own_goals: 0,
+				wins: 0,
+				matches: 3,
+				rating: 5.5,
+				rating_delta: 0.3,
+				vote_rating_delta: 0.2,
+			}),
+			attendanceRow(2, {
+				goals: 0,
+				assists: 0,
+				own_goals: 0,
+				wins: 0,
+				matches: 3,
+				rating: 4,
+				rating_delta: 1.2,
+				vote_rating_delta: 0,
+			}),
+		]),
+	],
+	2026,
+	null,
+	[3],
+	new Date("2026-04-01T12:00:00.000Z"),
+);
+check(evolutionMonth.length === 2, "evolution month has two");
+check(
+	evolutionMonth.find((row) => row.id === 1)?.ratingEvolution === 1,
+	"ana evolution is end minus start",
+);
+check(
+	evolutionMonth.find((row) => row.id === 2)?.ratingEvolution === 1.2,
+	"bruno evolution is end minus start",
+);
+const evolutionRanked = rankPodiumRows(
+	evolutionMonth.map((row) => toRosterRow(row)),
+	ROSTER_COLUMN.ratingEvolution,
+);
+check(evolutionRanked[0]?.id === 2, "bruno wins evolution podium");
+check(
+	podiumStandings(evolutionRanked, ROSTER_COLUMN.ratingEvolution)[0]?.rows[0]
+		?.id === 2,
+	"bruno first place evolution",
+);
+
+const evolutionLive = aggregatePodiumPlayersFromEvents(
+	[player(1, "Ana", { goals: 1, rating: 8 })],
+	[
+		eventAt(1, march, [
+			attendanceRow(1, {
+				goals: 1,
+				assists: 0,
+				own_goals: 0,
+				wins: 1,
+				matches: 3,
+				rating: 5,
+				rating_delta: 0.5,
+				vote_rating_delta: 0,
+			}),
+		]),
+	],
+	2026,
+	null,
+	[3],
+	new Date("2026-03-25T12:00:00.000Z"),
+);
+check(
+	evolutionLive[0]?.ratingEvolution === 3,
+	"current month uses live rating as end",
+);
 
 check(
 	podiumAvailableYears([

@@ -41,6 +41,7 @@ import {
 	emptyTeamSlots,
 	eventDateYmd,
 	eventDrawRatings,
+	eventDrawInputRating,
 	eventGoalkeeperIds,
 	eventIsoWeekday,
 	eventListActionFlags,
@@ -849,6 +850,15 @@ check(
 		.map((player) => player.rating)
 		.join(","),
 	"10,9,8",
+);
+
+check(
+	eventDrawInputRating({ rating: 4, goalkeeper_rating: 7 }, true),
+	7,
+);
+check(
+	eventDrawInputRating({ rating: 4, goalkeeper_rating: 7 }, false),
+	4,
 );
 const allUnset = [
 	{ id: 1, rating: PLAYER_RATING.default },

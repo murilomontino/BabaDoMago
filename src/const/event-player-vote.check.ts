@@ -1,5 +1,7 @@
 import {
 	canEditEventPlayerBallot,
+	canOpenEventPlayerVoteShortcut,
+	latestOpenEventPlayerVoteEvent,
 	canSetEventPlayerVoteDraft,
 	canVoteEventPlayer,
 	copyEventPlayerVoteLinkLabel,
@@ -15,6 +17,8 @@ import {
 	eventPlayerVoteChoiceLabel,
 	eventPlayerVoteDraftToSubmit,
 	eventPlayerVoteErrorMessage,
+	eventPlayerVoteLockedTargetIds,
+	eventPlayerVoteShowsSavedChoice,
 	eventPlayerVoteStatus,
 	eventPlayerVoteStatusLabel,
 	eventPlayerVotesSubmittedLabel,
@@ -78,6 +82,8 @@ check(
 check(EVENT_PLAYER_VOTE.like === "like", "like");
 check(EVENT_PLAYER_VOTE.dislike === "dislike", "dislike");
 check(EVENT_PLAYER_VOTE.maintain === "maintain", "maintain");
+check(EVENT_PLAYER_VOTE.blank === "blank", "blank");
+check(EVENT_PLAYER_VOTE_LABEL.blank === "Não votar", "blank label");
 check(EVENT_PLAYER_VOTE_LABEL.title === "Votar elenco", "title");
 check(EVENT_PLAYER_VOTE_LABEL.appliedUp === "+0,5", "chip up");
 check(EVENT_PLAYER_VOTE_LABEL.appliedDown === "−0,5", "chip down");
@@ -210,6 +216,57 @@ check(
 		]),
 	).length === 1,
 	"draft submit payload",
+);
+check(
+	eventPlayerVoteDraftToSubmit(
+		new Map([
+			[1, "like"],
+			[2, "dislike"],
+		]),
+		new Set([1]),
+	).length === 1,
+	"draft submit skips locked",
+);
+check(
+	!isEventPlayerVoteDraftDirty(
+		new Map([
+			[1, "dislike"],
+			[2, "like"],
+		]),
+		new Map([
+			[1, "like"],
+			[2, "like"],
+		]),
+		new Set([1]),
+	),
+	"draft dirty ignores locked",
+);
+check(
+	eventPlayerVoteLockedTargetIds([
+		{ player_id: 1, vote_rating_delta: 0.5 },
+		{ player_id: 2, vote_rating_delta: 0 },
+	]).has(1) &&
+		!eventPlayerVoteLockedTargetIds([
+			{ player_id: 1, vote_rating_delta: 0.5 },
+			{ player_id: 2, vote_rating_delta: 0 },
+		]).has(2),
+	"locked target ids",
+);
+check(
+	eventPlayerVoteShowsSavedChoice({
+		draftVote: "like",
+		locked: true,
+		votingEnabled: true,
+	}),
+	"shows locked choice while editing",
+);
+check(
+	!eventPlayerVoteShowsSavedChoice({
+		draftVote: "like",
+		locked: false,
+		votingEnabled: true,
+	}),
+	"hides open choice while editing",
 );
 check(
 	eventPlayerVoteErrorMessage("like budget exceeded") === "No máximo 5 likes",
@@ -381,6 +438,19 @@ check(
 	nextEventPlayerVoteValue("like", "maintain") === "maintain",
 	"switch to maintain",
 );
+check(nextEventPlayerVoteValue(null, "blank") === "blank", "press blank");
+check(
+	nextEventPlayerVoteValue("blank", "blank") === null,
+	"toggle off blank",
+);
+check(
+	nextEventPlayerVoteValue("like", "blank") === "blank",
+	"switch to blank",
+);
+check(
+	eventPlayerVoteChoiceLabel("blank") === "Não votar",
+	"choice blank label",
+);
 
 check(
 	!canVoteEventPlayer({
@@ -409,6 +479,85 @@ check(
 );
 check(isEventPlayerVotesVoided("2026-09-03T12:00:00Z"), "voided true");
 check(!isEventPlayerVotesVoided(null), "voided false");
+check(
+	canOpenEventPlayerVoteShortcut({
+		endedAt: "2026-01-01",
+		playerVotesClosedAt: null,
+		playerVotesVoidedAt: null,
+		attendanceCount: 2,
+	}),
+	"vote shortcut open",
+);
+check(
+	!canOpenEventPlayerVoteShortcut({
+		endedAt: null,
+		playerVotesClosedAt: null,
+		playerVotesVoidedAt: null,
+		attendanceCount: 2,
+	}),
+	"vote shortcut needs ended",
+);
+check(
+	!canOpenEventPlayerVoteShortcut({
+		endedAt: "2026-01-01",
+		playerVotesClosedAt: "2026-01-02",
+		playerVotesVoidedAt: null,
+		attendanceCount: 2,
+	}),
+	"vote shortcut closed",
+);
+check(
+	!canOpenEventPlayerVoteShortcut({
+		endedAt: "2026-01-01",
+		playerVotesClosedAt: null,
+		playerVotesVoidedAt: "2026-01-02",
+		attendanceCount: 2,
+	}),
+	"vote shortcut voided",
+);
+check(
+	!canOpenEventPlayerVoteShortcut({
+		endedAt: "2026-01-01",
+		playerVotesClosedAt: null,
+		playerVotesVoidedAt: null,
+		attendanceCount: 0,
+	}),
+	"vote shortcut needs attendance",
+);
+check(
+	latestOpenEventPlayerVoteEvent([
+		{
+			id: 1,
+			starts_at: "2026-01-01T12:00:00Z",
+			ended_at: "2026-01-01T14:00:00Z",
+			player_votes_closed_at: null,
+			player_votes_voided_at: null,
+			attendance: [{}],
+		},
+		{
+			id: 2,
+			starts_at: "2026-01-08T12:00:00Z",
+			ended_at: "2026-01-08T14:00:00Z",
+			player_votes_closed_at: null,
+			player_votes_voided_at: null,
+			attendance: [{}],
+		},
+	])?.id === 2,
+	"latest open vote event",
+);
+check(
+	latestOpenEventPlayerVoteEvent([
+		{
+			id: 1,
+			starts_at: "2026-01-01T12:00:00Z",
+			ended_at: "2026-01-01T14:00:00Z",
+			player_votes_closed_at: "2026-01-02T00:00:00Z",
+			player_votes_voided_at: null,
+			attendance: [{}],
+		},
+	]) === null,
+	"no open vote event",
+);
 check(
 	eventPlayerVoteStatus({
 		playerVotesClosedAt: null,

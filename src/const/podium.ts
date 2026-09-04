@@ -1,8 +1,16 @@
 import type { ChampionshipPlayer } from "../types/championship.ts";
 import type { ChampionshipEvent } from "../types/championship-event.ts";
-import { CHAMPIONSHIP_EVENT } from "./championship-event.ts";
+import {
+	CHAMPIONSHIP_EVENT,
+	compareStartsAtOldestFirst,
+} from "./championship-event.ts";
 import { mvpCount } from "./event-mvp.ts";
+import { applyEventRatingDelta } from "./event-rating-adjustment.ts";
 import { playerVisibleName } from "./player-name.ts";
+import {
+	formatPlayerProfileDelta,
+	playerProfileDelta,
+} from "./player-profile.ts";
 import {
 	formatRosterCount,
 	formatRosterStat,
@@ -37,6 +45,7 @@ export const PODIUM_LABEL = {
 	metric: "Métrica",
 	synergy: "Sinergia",
 	assistedGoals: "O mais servido",
+	ratingEvolution: "Evolução da nota",
 	emptyPlayers: "Nenhum jogador ainda",
 	emptyStats: "Nenhuma estatística ainda",
 } as const;
@@ -89,6 +98,7 @@ export const PODIUM_METRIC = {
 
 export const PODIUM_PLAYER_METRICS = [
 	ROSTER_COLUMN.rating,
+	ROSTER_COLUMN.ratingEvolution,
 	ROSTER_COLUMN.goals,
 	ROSTER_COLUMN.assists,
 	ROSTER_COLUMN.assisted_goals,
@@ -124,6 +134,10 @@ export function podiumMetricLabel(metric: PodiumMetricId): string {
 
 	if (metric === ROSTER_COLUMN.assisted_goals) {
 		return PODIUM_LABEL.assistedGoals;
+	}
+
+	if (metric === ROSTER_COLUMN.ratingEvolution) {
+		return PODIUM_LABEL.ratingEvolution;
 	}
 
 	return ROSTER_COLUMN_LABEL[metric];
@@ -207,15 +221,30 @@ export function formatPodiumMetric(
 	column: PodiumMetricId,
 	value: number,
 ): string {
-	if (column === PODIUM_METRIC.synergy) {
-		return formatRosterWinRate(value);
+	switch (column) {
+		case PODIUM_METRIC.synergy:
+			return formatRosterWinRate(value);
+		case ROSTER_COLUMN.rating:
+			return formatRosterCount(value);
+		case ROSTER_COLUMN.ratingEvolution:
+			return formatPlayerProfileDelta(value);
+		case ROSTER_COLUMN.goals:
+		case ROSTER_COLUMN.assists:
+		case ROSTER_COLUMN.assisted_goals:
+		case ROSTER_COLUMN.own_goals:
+		case ROSTER_COLUMN.goalInvolvement:
+		case ROSTER_COLUMN.wins:
+		case ROSTER_COLUMN.mvps:
+		case ROSTER_COLUMN.matches:
+		case ROSTER_COLUMN.goalsAverage:
+		case ROSTER_COLUMN.assistsAverage:
+		case ROSTER_COLUMN.winRate:
+			return formatRosterStat(column, value);
+		default: {
+			const _never: never = column;
+			return _never;
+		}
 	}
-
-	if (column === ROSTER_COLUMN.rating) {
-		return formatRosterCount(value);
-	}
-
-	return formatRosterStat(column, value);
 }
 
 export function rankPodiumRows(
@@ -475,6 +504,13 @@ export function togglePodiumSemester(
 	return { seasonOn: true, semester: clicked };
 }
 
+type PodiumRatingBound = {
+	eventId: number;
+	startsAt: string;
+	ratingFrom: number;
+	ratingAfter: number;
+};
+
 type PodiumStatAcc = {
 	goals: number;
 	assists: number;
@@ -485,6 +521,8 @@ type PodiumStatAcc = {
 	draws: number;
 	matches: number;
 	mvps: number;
+	first: PodiumRatingBound | null;
+	last: PodiumRatingBound | null;
 };
 
 function emptyPodiumStatAcc(): PodiumStatAcc {
@@ -498,7 +536,120 @@ function emptyPodiumStatAcc(): PodiumStatAcc {
 		draws: 0,
 		matches: 0,
 		mvps: 0,
+		first: null,
+		last: null,
 	};
+}
+
+export type PodiumSourcePlayer = ChampionshipPlayer & {
+	ratingEvolution: number;
+};
+
+export function attendanceRatingAfter(row: {
+	rating: number;
+	rating_delta: number;
+	vote_rating_delta: number;
+}): number {
+	return applyEventRatingDelta(
+		playerProfileDelta(row.rating),
+		playerProfileDelta(row.rating_delta) +
+			playerProfileDelta(row.vote_rating_delta),
+	);
+}
+
+function roundPodiumEvolution(value: number): number {
+	if (!Number.isFinite(value)) {
+		return 0;
+	}
+
+	if (value === 0) {
+		return 0;
+	}
+
+	if (value < 0) {
+		return (-1 * Math.round(Math.abs(value) * 10)) / 10;
+	}
+
+	return Math.round(value * 10) / 10;
+}
+
+export function podiumRatingEvolution(from: number, to: number): number {
+	return roundPodiumEvolution(
+		playerProfileDelta(to) - playerProfileDelta(from),
+	);
+}
+
+export function attendanceRatingEvolution(row: {
+	rating: number;
+	rating_delta: number;
+	vote_rating_delta: number;
+}): number {
+	return podiumRatingEvolution(
+		playerProfileDelta(row.rating),
+		attendanceRatingAfter(row),
+	);
+}
+
+export function podiumPeriodIncludesNow(
+	year: number,
+	semester: PodiumSemester | null,
+	months: readonly PodiumMonth[] = [],
+	now = new Date(),
+): boolean {
+	return eventMatchesPodiumPeriod(now.toISOString(), year, semester, months);
+}
+
+function podiumRatingBoundIsBefore(
+	left: PodiumRatingBound,
+	right: PodiumRatingBound,
+): boolean {
+	return (
+		compareStartsAtOldestFirst(
+			{ starts_at: left.startsAt, id: left.eventId },
+			{ starts_at: right.startsAt, id: right.eventId },
+		) < 0
+	);
+}
+
+function podiumAttendanceBound(
+	event: { id: number; starts_at: string },
+	row: {
+		rating: number;
+		rating_delta: number;
+		vote_rating_delta: number;
+	},
+): PodiumRatingBound {
+	return {
+		eventId: event.id,
+		startsAt: event.starts_at,
+		ratingFrom: playerProfileDelta(row.rating),
+		ratingAfter: attendanceRatingAfter(row),
+	};
+}
+
+function trackPodiumRatingBounds(
+	acc: PodiumStatAcc,
+	bound: PodiumRatingBound,
+): void {
+	if (!acc.first || podiumRatingBoundIsBefore(bound, acc.first)) {
+		acc.first = bound;
+	}
+
+	if (!acc.last || podiumRatingBoundIsBefore(acc.last, bound)) {
+		acc.last = bound;
+	}
+}
+
+function podiumPeriodRatingEnd(
+	useLiveRating: boolean,
+	liveRating: number,
+	lastAfter: number,
+): number {
+	if (useLiveRating) {
+		return playerProfileDelta(liveRating);
+	}
+
+	return lastAfter;
 }
 
 export function aggregatePodiumPlayersFromEvents(
@@ -507,8 +658,10 @@ export function aggregatePodiumPlayersFromEvents(
 	year: number,
 	semester: PodiumSemester | null,
 	months: readonly PodiumMonth[] = [],
-): ChampionshipPlayer[] {
+	now = new Date(),
+): PodiumSourcePlayer[] {
 	const byPlayerId = new Map<number, PodiumStatAcc>();
+	const useLiveRating = podiumPeriodIncludesNow(year, semester, months, now);
 
 	for (const event of events) {
 		if (!eventMatchesPodiumPeriod(event.starts_at, year, semester, months)) {
@@ -526,13 +679,14 @@ export function aggregatePodiumPlayersFromEvents(
 			acc.draws += row.draws;
 			acc.matches += row.matches;
 			acc.mvps += mvpCount(row.is_mvp);
+			trackPodiumRatingBounds(acc, podiumAttendanceBound(event, row));
 			byPlayerId.set(row.player_id, acc);
 		}
 	}
 
 	return players.flatMap((player) => {
 		const acc = byPlayerId.get(player.id);
-		if (!acc) {
+		if (!acc?.first || !acc.last) {
 			return [];
 		}
 
@@ -548,6 +702,14 @@ export function aggregatePodiumPlayersFromEvents(
 				draws: acc.draws,
 				matches: acc.matches,
 				mvps: acc.mvps,
+				ratingEvolution: podiumRatingEvolution(
+					acc.first.ratingFrom,
+					podiumPeriodRatingEnd(
+						useLiveRating,
+						player.rating,
+						acc.last.ratingAfter,
+					),
+				),
 			},
 		];
 	});

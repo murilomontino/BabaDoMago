@@ -104,6 +104,11 @@ check(ROSTER_COLUMN_ABBR.goals === "G", "goals abbr");
 check(ROSTER_COLUMN_LABEL.goals === "Gols", "goals label");
 check(ROSTER_COLUMN_ABBR.rating === "Rat", "rating abbr");
 check(ROSTER_COLUMN_LABEL.rating === "Rating", "rating label");
+check(ROSTER_COLUMN_ABBR.ratingEvolution === "Evol.", "rating evolution abbr");
+check(
+	ROSTER_COLUMN_LABEL.ratingEvolution === "Evolução da nota",
+	"rating evolution label",
+);
 check(ROSTER_COLUMN_ABBR.actions === "Ações", "actions abbr");
 check(ROSTER_COLUMN_LABEL.actions === "Ações", "actions label");
 check(ROSTER_COLUMN_ABBR.mvps === "MVP", "mvps abbr");
@@ -118,6 +123,7 @@ const player: ChampionshipPlayer = {
 	nickname_tags: [],
 	avatar_url: null,
 	rating: 5,
+	goalkeeper_rating: 0,
 	role: "member",
 	is_goalkeeper: false,
 	is_monthly: false,
@@ -145,6 +151,10 @@ check(row.goalInvolvement === 6, "row involvement");
 check(row.goalsAverage === 4 / 6, "row goals average");
 check(row.assistsAverage === 2 / 6, "row assists average");
 check(row.winRate === 0.5, "row win rate");
+check(row.ratingEvolution === 0, "row evolution default");
+
+const evolved = toRosterRow({ ...player, ratingEvolution: 1.2 });
+check(evolved.ratingEvolution === 1.2, "row keeps evolution");
 
 check(rosterSafeCount(Number.NaN) === 0, "safe count nan");
 check(rosterSafeCount(undefined) === 0, "safe count missing");

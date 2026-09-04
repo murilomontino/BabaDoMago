@@ -50,6 +50,36 @@ function FormHeatmapDataCell({ cell }: { cell: FormHeatmapCell }) {
 	);
 }
 
+type FormHeatmapPlayerStripProps = {
+	cells: readonly FormHeatmapCell[];
+	columnIds?: readonly number[];
+};
+
+export function FormHeatmapPlayerStrip({
+	cells,
+	columnIds,
+}: FormHeatmapPlayerStripProps) {
+	if (cells.length === 0) {
+		return null;
+	}
+
+	return (
+		<div
+			className="flex gap-0.5"
+			role="img"
+			aria-label={FORM_HEATMAP_LABEL.title}
+		>
+			{cells.map((cell, index) => (
+				<div
+					key={columnIds?.[index] ?? index}
+					className={`h-4 w-4 shrink-0 rounded-sm ${formHeatmapCellClass(cell.kind)}`}
+					title={formHeatmapCellTitle(cell)}
+				/>
+			))}
+		</div>
+	);
+}
+
 export function ChampionshipFormHeatmap({ grid }: ChampionshipFormHeatmapProps) {
 	return (
 		<div className="space-y-3">

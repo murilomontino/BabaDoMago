@@ -23,6 +23,7 @@ const player: ChampionshipPlayer = {
 	nickname_tags: [],
 	avatar_url: "https://example.com/ana.png",
 	rating: 8,
+	goalkeeper_rating: 0,
 	role: "captain",
 	is_goalkeeper: false,
 	is_monthly: false,

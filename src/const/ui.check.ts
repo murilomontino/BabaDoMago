@@ -28,6 +28,14 @@ check(
 	"button min height",
 );
 check(
+	BUTTON_CLASS[BUTTON_VARIANT.soft].includes("bg-info-soft"),
+	"soft uses info soft",
+);
+check(
+	BUTTON_CLASS[BUTTON_VARIANT.muted].includes("bg-surface-muted"),
+	"muted uses surface muted",
+);
+check(
 	buttonClassName(BUTTON_VARIANT.primary).includes(BUTTON_ICON_CLASS),
 	"button uses icon size",
 );

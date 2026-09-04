@@ -51,14 +51,13 @@ type ChampionshipRosterTabProps = {
 	}) => Promise<void>;
 	onClaim: (playerId: number) => void;
 	onChangeRating: (playerId: number, rating: number) => void;
+	onChangeGoalkeeperRating: (playerId: number, rating: number) => void;
 	onEditNickname: (playerId: number) => void;
 	onEditEventStats?: (playerId: number) => void;
 	eventStatsPlayerId?: number | null;
 	onChangeRole: (playerId: number, role: AssignableChampionshipRole) => void;
 	onChangeGoalkeeper?: (playerId: number, isGoalkeeper: boolean) => void;
 	goalkeeperError: string | null;
-	onChangeMonthly?: (playerId: number, isMonthly: boolean) => void;
-	monthlyError: string | null;
 	onUnlink: (playerId: number) => void;
 	onMerge: (playerId: number) => void;
 	onDeactivate: (playerId: number) => void;
@@ -94,14 +93,13 @@ export function ChampionshipRosterTab({
 	onAddPlayer,
 	onClaim,
 	onChangeRating,
+	onChangeGoalkeeperRating,
 	onEditNickname,
 	onEditEventStats,
 	eventStatsPlayerId,
 	onChangeRole,
 	onChangeGoalkeeper,
 	goalkeeperError,
-	onChangeMonthly,
-	monthlyError,
 	onUnlink,
 	onMerge,
 	onDeactivate,
@@ -197,6 +195,10 @@ export function ChampionshipRosterTab({
 				claimingPlayerId={claimingPlayerId}
 				onClaim={onClaim}
 				onChangeRating={handlerWhenAllowed(canUpdateRating, onChangeRating)}
+				onChangeGoalkeeperRating={handlerWhenAllowed(
+					canUpdateRating,
+					onChangeGoalkeeperRating,
+				)}
 				ratingPlayerId={ratingPlayerId}
 				onEditNickname={onEditNickname}
 				nicknamePlayerId={nicknamePlayerId}
@@ -207,7 +209,6 @@ export function ChampionshipRosterTab({
 					canUpdateRating,
 					onChangeGoalkeeper,
 				)}
-				onChangeMonthly={handlerWhenAllowed(canUpdateRating, onChangeMonthly)}
 				onUnlink={handlerWhenAllowed(canUnlink, onUnlink)}
 				unlinkingPlayerId={unlinkingPlayerId}
 				onMerge={handlerWhenAllowed(canMerge, onMerge)}
@@ -229,7 +230,6 @@ export function ChampionshipRosterTab({
 			{goalkeeperError && (
 				<p className={`mt-4 ${ERROR_CLASS}`}>{goalkeeperError}</p>
 			)}
-			{monthlyError && <p className={`mt-4 ${ERROR_CLASS}`}>{monthlyError}</p>}
 		</SectionCard>
 	);
 }

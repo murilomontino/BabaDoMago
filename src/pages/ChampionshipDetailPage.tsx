@@ -17,10 +17,15 @@ import { ChampionshipDetailHeader } from "@/components/championship-detail-heade
 import { ChampionshipEventDrawSim } from "@/components/championship-event-draw-sim";
 import { ChampionshipEvents } from "@/components/championship-events";
 import { ChampionshipManagementTab } from "@/components/championship-management-tab";
+import { ChampionshipMonthlyTab } from "@/components/championship-monthly-tab";
 import { ChampionshipPodiumTab } from "@/components/championship-podium-tab";
 import { ChampionshipRosterTab } from "@/components/championship-roster-tab";
 import { ChampionshipSettingsTab } from "@/components/championship-settings-tab";
 import { ChampionshipStandingsTab } from "@/components/championship-standings-tab";
+import {
+	ChampionshipTabs,
+	ChampionshipTabsSkeleton,
+} from "@/components/championship-tabs";
 import { ChampionshipTrendsTab } from "@/components/championship-trends-tab";
 import { ConfirmRatingModal } from "@/components/confirm-rating-modal";
 import { DeleteChampionshipModal } from "@/components/delete-championship-modal";
@@ -29,7 +34,7 @@ import { EditPlayerNicknameModal } from "@/components/edit-player-nickname-modal
 import { MergeChampionshipPlayersModal } from "@/components/merge-championship-players-modal";
 import { DataTableSkeleton } from "@/components/molecules/data-table-skeleton";
 import { SectionCard } from "@/components/section-card";
-import { TabPanel, Tabs } from "@/components/tabs";
+import { TabPanel } from "@/components/tabs";
 import {
 	countPlayerAttendance,
 	type PlayerEventStatsDraft,
@@ -63,7 +68,6 @@ import {
 	CHAMPIONSHIP_TAB,
 	CHAMPIONSHIP_TAB_LABEL,
 	type ChampionshipTab,
-	championshipTabs,
 	rememberChampionshipTab,
 	visibleChampionshipTab,
 } from "@/const/championship-tab";
@@ -103,6 +107,7 @@ import {
 	useUpdateChampionshipEventConfig,
 	useUpdateChampionshipVisibility,
 	useUpdatePlayerNickname,
+	useUpdatePlayerGoalkeeperRating,
 	useUpdatePlayerRating,
 	useUploadChampionshipLogo,
 } from "@/hooks/championships/use-championships";
@@ -155,6 +160,7 @@ export function ChampionshipDetailPage() {
 	const reactivatePlayer = useReactivatePlayer();
 	const removePlayer = useRemovePlayer();
 	const updateRating = useUpdatePlayerRating();
+	const updateGoalkeeperRating = useUpdatePlayerGoalkeeperRating();
 	const updateNickname = useUpdatePlayerNickname();
 	const eventsQuery = useChampionshipEvents(championshipId);
 	useEffect(() => {
@@ -202,6 +208,7 @@ export function ChampionshipDetailPage() {
 		avatarUrl: string | null;
 		from: number;
 		to: number;
+		track: "line" | "goalkeeper";
 	} | null>(null);
 	const [pendingNicknamePlayer, setPendingNicknamePlayer] =
 		useState<ChampionshipPlayer | null>(null);
@@ -277,16 +284,16 @@ export function ChampionshipDetailPage() {
 		permissions.reactivate ||
 		permissions.remove;
 
-	const tabs = championshipTabs(permissions.viewManagement);
-
 	function handleTabChange(id: ChampionshipTab) {
 		setIsSettingsOpen(false);
 		void setTab(id);
 	}
 
 	const applyRating = useCallback(
-		(playerId: number, rating: number) => {
-			updateRating.mutate(
+		(playerId: number, rating: number, track: "line" | "goalkeeper") => {
+			const mutation =
+				track === "goalkeeper" ? updateGoalkeeperRating : updateRating;
+			mutation.mutate(
 				{ playerId, rating },
 				{
 					onSuccess: () => {
@@ -295,7 +302,7 @@ export function ChampionshipDetailPage() {
 				},
 			);
 		},
-		[updateRating.mutate],
+		[updateRating.mutate, updateGoalkeeperRating.mutate],
 	);
 
 	const handleChangeRating = useCallback(
@@ -314,8 +321,9 @@ export function ChampionshipDetailPage() {
 			}
 
 			updateRating.reset();
+			updateGoalkeeperRating.reset();
 			if (player.rating === PLAYER_RATING.min) {
-				applyRating(player.id, rating);
+				applyRating(player.id, rating, "line");
 				return;
 			}
 
@@ -325,17 +333,65 @@ export function ChampionshipDetailPage() {
 				avatarUrl: player.avatar_url,
 				from: player.rating,
 				to: rating,
+				track: "line",
 			});
 		},
-		[permissions.rating, activePlayers, updateRating.reset, applyRating],
+		[
+			permissions.rating,
+			activePlayers,
+			updateRating.reset,
+			updateGoalkeeperRating.reset,
+			applyRating,
+		],
+	);
+
+	const handleChangeGoalkeeperRating = useCallback(
+		(playerId: number, rating: number) => {
+			if (!permissions.rating) {
+				return;
+			}
+
+			const player = activePlayers.find((item) => item.id === playerId);
+			if (!player) {
+				return;
+			}
+
+			if (player.goalkeeper_rating === rating) {
+				return;
+			}
+
+			updateRating.reset();
+			updateGoalkeeperRating.reset();
+			if (player.goalkeeper_rating === PLAYER_RATING.min) {
+				applyRating(player.id, rating, "goalkeeper");
+				return;
+			}
+
+			setPendingRatingChange({
+				playerId: player.id,
+				playerName: playerVisibleName(player),
+				avatarUrl: player.avatar_url,
+				from: player.goalkeeper_rating,
+				to: rating,
+				track: "goalkeeper",
+			});
+		},
+		[
+			permissions.rating,
+			activePlayers,
+			updateRating.reset,
+			updateGoalkeeperRating.reset,
+			applyRating,
+		],
 	);
 
 	function handleRatingCancel() {
-		if (updateRating.isPending) {
+		if (updateRating.isPending || updateGoalkeeperRating.isPending) {
 			return;
 		}
 
 		updateRating.reset();
+		updateGoalkeeperRating.reset();
 		setPendingRatingChange(null);
 	}
 
@@ -344,7 +400,11 @@ export function ChampionshipDetailPage() {
 			return;
 		}
 
-		applyRating(pendingRatingChange.playerId, pendingRatingChange.to);
+		applyRating(
+			pendingRatingChange.playerId,
+			pendingRatingChange.to,
+			pendingRatingChange.track,
+		);
 	}
 
 	const handleEditNickname = useCallback(
@@ -743,7 +803,11 @@ export function ChampionshipDetailPage() {
 				/>
 			)}
 			{!isSettingsOpen && (
-				<Tabs value={selectedTab} items={tabs} onChange={handleTabChange} />
+				<ChampionshipTabs
+					value={selectedTab}
+					includeManagement={permissions.viewManagement}
+					onChange={handleTabChange}
+				/>
 			)}
 			{!isSettingsOpen && (
 				<div className="relative">
@@ -766,10 +830,12 @@ export function ChampionshipDetailPage() {
 								claimingPlayerId={claimPlayer.variables ?? null}
 								claimError={mutationErrorMessage(claimPlayer)}
 								ratingPlayerId={
-									pendingMutationId(updateRating)?.playerId ?? null
+									pendingMutationId(updateRating)?.playerId ??
+									pendingMutationId(updateGoalkeeperRating)?.playerId ??
+									null
 								}
 								ratingError={mutationErrorMessage(
-									updateRating,
+									updateRating.isError ? updateRating : updateGoalkeeperRating,
 									Boolean(pendingRatingChange),
 								)}
 								nicknamePlayerId={
@@ -779,7 +845,6 @@ export function ChampionshipDetailPage() {
 								}
 								roleError={mutationErrorMessage(setPlayerRole)}
 								goalkeeperError={mutationErrorMessage(setPlayerIsGoalkeeper)}
-								monthlyError={mutationErrorMessage(setPlayerIsMonthly)}
 								unlinkingPlayerId={pendingMutationId(unlinkPlayer)}
 								unlinkError={mutationErrorMessage(unlinkPlayer)}
 								canMerge={permissions.merge}
@@ -793,6 +858,7 @@ export function ChampionshipDetailPage() {
 								onAddPlayer={handleAddPlayer}
 								onClaim={handleClaim}
 								onChangeRating={handleChangeRating}
+								onChangeGoalkeeperRating={handleChangeGoalkeeperRating}
 								onEditNickname={handleEditNickname}
 								onEditEventStats={handlerWhenAllowed(
 									permissions.overrideEnded,
@@ -805,7 +871,6 @@ export function ChampionshipDetailPage() {
 								}
 								onChangeRole={handleChangeRole}
 								onChangeGoalkeeper={handleChangeGoalkeeper}
-								onChangeMonthly={handleChangeMonthly}
 								onUnlink={handleUnlink}
 								onMerge={handleMerge}
 								onDeactivate={handleDeactivate}
@@ -860,6 +925,18 @@ export function ChampionshipDetailPage() {
 								eventWeekday={data.event_weekday}
 								attendanceCounts={attendanceCounts}
 								seedEvents={eventsQuery.data ?? []}
+							/>
+						</TabPanel>
+					)}
+					{mountedTabsRef.current.monthly && permissions.viewManagement && (
+						<TabPanel active={selectedTab === CHAMPIONSHIP_TAB.monthly}>
+							<ChampionshipMonthlyTab
+								players={activePlayers}
+								pendingPlayerId={
+									pendingMutationId(setPlayerIsMonthly)?.playerId ?? null
+								}
+								error={mutationErrorMessage(setPlayerIsMonthly)}
+								onChangeMonthly={handleChangeMonthly}
 							/>
 						</TabPanel>
 					)}
@@ -949,11 +1026,7 @@ function ChampionshipDetailPageSkeleton() {
 						</div>
 					</div>
 				</section>
-				<Tabs
-					value={CHAMPIONSHIP_TAB.roster}
-					items={championshipTabs(false)}
-					onChange={ignoreTabChange}
-				/>
+				<ChampionshipTabsSkeleton />
 				<SectionCard
 					title={CHAMPIONSHIP_TAB_LABEL.roster}
 					icon={<Users className="size-4 text-pitch-fg" />}
@@ -963,10 +1036,6 @@ function ChampionshipDetailPageSkeleton() {
 			</main>
 		</SkeletonRegion>
 	);
-}
-
-function ignoreTabChange() {
-	return;
 }
 
 function LogoCropSkeleton({ onClose }: { onClose: () => void }) {

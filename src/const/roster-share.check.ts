@@ -50,6 +50,7 @@ function player(
 		matches: 0,
 		mvps: 0,
 		...stats,
+		goalkeeper_rating: stats.goalkeeper_rating ?? 0,
 	};
 }
 

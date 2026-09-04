@@ -68,11 +68,10 @@ export type FormHeatmapGrid = {
 	truncated: boolean;
 };
 
-export function championshipFormHeatmap(
-	players: readonly ChampionshipPlayer[],
+export function formHeatmapEndedColumns(
 	events: readonly ChampionshipEvent[],
-): FormHeatmapGrid {
-	const columns = events.flatMap((event) => {
+): FormHeatmapColumn[] {
+	return events.flatMap((event) => {
 		if (event.ended_at === null) {
 			return [];
 		}
@@ -84,22 +83,41 @@ export function championshipFormHeatmap(
 			},
 		];
 	});
+}
+
+export function playerFormHeatmapCells(
+	playerId: number,
+	events: readonly ChampionshipEvent[],
+): FormHeatmapCell[] {
+	const columns = formHeatmapEndedColumns(events);
+	if (columns.length === 0) {
+		return [];
+	}
 
 	const attendanceByEvent = new Map(
 		events.map((event) => [event.id, event.attendance]),
 	);
 
-	const rows = players.flatMap((player) => {
-		const cells = columns.map((column) => {
-			const attendance = attendanceByEvent
-				.get(column.eventId)
-				?.find((row) => row.player_id === player.id);
-			if (!attendance) {
-				return absentFormHeatmapCell();
-			}
+	return columns.map((column) => {
+		const attendance = attendanceByEvent
+			.get(column.eventId)
+			?.find((row) => row.player_id === playerId);
+		if (!attendance) {
+			return absentFormHeatmapCell();
+		}
 
-			return eventAttendanceFormCell(attendance);
-		});
+		return eventAttendanceFormCell(attendance);
+	});
+}
+
+export function championshipFormHeatmap(
+	players: readonly ChampionshipPlayer[],
+	events: readonly ChampionshipEvent[],
+): FormHeatmapGrid {
+	const columns = formHeatmapEndedColumns(events);
+
+	const rows = players.flatMap((player) => {
+		const cells = playerFormHeatmapCells(player.id, events);
 
 		const aggregate = aggregateFormHeatmap(player.id, events);
 		if (!aggregate || aggregate.matches === 0) {
