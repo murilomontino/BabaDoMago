@@ -15,6 +15,8 @@ import {
 	eventPlayerVoteChoiceLabel,
 	eventPlayerVoteDraftToSubmit,
 	eventPlayerVoteErrorMessage,
+	eventPlayerVoteLockedTargetIds,
+	eventPlayerVoteShowsSavedChoice,
 	eventPlayerVoteStatus,
 	eventPlayerVoteStatusLabel,
 	eventPlayerVotesSubmittedLabel,
@@ -210,6 +212,57 @@ check(
 		]),
 	).length === 1,
 	"draft submit payload",
+);
+check(
+	eventPlayerVoteDraftToSubmit(
+		new Map([
+			[1, "like"],
+			[2, "dislike"],
+		]),
+		new Set([1]),
+	).length === 1,
+	"draft submit skips locked",
+);
+check(
+	!isEventPlayerVoteDraftDirty(
+		new Map([
+			[1, "dislike"],
+			[2, "like"],
+		]),
+		new Map([
+			[1, "like"],
+			[2, "like"],
+		]),
+		new Set([1]),
+	),
+	"draft dirty ignores locked",
+);
+check(
+	eventPlayerVoteLockedTargetIds([
+		{ player_id: 1, vote_rating_delta: 0.5 },
+		{ player_id: 2, vote_rating_delta: 0 },
+	]).has(1) &&
+		!eventPlayerVoteLockedTargetIds([
+			{ player_id: 1, vote_rating_delta: 0.5 },
+			{ player_id: 2, vote_rating_delta: 0 },
+		]).has(2),
+	"locked target ids",
+);
+check(
+	eventPlayerVoteShowsSavedChoice({
+		draftVote: "like",
+		locked: true,
+		votingEnabled: true,
+	}),
+	"shows locked choice while editing",
+);
+check(
+	!eventPlayerVoteShowsSavedChoice({
+		draftVote: "like",
+		locked: false,
+		votingEnabled: true,
+	}),
+	"hides open choice while editing",
 );
 check(
 	eventPlayerVoteErrorMessage("like budget exceeded") === "No máximo 5 likes",

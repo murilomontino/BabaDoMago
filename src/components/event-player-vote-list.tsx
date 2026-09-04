@@ -13,6 +13,7 @@ import {
 	eventPlayerVoteBudgetSummary,
 	eventPlayerVoteChipLabel,
 	eventPlayerVoteChoiceLabel,
+	eventPlayerVoteShowsSavedChoice,
 	eventPlayerVoteTeamSections,
 	isEventPlayerVoteLocked,
 	nextEventPlayerVoteValue,
@@ -205,8 +206,11 @@ export function EventPlayerVoteList({
 								const locked =
 									!votesVoided &&
 									isEventPlayerVoteLocked(row.vote_rating_delta);
-								const showSubmittedChoice =
-									!votingEnabled && draftVote !== null;
+								const showSubmittedChoice = eventPlayerVoteShowsSavedChoice({
+									draftVote,
+									locked,
+									votingEnabled,
+								});
 								const nextLike = nextEventPlayerVoteValue(draftVote, "like");
 								const nextDislike = nextEventPlayerVoteValue(
 									draftVote,

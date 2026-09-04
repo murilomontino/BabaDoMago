@@ -19,6 +19,7 @@ import {
 	eventPlayerMonthlyCount,
 	eventPlayerVoteBudgetSummary,
 	eventPlayerVoteDraftToSubmit,
+	eventPlayerVoteLockedTargetIds,
 	eventPlayerVotesSubmittedLabel,
 	initialEventPlayerBallotLocked,
 	isEventPlayerVoteDraftDirty,
@@ -171,7 +172,15 @@ export function ChampionshipEventVotePage() {
 		!votesClosed &&
 		!votesVoided &&
 		voterPresent;
-	const draftDirty = isEventPlayerVoteDraftDirty(draftVotes, savedVotes);
+	const lockedTargetIds = useMemo(
+		() => eventPlayerVoteLockedTargetIds(event?.attendance ?? []),
+		[event?.attendance],
+	);
+	const draftDirty = isEventPlayerVoteDraftDirty(
+		draftVotes,
+		savedVotes,
+		lockedTargetIds,
+	);
 	const showSubmitFab = canSubmitVotes && !ballotLocked;
 	const showEditVotes = canEditEventPlayerBallot({
 		ballotLocked,
@@ -338,7 +347,7 @@ export function ChampionshipEventVotePage() {
 					onClick={() => {
 						setLocalError(null);
 						submitVotesMutation.mutate(
-							eventPlayerVoteDraftToSubmit(draftVotes),
+							eventPlayerVoteDraftToSubmit(draftVotes, lockedTargetIds),
 							{
 								onSuccess: () => {
 									setBallotLocked(true);

@@ -122,9 +122,9 @@ Dono, capitão e admin **presentes**, ou **mensalista** (mesmo ausente), podem d
 | Encerrar votação | só o **dono**; trava novos votos na rodada (`player_votes_closed_at`) |
 | Cancelar efeito | só o **dono**; soft-delete (`player_votes_voided_at`): notas voltam, votos **permanecem** até reabrir; histórico na aba **Gestão** |
 | Reabrir votação | só o **dono**, só com a rodada cancelada; **apaga** os votos, zera `vote_rating_delta` / `vote_rating_applied`, limpa void e close → urna **Aberta** |
-| 1 voto por admin por atleta | pode trocar ou limpar **só enquanto aberto** |
+| 1 voto por admin por atleta | pode trocar ou limpar **só enquanto aberto**; reenvio **não** altera alvo já fechado por quórum |
 
-O campo `championship_event_attendance.vote_rating_delta` guarda o resultado (±0,5 ou 0). **Não** entra em `eventRatingDelta` / aproveitamento. Depois de ±0,5, novos votos nesse alvo são recusados (`vote closed`).
+O campo `championship_event_attendance.vote_rating_delta` guarda o resultado (±0,5 ou 0). **Não** entra em `eventRatingDelta` / aproveitamento. Depois de ±0,5, o alvo **não** troca nem some no reenvio (mesmo voto = no-op; omitir não apaga). Troca em alvo fechado continua `vote closed`.
 
 - Jogador já ranqueado (`rating ≠ 0`): aplica na hora no elenco.
 - Sentinela (`rating = 0`): só guarda o overlay; aplica depois da semente no encerrar (`vote_rating_applied` evita aplicar duas vezes).

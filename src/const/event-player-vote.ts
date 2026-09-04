@@ -153,6 +153,36 @@ export function isEventPlayerVoteLocked(voteRatingDelta: number): boolean {
 	return voteRatingDelta !== 0;
 }
 
+export function eventPlayerVoteLockedTargetIds(
+	attendance: readonly { player_id: number; vote_rating_delta: number }[],
+): Set<number> {
+	return new Set(
+		attendance.flatMap((row) => {
+			if (!isEventPlayerVoteLocked(row.vote_rating_delta)) {
+				return [];
+			}
+
+			return [row.player_id];
+		}),
+	);
+}
+
+export function eventPlayerVoteShowsSavedChoice(input: {
+	draftVote: EventPlayerVoteChoice | null;
+	locked: boolean;
+	votingEnabled: boolean;
+}): boolean {
+	if (input.draftVote === null) {
+		return false;
+	}
+
+	if (input.locked) {
+		return true;
+	}
+
+	return !input.votingEnabled;
+}
+
 export function isEventPlayerVotesClosed(
 	playerVotesClosedAt: string | null,
 ): boolean {
@@ -396,10 +426,15 @@ export function canSetEventPlayerVoteDraft(
 export function isEventPlayerVoteDraftDirty(
 	draft: EventPlayerVoteDraft,
 	saved: ReadonlyMap<number, EventPlayerVoteChoice>,
+	lockedTargetIds: ReadonlySet<number> = new Set(),
 ): boolean {
 	const targetIds = new Set([...draft.keys(), ...saved.keys()]);
 
 	for (const targetId of targetIds) {
+		if (lockedTargetIds.has(targetId)) {
+			continue;
+		}
+
 		const draftValue = draft.get(targetId) ?? null;
 		const savedValue = saved.get(targetId) ?? null;
 		if (draftValue !== savedValue) {
@@ -412,9 +447,14 @@ export function isEventPlayerVoteDraftDirty(
 
 export function eventPlayerVoteDraftToSubmit(
 	draft: EventPlayerVoteDraft,
+	lockedTargetIds: ReadonlySet<number> = new Set(),
 ): { target_player_id: number; value: EventPlayerVoteChoice }[] {
 	return [...draft.entries()].flatMap(([targetPlayerId, value]) => {
 		if (!value) {
+			return [];
+		}
+
+		if (lockedTargetIds.has(targetPlayerId)) {
 			return [];
 		}
 
