@@ -198,5 +198,18 @@ check(
 	championshipPodiumHistoryMetric(PODIUM_METRIC.synergy) === null,
 	"synergy has no chart",
 );
+check(
+	championshipPodiumHistoryMetric(ROSTER_COLUMN.ratingEvolution) === null,
+	"rating evolution has no chart",
+);
+check(
+	championshipPodiumHistoryChart(
+		ROSTER_COLUMN.ratingEvolution,
+		[player(7)],
+		[ended],
+		nowIso,
+	).rows.length === 0,
+	"rating evolution chart empty",
+);
 
 console.log("championship-metric-history ok");

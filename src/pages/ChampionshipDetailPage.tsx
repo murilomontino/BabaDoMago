@@ -103,6 +103,7 @@ import {
 	useUpdateChampionshipEventConfig,
 	useUpdateChampionshipVisibility,
 	useUpdatePlayerNickname,
+	useUpdatePlayerGoalkeeperRating,
 	useUpdatePlayerRating,
 	useUploadChampionshipLogo,
 } from "@/hooks/championships/use-championships";
@@ -155,6 +156,7 @@ export function ChampionshipDetailPage() {
 	const reactivatePlayer = useReactivatePlayer();
 	const removePlayer = useRemovePlayer();
 	const updateRating = useUpdatePlayerRating();
+	const updateGoalkeeperRating = useUpdatePlayerGoalkeeperRating();
 	const updateNickname = useUpdatePlayerNickname();
 	const eventsQuery = useChampionshipEvents(championshipId);
 	useEffect(() => {
@@ -202,6 +204,7 @@ export function ChampionshipDetailPage() {
 		avatarUrl: string | null;
 		from: number;
 		to: number;
+		track: "line" | "goalkeeper";
 	} | null>(null);
 	const [pendingNicknamePlayer, setPendingNicknamePlayer] =
 		useState<ChampionshipPlayer | null>(null);
@@ -285,8 +288,10 @@ export function ChampionshipDetailPage() {
 	}
 
 	const applyRating = useCallback(
-		(playerId: number, rating: number) => {
-			updateRating.mutate(
+		(playerId: number, rating: number, track: "line" | "goalkeeper") => {
+			const mutation =
+				track === "goalkeeper" ? updateGoalkeeperRating : updateRating;
+			mutation.mutate(
 				{ playerId, rating },
 				{
 					onSuccess: () => {
@@ -295,7 +300,7 @@ export function ChampionshipDetailPage() {
 				},
 			);
 		},
-		[updateRating.mutate],
+		[updateRating.mutate, updateGoalkeeperRating.mutate],
 	);
 
 	const handleChangeRating = useCallback(
@@ -314,8 +319,9 @@ export function ChampionshipDetailPage() {
 			}
 
 			updateRating.reset();
+			updateGoalkeeperRating.reset();
 			if (player.rating === PLAYER_RATING.min) {
-				applyRating(player.id, rating);
+				applyRating(player.id, rating, "line");
 				return;
 			}
 
@@ -325,17 +331,65 @@ export function ChampionshipDetailPage() {
 				avatarUrl: player.avatar_url,
 				from: player.rating,
 				to: rating,
+				track: "line",
 			});
 		},
-		[permissions.rating, activePlayers, updateRating.reset, applyRating],
+		[
+			permissions.rating,
+			activePlayers,
+			updateRating.reset,
+			updateGoalkeeperRating.reset,
+			applyRating,
+		],
+	);
+
+	const handleChangeGoalkeeperRating = useCallback(
+		(playerId: number, rating: number) => {
+			if (!permissions.rating) {
+				return;
+			}
+
+			const player = activePlayers.find((item) => item.id === playerId);
+			if (!player) {
+				return;
+			}
+
+			if (player.goalkeeper_rating === rating) {
+				return;
+			}
+
+			updateRating.reset();
+			updateGoalkeeperRating.reset();
+			if (player.goalkeeper_rating === PLAYER_RATING.min) {
+				applyRating(player.id, rating, "goalkeeper");
+				return;
+			}
+
+			setPendingRatingChange({
+				playerId: player.id,
+				playerName: playerVisibleName(player),
+				avatarUrl: player.avatar_url,
+				from: player.goalkeeper_rating,
+				to: rating,
+				track: "goalkeeper",
+			});
+		},
+		[
+			permissions.rating,
+			activePlayers,
+			updateRating.reset,
+			updateGoalkeeperRating.reset,
+			applyRating,
+		],
 	);
 
 	function handleRatingCancel() {
-		if (updateRating.isPending) {
+		if (updateRating.isPending || updateGoalkeeperRating.isPending) {
 			return;
 		}
 
 		updateRating.reset();
+		updateGoalkeeperRating.reset();
 		setPendingRatingChange(null);
 	}
 
@@ -344,7 +398,11 @@ export function ChampionshipDetailPage() {
 			return;
 		}
 
-		applyRating(pendingRatingChange.playerId, pendingRatingChange.to);
+		applyRating(
+			pendingRatingChange.playerId,
+			pendingRatingChange.to,
+			pendingRatingChange.track,
+		);
 	}
 
 	const handleEditNickname = useCallback(
@@ -766,10 +824,12 @@ export function ChampionshipDetailPage() {
 								claimingPlayerId={claimPlayer.variables ?? null}
 								claimError={mutationErrorMessage(claimPlayer)}
 								ratingPlayerId={
-									pendingMutationId(updateRating)?.playerId ?? null
+									pendingMutationId(updateRating)?.playerId ??
+									pendingMutationId(updateGoalkeeperRating)?.playerId ??
+									null
 								}
 								ratingError={mutationErrorMessage(
-									updateRating,
+									updateRating.isError ? updateRating : updateGoalkeeperRating,
 									Boolean(pendingRatingChange),
 								)}
 								nicknamePlayerId={
@@ -793,6 +853,7 @@ export function ChampionshipDetailPage() {
 								onAddPlayer={handleAddPlayer}
 								onClaim={handleClaim}
 								onChangeRating={handleChangeRating}
+								onChangeGoalkeeperRating={handleChangeGoalkeeperRating}
 								onEditNickname={handleEditNickname}
 								onEditEventStats={handlerWhenAllowed(
 									permissions.overrideEnded,

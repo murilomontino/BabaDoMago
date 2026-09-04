@@ -115,6 +115,26 @@ function PodiumTable({ rows, metric, ceiling }: PodiumTableProps) {
 						</div>
 					),
 				}),
+				podiumColumnHelper.accessor("ratingEvolution", {
+					id: ROSTER_COLUMN.ratingEvolution,
+					header: ROSTER_COLUMN_ABBR.ratingEvolution,
+					enableHiding: false,
+					meta: {
+						align: "right" as const,
+						title: ROSTER_COLUMN_LABEL.ratingEvolution,
+					},
+					cell: ({ getValue }) => (
+						<span
+							className={
+								metric === ROSTER_COLUMN.ratingEvolution
+									? "font-semibold tabular-nums text-pitch-fg"
+									: "tabular-nums"
+							}
+						>
+							{formatPodiumMetric(ROSTER_COLUMN.ratingEvolution, getValue())}
+						</span>
+					),
+				}),
 				...ROSTER_STAT_COLUMNS.map((column) =>
 					podiumColumnHelper.accessor(column, {
 						id: column,

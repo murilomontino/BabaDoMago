@@ -24,6 +24,7 @@ function player(id: number, name: string): ChampionshipPlayer {
 		avatar_url: null,
 		role: "member",
 		rating: 3,
+		goalkeeper_rating: 0,
 		goals: 0,
 		assists: 0,
 		assisted_goals: 0,

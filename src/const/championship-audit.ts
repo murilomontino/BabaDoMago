@@ -1,5 +1,6 @@
 export const AUDIT_ACTION = {
 	updatePlayerRating: "update_player_rating",
+	updatePlayerGoalkeeperRating: "update_player_goalkeeper_rating",
 	savePlayerEventStats: "save_player_event_stats",
 	saveAttendanceStats: "save_attendance_stats",
 	setEventMvps: "set_event_mvps",
@@ -19,6 +20,7 @@ export type AuditAction = (typeof AUDIT_ACTION)[keyof typeof AUDIT_ACTION];
 
 export const AUDIT_ACTION_LABEL = {
 	[AUDIT_ACTION.updatePlayerRating]: "Nota alterada",
+	[AUDIT_ACTION.updatePlayerGoalkeeperRating]: "Nota goleiro alterada",
 	[AUDIT_ACTION.savePlayerEventStats]: "Stats da rodada corrigidas",
 	[AUDIT_ACTION.saveAttendanceStats]: "Stats da presença corrigidas",
 	[AUDIT_ACTION.setEventMvps]: "MVP alterado",

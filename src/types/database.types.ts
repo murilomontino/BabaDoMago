@@ -21,6 +21,7 @@ type ChampionshipPlayersRow = {
 	nickname: string | null;
 	nickname_tags: string[];
 	rating: number;
+	goalkeeper_rating: number;
 	removed_at: string | null;
 	role: string;
 	is_goalkeeper: boolean;
@@ -97,8 +98,12 @@ export type Database = {
 					player_id: number;
 					rating: number;
 					rating_delta: number;
+					goalkeeper_rating: number;
+					goalkeeper_rating_delta: number;
 					vote_rating_delta: number;
 					vote_rating_applied: number;
+					goalkeeper_vote_rating_delta: number;
+					goalkeeper_vote_rating_applied: number;
 					wins: number;
 					losses: number;
 					draws: number;
@@ -119,8 +124,12 @@ export type Database = {
 					player_id: number;
 					rating?: number;
 					rating_delta?: number;
+					goalkeeper_rating?: number;
+					goalkeeper_rating_delta?: number;
 					vote_rating_delta?: number;
 					vote_rating_applied?: number;
+					goalkeeper_vote_rating_delta?: number;
+					goalkeeper_vote_rating_applied?: number;
 					wins?: number;
 					losses?: number;
 					draws?: number;
@@ -141,8 +150,12 @@ export type Database = {
 					player_id?: number;
 					rating?: number;
 					rating_delta?: number;
+					goalkeeper_rating?: number;
+					goalkeeper_rating_delta?: number;
 					vote_rating_delta?: number;
 					vote_rating_applied?: number;
+					goalkeeper_vote_rating_delta?: number;
+					goalkeeper_vote_rating_applied?: number;
 					wins?: number;
 					losses?: number;
 					draws?: number;
@@ -535,6 +548,7 @@ export type Database = {
 					nickname_tags?: string[];
 					own_goals?: number;
 					rating?: number;
+					goalkeeper_rating?: number;
 					removed_at?: string | null;
 					role?: string;
 					is_goalkeeper?: boolean;
@@ -560,6 +574,7 @@ export type Database = {
 					nickname_tags?: string[];
 					own_goals?: number;
 					rating?: number;
+					goalkeeper_rating?: number;
 					removed_at?: string | null;
 					role?: string;
 					is_goalkeeper?: boolean;
@@ -1068,6 +1083,10 @@ export type Database = {
 				Returns: Json;
 			};
 			update_player_rating: {
+				Args: { player_id: number; rating: number };
+				Returns: Json;
+			};
+			update_player_goalkeeper_rating: {
 				Args: { player_id: number; rating: number };
 				Returns: Json;
 			};

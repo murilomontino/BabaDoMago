@@ -16,6 +16,7 @@ import {
 	attendanceGoalkeeperIds,
 	builderTeamsFromEvent,
 	EVENT_TEAM_MESSAGE,
+	eventDrawInputRating,
 	eventTeamsAreReady,
 	formatEventStartsAt,
 	keepGoalkeepersPresent,
@@ -180,12 +181,23 @@ export function ChampionshipEventPotDrawPage() {
 		}
 
 		const present = new Set(event.attendance.map((row) => row.player_id));
+		const volunteerSet = new Set(
+			keepGoalkeepersPresent(
+				attendanceGoalkeeperIds(event.attendance),
+				[...present],
+			),
+		);
 		const drawPlayers = activePlayers.flatMap((player) => {
 			if (!present.has(player.id)) {
 				return [];
 			}
 
-			return [{ id: player.id, rating: player.rating }];
+			return [
+				{
+					id: player.id,
+					rating: eventDrawInputRating(player, volunteerSet.has(player.id)),
+				},
+			];
 		});
 
 		return eventDrawRevealCards(
@@ -465,12 +477,21 @@ export function ChampionshipEventPotDrawPage() {
 		setIsDrawing(true);
 		setDrawError(null);
 		try {
+			const volunteerSet = new Set(volunteerIds);
 			const drawPlayers = activePlayers.flatMap((player) => {
 				if (!present.has(player.id)) {
 					return [];
 				}
 
-				return [{ id: player.id, rating: player.rating }];
+				return [
+					{
+						id: player.id,
+						rating: eventDrawInputRating(
+							player,
+							volunteerSet.has(player.id),
+						),
+					},
+				];
 			});
 			const { worker, done } = runEventTeamPotDraw({
 				players: drawPlayers,

@@ -1076,6 +1076,17 @@ export function pickTeamGoalkeeper(
 	);
 }
 
+export function eventDrawInputRating(
+	player: { rating: number; goalkeeper_rating: number },
+	isGoalkeeperVolunteer: boolean,
+): number {
+	if (isGoalkeeperVolunteer) {
+		return player.goalkeeper_rating;
+	}
+
+	return player.rating;
+}
+
 export function eventDrawRatings(
 	players: readonly { id: number; rating: number }[],
 ): readonly { id: number; rating: number }[] {

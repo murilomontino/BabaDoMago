@@ -15,7 +15,7 @@ O baba precisa de uma nota que:
 3. **Trate empate com justiça** — quem empata mais do que perde não deve ser tratado igual a quem só empata “no meio” de muitas derrotas.
 4. **Escale com a liga** — o tamanho do ajuste acompanha o teto do campeonato (o maior rating entre os jogadores, no mínimo 5).
 
-Resultado: uma métrica única, a mesma no TypeScript e no Postgres, usada no preview da UI, no encerramento da rodada e no simulador da ficha do jogador.
+Resultado: duas métricas paralelas (linha e goleiro), a mesma fórmula no TypeScript e no Postgres, usadas no preview da UI, no encerramento da rodada e no sorteio (nota vigente conforme goleiro da presença).
 
 ---
 
@@ -23,12 +23,16 @@ Resultado: uma métrica única, a mesma no TypeScript e no Postgres, usada no pr
 
 | Conceito | Significado |
 | --- | --- |
-| `rating` | Nota do jogador no campeonato (`championship_players.rating`) |
-| `0` (sentinela) | Jogador ainda sem nota “oficial”. No sorteio/média vira a média dos presentes com nota; no banco continua `0` até a primeira semente |
-| Teto (`ceiling`) | `max(maior rating do elenco, 5)`, limitado a 100 |
+| `rating` | Nota de linha no campeonato (`championship_players.rating`) |
+| `goalkeeper_rating` | Nota de goleiro (`championship_players.goalkeeper_rating`) |
+| Track vigente | Se `attendance.is_goalkeeper`, ajuste/voto/MVP usam `goalkeeper_rating`; senão usam `rating` |
+| `0` (sentinela) | Jogador ainda sem nota “oficial” naquele track. No sorteio/média vira a média dos presentes com nota no valor usado; no banco continua `0` até a primeira semente |
+| Teto (`ceiling`) | Por track: `max(maior nota do track na rodada, 5)`, limitado a 100 |
 | Piso | `0.1` para quem já tem nota; `0` só como sentinela |
-| Delta | Quanto a nota muda na rodada (ou a semente, na primeira vez) |
-| MVP | `2%` da nota snapshot, ceil em 1 casa, mínimo `+0.1` |
+| Delta | Quanto a nota vigente muda na rodada (ou a semente, na primeira vez) |
+| MVP | `2%` da nota snapshot vigente, ceil em 1 casa, mínimo `+0.1` |
+
+No **sorteio**, voluntários de goleiro (`attendance.is_goalkeeper`) equilibram com `goalkeeper_rating`; os demais com `rating`. As duas notas crescem de forma independente.
 
 Pontuação da rodada (como futebol):
 

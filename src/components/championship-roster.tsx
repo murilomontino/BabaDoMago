@@ -62,6 +62,7 @@ type ChampionshipRosterProps = {
 	claimingPlayerId?: number | null;
 	onClaim?: (playerId: number) => void;
 	onChangeRating?: (playerId: number, rating: number) => void;
+	onChangeGoalkeeperRating?: (playerId: number, rating: number) => void;
 	ratingPlayerId?: number | null;
 	onEditNickname?: (playerId: number) => void;
 	nicknamePlayerId?: number | null;
@@ -133,6 +134,7 @@ export function ChampionshipRoster({
 	claimingPlayerId,
 	onClaim,
 	onChangeRating,
+	onChangeGoalkeeperRating,
 	ratingPlayerId,
 	onEditNickname,
 	nicknamePlayerId,
@@ -191,6 +193,9 @@ export function ChampionshipRoster({
 	const ceiling = championshipRatingCeiling(
 		players.map((player) => player.rating),
 	);
+	const goalkeeperCeiling = championshipRatingCeiling(
+		players.map((player) => player.goalkeeper_rating),
+	);
 	const playerCellShared = useMemo(
 		() => ({
 			createdBy,
@@ -202,11 +207,21 @@ export function ChampionshipRoster({
 	const playerRatingShared = useMemo(
 		() => ({
 			isOwnerViewer,
-			ceiling,
+			ceiling: rosterCeiling ?? ceiling,
+			goalkeeperCeiling,
 			onChangeRating,
+			onChangeGoalkeeperRating,
 			ratingPlayerId,
 		}),
-		[isOwnerViewer, ceiling, onChangeRating, ratingPlayerId],
+		[
+			isOwnerViewer,
+			rosterCeiling,
+			ceiling,
+			goalkeeperCeiling,
+			onChangeRating,
+			onChangeGoalkeeperRating,
+			ratingPlayerId,
+		],
 	);
 	const playerMonthlyShared = useMemo(
 		() => ({

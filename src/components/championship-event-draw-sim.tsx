@@ -19,6 +19,7 @@ import {
 	EVENT_TEAM_POSITION_LABEL,
 	type EventTeamBuilderTeam,
 	type EventWeekday,
+	eventDrawInputRating,
 	eventGoalkeeperIds,
 	eventTeamSlotPosition,
 	keepGoalkeepersPresent,
@@ -230,8 +231,15 @@ export function ChampionshipEventDrawSim({
 		setDrawingMode(mode);
 		setError(null);
 		try {
+			const volunteerSet = new Set(presentGoalkeeperIds);
 			const input = {
-				players: presentPlayers.map(({ id, rating }) => ({ id, rating })),
+				players: presentPlayers.map((player) => ({
+					id: player.id,
+					rating: eventDrawInputRating(
+						player,
+						volunteerSet.has(player.id),
+					),
+				})),
 				playersPerTeam,
 				volunteerIds: presentGoalkeeperIds,
 			};

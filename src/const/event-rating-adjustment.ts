@@ -27,6 +27,18 @@ export const EVENT_RATING_DROP_SHARE = {
 	minShare: 0.4,
 } as const;
 
+export function eventActivePlayerRating(
+	isGoalkeeper: boolean,
+	rating: number,
+	goalkeeperRating: number,
+): number {
+	if (isGoalkeeper) {
+		return goalkeeperRating;
+	}
+
+	return rating;
+}
+
 export function eventRatingDropShareExcludedPlayerIds(
 	players: readonly { id: number; rating: number }[],
 	limit: number = EVENT_RATING_DROP_SHARE.excludeTop,
@@ -418,13 +430,16 @@ export function eventRatingPreview({
 		draws: number;
 		losses: number;
 		matches: number;
+		is_goalkeeper?: boolean;
 		rating?: number;
+		goalkeeper_rating?: number;
 		goals?: number;
 		assists?: number;
 	}[];
 	players: readonly {
 		id: number;
 		rating: number;
+		goalkeeper_rating?: number;
 		nickname: string | null;
 		display_name: string;
 	}[];
@@ -442,8 +457,11 @@ export function eventRatingPreview({
 	const playerById = new Map(players.map((player) => [player.id, player]));
 	const statsById = new Map(attendance.map((row) => [row.player_id, row]));
 	const mvpIds = new Set(mvpPlayerIds);
-	const ceiling = championshipRatingCeiling(
+	const lineCeiling = championshipRatingCeiling(
 		players.map((player) => player.rating),
+	);
+	const gkCeiling = championshipRatingCeiling(
+		players.map((player) => player.goalkeeper_rating ?? PLAYER_RATING.default),
 	);
 	const ids = presentPlayerIds ?? attendance.map((row) => row.player_id);
 	const teamByPlayerId = eventTeamByPlayerId(teams);
@@ -451,16 +469,34 @@ export function eventRatingPreview({
 		attendance,
 		teamByPlayerId,
 	);
-	const excludedPlayerIds =
+	const excludedLineIds =
 		ratingDropGoalShare && ratingDropShareExcludeTop
 			? eventRatingDropShareExcludedPlayerIds(players)
+			: new Set<number>();
+	const excludedGkIds =
+		ratingDropGoalShare && ratingDropShareExcludeTop
+			? eventRatingDropShareExcludedPlayerIds(
+					players.map((player) => ({
+						id: player.id,
+						rating: player.goalkeeper_rating ?? PLAYER_RATING.default,
+					})),
+				)
 			: new Set<number>();
 
 	return ids.map((playerId) => {
 		const player = playerById.get(playerId);
 		const stats = statsById.get(playerId);
-		const from = eventRatingPreviewFrom(stats?.rating, player?.rating);
+		const isGoalkeeper = stats?.is_goalkeeper === true;
+		const snapshotRating = isGoalkeeper
+			? stats?.goalkeeper_rating
+			: stats?.rating;
+		const rosterRating = isGoalkeeper
+			? player?.goalkeeper_rating
+			: player?.rating;
+		const from = eventRatingPreviewFrom(snapshotRating, rosterRating);
 		const isMvp = mvpIds.has(playerId);
+		const ceiling = isGoalkeeper ? gkCeiling : lineCeiling;
+		const excludedPlayerIds = isGoalkeeper ? excludedGkIds : excludedLineIds;
 		const rawDelta =
 			eventRatingDelta(
 				stats?.wins ?? 0,

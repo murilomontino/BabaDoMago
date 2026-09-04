@@ -4,6 +4,7 @@ import {
 	EVENT_RATING_DROP_SHARE,
 	EVENT_RATING_INITIAL,
 	eventRatingApplyDropShare,
+	eventActivePlayerRating,
 	eventRatingDelta,
 	eventRatingDrawPoints,
 	eventRatingDropShareExcludedPlayerIds,
@@ -499,6 +500,65 @@ check(eventRatingPreviewFrom(4, 4.4), 4, "snapshot vence elenco");
 check(eventRatingPreviewFrom(undefined, 4.4), 4.4, "sem snapshot usa elenco");
 check(eventRatingPreviewFrom(undefined, undefined), 0, "sem nota vira sentinela");
 check(eventRatingPreviewFrom(0, 3.5), 0, "sentinela da presenca fica 0");
+
+check(eventActivePlayerRating(true, 4, 7), 7, "ativo goleiro");
+check(eventActivePlayerRating(false, 4, 7), 4, "ativo linha");
+
+const gkPreview = eventRatingPreview({
+	attendance: [
+		{
+			player_id: 1,
+			display_name: "Goleiro",
+			wins: 3,
+			draws: 0,
+			losses: 0,
+			matches: 3,
+			is_goalkeeper: true,
+			rating: 4,
+			goalkeeper_rating: 0,
+		},
+		{
+			player_id: 2,
+			display_name: "Linha",
+			wins: 0,
+			draws: 0,
+			losses: 3,
+			matches: 3,
+			is_goalkeeper: false,
+			rating: 4,
+			goalkeeper_rating: 9,
+		},
+	],
+	players: [
+		{
+			id: 1,
+			rating: 4,
+			goalkeeper_rating: 0,
+			nickname: "GK",
+			display_name: "Goleiro",
+		},
+		{
+			id: 2,
+			rating: 4,
+			goalkeeper_rating: 9,
+			nickname: "Linha",
+			display_name: "Linha",
+		},
+	],
+	presentPlayerIds: null,
+});
+check(gkPreview[0]?.from, 0, "gk preview usa nota goleiro");
+check(
+	(gkPreview[0]?.to ?? 0) > 0,
+	true,
+	"gk sentinela recebe semente",
+);
+check(gkPreview[1]?.from, 4, "linha preview usa rating");
+check(
+	(gkPreview[1]?.to ?? 4) < 4,
+	true,
+	"linha cai sem tocar nota goleiro",
+);
 
 const alreadyEvolvedPreview = eventRatingPreview({
 	attendance: [

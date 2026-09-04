@@ -1,6 +1,10 @@
 import type { ChampionshipPlayer } from "../types/championship.ts";
 import { CHAMPIONSHIP_ROLE } from "./championship-role.ts";
 import { mvpCount } from "./event-mvp.ts";
+import {
+	attendanceRatingEvolution,
+	type PodiumSourcePlayer,
+} from "./podium.ts";
 
 export function fallbackRosterPlayer(
 	playerId: number,
@@ -15,6 +19,7 @@ export function fallbackRosterPlayer(
 		nickname_tags: [],
 		avatar_url: null,
 		rating: 0,
+		goalkeeper_rating: 0,
 		role: CHAMPIONSHIP_ROLE.member,
 		is_goalkeeper: false,
 		is_monthly: false,
@@ -74,9 +79,11 @@ export function playersFromEventAttendance(
 		matches: number;
 		is_mvp: boolean;
 		rating: number;
+		rating_delta?: number;
+		vote_rating_delta?: number;
 	}[],
 	byId: ReadonlyMap<number, ChampionshipPlayer>,
-): ChampionshipPlayer[] {
+): PodiumSourcePlayer[] {
 	return attendance.map((row) => {
 		const inRoster = byId.has(row.player_id);
 		const player = resolveRosterPlayer(row.player_id, row.display_name, byId);
@@ -92,6 +99,11 @@ export function playersFromEventAttendance(
 			matches: row.matches,
 			mvps: mvpCount(row.is_mvp),
 			rating: eventAttendanceDisplayRating(inRoster, player.rating, row.rating),
+			ratingEvolution: attendanceRatingEvolution({
+				rating: row.rating,
+				rating_delta: row.rating_delta ?? 0,
+				vote_rating_delta: row.vote_rating_delta ?? 0,
+			}),
 		};
 	});
 }

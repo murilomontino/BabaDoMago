@@ -9,6 +9,9 @@ export const PLAYER_RATING = {
 
 export const PLAYER_RATING_INPUT = {
 	ariaLabel: "Corrigir nota",
+	goalkeeperAriaLabel: "Corrigir nota goleiro",
+	lineLabel: "Nota",
+	goalkeeperLabel: "Nota goleiro",
 } as const;
 
 export const PLAYER_STAR_CLASS = {

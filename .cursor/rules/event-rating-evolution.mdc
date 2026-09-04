@@ -12,13 +12,13 @@ A nota no elenco **só persiste no SQL**. `endEvent` pinta `ended_at` na hora; o
 
 ## Pipeline
 
-1. Presença: snapshot `rating` (antes do evento).
-2. Preview: `eventRatingPreview` = aproveitamento + MVP (+ drop share se flag on). Snapshot vence elenco.
-3. Voto: overlay `vote_rating_delta` (±0,5). Ranqueado aplica na hora; sentinela espera semente (`vote_rating_applied`). Reenvio não altera alvo já fechado.
-4. Encerrar: `adjust_championship_player_ratings_for_event` grava `rating_delta`, depois voto pendente.
-5. Histórico: ficha (`playerProfileHistory`) e campeonato (`championshipRatingHistory`, **Evolução da nota**).
+1. Presença: snapshot `rating` e `goalkeeper_rating` (antes do evento).
+2. Preview: `eventRatingPreview` = aproveitamento + MVP (+ drop share se flag on) na **nota vigente** (`attendance.is_goalkeeper`). Snapshot vence elenco.
+3. Voto: overlay `vote_rating_delta` (±0,5). Sync aplica em `rating` ou `goalkeeper_rating` conforme o track; sentinela espera semente.
+4. Encerrar: `adjust_championship_player_ratings_for_event` grava `rating_delta` ou `goalkeeper_rating_delta`, depois voto pendente.
+5. Histórico de linha: ficha (`playerProfileHistory`) e campeonato (`championshipRatingHistory`, **Evolução da nota**). Histórico de goleiro fica para depois.
 
-Recompute: `rating − old_delta + new_delta` com o snapshot da presença.
+Recompute: nota − old_delta + new_delta no snapshot do track vigente.
 
 ## Amortecimento de queda (flag)
 

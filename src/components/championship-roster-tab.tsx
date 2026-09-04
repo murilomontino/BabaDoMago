@@ -51,6 +51,7 @@ type ChampionshipRosterTabProps = {
 	}) => Promise<void>;
 	onClaim: (playerId: number) => void;
 	onChangeRating: (playerId: number, rating: number) => void;
+	onChangeGoalkeeperRating: (playerId: number, rating: number) => void;
 	onEditNickname: (playerId: number) => void;
 	onEditEventStats?: (playerId: number) => void;
 	eventStatsPlayerId?: number | null;
@@ -94,6 +95,7 @@ export function ChampionshipRosterTab({
 	onAddPlayer,
 	onClaim,
 	onChangeRating,
+	onChangeGoalkeeperRating,
 	onEditNickname,
 	onEditEventStats,
 	eventStatsPlayerId,
@@ -197,6 +199,10 @@ export function ChampionshipRosterTab({
 				claimingPlayerId={claimingPlayerId}
 				onClaim={onClaim}
 				onChangeRating={handlerWhenAllowed(canUpdateRating, onChangeRating)}
+				onChangeGoalkeeperRating={handlerWhenAllowed(
+					canUpdateRating,
+					onChangeGoalkeeperRating,
+				)}
 				ratingPlayerId={ratingPlayerId}
 				onEditNickname={onEditNickname}
 				nicknamePlayerId={nicknamePlayerId}

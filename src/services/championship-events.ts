@@ -83,7 +83,10 @@ const EVENT_DETAIL_COLUMNS = `${EVENT_LIST_COLUMNS},
 		matches,
 		rating,
 		rating_delta,
+		goalkeeper_rating,
+		goalkeeper_rating_delta,
 		vote_rating_delta,
+		goalkeeper_vote_rating_delta,
 		is_mvp,
 		mvp_overridden
 	),
@@ -166,7 +169,12 @@ function asAttendance(value: unknown): ChampionshipEventAttendance {
 		matches: Number(row.matches ?? 0),
 		rating: Number(row.rating ?? 0),
 		rating_delta: Number(row.rating_delta ?? 0),
+		goalkeeper_rating: Number(row.goalkeeper_rating ?? 0),
+		goalkeeper_rating_delta: Number(row.goalkeeper_rating_delta ?? 0),
 		vote_rating_delta: Number(row.vote_rating_delta ?? 0),
+		goalkeeper_vote_rating_delta: Number(
+			row.goalkeeper_vote_rating_delta ?? 0,
+		),
 		is_mvp: row.is_mvp === true,
 		mvp_overridden: row.mvp_overridden === true,
 	};

@@ -35,6 +35,7 @@ function player(id: number, displayName: string): ChampionshipPlayer {
 		nickname_tags: [],
 		avatar_url: null,
 		rating: 5,
+		goalkeeper_rating: 0,
 		role: "member",
 		is_goalkeeper: false,
 		is_monthly: false,
@@ -76,6 +77,9 @@ function attendance(
 		is_mvp: false,
 		mvp_overridden: false,
 		...stats,
+		goalkeeper_rating: stats.goalkeeper_rating ?? 0,
+		goalkeeper_rating_delta: stats.goalkeeper_rating_delta ?? 0,
+		goalkeeper_vote_rating_delta: stats.goalkeeper_vote_rating_delta ?? 0,
 	};
 }
 

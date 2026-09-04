@@ -34,6 +34,7 @@ import {
 	type EventTeamDraft,
 	type EventWeekday,
 	emptyTeamSlots,
+	eventDrawInputRating,
 	eventGoalkeeperIds,
 	eventIsoWeekday,
 	eventTeamCount,
@@ -288,8 +289,15 @@ export function ChampionshipEventBuilder({
 
 		setIsDrawing(true);
 		try {
+			const volunteerSet = new Set(presentGoalkeeperIds);
 			const { worker, done } = runEventTeamDraw({
-				players: presentPlayers.map(({ id, rating }) => ({ id, rating })),
+				players: presentPlayers.map((player) => ({
+					id: player.id,
+					rating: eventDrawInputRating(
+						player,
+						volunteerSet.has(player.id),
+					),
+				})),
 				playersPerTeam,
 				volunteerIds: presentGoalkeeperIds,
 			});

@@ -19,6 +19,7 @@ import {
 	eventMatchesPodiumPeriod,
 	formatPodiumMetric,
 	isPodiumPlayerMetric,
+	PODIUM_LABEL,
 	type PodiumMetricId,
 	type PodiumMonth,
 	type PodiumPlayerMetricId,
@@ -34,6 +35,7 @@ export const CHAMPIONSHIP_METRIC_HISTORY_LABEL = {
 
 export const CHAMPIONSHIP_METRIC_HISTORY_TITLE = {
 	[ROSTER_COLUMN.rating]: CHAMPIONSHIP_RATING_HISTORY_LABEL.title,
+	[ROSTER_COLUMN.ratingEvolution]: PODIUM_LABEL.ratingEvolution,
 	[ROSTER_COLUMN.goals]: "Evolução dos gols",
 	[ROSTER_COLUMN.assists]: "Evolução das assistências",
 	[ROSTER_COLUMN.assisted_goals]: "Evolução dos gols servidos",
@@ -61,6 +63,10 @@ export function championshipPodiumHistoryChart(
 	events: readonly PlayerProfileEventInput[],
 	nowIso: string | null,
 ): ChampionshipRatingHistoryChart {
+	if (metric === ROSTER_COLUMN.ratingEvolution) {
+		return { rows: [], series: [] };
+	}
+
 	if (metric === ROSTER_COLUMN.rating) {
 		return championshipRatingHistoryChart(players, events, nowIso);
 	}
@@ -81,6 +87,10 @@ export function championshipPodiumHistoryMetric(
 	metric: PodiumMetricId,
 ): PodiumPlayerMetricId | null {
 	if (!isPodiumPlayerMetric(metric)) {
+		return null;
+	}
+
+	if (metric === ROSTER_COLUMN.ratingEvolution) {
 		return null;
 	}
 

@@ -38,6 +38,7 @@ function player(
 		nickname_tags: [],
 		avatar_url: null,
 		rating: 5,
+		goalkeeper_rating: 0,
 		role: "player",
 		is_goalkeeper: false,
 		is_monthly: false,

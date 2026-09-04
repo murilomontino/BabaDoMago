@@ -1,8 +1,10 @@
 import type { ChampionshipPlayer } from "../types/championship.ts";
+import { playerProfileDelta } from "./player-profile.ts";
 
 export const ROSTER_COLUMN = {
 	player: "player",
 	rating: "rating",
+	ratingEvolution: "ratingEvolution",
 	goals: "goals",
 	assists: "assists",
 	assisted_goals: "assisted_goals",
@@ -24,6 +26,7 @@ export type RosterColumnId = (typeof ROSTER_COLUMN)[keyof typeof ROSTER_COLUMN];
 export const ROSTER_COLUMN_ABBR = {
 	player: "Jog",
 	rating: "Rat",
+	ratingEvolution: "Evol.",
 	goals: "G",
 	assists: "A",
 	assisted_goals: "GS",
@@ -43,6 +46,7 @@ export const ROSTER_COLUMN_ABBR = {
 export const ROSTER_COLUMN_LABEL = {
 	player: "Jogador",
 	rating: "Rating",
+	ratingEvolution: "Evolução da nota",
 	goals: "Gols",
 	assists: "Assistências",
 	assisted_goals: "Gols servidos",
@@ -106,12 +110,21 @@ export function isRosterOptionalColumn(
 	return ROSTER_OPTIONAL_COLUMN_IDS.has(column);
 }
 
+export type RosterPlayerInput = ChampionshipPlayer & {
+	ratingEvolution?: number;
+};
+
 export type RosterRow = ChampionshipPlayer & {
 	goalInvolvement: number;
 	goalsAverage: number;
 	assistsAverage: number;
 	winRate: number;
+	ratingEvolution: number;
 };
+
+export function rosterPlayerRatingEvolution(player: RosterPlayerInput): number {
+	return playerProfileDelta(player.ratingEvolution);
+}
 
 export function rosterSafeCount(value: unknown): number {
 	const n = Number(value);
@@ -144,7 +157,7 @@ export function rosterWinRate(wins: number, matches: number): number {
 	return rosterSafeCount(wins) / safeMatches;
 }
 
-export function toRosterRow(player: ChampionshipPlayer): RosterRow {
+export function toRosterRow(player: RosterPlayerInput): RosterRow {
 	const goals = rosterSafeCount(player.goals);
 	const assists = rosterSafeCount(player.assists);
 	const assistedGoals = rosterSafeCount(player.assisted_goals);
@@ -168,6 +181,7 @@ export function toRosterRow(player: ChampionshipPlayer): RosterRow {
 		goalsAverage: rosterAverage(goals, matches),
 		assistsAverage: rosterAverage(assists, matches),
 		winRate: rosterWinRate(wins, matches),
+		ratingEvolution: rosterPlayerRatingEvolution(player),
 	};
 }
 

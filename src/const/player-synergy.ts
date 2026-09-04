@@ -247,6 +247,7 @@ function fallbackSynergyPlayer(
 		nickname_tags: [],
 		avatar_url: null,
 		rating: 0,
+		goalkeeper_rating: 0,
 		role: CHAMPIONSHIP_ROLE.member,
 		is_goalkeeper: false,
 		is_monthly: false,
