@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { Field, Form, Formik } from "formik";
-import { CalendarDays, ChevronRight, MapPin, Plus } from "lucide-react";
+import { CalendarDays, ChevronRight, MapPin, Plus, ThumbsUp } from "lucide-react";
 import { useRef, useState } from "react";
 import { SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
@@ -42,6 +42,10 @@ import {
 	openEventMatch,
 } from "@/const/championship-event-match";
 import { CHAMPIONSHIP_TAB_LABEL } from "@/const/championship-tab";
+import {
+	EVENT_PLAYER_VOTE_LABEL,
+	latestOpenEventPlayerVoteEvent,
+} from "@/const/event-player-vote";
 import {
 	attendanceMvpPlayerIds,
 	eventMvpCandidates,
@@ -152,6 +156,8 @@ export function ChampionshipEvents({
 	const [endMvpPlayerIds, setEndMvpPlayerIds] = useState<number[] | null>(null);
 	const events = eventsQuery.data ?? [];
 	const openEvents = openChampionshipEvents(events);
+	const openVoteEvent = latestOpenEventPlayerVoteEvent(events);
+	const showHeaderActions = Boolean(openVoteEvent) || (canManage && !isCreating);
 	const isPending =
 		createEvent.isPending ||
 		endEvent.isPending ||
@@ -299,10 +305,26 @@ export function ChampionshipEvents({
 			icon={<CalendarDays className="size-4 text-pitch-fg" />}
 			queryKey={CHAMPIONSHIP_EVENTS_QUERY_KEY}
 			action={
-				canManage &&
-				!isCreating && (
+				showHeaderActions && (
 					<div className="flex flex-wrap items-center justify-end gap-2">
-						{weekday && shortcutLabel && (
+						{openVoteEvent && (
+							<Button
+								variant={BUTTON_VARIANT.soft}
+								onClick={() => {
+									void navigate({
+										to: ROUTES.championshipEventVote,
+										params: {
+											championshipId: String(championshipId),
+											eventId: String(openVoteEvent.id),
+										},
+									});
+								}}
+							>
+								<ThumbsUp className="size-4" />
+								{EVENT_PLAYER_VOTE_LABEL.open}
+							</Button>
+						)}
+						{canManage && !isCreating && weekday && shortcutLabel && (
 							<Button
 								variant={BUTTON_VARIANT.secondary}
 								onClick={() => handleShortcut(weekday)}
@@ -311,10 +333,12 @@ export function ChampionshipEvents({
 								{shortcutLabel}
 							</Button>
 						)}
-						<Button onClick={() => setIsCreating(true)}>
-							<Plus className="size-4" />
-							{EVENT_ACTION.newEvent}
-						</Button>
+						{canManage && !isCreating && (
+							<Button onClick={() => setIsCreating(true)}>
+								<Plus className="size-4" />
+								{EVENT_ACTION.newEvent}
+							</Button>
+						)}
 					</div>
 				)
 			}

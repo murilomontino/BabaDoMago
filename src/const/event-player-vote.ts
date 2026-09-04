@@ -198,6 +198,71 @@ export function isEventPlayerVotesVoided(
 	return playerVotesVoidedAt != null;
 }
 
+export function canOpenEventPlayerVoteShortcut(input: {
+	endedAt: string | null;
+	playerVotesClosedAt: string | null | undefined;
+	playerVotesVoidedAt: string | null | undefined;
+	attendanceCount: number;
+}): boolean {
+	if (input.endedAt === null) {
+		return false;
+	}
+
+	if (input.attendanceCount === 0) {
+		return false;
+	}
+
+	if (isEventPlayerVotesVoided(input.playerVotesVoidedAt)) {
+		return false;
+	}
+
+	if (isEventPlayerVotesClosed(input.playerVotesClosedAt ?? null)) {
+		return false;
+	}
+
+	return true;
+}
+
+export function latestOpenEventPlayerVoteEvent<
+	T extends {
+		id: number;
+		starts_at: string;
+		ended_at: string | null;
+		player_votes_closed_at?: string | null;
+		player_votes_voided_at?: string | null;
+		attendance: readonly unknown[];
+	},
+>(events: readonly T[]): T | null {
+	const open = events.filter((event) =>
+		canOpenEventPlayerVoteShortcut({
+			endedAt: event.ended_at,
+			playerVotesClosedAt: event.player_votes_closed_at,
+			playerVotesVoidedAt: event.player_votes_voided_at,
+			attendanceCount: event.attendance.length,
+		}),
+	);
+
+	if (open.length === 0) {
+		return null;
+	}
+
+	return open.reduce((latest, event) => {
+		if (event.starts_at > latest.starts_at) {
+			return event;
+		}
+
+		if (event.starts_at < latest.starts_at) {
+			return latest;
+		}
+
+		if (event.id > latest.id) {
+			return event;
+		}
+
+		return latest;
+	});
+}
+
 export function eventPlayerVoteStatus(input: {
 	playerVotesClosedAt: string | null | undefined;
 	playerVotesVoidedAt: string | null | undefined;

@@ -120,7 +120,7 @@ Dono, capitão e admin **presentes**, ou **mensalista** (mesmo ausente), podem d
 | Manter | conta na urna; bloqueia like/dislike se a contagem deles não supera maintains |
 | Manter sozinho | **0**, voto **permanece aberto** |
 | Nulo (`blank`) | grava a urna; **não** entra em like, dislike nem maintain; distinto de limpar o voto |
-| Encerrar votação | só o **dono**; trava novos votos na rodada (`player_votes_closed_at`) |
+| Encerrar votação | só o **dono** (manual); **criar nova rodada** também fecha urnas abertas das rodadas já encerradas (`player_votes_closed_at`) |
 | Cancelar efeito | só o **dono**; soft-delete (`player_votes_voided_at`): notas voltam, votos **permanecem** até reabrir; histórico na aba **Gestão** |
 | Reabrir votação | só o **dono**, só com a rodada cancelada; **apaga** os votos, zera `vote_rating_delta` / `vote_rating_applied`, limpa void e close → urna **Aberta** |
 | 1 voto por admin por atleta | pode trocar ou limpar **só enquanto aberto**; reenvio **não** altera alvo já fechado por quórum |

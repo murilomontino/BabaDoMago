@@ -1,5 +1,7 @@
 import {
 	canEditEventPlayerBallot,
+	canOpenEventPlayerVoteShortcut,
+	latestOpenEventPlayerVoteEvent,
 	canSetEventPlayerVoteDraft,
 	canVoteEventPlayer,
 	copyEventPlayerVoteLinkLabel,
@@ -474,6 +476,85 @@ check(
 );
 check(isEventPlayerVotesVoided("2026-09-03T12:00:00Z"), "voided true");
 check(!isEventPlayerVotesVoided(null), "voided false");
+check(
+	canOpenEventPlayerVoteShortcut({
+		endedAt: "2026-01-01",
+		playerVotesClosedAt: null,
+		playerVotesVoidedAt: null,
+		attendanceCount: 2,
+	}),
+	"vote shortcut open",
+);
+check(
+	!canOpenEventPlayerVoteShortcut({
+		endedAt: null,
+		playerVotesClosedAt: null,
+		playerVotesVoidedAt: null,
+		attendanceCount: 2,
+	}),
+	"vote shortcut needs ended",
+);
+check(
+	!canOpenEventPlayerVoteShortcut({
+		endedAt: "2026-01-01",
+		playerVotesClosedAt: "2026-01-02",
+		playerVotesVoidedAt: null,
+		attendanceCount: 2,
+	}),
+	"vote shortcut closed",
+);
+check(
+	!canOpenEventPlayerVoteShortcut({
+		endedAt: "2026-01-01",
+		playerVotesClosedAt: null,
+		playerVotesVoidedAt: "2026-01-02",
+		attendanceCount: 2,
+	}),
+	"vote shortcut voided",
+);
+check(
+	!canOpenEventPlayerVoteShortcut({
+		endedAt: "2026-01-01",
+		playerVotesClosedAt: null,
+		playerVotesVoidedAt: null,
+		attendanceCount: 0,
+	}),
+	"vote shortcut needs attendance",
+);
+check(
+	latestOpenEventPlayerVoteEvent([
+		{
+			id: 1,
+			starts_at: "2026-01-01T12:00:00Z",
+			ended_at: "2026-01-01T14:00:00Z",
+			player_votes_closed_at: null,
+			player_votes_voided_at: null,
+			attendance: [{}],
+		},
+		{
+			id: 2,
+			starts_at: "2026-01-08T12:00:00Z",
+			ended_at: "2026-01-08T14:00:00Z",
+			player_votes_closed_at: null,
+			player_votes_voided_at: null,
+			attendance: [{}],
+		},
+	])?.id === 2,
+	"latest open vote event",
+);
+check(
+	latestOpenEventPlayerVoteEvent([
+		{
+			id: 1,
+			starts_at: "2026-01-01T12:00:00Z",
+			ended_at: "2026-01-01T14:00:00Z",
+			player_votes_closed_at: "2026-01-02T00:00:00Z",
+			player_votes_voided_at: null,
+			attendance: [{}],
+		},
+	]) === null,
+	"no open vote event",
+);
 check(
 	eventPlayerVoteStatus({
 		playerVotesClosedAt: null,
