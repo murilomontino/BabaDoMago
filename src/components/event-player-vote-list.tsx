@@ -25,9 +25,13 @@ import {
 	isEventPlayerVoteLocked,
 	nextEventPlayerVoteValue,
 } from "@/const/event-player-vote";
+import { eventActivePlayerRating } from "@/const/event-rating-adjustment";
 import { eventTeamColorStyle } from "@/const/event-team-color";
 import { playerVisibleName } from "@/const/player-name";
-import { PLAYER_STAR_CLASS } from "@/const/player-rating";
+import {
+	PLAYER_STAR_CLASS,
+	PLAYER_STAR_FILL_CLASS,
+} from "@/const/player-rating";
 import { BUTTON_VARIANT, CHIP_CLASS, ERROR_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type {
@@ -56,6 +60,7 @@ type EventPlayerVoteListProps = {
 	players: readonly ChampionshipPlayer[];
 	formWindowEvents: readonly ChampionshipEvent[];
 	ceiling: number;
+	goalkeeperCeiling: number;
 	canVoteRole: boolean;
 	eventEnded: boolean;
 	votesClosed: boolean;
@@ -130,6 +135,7 @@ export function EventPlayerVoteList({
 	players,
 	formWindowEvents,
 	ceiling,
+	goalkeeperCeiling,
 	canVoteRole,
 	eventEnded,
 	votesClosed,
@@ -236,7 +242,15 @@ export function EventPlayerVoteList({
 									rosterById,
 								);
 								const name = playerVisibleName(player);
-								const rating = player.rating;
+								const isGoalkeeper = row.is_goalkeeper === true;
+								const rating = eventActivePlayerRating(
+									isGoalkeeper,
+									player.rating,
+									player.goalkeeper_rating,
+								);
+								const ratingCeiling = isGoalkeeper
+									? goalkeeperCeiling
+									: ceiling;
 								const draftVote = draftVotes.get(row.player_id) ?? null;
 								const chip = votesVoided
 									? null
@@ -341,11 +355,22 @@ export function EventPlayerVoteList({
 													)}
 												</div>
 												<div className="flex flex-wrap items-center gap-2 text-xs text-fg-muted">
-													<PlayerRating
-														rating={rating}
-														ceiling={ceiling}
-														starClassName={PLAYER_STAR_CLASS.compact}
-													/>
+													{isGoalkeeper && (
+														<PlayerRating
+															rating={rating}
+															ceiling={ratingCeiling}
+															starClassName={PLAYER_STAR_CLASS.compact}
+															fillClassName={PLAYER_STAR_FILL_CLASS.goalkeeper}
+														/>
+													)}
+													{!isGoalkeeper && (
+														<PlayerRating
+															rating={rating}
+															ceiling={ratingCeiling}
+															starClassName={PLAYER_STAR_CLASS.compact}
+															fillClassName={PLAYER_STAR_FILL_CLASS.line}
+														/>
+													)}
 													<span className={CHIP_CLASS}>{rating}</span>
 													<span>
 														{EVENT_PLAYER_VOTE_LABEL.goals} {row.goals}

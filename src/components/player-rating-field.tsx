@@ -7,12 +7,14 @@ type PlayerRatingFieldProps = {
 	ceiling: number;
 	disabled?: boolean;
 	onCommit?: (rating: number) => void;
+	fillClassName?: string;
 };
 
 export function PlayerRatingField({
 	ceiling,
 	disabled,
 	onCommit,
+	fillClassName,
 }: PlayerRatingFieldProps) {
 	const [field, , helpers] = useField<number>("rating");
 
@@ -35,6 +37,7 @@ export function PlayerRatingField({
 			rating={field.value}
 			ceiling={ceiling}
 			disabled={disabled}
+			fillClassName={fillClassName}
 			onChange={handleChange}
 		/>
 	);

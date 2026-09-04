@@ -5,6 +5,7 @@ import { PlayerRatingField } from "@/components/player-rating-field";
 import { playerRatingSchema } from "@/const/form-schema";
 import {
 	PLAYER_RATING_INPUT,
+	PLAYER_STAR_FILL_CLASS,
 	parsePlayerRatingInput,
 } from "@/const/player-rating";
 import { CHIP_CLASS } from "@/const/ui";
@@ -89,6 +90,7 @@ function RosterRatingTrack({
 	isOwnerViewer,
 	busy,
 	ariaLabel,
+	fillClassName,
 	onChange,
 }: {
 	rating: number;
@@ -96,6 +98,7 @@ function RosterRatingTrack({
 	isOwnerViewer: boolean;
 	busy: boolean;
 	ariaLabel: string;
+	fillClassName: string;
 	onChange?: (rating: number) => void;
 }) {
 	return (
@@ -110,11 +113,18 @@ function RosterRatingTrack({
 					<PlayerRatingField
 						ceiling={ceiling}
 						disabled={busy}
+						fillClassName={fillClassName}
 						onCommit={onChange}
 					/>
 				</Formik>
 			)}
-			{!onChange && <PlayerRating rating={rating} ceiling={ceiling} />}
+			{!onChange && (
+				<PlayerRating
+					rating={rating}
+					ceiling={ceiling}
+					fillClassName={fillClassName}
+				/>
+			)}
 			{isOwnerViewer && onChange && (
 				<RosterRatingInput
 					rating={rating}
@@ -149,6 +159,7 @@ export function RosterPlayerRating({
 				isOwnerViewer={isOwnerViewer}
 				busy={busy}
 				ariaLabel={PLAYER_RATING_INPUT.ariaLabel}
+				fillClassName={PLAYER_STAR_FILL_CLASS.line}
 				onChange={
 					onChangeRating
 						? (rating) => onChangeRating(player.id, rating)
@@ -162,6 +173,7 @@ export function RosterPlayerRating({
 					isOwnerViewer={isOwnerViewer}
 					busy={busy}
 					ariaLabel={PLAYER_RATING_INPUT.goalkeeperAriaLabel}
+					fillClassName={PLAYER_STAR_FILL_CLASS.goalkeeper}
 					onChange={
 						onChangeGoalkeeperRating
 							? (rating) => onChangeGoalkeeperRating(player.id, rating)

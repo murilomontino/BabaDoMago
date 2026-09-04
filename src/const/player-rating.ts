@@ -19,6 +19,11 @@ export const PLAYER_STAR_CLASS = {
 	compact: "h-3.5 w-3.5 shrink-0 fill-current",
 } as const;
 
+export const PLAYER_STAR_FILL_CLASS = {
+	line: "text-amber-400",
+	goalkeeper: "text-danger",
+} as const;
+
 export const PLAYER_STAR_PATH =
 	"M12 2.5l2.6 5.27 5.82.85-4.21 4.1 1 5.78L12 15.77 6.79 18.5l1-5.78-4.21-4.1 5.82-.85L12 2.5z";
 

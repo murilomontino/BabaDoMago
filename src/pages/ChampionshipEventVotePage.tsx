@@ -142,6 +142,9 @@ export function ChampionshipEventVotePage() {
 	const ceiling = championshipRatingCeiling(
 		(championship?.players ?? []).map((player) => player.rating),
 	);
+	const goalkeeperCeiling = championshipRatingCeiling(
+		(championship?.players ?? []).map((player) => player.goalkeeper_rating),
+	);
 	const formWindowEvents = useMemo(
 		() =>
 			championshipTrendsEvents(
@@ -274,6 +277,7 @@ export function ChampionshipEventVotePage() {
 				players={championship.players}
 				formWindowEvents={formWindowEvents}
 				ceiling={ceiling}
+				goalkeeperCeiling={goalkeeperCeiling}
 				canVoteRole={canVoteRole}
 				eventEnded={event.ended_at !== null}
 				votesClosed={votesClosed}

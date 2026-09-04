@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
 	PLAYER_RATING,
 	PLAYER_STAR_CLASS,
+	PLAYER_STAR_FILL_CLASS,
 	PLAYER_STAR_PATH,
 	PLAYER_STARS,
 	ratingToStarFill,
@@ -17,6 +18,7 @@ type PlayerRatingProps = {
 	onChange?: (starFill: number) => void;
 	disabled?: boolean;
 	starClassName?: string;
+	fillClassName?: string;
 };
 
 function StarIcon({ className }: { className?: string }) {
@@ -38,6 +40,7 @@ export function PlayerRating({
 	onChange,
 	disabled,
 	starClassName = PLAYER_STAR_CLASS.default,
+	fillClassName = PLAYER_STAR_FILL_CLASS.line,
 }: PlayerRatingProps) {
 	const [hoverFill, setHoverFill] = useState<number | null>(null);
 	const fill = ratingToStarFill(rating, ceiling);
@@ -72,7 +75,7 @@ export function PlayerRating({
 				))}
 			</div>
 			<div
-				className="pointer-events-none absolute inset-y-0 left-0 overflow-hidden text-amber-400"
+				className={`pointer-events-none absolute inset-y-0 left-0 overflow-hidden ${fillClassName}`}
 				style={{ width: `${(displayFill / PLAYER_RATING.starCount) * 100}%` }}
 				aria-hidden="true"
 			>
