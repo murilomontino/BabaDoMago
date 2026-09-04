@@ -160,6 +160,8 @@ check(
 		skipGuestGoalkeeperMatches: true,
 		ratingDropGoalShare: false,
 		ratingDropShareExcludeTop: false,
+		playerVoteQuorum: CHAMPIONSHIP_EVENT.playerVoteQuorumDefault,
+		playerVoteAllowSelf: true,
 	}),
 	"event config ok",
 );

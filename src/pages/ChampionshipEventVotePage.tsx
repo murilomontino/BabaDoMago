@@ -13,15 +13,19 @@ import {
 	resolveChampionshipRole,
 } from "@/const/championship-role";
 import {
+	canEditEventPlayerBallot,
 	EVENT_PLAYER_VOTE_LABEL,
 	type EventPlayerVoteChoice,
-	canEditEventPlayerBallot,
+	eventPlayerMonthlyCount,
 	eventPlayerVoteBudgetSummary,
 	eventPlayerVoteDraftToSubmit,
+	eventPlayerVotesSubmittedLabel,
 	initialEventPlayerBallotLocked,
 	isEventPlayerVoteDraftDirty,
 	isEventPlayerVotesClosed,
 	isEventPlayerVotesVoided,
+	ownerEventPlayerVoteCounts,
+	ownerEventPlayerVotesSubmitted,
 	savedEventPlayerVoteDraft,
 } from "@/const/event-player-vote";
 import { championshipRatingCeiling } from "@/const/player-rating";
@@ -31,6 +35,7 @@ import { BUTTON_VARIANT, ERROR_CLASS, PAGE_SHELL_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
 import {
 	useChampionshipEvent,
+	useChampionshipEventPlayerVoteCounts,
 	useChampionshipEventRealtime,
 	useCloseChampionshipEventPlayerVotes,
 	useMyChampionshipEventPlayerVotes,
@@ -40,6 +45,7 @@ import { useChampionship } from "@/hooks/championships/use-championships";
 import { caughtErrorMessage } from "@/lib/error-message";
 import { useAppSelector } from "@/store/hooks";
 import { selectMatchOps } from "@/store/match-ops/selectors";
+import type { ChampionshipWithPlayers } from "@/types/championship";
 
 const VOTE_SHELL_CLASS = `${PAGE_SHELL_CLASS} max-w-2xl space-y-4`;
 const VOTE_SHELL_WITH_FAB_CLASS = `${VOTE_SHELL_CLASS} pb-28`;
@@ -72,7 +78,8 @@ export function ChampionshipEventVotePage() {
 	const [ballotLocked, setBallotLocked] = useState(false);
 	const [ballotHydrated, setBallotHydrated] = useState(false);
 
-	const championship = championshipQuery.data;
+	const championship: ChampionshipWithPlayers | undefined =
+		championshipQuery.data;
 	const serverEvent = eventQuery.data;
 	const event = useMemo(() => {
 		if (!serverEvent) {
@@ -93,6 +100,7 @@ export function ChampionshipEventVotePage() {
 	);
 	const canVoteRole = canVoteEventPlayers(actorRole, isMonthly);
 	const canCloseVotesAsOwner = canOverrideEndedEvent(actorRole);
+	const allowSelfVote = championship?.player_vote_allow_self !== false;
 	const voterPlayerId = currentPlayer?.id ?? null;
 	const voterPresent =
 		Boolean(event?.attendance.some((row) => row.player_id === voterPlayerId)) ||
@@ -101,6 +109,31 @@ export function ChampionshipEventVotePage() {
 		event?.player_votes_closed_at ?? null,
 	);
 	const votesVoided = isEventPlayerVotesVoided(event?.player_votes_voided_at);
+	const voteCountsQuery = useChampionshipEventPlayerVoteCounts(
+		eventId,
+		canCloseVotesAsOwner,
+		false,
+	);
+	const voteCounts = useMemo(
+		() =>
+			ownerEventPlayerVoteCounts(
+				canCloseVotesAsOwner,
+				voteCountsQuery.data?.counts,
+			),
+		[canCloseVotesAsOwner, voteCountsQuery.data?.counts],
+	);
+	const votesSubmitted = useMemo(
+		() =>
+			ownerEventPlayerVotesSubmitted(
+				canCloseVotesAsOwner,
+				voteCountsQuery.data?.submitted,
+			),
+		[canCloseVotesAsOwner, voteCountsQuery.data?.submitted],
+	);
+	const monthlyVoters = useMemo(
+		() => eventPlayerMonthlyCount(championship?.players ?? []),
+		[championship?.players],
+	);
 	const ceiling = championshipRatingCeiling(
 		(championship?.players ?? []).map((player) => player.rating),
 	);
@@ -130,6 +163,7 @@ export function ChampionshipEventVotePage() {
 		championshipQuery.error?.message ??
 		eventQuery.error?.message ??
 		myVotesQuery.error?.message ??
+		voteCountsQuery.error?.message ??
 		localError;
 	const canSubmitVotes =
 		canVoteRole &&
@@ -203,6 +237,11 @@ export function ChampionshipEventVotePage() {
 						{EVENT_PLAYER_VOTE_LABEL.title}
 					</h1>
 					<p className="truncate text-sm text-fg-muted">{championship.name}</p>
+					{votesSubmitted !== null && (
+						<p className="mt-1 text-sm tabular-nums text-fg-muted">
+							{eventPlayerVotesSubmittedLabel(votesSubmitted, monthlyVoters)}
+						</p>
+					)}
 				</div>
 			</header>
 
@@ -223,6 +262,8 @@ export function ChampionshipEventVotePage() {
 				votingEnabled={votingEnabled}
 				ballotLocked={ballotLocked && canSubmitVotes}
 				showBudget={false}
+				allowSelfVote={allowSelfVote}
+				voteCounts={voteCounts}
 				error={null}
 				onDraftChange={(targetPlayerId, value) => {
 					setDraftVotes((current) => {

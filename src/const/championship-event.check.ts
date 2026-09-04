@@ -119,9 +119,11 @@ check(
 );
 check(EVENT_CONFIG_LABEL.eventWeekday, "Dia da semana");
 check(EVENT_CONFIG_LABEL.location, "Local");
+check(EVENT_CONFIG_LABEL.playerVoteAllowSelf, "Permitir voto em si");
 check(CHAMPIONSHIP_EVENT.skipGuestGoalkeeperMatchesDefault, true);
 check(CHAMPIONSHIP_EVENT.ratingDropGoalShareDefault, false);
 check(CHAMPIONSHIP_EVENT.ratingDropShareExcludeTopDefault, false);
+check(CHAMPIONSHIP_EVENT.playerVoteAllowSelfDefault, true);
 check(CHAMPIONSHIP_EVENT.locationMaxLength, 120);
 check(EVENT_WEEKDAY_LABEL[EVENT_WEEKDAY.tuesday], "terça");
 check(isoWeekdayFromYmd("2026-08-16"), EVENT_WEEKDAY.sunday);

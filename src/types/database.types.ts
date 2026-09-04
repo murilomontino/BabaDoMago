@@ -597,6 +597,7 @@ export type Database = {
 					rating_drop_goal_share: boolean;
 					rating_drop_share_exclude_top: boolean;
 					player_vote_quorum: number;
+					player_vote_allow_self: boolean;
 					skip_guest_goalkeeper_matches: boolean;
 				};
 				Insert: {
@@ -615,6 +616,7 @@ export type Database = {
 					rating_drop_goal_share?: boolean;
 					rating_drop_share_exclude_top?: boolean;
 					player_vote_quorum?: number;
+					player_vote_allow_self?: boolean;
 					skip_guest_goalkeeper_matches?: boolean;
 				};
 				Update: {
@@ -633,6 +635,7 @@ export type Database = {
 					rating_drop_goal_share?: boolean;
 					rating_drop_share_exclude_top?: boolean;
 					player_vote_quorum?: number;
+					player_vote_allow_self?: boolean;
 					skip_guest_goalkeeper_matches?: boolean;
 				};
 				Relationships: [];
@@ -825,6 +828,10 @@ export type Database = {
 				Returns: Json;
 			};
 			reopen_championship_event_player_votes: {
+				Args: { event_id: number };
+				Returns: Json;
+			};
+			list_championship_event_player_vote_counts: {
 				Args: { event_id: number };
 				Returns: Json;
 			};
@@ -1040,6 +1047,7 @@ export type Database = {
 					rating_drop_goal_share?: boolean;
 					rating_drop_share_exclude_top?: boolean;
 					player_vote_quorum?: number;
+					player_vote_allow_self?: boolean;
 				};
 				Returns: Json;
 			};

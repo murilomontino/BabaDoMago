@@ -8,6 +8,7 @@ import {
 	canVoteEventPlayer,
 	EVENT_PLAYER_VOTE_LABEL,
 	type EventPlayerVoteChoice,
+	type EventPlayerVoteCount,
 	type EventPlayerVoteDraft,
 	eventPlayerVoteBudgetSummary,
 	eventPlayerVoteChipLabel,
@@ -41,6 +42,8 @@ type EventPlayerVoteListProps = {
 	votingEnabled: boolean;
 	ballotLocked: boolean;
 	showBudget: boolean;
+	allowSelfVote: boolean;
+	voteCounts: ReadonlyMap<number, EventPlayerVoteCount> | null;
 	error: string | null;
 	onDraftChange: (
 		targetPlayerId: number,
@@ -88,6 +91,8 @@ export function EventPlayerVoteList({
 	votingEnabled,
 	ballotLocked,
 	showBudget,
+	allowSelfVote,
+	voteCounts,
 	error,
 	onDraftChange,
 }: EventPlayerVoteListProps) {
@@ -193,7 +198,10 @@ export function EventPlayerVoteList({
 									voterPlayerId,
 									voteRatingDelta: row.vote_rating_delta,
 									votingEnabled,
+									allowSelfVote,
 								});
+								const isSelf = voterPlayerId === row.player_id;
+								const count = voteCounts?.get(row.player_id);
 								const locked =
 									!votesVoided &&
 									isEventPlayerVoteLocked(row.vote_rating_delta);
@@ -245,6 +253,21 @@ export function EventPlayerVoteList({
 													{locked && (
 														<span className={CHIP_CLASS}>
 															{EVENT_PLAYER_VOTE_LABEL.closed}
+														</span>
+													)}
+													{!allowSelfVote && isSelf && (
+														<span className={CHIP_CLASS}>
+															{EVENT_PLAYER_VOTE_LABEL.cannotVoteSelf}
+														</span>
+													)}
+													{count && (
+														<span className={CHIP_CLASS}>
+															{EVENT_PLAYER_VOTE_LABEL.like} {count.likes}
+														</span>
+													)}
+													{count && (
+														<span className={CHIP_CLASS}>
+															{EVENT_PLAYER_VOTE_LABEL.dislike} {count.dislikes}
 														</span>
 													)}
 													{showSubmittedChoice && draftVote && (

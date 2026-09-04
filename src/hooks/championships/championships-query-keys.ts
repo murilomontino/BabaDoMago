@@ -12,6 +12,7 @@ import {
 	championshipIdFromEventsKey,
 	eventIdFromDetailKey,
 	isChampionshipEventsListKey,
+	isChampionshipEventVoteCountsKey,
 } from "@/const/championships-query-key";
 import type { ChampionshipWithPlayers } from "@/types/championship";
 import type { ChampionshipEvent } from "@/types/championship-event";
@@ -24,6 +25,7 @@ export {
 	CHAMPIONSHIPS_QUERY_KEY,
 	championshipEventDetailQueryKey,
 	championshipEventMyVotesQueryKey,
+	championshipEventVoteCountsQueryKey,
 	championshipEventsChampionshipQueryKey,
 	championshipEventsListQueryKey,
 	championshipIdFromEventsKey,
@@ -31,6 +33,7 @@ export {
 	isChampionshipEventDetailKey,
 	isChampionshipEventMyVotesKey,
 	isChampionshipEventsListKey,
+	isChampionshipEventVoteCountsKey,
 } from "@/const/championships-query-key";
 
 function championshipIdForCachedEvent(
@@ -82,6 +85,10 @@ export async function invalidateChampionshipEvent(
 		}),
 		queryClient.invalidateQueries({
 			predicate: (query) => eventIdFromDetailKey(query.queryKey) === eventId,
+		}),
+		queryClient.invalidateQueries({
+			predicate: (query) =>
+				isChampionshipEventVoteCountsKey(query.queryKey, eventId),
 		}),
 	]);
 }

@@ -50,6 +50,7 @@ type ChampionshipSettingsTabProps = {
 	ratingDropGoalShare: boolean;
 	ratingDropShareExcludeTop: boolean;
 	playerVoteQuorum: number;
+	playerVoteAllowSelf: boolean;
 	isVisible: boolean;
 	activePlayers: ChampionshipPlayer[];
 	canRename: boolean;
@@ -83,6 +84,7 @@ type ChampionshipSettingsTabProps = {
 		ratingDropGoalShare: boolean;
 		ratingDropShareExcludeTop: boolean;
 		playerVoteQuorum: number;
+		playerVoteAllowSelf: boolean;
 	}) => Promise<void>;
 	onUpdateVisibility: (isVisible: boolean) => void;
 	onTransferOwner: (playerId: number) => Promise<void>;
@@ -102,6 +104,7 @@ export function ChampionshipSettingsTab({
 	ratingDropGoalShare,
 	ratingDropShareExcludeTop,
 	playerVoteQuorum,
+	playerVoteAllowSelf,
 	isVisible,
 	activePlayers,
 	canRename,
@@ -216,6 +219,7 @@ export function ChampionshipSettingsTab({
 									ratingDropGoalShare,
 									ratingDropShareExcludeTop,
 									playerVoteQuorum,
+									playerVoteAllowSelf,
 								}}
 								enableReinitialize
 								validationSchema={eventConfigFormSchema}
@@ -233,6 +237,7 @@ export function ChampionshipSettingsTab({
 										playerVoteQuorum: parsePlayerVoteQuorum(
 											values.playerVoteQuorum,
 										),
+										playerVoteAllowSelf: values.playerVoteAllowSelf,
 									});
 								}}
 							>
@@ -415,6 +420,37 @@ export function ChampionshipSettingsTab({
 										/>
 									</label>
 									<FormError name="playerVoteQuorum" />
+									<div className="flex items-start justify-between gap-4">
+										<span className="min-w-0 text-sm">
+											<label
+												htmlFor="championship-player-vote-allow-self"
+												className="font-medium text-fg"
+											>
+												{EVENT_CONFIG_LABEL.playerVoteAllowSelf}
+											</label>
+											<span className="mt-1 block text-fg-muted">
+												{EVENT_CONFIG_LABEL.playerVoteAllowSelfHint}
+											</span>
+										</span>
+										<Field name="playerVoteAllowSelf">
+											{(props: FieldProps<boolean>) => (
+												<Switch
+													id="championship-player-vote-allow-self"
+													checked={
+														props.field.value ??
+														CHAMPIONSHIP_EVENT.playerVoteAllowSelfDefault
+													}
+													onCheckedChange={(checked) => {
+														void props.form.setFieldValue(
+															props.field.name,
+															checked,
+														);
+													}}
+												/>
+											)}
+										</Field>
+									</div>
+									<FormError name="playerVoteAllowSelf" />
 									<Button
 										type="submit"
 										variant={BUTTON_VARIANT.secondary}

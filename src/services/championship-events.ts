@@ -10,15 +10,15 @@ import {
 	matchDurationSeconds,
 } from "@/const/championship-event-match";
 import {
+	type EventPlayerVoteChoice,
+	eventPlayerVoteErrorMessage,
+} from "@/const/event-player-vote";
+import {
 	type EventTeamColor,
 	eventTeamColorOrNone,
 	isEventTeamColor,
 	normalizeEventTeamColor,
 } from "@/const/event-team-color";
-import {
-	eventPlayerVoteErrorMessage,
-	type EventPlayerVoteChoice,
-} from "@/const/event-player-vote";
 import { supabase } from "@/lib/supabase";
 import {
 	mapUnknownRows,
@@ -975,6 +975,72 @@ export async function listMyChampionshipEventPlayerVotes(
 			},
 		];
 	});
+}
+
+export type ChampionshipEventPlayerVoteCountRow = {
+	player_id: number;
+	likes: number;
+	dislikes: number;
+};
+
+export type ChampionshipEventPlayerVoteCountsPayload = {
+	submitted: number;
+	counts: ChampionshipEventPlayerVoteCountRow[];
+};
+
+function parseVoteCountRow(
+	entry: unknown,
+): ChampionshipEventPlayerVoteCountRow[] {
+	if (!entry || typeof entry !== "object") {
+		return [];
+	}
+
+	const row = entry as Record<string, unknown>;
+	if (typeof row.player_id !== "number") {
+		return [];
+	}
+
+	return [
+		{
+			player_id: row.player_id,
+			likes: Number(row.likes ?? 0),
+			dislikes: Number(row.dislikes ?? 0),
+		},
+	];
+}
+
+export async function listChampionshipEventPlayerVoteCounts(
+	eventId: number,
+): Promise<ChampionshipEventPlayerVoteCountsPayload> {
+	const { data, error } = await supabase.rpc(
+		"list_championship_event_player_vote_counts",
+		{ event_id: eventId },
+	);
+
+	if (error) {
+		throwVoteError(error);
+	}
+
+	if (Array.isArray(data)) {
+		return {
+			submitted: 0,
+			counts: data.flatMap(parseVoteCountRow),
+		};
+	}
+
+	if (!data || typeof data !== "object") {
+		return { submitted: 0, counts: [] };
+	}
+
+	const payload = data as Record<string, unknown>;
+	const counts = Array.isArray(payload.counts)
+		? payload.counts.flatMap(parseVoteCountRow)
+		: [];
+
+	return {
+		submitted: Number(payload.submitted ?? 0),
+		counts,
+	};
 }
 
 export type SubmitChampionshipEventPlayerVotesResult = {

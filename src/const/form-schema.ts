@@ -141,6 +141,7 @@ export const eventConfigFormSchema = object({
 			FORM_MESSAGE.playerVoteQuorumInvalid,
 		)
 		.required(FORM_MESSAGE.playerVoteQuorumInvalid),
+	playerVoteAllowSelf: boolean().required(),
 });
 
 export const startEventFormSchema = object({

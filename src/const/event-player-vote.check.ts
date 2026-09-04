@@ -8,6 +8,7 @@ import {
 	EVENT_PLAYER_VOTE_LABEL,
 	EVENT_PLAYER_VOTE_STATUS,
 	type EventPlayerVoteChoice,
+	eventPlayerMonthlyCount,
 	eventPlayerVoteAppliedDelta,
 	eventPlayerVoteBudgetSummary,
 	eventPlayerVoteChipLabel,
@@ -16,6 +17,7 @@ import {
 	eventPlayerVoteErrorMessage,
 	eventPlayerVoteStatus,
 	eventPlayerVoteStatusLabel,
+	eventPlayerVotesSubmittedLabel,
 	eventPlayerVoteTeamSections,
 	eventPlayerVoteUrl,
 	initialEventPlayerBallotLocked,
@@ -23,6 +25,8 @@ import {
 	isEventPlayerVoteLocked,
 	isEventPlayerVotesVoided,
 	nextEventPlayerVoteValue,
+	ownerEventPlayerVoteCounts,
+	ownerEventPlayerVotesSubmitted,
 	savedEventPlayerVoteDraft,
 } from "./event-player-vote.ts";
 
@@ -38,6 +42,39 @@ check(EVENT_PLAYER_VOTE.defaultQuorum === 3, "default quorum");
 check(EVENT_PLAYER_VOTE.likeBudget === 5, "like budget");
 check(EVENT_PLAYER_VOTE.dislikeBudget === 5, "dislike budget");
 check(EVENT_PLAYER_VOTE.delta === 0.5, "delta");
+check(EVENT_PLAYER_VOTE.ownerCountsPollMs === 4000, "owner counts poll");
+check(
+	ownerEventPlayerVoteCounts(false, [
+		{ player_id: 1, likes: 2, dislikes: 1 },
+	]) === null,
+	"owner counts hidden",
+);
+check(
+	ownerEventPlayerVoteCounts(true, [
+		{ player_id: 1, likes: 2, dislikes: 1 },
+	])?.get(1)?.likes === 2,
+	"owner counts map likes",
+);
+check(ownerEventPlayerVotesSubmitted(false, 3) === null, "submitted hidden");
+check(
+	ownerEventPlayerVotesSubmitted(true, undefined) === null,
+	"submitted pending",
+);
+check(ownerEventPlayerVotesSubmitted(true, 0) === 0, "submitted zero");
+check(ownerEventPlayerVotesSubmitted(true, 4) === 4, "submitted four");
+check(
+	eventPlayerMonthlyCount([
+		{ is_monthly: true, deleted_at: null },
+		{ is_monthly: false, deleted_at: null },
+		{ is_monthly: true, deleted_at: "x" },
+		{ is_monthly: true },
+	]) === 2,
+	"monthly count",
+);
+check(
+	eventPlayerVotesSubmittedLabel(3, 12) === "3 de 12 mensalistas votaram",
+	"submitted label",
+);
 check(EVENT_PLAYER_VOTE.like === "like", "like");
 check(EVENT_PLAYER_VOTE.dislike === "dislike", "dislike");
 check(EVENT_PLAYER_VOTE.maintain === "maintain", "maintain");
@@ -216,6 +253,19 @@ check(
 		voteRatingDelta: 0,
 	}),
 	"can vote self",
+);
+check(
+	!canVoteEventPlayer({
+		canVote: true,
+		eventEnded: true,
+		votesClosed: false,
+		voterPresent: true,
+		targetPlayerId: 1,
+		voterPlayerId: 1,
+		voteRatingDelta: 0,
+		allowSelfVote: false,
+	}),
+	"flag blocks vote self",
 );
 check(
 	!canVoteEventPlayer({
@@ -401,6 +451,10 @@ check(
 	"votes not voided error",
 );
 
+check(
+	eventPlayerVoteErrorMessage("cannot vote self") === "Não dá para votar em si",
+	"cannot vote self error",
+);
 check(
 	eventPlayerVoteErrorMessage("not allowed") ===
 		"Só dono, capitão, admin presente ou mensalista pode votar",

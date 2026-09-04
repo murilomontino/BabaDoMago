@@ -30,7 +30,7 @@ Recompute: `rating − old_delta + new_delta` com o snapshot da presença.
 
 - Delta: `src/const/event-rating-adjustment.ts`
 - MVP: `src/const/event-mvp.ts`
-- Voto: `src/const/event-player-vote.ts`, RPC `vote_championship_event_player`
+- Voto: `src/const/event-player-vote.ts`, RPC `submit_championship_event_player_votes`; flag `player_vote_allow_self`; totais do dono `list_championship_event_player_vote_counts`
 - Persistência: `adjust_championship_player_ratings_for_event`
 - UI preview: detalhe da rodada / Encerrar
 - Sim: `src/const/player-rating-sim.ts` / `event-rating-sim.ts`

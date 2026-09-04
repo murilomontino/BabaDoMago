@@ -12,6 +12,7 @@ export const CHAMPIONSHIP_EVENTS_SCOPE = {
 	list: "list",
 	detail: "detail",
 	myVotes: "my-votes",
+	voteCounts: "vote-counts",
 } as const;
 
 export function championshipEventMyVotesQueryKey(
@@ -24,6 +25,27 @@ export function championshipEventMyVotesQueryKey(
 		eventId,
 		userId,
 	];
+}
+
+export function championshipEventVoteCountsQueryKey(
+	eventId: number,
+): readonly unknown[] {
+	return [
+		...CHAMPIONSHIP_EVENTS_QUERY_KEY,
+		CHAMPIONSHIP_EVENTS_SCOPE.voteCounts,
+		eventId,
+	];
+}
+
+export function isChampionshipEventVoteCountsKey(
+	queryKey: readonly unknown[],
+	eventId: number,
+): boolean {
+	return (
+		queryKey[0] === CHAMPIONSHIP_EVENTS_QUERY_KEY[0] &&
+		queryKey[1] === CHAMPIONSHIP_EVENTS_SCOPE.voteCounts &&
+		queryKey[2] === eventId
+	);
 }
 
 export function isChampionshipEventMyVotesKey(

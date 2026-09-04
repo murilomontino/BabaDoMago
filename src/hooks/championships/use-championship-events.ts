@@ -9,13 +9,18 @@ import {
 	EVENT_MATCH_DURATION,
 	matchDurationSeconds,
 } from "@/const/championship-event-match";
+import {
+	EVENT_PLAYER_VOTE,
+	type EventPlayerVoteChoice,
+} from "@/const/event-player-vote";
 import type { EventTeamColor } from "@/const/event-team-color";
-import type { EventPlayerVoteChoice } from "@/const/event-player-vote";
 import { useAuth } from "@/contexts/auth";
 import { supabase } from "@/lib/supabase";
 import {
 	addChampionshipEventTeam,
+	type ChampionshipEventPlayerVoteCountsPayload,
 	type ChampionshipEventPlayerVoteRow,
+	closeChampionshipEventPlayerVotes,
 	createChampionshipEvent,
 	deleteChampionshipEvent,
 	deleteChampionshipEventMatch,
@@ -24,8 +29,8 @@ import {
 	endChampionshipEventMatch,
 	ensureChampionshipEventAttendancePlayer,
 	getChampionshipEventById,
+	listChampionshipEventPlayerVoteCounts,
 	listChampionshipEvents,
-	closeChampionshipEventPlayerVotes,
 	listMyChampionshipEventPlayerVotes,
 	promoteChampionshipEventRsvpGoing,
 	reopenChampionshipEventMatch,
@@ -48,6 +53,7 @@ import {
 	championshipEventDetailQueryKey,
 	championshipEventMyVotesQueryKey,
 	championshipEventsListQueryKey,
+	championshipEventVoteCountsQueryKey,
 	eventIdFromDetailKey,
 	invalidateChampionshipEvent,
 	invalidateChampionshipEvents,
@@ -485,6 +491,20 @@ export function useMyChampionshipEventPlayerVotes(eventId: number) {
 	});
 }
 
+export function useChampionshipEventPlayerVoteCounts(
+	eventId: number,
+	enabled: boolean,
+	live: boolean,
+) {
+	return useQuery<ChampionshipEventPlayerVoteCountsPayload>({
+		queryKey: championshipEventVoteCountsQueryKey(eventId),
+		queryFn: () => listChampionshipEventPlayerVoteCounts(eventId),
+		enabled: Number.isFinite(eventId) && enabled,
+		refetchInterval:
+			enabled && live ? EVENT_PLAYER_VOTE.ownerCountsPollMs : false,
+	});
+}
+
 export function useCloseChampionshipEventPlayerVotes(
 	championshipId: number,
 	eventId: number,
@@ -649,6 +669,9 @@ export function useSubmitChampionshipEventPlayerVotes(
 			);
 
 			await Promise.all([
+				queryClient.invalidateQueries({
+					queryKey: championshipEventVoteCountsQueryKey(eventId),
+				}),
 				invalidateChampionshipEvent(queryClient, championshipId, eventId),
 				invalidateChampionshipQueries(queryClient),
 			]);

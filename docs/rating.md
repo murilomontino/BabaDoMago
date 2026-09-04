@@ -107,11 +107,13 @@ Exemplos do bônus: `0.01 → 0.1`, `0.14 → 0.2`, nota `20 → +0.4`.
 
 ## Voto do elenco (overlay)
 
-Dono, capitão e admin **presentes**, ou **mensalista** (mesmo ausente), podem dar like, dislike ou **manter** em quem está na presença da **mesma** rodada, **só depois de encerrar**. Pode votar em si. A tela mostra a nota atual do elenco. Voto secreto: ninguém vê a urna, só o próprio voto.
+Dono, capitão e admin **presentes**, ou **mensalista** (mesmo ausente), podem dar like, dislike ou **manter** em quem está na presença da **mesma** rodada, **só depois de encerrar**. Voto em si é flag da liga (`player_vote_allow_self`, default ligado). A tela mostra a nota atual do elenco. Voto secreto: ninguém vê a urna, só o próprio voto. O **dono** vê totais de like/dislike por jogador ao vivo, sem ver quem votou.
 
 | Regra | Valor |
 | --- | --- |
 | Quórum | `championships.player_vote_quorum` (config do baba, default **3**, faixa 1–10) |
+| Voto em si | `championships.player_vote_allow_self` (config do baba, default **ligado**) |
+| Totais da urna | só o **dono**, ao vivo; likes e dislikes por alvo; sem quem votou |
 | Orçamento do votante | **5 likes** e **5 dislikes** no total; **manter** ilimitado; envio em lote (**Enviar votos**) |
 | Like no quórum | N+ likes (N = quórum), mais likes que dislikes **e** que maintains → **+0,5** e **fecha** |
 | Dislike no quórum | N+ dislikes, mais dislikes que likes **e** que maintains → **−0,5** e **fecha** |
@@ -127,7 +129,7 @@ O campo `championship_event_attendance.vote_rating_delta` guarda o resultado (±
 - Jogador já ranqueado (`rating ≠ 0`): aplica na hora no elenco.
 - Sentinela (`rating = 0`): só guarda o overlay; aplica depois da semente no encerrar (`vote_rating_applied` evita aplicar duas vezes).
 
-Fonte: [`src/const/event-player-vote.ts`](../src/const/event-player-vote.ts), RPCs `submit_championship_event_player_votes`, `void_championship_event_player_votes`, `reopen_championship_event_player_votes`.
+Fonte: [`src/const/event-player-vote.ts`](../src/const/event-player-vote.ts), RPCs `submit_championship_event_player_votes`, `list_championship_event_player_vote_counts`, `void_championship_event_player_votes`, `reopen_championship_event_player_votes`.
 
 ---
 
@@ -290,8 +292,8 @@ Recompute de stats: `rating − old_delta + new_delta` com o **snapshot** da pre
 | Evolução na ficha | [`src/const/player-profile.ts`](../src/const/player-profile.ts) — `playerProfileHistory` |
 | Postgres | `public.championship_event_rating_delta`, `public.championship_player_rating_apply`, `public.championship_event_mvp_bonus`, `public.championship_event_rating_team_goal_share`, `public.championship_event_rating_apply_drop_share` |
 | Persistência ao encerrar | `adjust_championship_player_ratings_for_event` |
-| Flag da liga | `championships.rating_drop_goal_share`, `championships.rating_drop_share_exclude_top` |
-| Voto do elenco | [`src/const/event-player-vote.ts`](../src/const/event-player-vote.ts), `submit_championship_event_player_votes`, `void_championship_event_player_votes`, `reopen_championship_event_player_votes`, `vote_rating_delta` |
+| Flag da liga | `championships.rating_drop_goal_share`, `championships.rating_drop_share_exclude_top`, `championships.player_vote_allow_self` |
+| Voto do elenco | [`src/const/event-player-vote.ts`](../src/const/event-player-vote.ts), `submit_championship_event_player_votes`, `void_championship_event_player_votes`, `reopen_championship_event_player_votes`, `list_championship_event_player_vote_counts`, `vote_rating_delta` |
 | Recálculo manual (script) | [`supabase/scripts/recompute_ratings_from_attendance.sql`](../supabase/scripts/recompute_ratings_from_attendance.sql) |
 
 **SQL e TypeScript precisam ficar iguais.** Ao mudar a regra, atualize os dois lados e os checks.
