@@ -13,16 +13,19 @@ import {
 	resolveChampionshipRole,
 } from "@/const/championship-role";
 import {
+	canEditEventPlayerBallot,
 	EVENT_PLAYER_VOTE_LABEL,
 	type EventPlayerVoteChoice,
-	canEditEventPlayerBallot,
-	ownerEventPlayerVoteCounts,
+	eventPlayerMonthlyCount,
 	eventPlayerVoteBudgetSummary,
 	eventPlayerVoteDraftToSubmit,
+	eventPlayerVotesSubmittedLabel,
 	initialEventPlayerBallotLocked,
 	isEventPlayerVoteDraftDirty,
 	isEventPlayerVotesClosed,
 	isEventPlayerVotesVoided,
+	ownerEventPlayerVoteCounts,
+	ownerEventPlayerVotesSubmitted,
 	savedEventPlayerVoteDraft,
 } from "@/const/event-player-vote";
 import { championshipRatingCeiling } from "@/const/player-rating";
@@ -109,11 +112,27 @@ export function ChampionshipEventVotePage() {
 	const voteCountsQuery = useChampionshipEventPlayerVoteCounts(
 		eventId,
 		canCloseVotesAsOwner,
-		!votesVoided,
+		false,
 	);
 	const voteCounts = useMemo(
-		() => ownerEventPlayerVoteCounts(canCloseVotesAsOwner, voteCountsQuery.data),
-		[canCloseVotesAsOwner, voteCountsQuery.data],
+		() =>
+			ownerEventPlayerVoteCounts(
+				canCloseVotesAsOwner,
+				voteCountsQuery.data?.counts,
+			),
+		[canCloseVotesAsOwner, voteCountsQuery.data?.counts],
+	);
+	const votesSubmitted = useMemo(
+		() =>
+			ownerEventPlayerVotesSubmitted(
+				canCloseVotesAsOwner,
+				voteCountsQuery.data?.submitted,
+			),
+		[canCloseVotesAsOwner, voteCountsQuery.data?.submitted],
+	);
+	const monthlyVoters = useMemo(
+		() => eventPlayerMonthlyCount(championship?.players ?? []),
+		[championship?.players],
 	);
 	const ceiling = championshipRatingCeiling(
 		(championship?.players ?? []).map((player) => player.rating),
@@ -218,6 +237,11 @@ export function ChampionshipEventVotePage() {
 						{EVENT_PLAYER_VOTE_LABEL.title}
 					</h1>
 					<p className="truncate text-sm text-fg-muted">{championship.name}</p>
+					{votesSubmitted !== null && (
+						<p className="mt-1 text-sm tabular-nums text-fg-muted">
+							{eventPlayerVotesSubmittedLabel(votesSubmitted, monthlyVoters)}
+						</p>
+					)}
 				</div>
 			</header>
 

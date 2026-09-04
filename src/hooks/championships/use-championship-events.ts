@@ -9,17 +9,18 @@ import {
 	EVENT_MATCH_DURATION,
 	matchDurationSeconds,
 } from "@/const/championship-event-match";
-import type { EventTeamColor } from "@/const/event-team-color";
 import {
 	EVENT_PLAYER_VOTE,
 	type EventPlayerVoteChoice,
 } from "@/const/event-player-vote";
+import type { EventTeamColor } from "@/const/event-team-color";
 import { useAuth } from "@/contexts/auth";
 import { supabase } from "@/lib/supabase";
 import {
 	addChampionshipEventTeam,
-	type ChampionshipEventPlayerVoteCountRow,
+	type ChampionshipEventPlayerVoteCountsPayload,
 	type ChampionshipEventPlayerVoteRow,
+	closeChampionshipEventPlayerVotes,
 	createChampionshipEvent,
 	deleteChampionshipEvent,
 	deleteChampionshipEventMatch,
@@ -28,9 +29,8 @@ import {
 	endChampionshipEventMatch,
 	ensureChampionshipEventAttendancePlayer,
 	getChampionshipEventById,
-	listChampionshipEvents,
 	listChampionshipEventPlayerVoteCounts,
-	closeChampionshipEventPlayerVotes,
+	listChampionshipEvents,
 	listMyChampionshipEventPlayerVotes,
 	promoteChampionshipEventRsvpGoing,
 	reopenChampionshipEventMatch,
@@ -52,8 +52,8 @@ import type { ChampionshipEvent } from "@/types/championship-event";
 import {
 	championshipEventDetailQueryKey,
 	championshipEventMyVotesQueryKey,
-	championshipEventVoteCountsQueryKey,
 	championshipEventsListQueryKey,
+	championshipEventVoteCountsQueryKey,
 	eventIdFromDetailKey,
 	invalidateChampionshipEvent,
 	invalidateChampionshipEvents,
@@ -496,7 +496,7 @@ export function useChampionshipEventPlayerVoteCounts(
 	enabled: boolean,
 	live: boolean,
 ) {
-	return useQuery<ChampionshipEventPlayerVoteCountRow[]>({
+	return useQuery<ChampionshipEventPlayerVoteCountsPayload>({
 		queryKey: championshipEventVoteCountsQueryKey(eventId),
 		queryFn: () => listChampionshipEventPlayerVoteCounts(eventId),
 		enabled: Number.isFinite(eventId) && enabled,

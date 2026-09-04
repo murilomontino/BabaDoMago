@@ -8,6 +8,7 @@ import {
 	EVENT_PLAYER_VOTE_LABEL,
 	EVENT_PLAYER_VOTE_STATUS,
 	type EventPlayerVoteChoice,
+	eventPlayerMonthlyCount,
 	eventPlayerVoteAppliedDelta,
 	eventPlayerVoteBudgetSummary,
 	eventPlayerVoteChipLabel,
@@ -16,6 +17,7 @@ import {
 	eventPlayerVoteErrorMessage,
 	eventPlayerVoteStatus,
 	eventPlayerVoteStatusLabel,
+	eventPlayerVotesSubmittedLabel,
 	eventPlayerVoteTeamSections,
 	eventPlayerVoteUrl,
 	initialEventPlayerBallotLocked,
@@ -24,6 +26,7 @@ import {
 	isEventPlayerVotesVoided,
 	nextEventPlayerVoteValue,
 	ownerEventPlayerVoteCounts,
+	ownerEventPlayerVotesSubmitted,
 	savedEventPlayerVoteDraft,
 } from "./event-player-vote.ts";
 
@@ -41,8 +44,9 @@ check(EVENT_PLAYER_VOTE.dislikeBudget === 5, "dislike budget");
 check(EVENT_PLAYER_VOTE.delta === 0.5, "delta");
 check(EVENT_PLAYER_VOTE.ownerCountsPollMs === 4000, "owner counts poll");
 check(
-	ownerEventPlayerVoteCounts(false, [{ player_id: 1, likes: 2, dislikes: 1 }]) ===
-		null,
+	ownerEventPlayerVoteCounts(false, [
+		{ player_id: 1, likes: 2, dislikes: 1 },
+	]) === null,
 	"owner counts hidden",
 );
 check(
@@ -50,6 +54,26 @@ check(
 		{ player_id: 1, likes: 2, dislikes: 1 },
 	])?.get(1)?.likes === 2,
 	"owner counts map likes",
+);
+check(ownerEventPlayerVotesSubmitted(false, 3) === null, "submitted hidden");
+check(
+	ownerEventPlayerVotesSubmitted(true, undefined) === null,
+	"submitted pending",
+);
+check(ownerEventPlayerVotesSubmitted(true, 0) === 0, "submitted zero");
+check(ownerEventPlayerVotesSubmitted(true, 4) === 4, "submitted four");
+check(
+	eventPlayerMonthlyCount([
+		{ is_monthly: true, deleted_at: null },
+		{ is_monthly: false, deleted_at: null },
+		{ is_monthly: true, deleted_at: "x" },
+		{ is_monthly: true },
+	]) === 2,
+	"monthly count",
+);
+check(
+	eventPlayerVotesSubmittedLabel(3, 12) === "3 de 12 mensalistas votaram",
+	"submitted label",
 );
 check(EVENT_PLAYER_VOTE.like === "like", "like");
 check(EVENT_PLAYER_VOTE.dislike === "dislike", "dislike");

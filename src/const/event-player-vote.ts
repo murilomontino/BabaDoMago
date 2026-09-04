@@ -67,6 +67,7 @@ export const EVENT_PLAYER_VOTE_LABEL = {
 	submitVotes: "Enviar votos",
 	submitVotesFailed: "Não foi possível enviar os votos",
 	votesSubmitted: "Votos enviados",
+	votersSubmitted: "{submitted} de {monthly} mensalistas votaram",
 	editVotes: "Alterar votos",
 	likeBudget: "Likes",
 	dislikeBudget: "Dislikes",
@@ -260,6 +261,37 @@ export function ownerEventPlayerVoteCounts(
 			{ likes: row.likes, dislikes: row.dislikes },
 		]),
 	);
+}
+
+export function ownerEventPlayerVotesSubmitted(
+	isOwner: boolean,
+	submitted: number | undefined,
+): number | null {
+	if (!isOwner || submitted === undefined) {
+		return null;
+	}
+
+	return submitted;
+}
+
+export function eventPlayerMonthlyCount(
+	players: readonly {
+		is_monthly?: boolean | null;
+		deleted_at?: string | null;
+	}[],
+): number {
+	return players.filter(
+		(player) => player.is_monthly === true && !player.deleted_at,
+	).length;
+}
+
+export function eventPlayerVotesSubmittedLabel(
+	submitted: number,
+	monthly: number,
+): string {
+	return EVENT_PLAYER_VOTE_LABEL.votersSubmitted
+		.replace("{submitted}", String(submitted))
+		.replace("{monthly}", String(monthly));
 }
 
 export function initialEventPlayerBallotLocked(
