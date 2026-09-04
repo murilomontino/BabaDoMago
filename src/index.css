@@ -15,6 +15,9 @@
 	--color-danger: #dc2626;
 	--color-danger-soft: #fef2f2;
 	--color-danger-fg: #b91c1c;
+	--color-info: #2563eb;
+	--color-info-soft: #eff6ff;
+	--color-info-fg: #1d4ed8;
 
 	--animate-tab-panel: tab-panel 200ms ease-out;
 
@@ -43,6 +46,9 @@ html.dark {
 	--color-danger: #f87171;
 	--color-danger-soft: #7f1d1d;
 	--color-danger-fg: #fca5a5;
+	--color-info: #60a5fa;
+	--color-info-soft: #1e3a8a;
+	--color-info-fg: #93c5fd;
 }
 
 @utility scrollbar-thin {

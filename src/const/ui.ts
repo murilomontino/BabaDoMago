@@ -3,6 +3,8 @@ export const BUTTON_VARIANT = {
 	secondary: "secondary",
 	danger: "danger",
 	ghost: "ghost",
+	soft: "soft",
+	muted: "muted",
 } as const;
 
 export type ButtonVariant =
@@ -30,6 +32,8 @@ export const BUTTON_CLASS: Record<ButtonVariant, string> = {
 	secondary: `${BUTTON_BASE} border border-line bg-surface text-fg hover:bg-surface-muted`,
 	danger: `${BUTTON_BASE} border border-danger-fg/40 bg-surface text-danger-fg hover:bg-danger-soft`,
 	ghost: `${BUTTON_BASE} text-fg-muted hover:bg-surface-muted`,
+	soft: `${BUTTON_BASE} border border-info/40 bg-info-soft text-info-fg hover:bg-info-soft`,
+	muted: `${BUTTON_BASE} border border-line bg-surface-muted text-fg hover:bg-surface-muted`,
 };
 
 export const FIELD_CLASS =

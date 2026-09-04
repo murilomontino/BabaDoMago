@@ -943,7 +943,12 @@ export type VoteChampionshipEventPlayerResult = {
 };
 
 function asVoteChoice(value: unknown): EventPlayerVoteChoice | null {
-	if (value === "like" || value === "dislike" || value === "maintain") {
+	if (
+		value === "like" ||
+		value === "dislike" ||
+		value === "maintain" ||
+		value === "blank"
+	) {
 		return value;
 	}
 

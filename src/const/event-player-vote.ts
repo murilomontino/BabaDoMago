@@ -5,6 +5,7 @@ export const EVENT_PLAYER_VOTE = {
 	like: "like",
 	dislike: "dislike",
 	maintain: "maintain",
+	blank: "blank",
 	defaultQuorum: 3,
 	likeBudget: 5,
 	dislikeBudget: 5,
@@ -16,6 +17,7 @@ export const EVENT_PLAYER_VOTE_VALUE = {
 	like: EVENT_PLAYER_VOTE.like,
 	dislike: EVENT_PLAYER_VOTE.dislike,
 	maintain: EVENT_PLAYER_VOTE.maintain,
+	blank: EVENT_PLAYER_VOTE.blank,
 } as const;
 
 export type EventPlayerVoteChoice =
@@ -34,6 +36,7 @@ export const EVENT_PLAYER_VOTE_LABEL = {
 	like: "Like",
 	dislike: "Dislike",
 	maintain: "Manter",
+	blank: "Nulo",
 	clear: "Limpar voto",
 	empty: "Ninguém na presença.",
 	needPresent: "Só dono, capitão, admin presente ou mensalista vota.",
@@ -347,6 +350,8 @@ export function eventPlayerVoteChoiceLabel(
 			return EVENT_PLAYER_VOTE_LABEL.dislike;
 		case EVENT_PLAYER_VOTE.maintain:
 			return EVENT_PLAYER_VOTE_LABEL.maintain;
+		case EVENT_PLAYER_VOTE.blank:
+			return EVENT_PLAYER_VOTE_LABEL.blank;
 		default: {
 			const _exhaustive: never = choice;
 			return _exhaustive;

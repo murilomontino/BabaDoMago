@@ -9,12 +9,14 @@ import {
 
 const ICON_TOOLTIP_BUTTON_BASE = `inline-flex items-center justify-center rounded-md transition disabled:opacity-50 ${BUTTON_ICON_CLASS}`;
 
-const ICON_TOOLTIP_BUTTON_TONE = {
+const ICON_TOOLTIP_BUTTON_TONE: Record<ButtonVariant, string> = {
 	primary: "text-pitch-fg hover:bg-pitch-soft",
 	secondary: "text-fg-muted hover:bg-surface-muted",
 	danger: "text-danger-fg hover:bg-danger-soft",
 	ghost: "text-fg-muted hover:bg-surface-muted",
-} as const;
+	soft: "text-info-fg hover:bg-info-soft",
+	muted: "text-fg-muted hover:bg-surface-muted",
+};
 
 type IconTooltipButtonProps = {
 	label: string;

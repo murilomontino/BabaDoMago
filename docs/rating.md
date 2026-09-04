@@ -107,18 +107,19 @@ Exemplos do bônus: `0.01 → 0.1`, `0.14 → 0.2`, nota `20 → +0.4`.
 
 ## Voto do elenco (overlay)
 
-Dono, capitão e admin **presentes**, ou **mensalista** (mesmo ausente), podem dar like, dislike ou **manter** em quem está na presença da **mesma** rodada, **só depois de encerrar**. Voto em si é flag da liga (`player_vote_allow_self`, default ligado). A tela mostra a nota atual do elenco. Voto secreto: ninguém vê a urna, só o próprio voto. O **dono** vê totais de like/dislike por jogador ao vivo, sem ver quem votou.
+Dono, capitão e admin **presentes**, ou **mensalista** (mesmo ausente), podem dar like, dislike, **manter** ou **nulo** em quem está na presença da **mesma** rodada, **só depois de encerrar**. Voto em si é flag da liga (`player_vote_allow_self`, default ligado). A tela mostra a nota atual do elenco. Voto secreto: ninguém vê a urna, só o próprio voto. O **dono** vê totais de like/dislike por jogador ao vivo, sem ver quem votou.
 
 | Regra | Valor |
 | --- | --- |
 | Quórum | `championships.player_vote_quorum` (config do baba, default **3**, faixa 1–10) |
 | Voto em si | `championships.player_vote_allow_self` (config do baba, default **ligado**) |
 | Totais da urna | só o **dono**, ao vivo; likes e dislikes por alvo; sem quem votou |
-| Orçamento do votante | **5 likes** e **5 dislikes** no total; **manter** ilimitado; envio em lote (**Enviar votos**) |
+| Orçamento do votante | **5 likes** e **5 dislikes** no total; **manter** e **nulo** ilimitados; envio em lote (**Enviar votos**) |
 | Like no quórum | N+ likes (N = quórum), mais likes que dislikes **e** que maintains → **+0,5** e **fecha** |
 | Dislike no quórum | N+ dislikes, mais dislikes que likes **e** que maintains → **−0,5** e **fecha** |
 | Manter | conta na urna; bloqueia like/dislike se a contagem deles não supera maintains |
 | Manter sozinho | **0**, voto **permanece aberto** |
+| Nulo (`blank`) | grava a urna; **não** entra em like, dislike nem maintain; distinto de limpar o voto |
 | Encerrar votação | só o **dono**; trava novos votos na rodada (`player_votes_closed_at`) |
 | Cancelar efeito | só o **dono**; soft-delete (`player_votes_voided_at`): notas voltam, votos **permanecem** até reabrir; histórico na aba **Gestão** |
 | Reabrir votação | só o **dono**, só com a rodada cancelada; **apaga** os votos, zera `vote_rating_delta` / `vote_rating_applied`, limpa void e close → urna **Aberta** |
@@ -308,7 +309,7 @@ A presença guarda `rating` (snapshot antes do evento) e `rating_delta`. Correç
 - Gols, assistências ou gol contra na **fórmula base** (contam em estatísticas e MVP; com a flag da liga, G+A do time só **amortece queda**)
 - Força do adversário
 - Duração ou placar da partida além do resultado V/E/D agregado na presença
-- Voto like/dislike/manter (overlay em `vote_rating_delta`, fora do aproveitamento)
+- Voto like/dislike/manter/nulo (overlay em `vote_rating_delta`, fora do aproveitamento)
 
 ---
 

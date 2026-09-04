@@ -1,4 +1,4 @@
-import { Equal, ThumbsDown, ThumbsUp } from "lucide-react";
+import { Ban, Equal, ThumbsDown, ThumbsUp } from "lucide-react";
 import { Button } from "@/components/button";
 import { EventTeamColorDot } from "@/components/event-team-player";
 import { PlayerRating } from "@/components/player-rating";
@@ -220,6 +220,7 @@ export function EventPlayerVoteList({
 									draftVote,
 									"maintain",
 								);
+								const nextBlank = nextEventPlayerVoteValue(draftVote, "blank");
 								const canLike =
 									canVote &&
 									canSetEventPlayerVoteDraft(draftVotes, row.player_id, nextLike);
@@ -236,6 +237,13 @@ export function EventPlayerVoteList({
 										draftVotes,
 										row.player_id,
 										nextMaintain,
+									);
+								const canBlank =
+									canVote &&
+									canSetEventPlayerVoteDraft(
+										draftVotes,
+										row.player_id,
+										nextBlank,
 									);
 
 								return [
@@ -297,7 +305,7 @@ export function EventPlayerVoteList({
 											</div>
 										</div>
 										{canVote && (
-											<div className="grid w-full min-w-0 grid-cols-3 gap-1">
+											<div className="grid w-full min-w-0 grid-cols-2 gap-1">
 												<Button
 													variant={
 														draftVote === "like"
@@ -339,7 +347,7 @@ export function EventPlayerVoteList({
 												<Button
 													variant={
 														draftVote === "maintain"
-															? BUTTON_VARIANT.primary
+															? BUTTON_VARIANT.soft
 															: BUTTON_VARIANT.secondary
 													}
 													className="min-w-0 gap-1 px-2 text-xs"
@@ -353,6 +361,25 @@ export function EventPlayerVoteList({
 													<Equal className="size-4 shrink-0" />
 													<span className="truncate">
 														{EVENT_PLAYER_VOTE_LABEL.maintain}
+													</span>
+												</Button>
+												<Button
+													variant={
+														draftVote === "blank"
+															? BUTTON_VARIANT.muted
+															: BUTTON_VARIANT.secondary
+													}
+													className="min-w-0 gap-1 px-2 text-xs"
+													disabled={!canBlank}
+													aria-pressed={draftVote === "blank"}
+													aria-label={EVENT_PLAYER_VOTE_LABEL.blank}
+													onClick={() => {
+														onDraftChange(row.player_id, nextBlank);
+													}}
+												>
+													<Ban className="size-4 shrink-0" />
+													<span className="truncate">
+														{EVENT_PLAYER_VOTE_LABEL.blank}
 													</span>
 												</Button>
 											</div>
