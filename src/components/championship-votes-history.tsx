@@ -24,6 +24,7 @@ import {
 } from "@/const/ui";
 import { CHAMPIONSHIP_EVENTS_QUERY_KEY } from "@/hooks/championships/championships-query-keys";
 import {
+	useCloseChampionshipEventPlayerVotes,
 	useReopenChampionshipEventPlayerVotes,
 	useVoidChampionshipEventPlayerVotes,
 } from "@/hooks/championships/use-championship-events";
@@ -41,6 +42,7 @@ export function ChampionshipVotesHistory({
 	events,
 	canOverrideEnded,
 }: ChampionshipVotesHistoryProps) {
+	const closeVotes = useCloseChampionshipEventPlayerVotes(championshipId);
 	const voidVotes = useVoidChampionshipEventPlayerVotes(championshipId);
 	const reopenVotes = useReopenChampionshipEventPlayerVotes(championshipId);
 	const [voidEventId, setVoidEventId] = useState<number | null>(null);
@@ -57,6 +59,10 @@ export function ChampionshipVotesHistory({
 	);
 
 	const pendingEventId = (() => {
+		if (closeVotes.isPending && typeof closeVotes.variables === "number") {
+			return closeVotes.variables;
+		}
+
 		if (voidVotes.isPending && typeof voidVotes.variables === "number") {
 			return voidVotes.variables;
 		}
@@ -122,6 +128,29 @@ export function ChampionshipVotesHistory({
 												{EVENT_PLAYER_VOTE_LABEL.openHistory}
 											</Link>
 										)}
+										{canOverrideEnded &&
+											status === EVENT_PLAYER_VOTE_STATUS.open && (
+												<Button
+													variant={BUTTON_VARIANT.primary}
+													className="h-9"
+													disabled={busy}
+													onClick={() => {
+														setLocalError(null);
+														closeVotes.mutate(event.id, {
+															onError: (closeError) => {
+																setLocalError(
+																	caughtErrorMessage(
+																		closeError,
+																		EVENT_PLAYER_VOTE_LABEL.closeVotesFailed,
+																	),
+																);
+															},
+														});
+													}}
+												>
+													{EVENT_PLAYER_VOTE_LABEL.closeVotes}
+												</Button>
+											)}
 										{canOverrideEnded &&
 											status !== EVENT_PLAYER_VOTE_STATUS.voided && (
 												<Button

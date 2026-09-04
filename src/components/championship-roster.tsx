@@ -17,10 +17,6 @@ import {
 	type RosterPlayerCellProps,
 } from "@/components/molecules/roster-player-cell";
 import {
-	RosterPlayerMonthly,
-	type RosterPlayerMonthlyProps,
-} from "@/components/molecules/roster-player-monthly";
-import {
 	RosterPlayerRating,
 	type RosterPlayerRatingProps,
 } from "@/components/molecules/roster-player-rating";
@@ -33,7 +29,6 @@ import {
 	CHAMPIONSHIP_ROLE,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
-import { PLAYER_MONTHLY_LABEL } from "@/const/player-monthly";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import { filterPlayersBySearch, PLAYER_SEARCH } from "@/const/player-search";
 import {
@@ -70,7 +65,6 @@ type ChampionshipRosterProps = {
 	eventStatsPlayerId?: number | null;
 	onChangeRole?: (playerId: number, role: AssignableChampionshipRole) => void;
 	onChangeGoalkeeper?: (playerId: number, isGoalkeeper: boolean) => void;
-	onChangeMonthly?: (playerId: number, isMonthly: boolean) => void;
 	onUnlink?: (playerId: number) => void;
 	unlinkingPlayerId?: number | null;
 	onMerge?: (playerId: number) => void;
@@ -113,13 +107,6 @@ function rosterPlayerRatingProps(
 	return { ...shared, player };
 }
 
-function rosterPlayerMonthlyProps(
-	player: ChampionshipPlayer,
-	shared: Omit<RosterPlayerMonthlyProps, "player">,
-): RosterPlayerMonthlyProps {
-	return { ...shared, player };
-}
-
 function rosterPlayerActionsProps(
 	player: ChampionshipPlayer,
 	shared: Omit<RosterPlayerActionsProps, "player">,
@@ -142,7 +129,6 @@ export function ChampionshipRoster({
 	eventStatsPlayerId,
 	onChangeRole,
 	onChangeGoalkeeper,
-	onChangeMonthly,
 	onUnlink,
 	unlinkingPlayerId,
 	onMerge,
@@ -223,12 +209,6 @@ export function ChampionshipRoster({
 			ratingPlayerId,
 		],
 	);
-	const playerMonthlyShared = useMemo(
-		() => ({
-			onChangeMonthly,
-		}),
-		[onChangeMonthly],
-	);
 	const playerActionsShared = useMemo(
 		() => ({
 			createdBy,
@@ -306,18 +286,6 @@ export function ChampionshipRoster({
 					cell: ({ row }) => (
 						<RosterPlayerRating
 							{...rosterPlayerRatingProps(row.original, playerRatingShared)}
-						/>
-					),
-				}),
-				rosterColumnHelper.display({
-					id: "monthly",
-					header: PLAYER_MONTHLY_LABEL.abbr,
-					enableHiding: false,
-					enableSorting: false,
-					meta: { align: "center", title: PLAYER_MONTHLY_LABEL.column },
-					cell: ({ row }) => (
-						<RosterPlayerMonthly
-							{...rosterPlayerMonthlyProps(row.original, playerMonthlyShared)}
 						/>
 					),
 				}),
@@ -473,12 +441,7 @@ export function ChampionshipRoster({
 					),
 				}),
 			]),
-		[
-			playerCellShared,
-			playerRatingShared,
-			playerMonthlyShared,
-			playerActionsShared,
-		],
+		[playerCellShared, playerRatingShared, playerActionsShared],
 	);
 
 	const addCeiling = rosterCeiling ?? ceiling;

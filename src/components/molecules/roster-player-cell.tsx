@@ -1,3 +1,4 @@
+import { CalendarCheck } from "lucide-react";
 import { useState } from "react";
 import { AppDialog } from "@/components/atoms/app-dialog";
 import { PlayerNameLink } from "@/components/molecules/player-name-link";
@@ -16,6 +17,7 @@ import {
 	PLAYER_LABEL,
 	playerKindFromGoalkeeper,
 } from "@/const/player-name";
+import { PLAYER_MONTHLY_LABEL } from "@/const/player-monthly";
 import { PLAYER_PROFILE_LABEL } from "@/const/player-profile";
 import { MODAL_CLASS, PLAYER_KIND_SELECT_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
@@ -59,6 +61,15 @@ export function RosterPlayerCell({
 				player={player}
 				afterName={
 					<>
+						{player.is_monthly && (
+							<span
+								className="mt-1 inline-flex text-pitch-fg"
+								title={PLAYER_MONTHLY_LABEL.badge}
+							>
+								<span className="sr-only">{PLAYER_MONTHLY_LABEL.badge}</span>
+								<CalendarCheck className="size-3.5" aria-hidden />
+							</span>
+						)}
 						{!player.user_id && (
 							<span className="mt-1 inline-flex rounded-full bg-surface-muted px-2 py-0.5 text-xs font-medium text-fg-muted">
 								{PLAYER_PROFILE_LABEL.noAccount}

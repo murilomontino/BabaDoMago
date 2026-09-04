@@ -17,10 +17,15 @@ import { ChampionshipDetailHeader } from "@/components/championship-detail-heade
 import { ChampionshipEventDrawSim } from "@/components/championship-event-draw-sim";
 import { ChampionshipEvents } from "@/components/championship-events";
 import { ChampionshipManagementTab } from "@/components/championship-management-tab";
+import { ChampionshipMonthlyTab } from "@/components/championship-monthly-tab";
 import { ChampionshipPodiumTab } from "@/components/championship-podium-tab";
 import { ChampionshipRosterTab } from "@/components/championship-roster-tab";
 import { ChampionshipSettingsTab } from "@/components/championship-settings-tab";
 import { ChampionshipStandingsTab } from "@/components/championship-standings-tab";
+import {
+	ChampionshipTabs,
+	ChampionshipTabsSkeleton,
+} from "@/components/championship-tabs";
 import { ChampionshipTrendsTab } from "@/components/championship-trends-tab";
 import { ConfirmRatingModal } from "@/components/confirm-rating-modal";
 import { DeleteChampionshipModal } from "@/components/delete-championship-modal";
@@ -29,7 +34,7 @@ import { EditPlayerNicknameModal } from "@/components/edit-player-nickname-modal
 import { MergeChampionshipPlayersModal } from "@/components/merge-championship-players-modal";
 import { DataTableSkeleton } from "@/components/molecules/data-table-skeleton";
 import { SectionCard } from "@/components/section-card";
-import { TabPanel, Tabs } from "@/components/tabs";
+import { TabPanel } from "@/components/tabs";
 import {
 	countPlayerAttendance,
 	type PlayerEventStatsDraft,
@@ -63,7 +68,6 @@ import {
 	CHAMPIONSHIP_TAB,
 	CHAMPIONSHIP_TAB_LABEL,
 	type ChampionshipTab,
-	championshipTabs,
 	rememberChampionshipTab,
 	visibleChampionshipTab,
 } from "@/const/championship-tab";
@@ -279,8 +283,6 @@ export function ChampionshipDetailPage() {
 		permissions.deleteChampionship ||
 		permissions.reactivate ||
 		permissions.remove;
-
-	const tabs = championshipTabs(permissions.viewManagement);
 
 	function handleTabChange(id: ChampionshipTab) {
 		setIsSettingsOpen(false);
@@ -801,7 +803,11 @@ export function ChampionshipDetailPage() {
 				/>
 			)}
 			{!isSettingsOpen && (
-				<Tabs value={selectedTab} items={tabs} onChange={handleTabChange} />
+				<ChampionshipTabs
+					value={selectedTab}
+					includeManagement={permissions.viewManagement}
+					onChange={handleTabChange}
+				/>
 			)}
 			{!isSettingsOpen && (
 				<div className="relative">
@@ -839,7 +845,6 @@ export function ChampionshipDetailPage() {
 								}
 								roleError={mutationErrorMessage(setPlayerRole)}
 								goalkeeperError={mutationErrorMessage(setPlayerIsGoalkeeper)}
-								monthlyError={mutationErrorMessage(setPlayerIsMonthly)}
 								unlinkingPlayerId={pendingMutationId(unlinkPlayer)}
 								unlinkError={mutationErrorMessage(unlinkPlayer)}
 								canMerge={permissions.merge}
@@ -866,7 +871,6 @@ export function ChampionshipDetailPage() {
 								}
 								onChangeRole={handleChangeRole}
 								onChangeGoalkeeper={handleChangeGoalkeeper}
-								onChangeMonthly={handleChangeMonthly}
 								onUnlink={handleUnlink}
 								onMerge={handleMerge}
 								onDeactivate={handleDeactivate}
@@ -921,6 +925,18 @@ export function ChampionshipDetailPage() {
 								eventWeekday={data.event_weekday}
 								attendanceCounts={attendanceCounts}
 								seedEvents={eventsQuery.data ?? []}
+							/>
+						</TabPanel>
+					)}
+					{mountedTabsRef.current.monthly && permissions.viewManagement && (
+						<TabPanel active={selectedTab === CHAMPIONSHIP_TAB.monthly}>
+							<ChampionshipMonthlyTab
+								players={activePlayers}
+								pendingPlayerId={
+									pendingMutationId(setPlayerIsMonthly)?.playerId ?? null
+								}
+								error={mutationErrorMessage(setPlayerIsMonthly)}
+								onChangeMonthly={handleChangeMonthly}
 							/>
 						</TabPanel>
 					)}
@@ -1010,11 +1026,7 @@ function ChampionshipDetailPageSkeleton() {
 						</div>
 					</div>
 				</section>
-				<Tabs
-					value={CHAMPIONSHIP_TAB.roster}
-					items={championshipTabs(false)}
-					onChange={ignoreTabChange}
-				/>
+				<ChampionshipTabsSkeleton />
 				<SectionCard
 					title={CHAMPIONSHIP_TAB_LABEL.roster}
 					icon={<Users className="size-4 text-pitch-fg" />}
@@ -1024,10 +1036,6 @@ function ChampionshipDetailPageSkeleton() {
 			</main>
 		</SkeletonRegion>
 	);
-}
-
-function ignoreTabChange() {
-	return;
 }
 
 function LogoCropSkeleton({ onClose }: { onClose: () => void }) {

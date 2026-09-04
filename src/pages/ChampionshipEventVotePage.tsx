@@ -73,10 +73,8 @@ export function ChampionshipEventVotePage() {
 		championshipId,
 		eventId,
 	);
-	const closeVotesMutation = useCloseChampionshipEventPlayerVotes(
-		championshipId,
-		eventId,
-	);
+	const closeVotesMutation =
+		useCloseChampionshipEventPlayerVotes(championshipId);
 	const matchOps = useAppSelector((state) => selectMatchOps(state, eventId));
 	const [localError, setLocalError] = useState<string | null>(null);
 	const [draftVotes, setDraftVotes] = useState<
@@ -325,7 +323,7 @@ export function ChampionshipEventVotePage() {
 						disabled={closeVotesMutation.isPending}
 						onClick={() => {
 							setLocalError(null);
-							closeVotesMutation.mutate(undefined, {
+							closeVotesMutation.mutate(eventId, {
 								onError: (closeError) => {
 									setLocalError(
 										caughtErrorMessage(

@@ -65,6 +65,9 @@ export const CARD_CLASS =
 export const MODAL_CLASS =
 	"w-full max-w-lg rounded-xl bg-surface p-4 shadow-lg";
 
+export const DRAWER_CLASS =
+	"w-full max-w-none rounded-t-xl bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-lg";
+
 export const CHIP_CLASS =
 	"rounded bg-surface-muted px-1.5 py-0.5 text-xs font-medium tabular-nums text-fg-muted";
 
