@@ -28,7 +28,7 @@ export const CHAMPIONSHIP_TAB_LABEL = {
 	standings: "Classificação",
 	podium: "Pódio",
 	trends: "Tendências",
-	drawSim: "Sorteio",
+	drawSim: "Simular Sorteio",
 	monthly: "Mensalistas",
 	management: "Gestão",
 	deactivated: "Desativados",
