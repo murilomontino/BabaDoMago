@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
-import { AlertTriangle, ClipboardList, Users } from "lucide-react";
+import { AlertTriangle, ClipboardList, UserCheck, Users } from "lucide-react";
 import { useMemo } from "react";
 import { ChampionshipAuditLog } from "@/components/championship-audit-log";
 import { ChampionshipVotesHistory } from "@/components/championship-votes-history";
@@ -11,6 +11,16 @@ import {
 	type DataTableFeatures,
 } from "@/components/organisms/data-table";
 import { SectionCard } from "@/components/section-card";
+import {
+	ATTENDANCE_RELIABILITY_COLUMN,
+	ATTENDANCE_RELIABILITY_COLUMN_ABBR,
+	ATTENDANCE_RELIABILITY_COLUMN_LABEL,
+	ATTENDANCE_RELIABILITY_LABEL,
+	type AttendanceReliabilityRow,
+	championshipAttendanceReliability,
+	formatAttendanceReliabilityCount,
+	formatAttendanceReliabilityRate,
+} from "@/const/championship-attendance-reliability";
 import {
 	formatManagementStat,
 	formatManagementSummary,
@@ -142,6 +152,102 @@ function FrequencyTable({ rows }: { rows: ManagementFrequencyRow[] }) {
 	);
 }
 
+const reliabilityColumnHelper = createColumnHelper<
+	DataTableFeatures,
+	AttendanceReliabilityRow
+>();
+
+function ReliabilityTable({ rows }: { rows: AttendanceReliabilityRow[] }) {
+	const columns = useMemo(
+		() =>
+			reliabilityColumnHelper.columns([
+				reliabilityColumnHelper.accessor(
+					(row) => playerVisibleName(row.player),
+					{
+						id: ATTENDANCE_RELIABILITY_COLUMN.player,
+						header: ATTENDANCE_RELIABILITY_COLUMN_LABEL.player,
+						enableHiding: false,
+						cell: ({ row }) => <PlayerNameLink player={row.original.player} />,
+					},
+				),
+				reliabilityColumnHelper.accessor("confirmed", {
+					id: ATTENDANCE_RELIABILITY_COLUMN.confirmed,
+					header: ATTENDANCE_RELIABILITY_COLUMN_ABBR.confirmed,
+					meta: {
+						align: "right" as const,
+						title: ATTENDANCE_RELIABILITY_COLUMN_LABEL.confirmed,
+					},
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatAttendanceReliabilityCount(getValue())}
+						</span>
+					),
+				}),
+				reliabilityColumnHelper.accessor("attended", {
+					id: ATTENDANCE_RELIABILITY_COLUMN.attended,
+					header: ATTENDANCE_RELIABILITY_COLUMN_ABBR.attended,
+					meta: {
+						align: "right" as const,
+						title: ATTENDANCE_RELIABILITY_COLUMN_LABEL.attended,
+					},
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatAttendanceReliabilityCount(getValue())}
+						</span>
+					),
+				}),
+				reliabilityColumnHelper.accessor("noShows", {
+					id: ATTENDANCE_RELIABILITY_COLUMN.noShows,
+					header: ATTENDANCE_RELIABILITY_COLUMN_ABBR.noShows,
+					meta: {
+						align: "right" as const,
+						title: ATTENDANCE_RELIABILITY_COLUMN_LABEL.noShows,
+					},
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatAttendanceReliabilityCount(getValue())}
+						</span>
+					),
+				}),
+				reliabilityColumnHelper.accessor("rate", {
+					id: ATTENDANCE_RELIABILITY_COLUMN.rate,
+					header: ATTENDANCE_RELIABILITY_COLUMN_ABBR.rate,
+					meta: {
+						align: "right" as const,
+						title: ATTENDANCE_RELIABILITY_COLUMN_LABEL.rate,
+					},
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatAttendanceReliabilityRate(getValue())}
+						</span>
+					),
+				}),
+				reliabilityColumnHelper.accessor("noShowStreak", {
+					id: ATTENDANCE_RELIABILITY_COLUMN.streak,
+					header: ATTENDANCE_RELIABILITY_COLUMN_ABBR.streak,
+					meta: {
+						align: "right" as const,
+						title: ATTENDANCE_RELIABILITY_COLUMN_LABEL.streak,
+					},
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatAttendanceReliabilityCount(getValue())}
+						</span>
+					),
+				}),
+			]),
+		[],
+	);
+
+	return (
+		<DataTable
+			data={rows}
+			columns={columns}
+			getRowId={(row) => String(row.player.id)}
+		/>
+	);
+}
+
 export function ChampionshipManagementTab({
 	championshipId,
 	players,
@@ -153,6 +259,10 @@ export function ChampionshipManagementTab({
 	const summary = managementSummary(events);
 	const frequency = useMemo(
 		() => rankManagementFrequencyRows(managementFrequencyRows(players, events)),
+		[players, events],
+	);
+	const reliability = useMemo(
+		() => championshipAttendanceReliability(players, events),
 		[players, events],
 	);
 	const alerts = managementAlerts(events);
@@ -224,6 +334,21 @@ export function ChampionshipManagementTab({
 					/>
 				)}
 				{frequency.length > 0 && <FrequencyTable rows={frequency} />}
+			</SectionCard>
+			<SectionCard
+				title={ATTENDANCE_RELIABILITY_LABEL.title}
+				icon={<UserCheck className="size-4 text-pitch-fg" />}
+				queryKey={CHAMPIONSHIP_EVENTS_QUERY_KEY}
+			>
+				<p className="text-sm text-fg-muted">
+					{ATTENDANCE_RELIABILITY_LABEL.hint}
+				</p>
+				{reliability.length === 0 && (
+					<p className="text-sm text-fg-muted">
+						{ATTENDANCE_RELIABILITY_LABEL.empty}
+					</p>
+				)}
+				{reliability.length > 0 && <ReliabilityTable rows={reliability} />}
 			</SectionCard>
 			<ChampionshipVotesHistory
 				championshipId={championshipId}

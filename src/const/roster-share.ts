@@ -39,7 +39,9 @@ export const ROSTER_SHARE = {
 
 export const ROSTER_SHARE_LABEL = {
 	share: "Compartilhar elenco",
+	shareCsv: "Exportar CSV",
 	sharing: "Gerando imagem...",
+	sharingCsv: "Gerando CSV...",
 	shareFailed: "Não foi possível compartilhar o elenco",
 	copyInvite: "Copiar link de convite",
 	copied: "Link copiado.",
@@ -293,6 +295,27 @@ export function rosterShareText(card: RosterShareCard): string {
 	return [card.championshipName, card.title, ...lines]
 		.filter((line) => line.length > 0)
 		.join("\n");
+}
+
+export function rosterShareCsvRows(
+	players: readonly ChampionshipPlayer[],
+): { headers: string[]; rows: string[][] } {
+	const headers = [
+		ROSTER_COLUMN_LABEL.player,
+		ROSTER_COLUMN_LABEL.rating,
+		...ROSTER_STAT_COLUMNS.map((column) => ROSTER_COLUMN_LABEL[column]),
+	];
+	const rows = players.map((player) => {
+		const row = toRosterRow(player);
+		return [
+			playerVisibleName(player),
+			String(player.rating),
+			...ROSTER_STAT_COLUMNS.map((column) =>
+				formatRosterStat(column, row[column]),
+			),
+		];
+	});
+	return { headers, rows };
 }
 
 export function rosterShareCard(

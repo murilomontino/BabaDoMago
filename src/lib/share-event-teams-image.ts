@@ -139,7 +139,7 @@ function drawStars(
 	y: number,
 	rating: number,
 	ceiling: number,
-	fillColor = EVENT_TEAM_SHARE_COLOR.starFill,
+	fillColor: string = EVENT_TEAM_SHARE_COLOR.starFill,
 ) {
 	const size = EVENT_TEAM_SHARE.star;
 	const fill = ratingToStarFill(rating, ceiling);

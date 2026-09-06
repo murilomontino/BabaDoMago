@@ -1,4 +1,4 @@
-import { LoaderCircle, Share2, Trophy } from "lucide-react";
+import { FileSpreadsheet, LoaderCircle, Share2, Trophy } from "lucide-react";
 import { lazy, Suspense, useMemo, useState } from "react";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
@@ -72,9 +72,11 @@ import {
 	podiumShareCardFromSynergyPairs,
 	podiumShareCardsFromPlayers,
 	podiumShareContext,
+	podiumShareCsvRows,
 	podiumSharePeriodCaption,
 	podiumSharingLabel,
 } from "@/const/podium-share";
+import { shareFileName } from "@/const/share-file-name";
 import { SKELETON_LABEL } from "@/const/skeleton";
 import {
 	championshipTeamBalance,
@@ -86,6 +88,7 @@ import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
 import { CHAMPIONSHIP_EVENTS_QUERY_KEY } from "@/hooks/championships/championships-query-keys";
 import { usePodiumYear } from "@/hooks/use-podium-year";
 import { includeDefined } from "@/lib/include-when";
+import { buildCsv, shareCsvText } from "@/lib/share-csv";
 import {
 	sharePodiumSeparateImages,
 	sharePodiumStackedImage,
@@ -182,6 +185,7 @@ export function ChampionshipPodiumTab({
 	);
 	const [yearParam, setYearParam] = usePodiumYear();
 	const [isSharing, setIsSharing] = useState<PodiumShareMode | null>(null);
+	const [isSharingCsv, setIsSharingCsv] = useState(false);
 	const [shareError, setShareError] = useState<string | null>(null);
 	const currentMonth = podiumCurrentMonth();
 	const includeSynergy = !eventStartsAt;
@@ -346,6 +350,27 @@ export function ChampionshipPodiumTab({
 			setShareError(PODIUM_SHARE_LABEL.shareFailed);
 		} finally {
 			setIsSharing(null);
+		}
+	}
+
+	async function handleShareCsv() {
+		if (!isPodiumPlayerMetric(metric)) {
+			return;
+		}
+
+		setIsSharingCsv(true);
+		setShareError(null);
+		try {
+			const { headers, rows } = podiumShareCsvRows(podiumPlayers, metric);
+			await shareCsvText(
+				shareFileName(["podio", championshipName, metric], "csv"),
+				buildCsv(headers, rows),
+				PODIUM_SHARE_LABEL.shareCsv,
+			);
+		} catch {
+			setShareError(PODIUM_SHARE_LABEL.shareFailed);
+		} finally {
+			setIsSharingCsv(false);
 		}
 	}
 
@@ -550,6 +575,22 @@ export function ChampionshipPodiumTab({
 									podiumSharingLabel(PODIUM_SHARE_MODE.separate)}
 								{isSharing !== PODIUM_SHARE_MODE.separate &&
 									PODIUM_SHARE_LABEL.shareAllSeparate}
+							</Button>
+						)}
+						{isPodiumPlayerMetric(metric) && podiumPlayers.length > 0 && (
+							<Button
+								variant={BUTTON_VARIANT.secondary}
+								disabled={isSharingCsv}
+								onClick={() => {
+									void handleShareCsv();
+								}}
+							>
+								{isSharingCsv && (
+									<LoaderCircle className="size-4 animate-spin" aria-hidden />
+								)}
+								{!isSharingCsv && <FileSpreadsheet className="size-4" />}
+								{isSharingCsv && PODIUM_SHARE_LABEL.sharingCsv}
+								{!isSharingCsv && PODIUM_SHARE_LABEL.shareCsv}
 							</Button>
 						)}
 					</div>

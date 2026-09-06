@@ -32,6 +32,10 @@ import {
 	validateTeamsInAttendance,
 } from "@/const/championship-event";
 import {
+	formatProjectedWinRate,
+	projectedFieldWinRates,
+} from "@/const/championship-match-projection";
+import {
 	drawSimSeedWeekday,
 	EVENT_DRAW_SIM_LABEL,
 	EVENT_DRAW_SIM_MODE,
@@ -43,6 +47,7 @@ import {
 	eventTeamsShareCards,
 } from "@/const/event-team-share";
 import { championshipRatingCeiling } from "@/const/player-rating";
+import { eventTeamRatingAverage } from "@/const/championship-event";
 import { BUTTON_VARIANT, CARD_CLASS, ERROR_CLASS } from "@/const/ui";
 import { runEventTeamDraw } from "@/lib/event-team-draw";
 import { runEventTeamPotDraw } from "@/lib/event-team-pot-draw";
@@ -83,6 +88,7 @@ function DrawSimTeamCard({
 	ceiling,
 	presentRatings,
 	isHighestSum,
+	projectedWinRate,
 }: {
 	team: EventTeamBuilderTeam;
 	teamIndex: number;
@@ -91,6 +97,7 @@ function DrawSimTeamCard({
 	ceiling: number;
 	presentRatings: readonly number[];
 	isHighestSum: boolean;
+	projectedWinRate: string | null;
 }) {
 	const cardStyle = eventTeamColorStyle(team.color);
 	const playerIds = teamSlotsToPlayerIds(team.slots);
@@ -148,6 +155,7 @@ function DrawSimTeamCard({
 				ratings={ratings}
 				presentRatings={presentRatings}
 				isHighestSum={isHighestSum}
+				projectedWinRate={projectedWinRate}
 			/>
 		</article>
 	);
@@ -405,6 +413,11 @@ export function ChampionshipEventDrawSim({
 							teamRatingsLists,
 							presentRatings,
 						);
+						const projectedRates = projectedFieldWinRates(
+							teamRatingsLists.map((ratings) =>
+								eventTeamRatingAverage(ratings, presentRatings),
+							),
+						);
 
 						return teams.map((team, teamIndex) => (
 							<DrawSimTeamCard
@@ -416,6 +429,9 @@ export function ChampionshipEventDrawSim({
 								ceiling={ceiling}
 								presentRatings={presentRatings}
 								isHighestSum={highestSumFlags[teamIndex] === true}
+								projectedWinRate={formatProjectedWinRate(
+									projectedRates[teamIndex] ?? 0,
+								)}
 							/>
 						));
 					})()}

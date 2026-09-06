@@ -7,6 +7,7 @@ export const CHAMPIONSHIP_TAB = {
 	podium: "podium",
 	trends: "trends",
 	drawSim: "drawSim",
+	projections: "projections",
 	monthly: "monthly",
 	management: "management",
 } as const;
@@ -29,6 +30,7 @@ export const CHAMPIONSHIP_TAB_LABEL = {
 	podium: "Pódio",
 	trends: "Tendências",
 	drawSim: "Simular Sorteio",
+	projections: "Projeções",
 	monthly: "Mensalistas",
 	management: "Gestão",
 	deactivated: "Desativados",
@@ -88,6 +90,10 @@ export function championshipMoreTabs(
 	return [
 		...CHAMPIONSHIP_MORE_TABS,
 		{
+			id: CHAMPIONSHIP_TAB.projections,
+			label: CHAMPIONSHIP_TAB_LABEL.projections,
+		},
+		{
 			id: CHAMPIONSHIP_TAB.monthly,
 			label: CHAMPIONSHIP_TAB_LABEL.monthly,
 		},
@@ -105,6 +111,10 @@ export function championshipTabs(includeManagement: boolean) {
 
 	return [
 		...CHAMPIONSHIP_TABS,
+		{
+			id: CHAMPIONSHIP_TAB.projections,
+			label: CHAMPIONSHIP_TAB_LABEL.projections,
+		},
 		{
 			id: CHAMPIONSHIP_TAB.monthly,
 			label: CHAMPIONSHIP_TAB_LABEL.monthly,
@@ -141,7 +151,8 @@ export function visibleChampionshipTab(
 ): ChampionshipTab {
 	if (
 		(requestedTab === CHAMPIONSHIP_TAB.management ||
-			requestedTab === CHAMPIONSHIP_TAB.monthly) &&
+			requestedTab === CHAMPIONSHIP_TAB.monthly ||
+			requestedTab === CHAMPIONSHIP_TAB.projections) &&
 		!canViewManagement
 	) {
 		return CHAMPIONSHIP_TAB.roster;

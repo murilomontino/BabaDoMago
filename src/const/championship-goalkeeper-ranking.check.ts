@@ -173,6 +173,7 @@ check(rows.length === 1, "one qualified gk");
 check(rows[0]?.matches === 3, "three matches");
 check(rows[0]?.goalsConceded === 6, "total conceded");
 check(rows[0]?.goalsConcededAverage === 2, "average conceded");
+check(rows[0]?.cleanSheets === 0, "no clean sheets");
 check(rows[0]?.wins === 2, "two wins");
 check(rows[0]?.losses === 1, "one loss");
 check(rows[0]?.trend === GOALKEEPER_TREND.up, "average falling is up");

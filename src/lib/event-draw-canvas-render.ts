@@ -148,7 +148,7 @@ function drawStars(
 	size: number,
 	rating: number,
 	ceiling: number,
-	fillColor = VIDEO_COLOR.starFill,
+	fillColor: string = VIDEO_COLOR.starFill,
 ) {
 	const fill = ratingToStarFill(rating, ceiling);
 	const path = new Path2D(PLAYER_STAR_PATH);

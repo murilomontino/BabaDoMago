@@ -238,12 +238,14 @@ type EventTeamRatingAverageProps = {
 	ratings: readonly number[];
 	presentRatings?: readonly number[];
 	isHighestSum?: boolean;
+	projectedWinRate?: string | null;
 };
 
 export function EventTeamRatingAverage({
 	ratings,
 	presentRatings = ratings,
 	isHighestSum = false,
+	projectedWinRate = null,
 }: EventTeamRatingAverageProps) {
 	if (ratings.length === 0) {
 		return null;
@@ -273,6 +275,16 @@ export function EventTeamRatingAverage({
 				</span>
 				<span className="text-fg-muted">{EVENT_TEAM_AVERAGE_LABEL} </span>
 				{average}
+				{projectedWinRate && (
+					<>
+						<span aria-hidden className="text-fg-muted">
+							{" "}
+							·{" "}
+						</span>
+						<span className="text-fg-muted">Chance </span>
+						{projectedWinRate}
+					</>
+				)}
 			</span>
 		</p>
 	);

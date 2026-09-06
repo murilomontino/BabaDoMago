@@ -61,6 +61,19 @@ import {
 } from "@/const/player-profile-tab";
 import { PLAYER_RATING_SIM_LABEL } from "@/const/player-rating-sim";
 import {
+	formatHeadToHeadCount,
+	formatHeadToHeadWinRate,
+	HEAD_TO_HEAD_LABEL,
+	type HeadToHeadRow,
+} from "@/const/player-head-to-head";
+import {
+	formatPlusMinusCount,
+	formatPlusMinusDiff,
+	formatPlusMinusPerMatch,
+	PLUS_MINUS_LABEL,
+	type PlayerPlusMinus,
+} from "@/const/player-plus-minus";
+import {
 	formatSynergyStat,
 	SYNERGY_COLUMN,
 	SYNERGY_COLUMN_ABBR,
@@ -117,6 +130,8 @@ type ChampionshipPlayerDetailProps = {
 	historyPending: boolean;
 	historyError: string | null;
 	partners: readonly SynergyPartnerRow[];
+	headToHead: readonly HeadToHeadRow[];
+	plusMinus: PlayerPlusMinus | null;
 	goalkeeper: GoalkeeperStats | null;
 	onOpenEvent: (eventId: number) => void;
 	hiddenLine?: number;
@@ -571,6 +586,61 @@ function PlayerPartnersTable({
 	);
 }
 
+const headToHeadHelper = createColumnHelper<DataTableFeatures, HeadToHeadRow>();
+
+function HeadToHeadTable({ rows }: { rows: readonly HeadToHeadRow[] }) {
+	const columns = useMemo(
+		() =>
+			headToHeadHelper.columns([
+				headToHeadHelper.accessor((row) => playerVisibleName(row.opponent), {
+					id: "opponent",
+					header: HEAD_TO_HEAD_LABEL.opponent,
+					enableHiding: false,
+					cell: ({ row }) => <PlayerNameLink player={row.original.opponent} />,
+				}),
+				headToHeadHelper.accessor("wins", {
+					id: "wins",
+					header: HEAD_TO_HEAD_LABEL.wins,
+					meta: { align: "right" as const },
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatHeadToHeadCount(getValue())}
+						</span>
+					),
+				}),
+				headToHeadHelper.accessor("matches", {
+					id: "matches",
+					header: HEAD_TO_HEAD_LABEL.matches,
+					meta: { align: "right" as const },
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatHeadToHeadCount(getValue())}
+						</span>
+					),
+				}),
+				headToHeadHelper.accessor("winRate", {
+					id: "winRate",
+					header: HEAD_TO_HEAD_LABEL.winRate,
+					meta: { align: "right" as const },
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatHeadToHeadWinRate(getValue())}
+						</span>
+					),
+				}),
+			]),
+		[],
+	);
+
+	return (
+		<DataTable
+			data={[...rows]}
+			columns={columns}
+			getRowId={(row) => String(row.opponent.id)}
+		/>
+	);
+}
+
 export function ChampionshipPlayerDetail({
 	player,
 	createdBy,
@@ -582,6 +652,8 @@ export function ChampionshipPlayerDetail({
 	historyPending,
 	historyError,
 	partners,
+	headToHead,
+	plusMinus,
 	goalkeeper,
 	onOpenEvent,
 	hiddenLine,
@@ -718,6 +790,43 @@ export function ChampionshipPlayerDetail({
 							</>
 						)}
 					</SectionCard>
+					<SectionCard title={PLUS_MINUS_LABEL.title}>
+						<p className="mb-3 text-sm text-fg-muted">{PLUS_MINUS_LABEL.hint}</p>
+						{!plusMinus && (
+							<p className="text-sm text-fg-muted">{PLUS_MINUS_LABEL.empty}</p>
+						)}
+						{plusMinus && (
+							<PlayerStatGrid
+								items={[
+									{
+										id: "matches",
+										label: PLUS_MINUS_LABEL.matches,
+										value: formatPlusMinusCount(plusMinus.matches),
+									},
+									{
+										id: "for",
+										label: PLUS_MINUS_LABEL.for,
+										value: formatPlusMinusCount(plusMinus.goalsFor),
+									},
+									{
+										id: "against",
+										label: PLUS_MINUS_LABEL.against,
+										value: formatPlusMinusCount(plusMinus.goalsAgainst),
+									},
+									{
+										id: "diff",
+										label: PLUS_MINUS_LABEL.diff,
+										value: formatPlusMinusDiff(plusMinus.diff),
+									},
+									{
+										id: "perMatch",
+										label: PLUS_MINUS_LABEL.perMatch,
+										value: formatPlusMinusPerMatch(plusMinus.perMatch),
+									},
+								]}
+							/>
+						)}
+					</SectionCard>
 					<SectionCard title={SYNERGY_LABEL.partners}>
 						{historyPending && (
 							<DataTableSkeleton
@@ -735,6 +844,26 @@ export function ChampionshipPlayerDetail({
 						)}
 						{!historyPending && !historyError && partners.length > 0 && (
 							<PlayerPartnersTable partners={partners} />
+						)}
+					</SectionCard>
+					<SectionCard title={HEAD_TO_HEAD_LABEL.title}>
+						<p className="mb-3 text-sm text-fg-muted">{HEAD_TO_HEAD_LABEL.hint}</p>
+						{historyPending && (
+							<DataTableSkeleton
+								headers={[
+									HEAD_TO_HEAD_LABEL.opponent,
+									HEAD_TO_HEAD_LABEL.wins,
+									HEAD_TO_HEAD_LABEL.matches,
+									HEAD_TO_HEAD_LABEL.winRate,
+								]}
+								withPlayerColumn={false}
+							/>
+						)}
+						{!historyPending && headToHead.length === 0 && (
+							<p className="text-sm text-fg-muted">{HEAD_TO_HEAD_LABEL.empty}</p>
+						)}
+						{!historyPending && headToHead.length > 0 && (
+							<HeadToHeadTable rows={headToHead} />
 						)}
 					</SectionCard>
 					<SectionCard

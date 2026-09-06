@@ -760,11 +760,23 @@ export function isEventDayToday(startsAt: string, todayYmd?: string): boolean {
 	return eventDateYmd(startsAt) === (todayYmd ?? championshipEventToday());
 }
 
+function isFiniteDate(date: Date): boolean {
+	return Number.isFinite(date.getTime());
+}
+
 export function formatEventStartsAt(iso: string): {
 	date: string;
 	time: string;
 } {
 	const date = new Date(iso);
+	if (!isFiniteDate(date)) {
+		const label = iso.trim();
+		if (label.length === 0) {
+			return { date: "—", time: "" };
+		}
+
+		return { date: label, time: "" };
+	}
 
 	return {
 		date: new Intl.DateTimeFormat("pt-BR", {

@@ -12,7 +12,9 @@ import {
 	resolveChampionshipRole,
 } from "@/const/championship-role";
 import { playerGoalkeeperStats } from "@/const/goalkeeper-stats";
+import { playerHeadToHead } from "@/const/player-head-to-head";
 import { playerVisibleName } from "@/const/player-name";
+import { playerPlusMinus } from "@/const/player-plus-minus";
 import {
 	PLAYER_PROFILE_HISTORY_ABBR,
 	PLAYER_PROFILE_HISTORY_COLUMNS,
@@ -79,6 +81,24 @@ export function ChampionshipPlayerDetailPage() {
 	const partners = useMemo(
 		() =>
 			playerSynergyPartners(
+				eventsQuery.data ?? [],
+				championshipQuery.data?.players ?? [],
+				playerId,
+			),
+		[eventsQuery.data, championshipQuery.data?.players, playerId],
+	);
+	const headToHead = useMemo(
+		() =>
+			playerHeadToHead(
+				eventsQuery.data ?? [],
+				championshipQuery.data?.players ?? [],
+				playerId,
+			),
+		[eventsQuery.data, championshipQuery.data?.players, playerId],
+	);
+	const plusMinus = useMemo(
+		() =>
+			playerPlusMinus(
 				eventsQuery.data ?? [],
 				championshipQuery.data?.players ?? [],
 				playerId,
@@ -170,6 +190,8 @@ export function ChampionshipPlayerDetailPage() {
 					PLAYER_PROFILE_LABEL.eventsError,
 				)}
 				partners={partners}
+				headToHead={headToHead}
+				plusMinus={plusMinus}
 				goalkeeper={goalkeeper}
 				hiddenLine={hiddenNotes.line}
 				hiddenGoalkeeper={hiddenNotes.goalkeeper}

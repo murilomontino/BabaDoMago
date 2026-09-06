@@ -86,6 +86,14 @@ import {
 	ROUND_GOALS_LABEL,
 } from "@/const/championship-round-goals";
 import {
+	championshipGoalTimeline,
+	championshipGoalTimelineChart,
+	formatGoalTimelineCoverage,
+	formatGoalTimelineFirstGoal,
+	formatGoalTimelineLateShare,
+	GOAL_TIMELINE_LABEL,
+} from "@/const/championship-goal-timeline";
+import {
 	championshipRecentForm,
 	formatRecentFormDelta,
 	formatRecentFormRate,
@@ -424,6 +432,19 @@ function GoalkeeperTable({ rows }: { rows: GoalkeeperRankingRow[] }) {
 						</span>
 					),
 				}),
+				goalkeeperColumnHelper.accessor("cleanSheets", {
+					id: "cleanSheets",
+					header: "CS",
+					meta: {
+						align: "right" as const,
+						title: GOALKEEPER_RANKING_LABEL.cleanSheets,
+					},
+					cell: ({ row }) => (
+						<span className="tabular-nums">
+							{formatGoalkeeperCount(row.original.cleanSheets)}
+						</span>
+					),
+				}),
 				goalkeeperColumnHelper.accessor("winRate", {
 					id: "winRate",
 					header: "WR",
@@ -547,6 +568,14 @@ export function ChampionshipTrendsTab({
 	const roundGoalsChart = useMemo(
 		() => championshipRoundGoalsChart(roundGoals),
 		[roundGoals],
+	);
+	const goalTimeline = useMemo(
+		() => championshipGoalTimeline(windowEvents, scopedPlayerIds),
+		[windowEvents, scopedPlayerIds],
+	);
+	const goalTimelineChart = useMemo(
+		() => championshipGoalTimelineChart(goalTimeline),
+		[goalTimeline],
 	);
 	const health = useMemo(
 		() => championshipEventHealth(windowEvents, scopedPlayerIds),
@@ -1029,6 +1058,68 @@ export function ChampionshipTrendsTab({
 										points={roundGoalsChart}
 										caption={ROUND_GOALS_LABEL.title}
 										formatValue={formatRoundGoalsChartValue}
+									/>
+								</Suspense>
+							</>
+						)}
+					</section>
+
+					<section className="space-y-3">
+						<div className="space-y-1">
+							<div className="flex items-center gap-2">
+								<Goal className="size-4 text-pitch-fg" />
+								<h3 className="text-sm font-semibold text-fg">
+									{GOAL_TIMELINE_LABEL.title}
+								</h3>
+							</div>
+							<p className="text-sm text-fg-muted">{GOAL_TIMELINE_LABEL.hint}</p>
+						</div>
+						{!goalTimeline.enoughCoverage && (
+							<p className="text-sm text-fg-muted">
+								{trendsSectionEmptyLabel(audience, GOAL_TIMELINE_LABEL.empty)}
+							</p>
+						)}
+						{goalTimeline.enoughCoverage && (
+							<>
+								<div className="grid grid-cols-3 gap-3">
+									<div>
+										<p className="text-xs font-medium text-fg-muted">
+											{GOAL_TIMELINE_LABEL.coverage}
+										</p>
+										<p className="text-lg font-semibold tabular-nums text-fg">
+											{formatGoalTimelineCoverage(goalTimeline)}
+										</p>
+									</div>
+									<div>
+										<p className="text-xs font-medium text-fg-muted">
+											{GOAL_TIMELINE_LABEL.avgFirstGoal}
+										</p>
+										<p className="text-lg font-semibold tabular-nums text-fg">
+											{formatGoalTimelineFirstGoal(goalTimeline)}
+										</p>
+									</div>
+									<div>
+										<p className="text-xs font-medium text-fg-muted">
+											{GOAL_TIMELINE_LABEL.lateShare}
+										</p>
+										<p className="text-lg font-semibold tabular-nums text-fg">
+											{formatGoalTimelineLateShare(goalTimeline)}
+										</p>
+									</div>
+								</div>
+								<Suspense
+									fallback={
+										<SkeletonRegion label={SKELETON_LABEL.chart}>
+											<div style={{ height: TREND_LINE_CHART.height }}>
+												<Skeleton className="h-full w-full" />
+											</div>
+										</SkeletonRegion>
+									}
+								>
+									<ChampionshipTrendLineChart
+										points={goalTimelineChart}
+										caption={GOAL_TIMELINE_LABEL.title}
+										formatValue={(value) => String(value)}
 									/>
 								</Suspense>
 							</>

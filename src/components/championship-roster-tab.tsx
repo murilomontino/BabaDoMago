@@ -1,4 +1,4 @@
-import { Copy, LoaderCircle, Share2, Users } from "lucide-react";
+import { Copy, FileSpreadsheet, LoaderCircle, Share2, Users } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/button";
 import { ChampionshipRoster } from "@/components/championship-roster";
@@ -11,11 +11,14 @@ import {
 	ROSTER_SHARE_LABEL,
 	type RosterShareSort,
 	rosterShareCard,
+	rosterShareCsvRows,
 	sameRosterShareSort,
 } from "@/const/roster-share";
+import { shareFileName } from "@/const/share-file-name";
 import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
 import { CHAMPIONSHIP_BY_ID_QUERY_KEY } from "@/hooks/championships/championships-query-keys";
 import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
+import { buildCsv, shareCsvText } from "@/lib/share-csv";
 import { shareRosterImage } from "@/lib/share-roster-image";
 import type { ChampionshipPlayer } from "@/types/championship";
 
@@ -107,6 +110,7 @@ export function ChampionshipRosterTab({
 	onDeactivate,
 }: ChampionshipRosterTabProps) {
 	const [isSharing, setIsSharing] = useState(false);
+	const [isSharingCsv, setIsSharingCsv] = useState(false);
 	const [shareError, setShareError] = useState<string | null>(null);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [sorting, setSorting] = useState<RosterShareSort | null>(null);
@@ -161,6 +165,23 @@ export function ChampionshipRosterTab({
 		}
 	}
 
+	async function handleShareCsv() {
+		setIsSharingCsv(true);
+		setShareError(null);
+		try {
+			const { headers, rows } = rosterShareCsvRows(visiblePlayers);
+			await shareCsvText(
+				shareFileName(["elenco", championshipName], "csv"),
+				buildCsv(headers, rows),
+				ROSTER_SHARE_LABEL.shareCsv,
+			);
+		} catch {
+			setShareError(ROSTER_SHARE_LABEL.shareFailed);
+		} finally {
+			setIsSharingCsv(false);
+		}
+	}
+
 	return (
 		<SectionCard
 			title="Elenco"
@@ -184,6 +205,23 @@ export function ChampionshipRosterTab({
 							{!isSharing && <Share2 className="size-4" />}
 							{isSharing && ROSTER_SHARE_LABEL.sharing}
 							{!isSharing && ROSTER_SHARE_LABEL.share}
+						</Button>
+					)}
+					{showShare && (
+						<Button
+							variant={BUTTON_VARIANT.secondary}
+							className="w-full md:w-auto"
+							disabled={isSharingCsv}
+							onClick={() => {
+								void handleShareCsv();
+							}}
+						>
+							{isSharingCsv && (
+								<LoaderCircle className="size-4 animate-spin" aria-hidden />
+							)}
+							{!isSharingCsv && <FileSpreadsheet className="size-4" />}
+							{isSharingCsv && ROSTER_SHARE_LABEL.sharingCsv}
+							{!isSharingCsv && ROSTER_SHARE_LABEL.shareCsv}
 						</Button>
 					)}
 					{canInvite && (
