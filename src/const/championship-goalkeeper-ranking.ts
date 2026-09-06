@@ -1,4 +1,3 @@
-import { includeWhen } from "../lib/include-when.ts";
 import type { ChampionshipPlayer } from "../types/championship.ts";
 import type { ChampionshipEvent } from "../types/championship-event.ts";
 import {
@@ -7,6 +6,7 @@ import {
 	formatGoalkeeperWinRate,
 	GOALKEEPER_STATS_LABEL,
 } from "./goalkeeper-stats.ts";
+import { matchGoalsConceded as sharedMatchGoalsConceded } from "./match-goal-counts.ts";
 import { playerVisibleName } from "./player-name.ts";
 import { countsForSynergy, SYNERGY_MIN_MATCHES } from "./player-synergy.ts";
 import { rosterAverage, rosterWinRate } from "./roster-stats.ts";
@@ -25,6 +25,7 @@ export const GOALKEEPER_RANKING_LABEL = {
 	losses: "D",
 	goalsConceded: GOALKEEPER_STATS_LABEL.goalsConceded,
 	goalsConcededAverage: GOALKEEPER_STATS_LABEL.goalsConcededAverage,
+	cleanSheets: "Sem sofrer",
 	winRate: "WinRate",
 	trend: "Tendência",
 } as const;
@@ -49,6 +50,7 @@ export type GoalkeeperRankingRow = {
 	losses: number;
 	goalsConceded: number;
 	goalsConcededAverage: number;
+	cleanSheets: number;
 	winRate: number;
 	trend: GoalkeeperTrend;
 };
@@ -111,6 +113,7 @@ export function championshipGoalkeeperRanking(
 			(sum, row) => sum + row.goalsConceded,
 			0,
 		);
+		const cleanSheets = matches.filter((row) => row.goalsConceded === 0).length;
 		return [
 			{
 				player,
@@ -120,10 +123,9 @@ export function championshipGoalkeeperRanking(
 				losses: matches.length - wins - draws,
 				goalsConceded,
 				goalsConcededAverage: rosterAverage(goalsConceded, matches.length),
+				cleanSheets,
 				winRate: rosterWinRate(wins, matches.length),
-				trend: goalkeeperAverageTrend(
-					goalkeeperEventAverages(matches),
-				),
+				trend: goalkeeperAverageTrend(goalkeeperEventAverages(matches)),
 			},
 		];
 	});
@@ -239,18 +241,5 @@ function matchGoalsConceded(
 	match: ChampionshipEvent["matches"][number],
 	teamId: number,
 ): number {
-	const teamPlayerIds = new Set(
-		match.players.flatMap((player) =>
-			includeWhen(player.team_id === teamId, player.player_id),
-		),
-	);
-
-	return match.goals.filter((goal) => {
-		const scorerOnTeam = teamPlayerIds.has(goal.scorer_player_id);
-		if (goal.is_own_goal) {
-			return scorerOnTeam;
-		}
-
-		return !scorerOnTeam;
-	}).length;
+	return sharedMatchGoalsConceded(match, teamId);
 }

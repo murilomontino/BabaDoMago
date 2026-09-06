@@ -3,11 +3,8 @@ import type {
 	ChampionshipEventMatch,
 	ChampionshipEventTeam,
 } from "../types/championship-event.ts";
-import {
-	matchScore,
-	matchTeamPlayers,
-} from "./championship-event-match.ts";
-import { eventTeamName, type EventTeamColor } from "./event-team-color.ts";
+import { matchScore, matchTeamPlayers } from "./championship-event-match.ts";
+import { type EventTeamColor, eventTeamName } from "./event-team-color.ts";
 import { averageOrZero } from "./player-rating.ts";
 import { formatRosterWinRate } from "./roster-stats.ts";
 

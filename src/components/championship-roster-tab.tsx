@@ -1,19 +1,30 @@
-import { Copy, LoaderCircle, Share2, Users } from "lucide-react";
+import {
+	Copy,
+	FileSpreadsheet,
+	LoaderCircle,
+	Share2,
+	Users,
+} from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/button";
 import { ChampionshipRoster } from "@/components/championship-roster";
 import { SectionCard } from "@/components/section-card";
 import type { AssignableChampionshipRole } from "@/const/championship-role";
+import type { HiddenStrengthCurrent } from "@/const/hidden-strength";
+import { PLAYER_RATING } from "@/const/player-rating";
 import { filterPlayersBySearch } from "@/const/player-search";
 import {
 	ROSTER_SHARE_LABEL,
 	type RosterShareSort,
 	rosterShareCard,
+	rosterShareCsvRows,
 	sameRosterShareSort,
 } from "@/const/roster-share";
+import { shareFileName } from "@/const/share-file-name";
 import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
 import { CHAMPIONSHIP_BY_ID_QUERY_KEY } from "@/hooks/championships/championships-query-keys";
 import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
+import { buildCsv, shareCsvText } from "@/lib/share-csv";
 import { shareRosterImage } from "@/lib/share-roster-image";
 import type { ChampionshipPlayer } from "@/types/championship";
 
@@ -105,9 +116,29 @@ export function ChampionshipRosterTab({
 	onDeactivate,
 }: ChampionshipRosterTabProps) {
 	const [isSharing, setIsSharing] = useState(false);
+	const [isSharingCsv, setIsSharingCsv] = useState(false);
 	const [shareError, setShareError] = useState<string | null>(null);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [sorting, setSorting] = useState<RosterShareSort | null>(null);
+	const isOwnerViewer = Boolean(currentUserId && currentUserId === createdBy);
+	const hiddenByPlayer = useMemo(() => {
+		if (!isOwnerViewer) {
+			return undefined;
+		}
+
+		const merged = new Map(
+			players.map((player) => [
+				player.id,
+				{
+					line: player.hidden_strength ?? PLAYER_RATING.default,
+					goalkeeper:
+						player.hidden_goalkeeper_strength ?? PLAYER_RATING.default,
+				} satisfies HiddenStrengthCurrent,
+			]),
+		);
+
+		return merged;
+	}, [isOwnerViewer, players]);
 	const visiblePlayers = useMemo(
 		() => filterPlayersBySearch(players, searchQuery),
 		[players, searchQuery],
@@ -140,6 +171,23 @@ export function ChampionshipRosterTab({
 		}
 	}
 
+	async function handleShareCsv() {
+		setIsSharingCsv(true);
+		setShareError(null);
+		try {
+			const { headers, rows } = rosterShareCsvRows(visiblePlayers);
+			await shareCsvText(
+				shareFileName(["elenco", championshipName], "csv"),
+				buildCsv(headers, rows),
+				ROSTER_SHARE_LABEL.shareCsv,
+			);
+		} catch {
+			setShareError(ROSTER_SHARE_LABEL.shareFailed);
+		} finally {
+			setIsSharingCsv(false);
+		}
+	}
+
 	return (
 		<SectionCard
 			title="Elenco"
@@ -163,6 +211,23 @@ export function ChampionshipRosterTab({
 							{!isSharing && <Share2 className="size-4" />}
 							{isSharing && ROSTER_SHARE_LABEL.sharing}
 							{!isSharing && ROSTER_SHARE_LABEL.share}
+						</Button>
+					)}
+					{showShare && (
+						<Button
+							variant={BUTTON_VARIANT.secondary}
+							className="w-full md:w-auto"
+							disabled={isSharingCsv}
+							onClick={() => {
+								void handleShareCsv();
+							}}
+						>
+							{isSharingCsv && (
+								<LoaderCircle className="size-4 animate-spin" aria-hidden />
+							)}
+							{!isSharingCsv && <FileSpreadsheet className="size-4" />}
+							{isSharingCsv && ROSTER_SHARE_LABEL.sharingCsv}
+							{!isSharingCsv && ROSTER_SHARE_LABEL.shareCsv}
 						</Button>
 					)}
 					{canInvite && (
@@ -217,6 +282,7 @@ export function ChampionshipRosterTab({
 				isAddingPlayer={isAddingPlayer}
 				addPlayerError={addPlayerError}
 				onAddPlayer={handlerWhenAllowed(canInvite, onAddPlayer)}
+				hiddenByPlayer={hiddenByPlayer}
 			/>
 			{shareError && <p className={`mt-4 ${ERROR_CLASS}`}>{shareError}</p>}
 			{claimError && <p className={`mt-4 ${ERROR_CLASS}`}>{claimError}</p>}

@@ -21,6 +21,7 @@ const ana = {
 	nickname: "Nena",
 	display_name: "Ana",
 	rating: 7.5,
+	goalkeeper_rating: 7.5,
 	avatar_url: "https://example.com/ana.png",
 };
 
@@ -29,6 +30,7 @@ const bruno = {
 	nickname: null,
 	display_name: "Bruno",
 	rating: 6,
+	goalkeeper_rating: 8,
 	avatar_url: null,
 };
 
@@ -57,13 +59,32 @@ check(cards[0]?.players.length, 2);
 check(cards[0]?.players[0]?.number, 1);
 check(cards[0]?.players[0]?.name, "Nena");
 check(cards[0]?.players[0]?.rating, 7.5);
+check(cards[0]?.players[0]?.isGoalkeeperRating, false);
 check(cards[0]?.players[0]?.avatarUrl, ana.avatar_url);
 check(cards[0]?.players[1]?.number, 3);
 check(cards[0]?.players[1]?.name, "Bruno");
 check(cards[0]?.players[1]?.rating, 6);
+check(cards[0]?.players[1]?.isGoalkeeperRating, false);
 check(cards[0]?.players[1]?.avatarUrl, null);
 check(cards[1]?.title, "Time 2");
 check(cards[1]?.players.length, 0);
+
+const gkCards = eventTeamsShareCards(
+	[
+		{
+			key: "a",
+			color: EVENT_TEAM_COLOR.red,
+			slots: ["2", "1"],
+			isActive: true,
+		},
+	],
+	[ana, bruno],
+	[bruno.id],
+);
+check(gkCards[0]?.players[0]?.rating, 8);
+check(gkCards[0]?.players[0]?.isGoalkeeperRating, true);
+check(gkCards[0]?.players[1]?.rating, 7.5);
+check(gkCards[0]?.players[1]?.isGoalkeeperRating, false);
 
 check(eventTeamShareCardFooterHeight(0), 0);
 check(eventTeamShareCardFooterHeight(2), EVENT_TEAM_SHARE.footerHeight);
@@ -79,7 +100,11 @@ check(
 		EVENT_TEAM_SHARE.footerHeight,
 );
 check(eventTeamShareAverageLabel([]), null);
-check(eventTeamShareAverageLabel([10, 7, 6, 3]), "Média 6.5");
+check(eventTeamShareAverageLabel([10, 7, 6, 3]), "Soma 26.0 · Média 6.5");
+check(
+	eventTeamShareAverageLabel([10, 7, 6, 3], true),
+	"★ Soma 26.0 · Média 6.5",
+);
 check(eventTeamShareImageHeight([]), EVENT_TEAM_SHARE.padding * 2);
 check(
 	eventTeamShareImageHeight([1, 5]),

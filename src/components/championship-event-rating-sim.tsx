@@ -17,7 +17,10 @@ import {
 	eventRatingSimRows,
 	formatEventRatingSimRate,
 } from "@/const/event-rating-sim";
-import { championshipRatingCeiling, PLAYER_STAR_CLASS } from "@/const/player-rating";
+import {
+	championshipRatingCeiling,
+	PLAYER_STAR_CLASS,
+} from "@/const/player-rating";
 import { CARD_CLASS, CHIP_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type { ChampionshipEvent } from "@/types/championship-event";
@@ -68,7 +71,9 @@ function SimRowHint({ row }: { row: EventRatingSimRow }) {
 
 	if (row.isSeed) {
 		return (
-			<p className="mt-1 text-xs text-fg-muted">{EVENT_RATING_SIM_LABEL.seed}</p>
+			<p className="mt-1 text-xs text-fg-muted">
+				{EVENT_RATING_SIM_LABEL.seed}
+			</p>
 		);
 	}
 
@@ -93,7 +98,9 @@ function SimRowBody({
 	return (
 		<>
 			<div className="flex min-w-0 items-center gap-1">
-				<p className="min-w-0 truncate text-sm font-medium text-fg">{row.name}</p>
+				<p className="min-w-0 truncate text-sm font-medium text-fg">
+					{row.name}
+				</p>
 				{row.isMvp && (
 					<span className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}>
 						{EVENT_MVP_LABEL.badge}
@@ -187,7 +194,9 @@ export function ChampionshipEventRatingSim({
 		attendanceMvpPlayerIds(event.attendance),
 	);
 	const hasEndedMatches = eventRatingSimHasEndedMatches(event.matches);
-	const ceiling = championshipRatingCeiling(players.map((player) => player.rating));
+	const ceiling = championshipRatingCeiling(
+		players.map((player) => player.rating),
+	);
 	const mvpCandidateIds = new Set(
 		eventRatingSimMvpCandidateIds({
 			attendance: event.attendance,
@@ -215,7 +224,9 @@ export function ChampionshipEventRatingSim({
 					<p className="text-xs font-medium uppercase tracking-wide text-fg-muted">
 						{EVENT_RATING_SIM_LABEL.title}
 					</p>
-					<p className="mt-1 text-sm text-fg-muted">{EVENT_RATING_SIM_LABEL.hint}</p>
+					<p className="mt-1 text-sm text-fg-muted">
+						{EVENT_RATING_SIM_LABEL.hint}
+					</p>
 				</div>
 				{canSetMvp && hasEndedMatches && (
 					<p className="text-xs text-fg-muted">

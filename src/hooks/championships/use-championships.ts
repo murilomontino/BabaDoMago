@@ -21,8 +21,8 @@ import {
 	unlinkPlayer,
 	updateChampionshipEventConfig,
 	updateChampionshipVisibility,
-	updatePlayerNickname,
 	updatePlayerGoalkeeperRating,
+	updatePlayerNickname,
 	updatePlayerRating,
 	uploadChampionshipLogo,
 } from "@/services/championships";

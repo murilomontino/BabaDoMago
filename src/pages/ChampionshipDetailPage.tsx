@@ -19,6 +19,7 @@ import { ChampionshipEvents } from "@/components/championship-events";
 import { ChampionshipManagementTab } from "@/components/championship-management-tab";
 import { ChampionshipMonthlyTab } from "@/components/championship-monthly-tab";
 import { ChampionshipPodiumTab } from "@/components/championship-podium-tab";
+import { ChampionshipProjectionsTab } from "@/components/championship-projections-tab";
 import { ChampionshipRosterTab } from "@/components/championship-roster-tab";
 import { ChampionshipSettingsTab } from "@/components/championship-settings-tab";
 import { ChampionshipStandingsTab } from "@/components/championship-standings-tab";
@@ -106,8 +107,8 @@ import {
 	useUnlinkPlayer,
 	useUpdateChampionshipEventConfig,
 	useUpdateChampionshipVisibility,
-	useUpdatePlayerNickname,
 	useUpdatePlayerGoalkeeperRating,
+	useUpdatePlayerNickname,
 	useUpdatePlayerRating,
 	useUploadChampionshipLogo,
 } from "@/hooks/championships/use-championships";
@@ -904,6 +905,7 @@ export function ChampionshipDetailPage() {
 								players={activePlayers}
 								championshipName={data.name}
 								events={eventsQuery.data ?? []}
+								isOwner={isOwner}
 							/>
 						</TabPanel>
 					)}
@@ -925,6 +927,15 @@ export function ChampionshipDetailPage() {
 								eventWeekday={data.event_weekday}
 								attendanceCounts={attendanceCounts}
 								seedEvents={eventsQuery.data ?? []}
+							/>
+						</TabPanel>
+					)}
+					{mountedTabsRef.current.projections && permissions.viewManagement && (
+						<TabPanel active={selectedTab === CHAMPIONSHIP_TAB.projections}>
+							<ChampionshipProjectionsTab
+								players={activePlayers}
+								events={eventsQuery.data ?? []}
+								isOwner={isOwner}
 							/>
 						</TabPanel>
 					)}

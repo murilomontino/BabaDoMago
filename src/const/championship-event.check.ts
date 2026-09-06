@@ -40,18 +40,21 @@ import {
 	type EventTeamDraft,
 	emptyTeamSlots,
 	eventDateYmd,
-	eventDrawRatings,
 	eventDrawInputRating,
+	eventDrawRatings,
 	eventGoalkeeperIds,
 	eventIsoWeekday,
 	eventListActionFlags,
 	eventTeamByPlayerId,
 	eventTeamCount,
 	eventTeamDrawCountLabel,
+	eventTeamHasHighestRatingSum,
+	eventTeamHighestSumFlags,
 	eventTeamPlayerIds,
 	eventTeamPlayerOptionLabel,
 	eventTeamPlayerPosition,
 	eventTeamRatingAverage,
+	eventTeamRatingSum,
 	eventTeamSlotPool,
 	eventTeamSlotPosition,
 	eventTeamsAreReady,
@@ -60,6 +63,7 @@ import {
 	filterAttendanceListPlayers,
 	formatChampionshipSchedule,
 	formatEventTeamRatingAverage,
+	formatEventTeamRatingSum,
 	formatEventTimeShort,
 	formatNextPeladaShortcut,
 	hasEventListActions,
@@ -429,6 +433,28 @@ check(eventTeamRatingAverage([10, PLAYER_RATING.default, 8]), 9);
 check(eventTeamRatingAverage([10, PLAYER_RATING.default], [10, 8, 0]), 9.5);
 check(eventTeamRatingAverage([0, 0], [0, 0, 10, 8]), 9);
 check(formatEventTeamRatingAverage(6.5), "6.5");
+check(eventTeamRatingSum([10, 7, 6, 3]), 26);
+check(eventTeamRatingSum([10, PLAYER_RATING.default, 8]), 27);
+check(formatEventTeamRatingSum(26), "26.0");
+check(eventTeamHasHighestRatingSum(26, [20, 26, 18]), true);
+check(eventTeamHasHighestRatingSum(20, [20, 26, 18]), false);
+check(eventTeamHasHighestRatingSum(20, [20]), false);
+check(eventTeamHasHighestRatingSum(0, [0, 0]), false);
+check(
+	eventTeamHighestSumFlags([
+		[10, 7],
+		[10, 8],
+		[6, 6],
+	]).join("|"),
+	"false|true|false",
+);
+check(
+	eventTeamHighestSumFlags([
+		[10, 8],
+		[9, 9],
+	]).join("|"),
+	"true|true",
+);
 check(initialBuilderTeams(2).length, 2);
 check(initialBuilderTeams(5, 4).length, 4);
 check(builderTeamsFromEvent([], 5, 16).length, 4);
@@ -852,14 +878,8 @@ check(
 	"10,9,8",
 );
 
-check(
-	eventDrawInputRating({ rating: 4, goalkeeper_rating: 7 }, true),
-	7,
-);
-check(
-	eventDrawInputRating({ rating: 4, goalkeeper_rating: 7 }, false),
-	4,
-);
+check(eventDrawInputRating({ rating: 4, goalkeeper_rating: 7 }, true), 7);
+check(eventDrawInputRating({ rating: 4, goalkeeper_rating: 7 }, false), 4);
 const allUnset = [
 	{ id: 1, rating: PLAYER_RATING.default },
 	{ id: 2, rating: PLAYER_RATING.default },

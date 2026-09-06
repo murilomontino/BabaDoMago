@@ -151,7 +151,9 @@ export function ratingInflationShareFileName(input: {
 	]);
 }
 
-export function ratingInflationShareText(card: RatingInflationShareCard): string {
+export function ratingInflationShareText(
+	card: RatingInflationShareCard,
+): string {
 	if (!card.context) {
 		return `${card.title} — ${card.championshipName}`;
 	}

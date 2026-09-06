@@ -13,6 +13,7 @@ import {
 	EVENT_ACTION,
 	EVENT_TEAM_MESSAGE,
 	EVENT_TEAM_POSITION_LABEL,
+	eventDrawInputRating,
 	eventTeamPlayerOptionLabel,
 	eventTeamSlotPosition,
 	initialTeamSlots,
@@ -74,9 +75,14 @@ export function AddEventTeamModal({
 }: AddEventTeamModalProps) {
 	const isEdit = Boolean(initialTeam);
 	const ceiling = championshipRatingCeiling(
-		presentPlayers.map((player) => player.rating),
+		presentPlayers.flatMap((player) => [
+			player.rating,
+			player.goalkeeper_rating,
+		]),
 	);
-	const presentRatings = presentPlayers.map((player) => player.rating);
+	const presentRatings = presentPlayers.map((player) =>
+		eventDrawInputRating(player, goalkeeperIds.includes(player.id)),
+	);
 	const [color, setColor] = useState<EventTeamColor | null>(
 		() => initialTeam?.color ?? EVENT_TEAM_COLOR_NONE,
 	);
@@ -189,9 +195,9 @@ export function AddEventTeamModal({
 											<EventTeamPlayerRow
 												player={player}
 												ceiling={ceiling}
-												isGoalkeeperVolunteer={
-													slot !== 0 && goalkeeperIds.includes(player.id)
-												}
+												isGoalkeeperVolunteer={goalkeeperIds.includes(
+													player.id,
+												)}
 												onRemove={() => {
 													setSlots((current) =>
 														replaceSlotAt(current, slot, ""),
@@ -243,7 +249,12 @@ export function AddEventTeamModal({
 									return [];
 								}
 
-								return [player.rating];
+								return [
+									eventDrawInputRating(
+										player,
+										goalkeeperIds.includes(playerId),
+									),
+								];
 							})}
 							presentRatings={presentRatings}
 						/>

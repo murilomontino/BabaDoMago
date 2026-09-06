@@ -100,19 +100,31 @@ function player(
 const players = [player(1, "Ana", 5), player(2, "Bruno", 6)];
 
 const events = [
-	eventRow(1, "2026-01-01", [
-		attendance(1, 4, 0),
-		attendance(2, 6, 0),
-	]),
+	eventRow(1, "2026-01-01", [attendance(1, 4, 0), attendance(2, 6, 0)]),
 	eventRow(2, "2026-01-08", [attendance(1, 4.5, 0.5)]),
 ];
 
 const summary = championshipRatingInflation(players, events);
-check(summary.events === 2, "two chart rows");
-check(summary.rows[0]?.averageRating === 5, "average 4 and 6");
-check(summary.rows[0]?.ceiling === 6, "ceiling max 6");
-check(summary.rows[0]?.floor === 4, "floor min 4");
-check(summary.rows[1]?.averageRating === 5, "second round average");
+check(summary.events === 3, "entry plus two chart rows");
+check(summary.rows[0]?.averageRating === 5, "entry average from snapshot");
+check(summary.rows[0]?.ceiling === 6, "entry ceiling max 6");
+check(summary.rows[0]?.floor === 4, "entry floor min 4");
+check(summary.rows[1]?.averageRating === 5, "average 4 and 6 after first");
+check(summary.rows[1]?.ceiling === 6, "ceiling max 6 after first");
+check(summary.rows[1]?.floor === 4, "floor min 4 after first");
+check(summary.rows[2]?.averageRating === 5, "second round average");
+
+const initialFive = championshipRatingInflation(
+	[player(1, "Ana", 5), player(2, "Bruno", 5)],
+	[eventRow(1, "2026-01-01", [attendance(1, 5, 0.4), attendance(2, 5, -0.4)])],
+);
+check(initialFive.events === 2, "entry then after first");
+check(initialFive.rows[0]?.averageRating === 5, "initial presence average 5");
+check(initialFive.rows[0]?.ceiling === 5, "initial ceiling 5");
+check(initialFive.rows[0]?.floor === 5, "initial floor 5");
+check(initialFive.rows[1]?.averageRating === 5, "after still average 5");
+check(initialFive.rows[1]?.ceiling === 5.4, "after ceiling moved");
+check(initialFive.rows[1]?.floor === 4.6, "after floor moved");
 
 const sentinelEvent = eventRow(3, "2026-01-15", [
 	attendance(1, PLAYER_RATING.default, 0),
@@ -121,7 +133,14 @@ const sentinelSummary = championshipRatingInflation(players, [
 	...events,
 	sentinelEvent,
 ]);
-check(sentinelSummary.events === 2, "sentinel skips row");
+check(sentinelSummary.events === 3, "sentinel skips after-row");
+
+const seedOnlyDebut = championshipRatingInflation(
+	[player(9, "Davi", 3.5)],
+	[eventRow(1, "2026-01-01", [attendance(9, PLAYER_RATING.default, 3.5)])],
+);
+check(seedOnlyDebut.events === 1, "seed debut has no entry");
+check(seedOnlyDebut.rows[0]?.averageRating === 3.5, "seed uses ratingTo");
 
 const monthlyPlayers = [
 	player(1, "Ana", 5, true),
@@ -144,13 +163,14 @@ const monthlySummary = championshipRatingInflation(
 	monthlyEvents,
 	monthlyScope,
 );
-check(monthlySummary.events === 1, "monthly inflation row");
-check(monthlySummary.rows[0]?.averageRating === 5.5, "monthly average 4 and 7");
-check(monthlySummary.rows[0]?.ceiling === 7, "monthly ceiling");
-check(monthlySummary.rows[0]?.floor === 4, "monthly floor");
+check(monthlySummary.events === 2, "monthly entry plus after");
+check(monthlySummary.rows[0]?.averageRating === 5.5, "monthly entry 4 and 7");
+check(monthlySummary.rows[0]?.ceiling === 7, "monthly entry ceiling");
+check(monthlySummary.rows[0]?.floor === 4, "monthly entry floor");
+check(monthlySummary.rows[1]?.averageRating === 5.5, "monthly after average");
 
 const chart = championshipRatingInflationChart(summary);
-check(chart.length === 2, "chart points");
+check(chart.length === 3, "chart points");
 check(chart[0]?.floorLabel.length > 0, "floor label");
 
 console.log("championship-rating-inflation.check.ts ok");

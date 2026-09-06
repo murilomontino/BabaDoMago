@@ -47,6 +47,8 @@ import {
 	EVENT_CARD_LONG_PRESS,
 	EVENT_TEAM_MESSAGE,
 	EVENT_TEAM_POSITION_LABEL,
+	eventDrawInputRating,
+	eventTeamHighestSumFlags,
 	eventTeamPlayerPosition,
 	eventTeamSlotPosition,
 	eventTeamSourcePlayers,
@@ -310,6 +312,8 @@ function TeamPick({
 	rosterById,
 	ceiling,
 	presentRatings,
+	goalkeeperIds,
+	isHighestSum,
 	onSelect,
 	onLongPress,
 }: {
@@ -319,6 +323,8 @@ function TeamPick({
 	rosterById: Map<number, ChampionshipPlayer>;
 	ceiling: number;
 	presentRatings: readonly number[];
+	goalkeeperIds: readonly number[];
+	isHighestSum: boolean;
 	onSelect: () => void;
 	onLongPress: () => void;
 }) {
@@ -437,7 +443,11 @@ function TeamPick({
 								<span className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}>
 									{EVENT_TEAM_POSITION_LABEL[position]}
 								</span>
-								<EventTeamPlayerRow player={player} ceiling={ceiling} />
+								<EventTeamPlayerRow
+									player={player}
+									ceiling={ceiling}
+									isGoalkeeperVolunteer={goalkeeperIds.includes(player.id)}
+								/>
 							</li>
 						);
 					})}
@@ -459,7 +469,11 @@ function TeamPick({
 										>
 											{EVENT_TEAM_POSITION_LABEL[position]}
 										</span>
-										<EventTeamPlayerRow player={player} ceiling={ceiling} />
+										<EventTeamPlayerRow
+											player={player}
+											ceiling={ceiling}
+											isGoalkeeperVolunteer={goalkeeperIds.includes(player.id)}
+										/>
 									</li>
 								);
 							})}
@@ -488,8 +502,11 @@ function TeamPick({
 				)}
 				<div className="ml-auto [&>p]:mt-0">
 					<EventTeamRatingAverage
-						ratings={teamRoster.map(({ player }) => player.rating)}
+						ratings={teamRoster.map(({ player }) =>
+							eventDrawInputRating(player, goalkeeperIds.includes(player.id)),
+						)}
 						presentRatings={presentRatings}
+						isHighestSum={isHighestSum}
 					/>
 				</div>
 			</div>
@@ -910,11 +927,12 @@ export function ChampionshipEventPlay({
 	const teamById = new Map(event.teams.map((team) => [team.id, team]));
 	const presentPlayers = resolveEventPlayers(event.attendance, rosterById);
 	const volunteerGoalkeeperIds = attendanceGoalkeeperIds(event.attendance);
+	const volunteerSet = new Set(volunteerGoalkeeperIds);
 	const ceiling = championshipRatingCeiling(
-		players.map((player) => player.rating),
+		players.flatMap((player) => [player.rating, player.goalkeeper_rating]),
 	);
-	const presentRatings = event.attendance.map(
-		(row) => rosterById.get(row.player_id)?.rating ?? row.rating,
+	const presentRatings = presentPlayers.map((player) =>
+		eventDrawInputRating(player, volunteerSet.has(player.id)),
 	);
 	const [selected, setSelected] = useState<number[]>([]);
 	const [durationMinutes, setDurationMinutes] = useState<number>(
@@ -966,6 +984,19 @@ export function ChampionshipEventPlay({
 			: null;
 
 	const selectableTeams = event.teams;
+	const highestSumFlags = eventTeamHighestSumFlags(
+		selectableTeams.map((team) =>
+			team.players.flatMap((row) => {
+				const player = rosterById.get(row.player_id);
+				if (!player) {
+					return [];
+				}
+
+				return [eventDrawInputRating(player, volunteerSet.has(row.player_id))];
+			}),
+		),
+		presentRatings,
+	);
 
 	if (!match) {
 		return (
@@ -975,7 +1006,7 @@ export function ChampionshipEventPlay({
 					{EVENT_MATCH_LABEL.selectTeams}
 				</p>
 				<ul className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
-					{selectableTeams.map((team) => {
+					{selectableTeams.map((team, teamIndex) => {
 						const pickOrder = pickOrderFromIndex(selected.indexOf(team.id));
 
 						return (
@@ -987,6 +1018,8 @@ export function ChampionshipEventPlay({
 									rosterById={rosterById}
 									ceiling={ceiling}
 									presentRatings={presentRatings}
+									goalkeeperIds={volunteerGoalkeeperIds}
+									isHighestSum={highestSumFlags[teamIndex] === true}
 									onSelect={() => {
 										setSelected(toggleMatchTeamSelection(selected, team.id));
 									}}

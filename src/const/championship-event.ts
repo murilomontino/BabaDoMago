@@ -259,6 +259,8 @@ export const EVENT_TEAM_POSITION_LABEL = {
 } as const;
 
 export const EVENT_TEAM_AVERAGE_LABEL = "Média";
+export const EVENT_TEAM_SUM_LABEL = "Soma";
+export const EVENT_TEAM_HIGHEST_SUM_LABEL = "Maior soma";
 
 export type EventTeamDraft = {
 	color: EventTeamColor | null;
@@ -758,11 +760,23 @@ export function isEventDayToday(startsAt: string, todayYmd?: string): boolean {
 	return eventDateYmd(startsAt) === (todayYmd ?? championshipEventToday());
 }
 
+function isFiniteDate(date: Date): boolean {
+	return Number.isFinite(date.getTime());
+}
+
 export function formatEventStartsAt(iso: string): {
 	date: string;
 	time: string;
 } {
 	const date = new Date(iso);
+	if (!isFiniteDate(date)) {
+		const label = iso.trim();
+		if (label.length === 0) {
+			return { date: "—", time: "" };
+		}
+
+		return { date: label, time: "" };
+	}
 
 	return {
 		date: new Intl.DateTimeFormat("pt-BR", {
@@ -852,7 +866,7 @@ export function eventDrawRating(rating: number, ratedAverage: number): number {
 	return ratedAverage;
 }
 
-export function eventTeamRatingAverage(
+export function eventTeamRatingSum(
 	ratings: readonly number[],
 	presentRatings: readonly number[] = ratings,
 ): number {
@@ -861,16 +875,60 @@ export function eventTeamRatingAverage(
 	}
 
 	const ratedAverage = eventRatedAverage(presentRatings);
-	return (
-		ratings.reduce(
-			(sum, rating) => sum + eventDrawRating(rating, ratedAverage),
-			0,
-		) / ratings.length
+	return ratings.reduce(
+		(sum, rating) => sum + eventDrawRating(rating, ratedAverage),
+		0,
 	);
+}
+
+export function eventTeamRatingAverage(
+	ratings: readonly number[],
+	presentRatings: readonly number[] = ratings,
+): number {
+	if (ratings.length === 0) {
+		return 0;
+	}
+
+	return eventTeamRatingSum(ratings, presentRatings) / ratings.length;
 }
 
 export function formatEventTeamRatingAverage(average: number): string {
 	return average.toFixed(1);
+}
+
+export function formatEventTeamRatingSum(sum: number): string {
+	return sum.toFixed(1);
+}
+
+export function eventTeamHasHighestRatingSum(
+	sum: number,
+	sums: readonly number[],
+): boolean {
+	if (sums.length < 2) {
+		return false;
+	}
+
+	const max = Math.max(...sums);
+	if (max <= 0) {
+		return false;
+	}
+
+	return sum === max;
+}
+
+export function eventTeamHighestSumFlags(
+	teamsRatings: readonly (readonly number[])[],
+	presentRatings?: readonly number[],
+): boolean[] {
+	const sums = teamsRatings.map((ratings) => {
+		if (presentRatings === undefined) {
+			return eventTeamRatingSum(ratings);
+		}
+
+		return eventTeamRatingSum(ratings, presentRatings);
+	});
+
+	return sums.map((sum) => eventTeamHasHighestRatingSum(sum, sums));
 }
 
 type EventTeamPartition = {

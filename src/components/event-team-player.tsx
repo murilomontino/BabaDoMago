@@ -1,11 +1,16 @@
-import { X } from "lucide-react";
+import { Star, X } from "lucide-react";
 import type { CSSProperties } from "react";
 import { PlayerRating } from "@/components/player-rating";
 import {
 	EVENT_TEAM_AVERAGE_LABEL,
+	EVENT_TEAM_HIGHEST_SUM_LABEL,
 	EVENT_TEAM_POSITION_LABEL,
+	EVENT_TEAM_SUM_LABEL,
+	eventDrawInputRating,
 	eventTeamRatingAverage,
+	eventTeamRatingSum,
 	formatEventTeamRatingAverage,
+	formatEventTeamRatingSum,
 } from "@/const/championship-event";
 import {
 	EVENT_TEAM_COLOR_NONE_LABEL,
@@ -14,7 +19,10 @@ import {
 	eventTeamName,
 } from "@/const/event-team-color";
 import { playerVisibleName } from "@/const/player-name";
-import { PLAYER_STAR_CLASS } from "@/const/player-rating";
+import {
+	PLAYER_STAR_CLASS,
+	PLAYER_STAR_FILL_CLASS,
+} from "@/const/player-rating";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 export const EVENT_TEAM_PLAYER_SLOT_CLASS =
@@ -176,6 +184,7 @@ export function EventTeamPlayerAvatar({ player }: EventTeamPlayerAvatarProps) {
 type EventTeamPlayerRowProps = {
 	player: ChampionshipPlayer;
 	ceiling: number;
+	rating?: number;
 	isGoalkeeperVolunteer?: boolean;
 	onRemove?: () => void;
 	starClassName?: string;
@@ -184,11 +193,17 @@ type EventTeamPlayerRowProps = {
 export function EventTeamPlayerRow({
 	player,
 	ceiling,
+	rating,
 	isGoalkeeperVolunteer = false,
 	onRemove,
 	starClassName = PLAYER_STAR_CLASS.default,
 }: EventTeamPlayerRowProps) {
 	const visibleName = playerVisibleName(player);
+	const displayRating =
+		rating ?? eventDrawInputRating(player, isGoalkeeperVolunteer);
+	const fillClassName = isGoalkeeperVolunteer
+		? PLAYER_STAR_FILL_CLASS.goalkeeper
+		: PLAYER_STAR_FILL_CLASS.line;
 
 	return (
 		<div className="flex min-w-0 flex-1 items-center gap-1.5">
@@ -202,9 +217,10 @@ export function EventTeamPlayerRow({
 				</span>
 			)}
 			<PlayerRating
-				rating={player.rating}
+				rating={displayRating}
 				ceiling={ceiling}
 				starClassName={starClassName}
+				fillClassName={fillClassName}
 			/>
 			{onRemove && (
 				<EventTeamRemoveButton
@@ -220,24 +236,55 @@ export function EventTeamPlayerRow({
 type EventTeamRatingAverageProps = {
 	ratings: readonly number[];
 	presentRatings?: readonly number[];
+	isHighestSum?: boolean;
+	projectedWinRate?: string | null;
 };
 
 export function EventTeamRatingAverage({
 	ratings,
 	presentRatings = ratings,
+	isHighestSum = false,
+	projectedWinRate = null,
 }: EventTeamRatingAverageProps) {
 	if (ratings.length === 0) {
 		return null;
 	}
 
+	const sum = formatEventTeamRatingSum(
+		eventTeamRatingSum(ratings, presentRatings),
+	);
 	const average = formatEventTeamRatingAverage(
 		eventTeamRatingAverage(ratings, presentRatings),
 	);
 
 	return (
-		<p className="mt-1 text-right text-xs font-medium tabular-nums">
-			<span className="sr-only">{EVENT_TEAM_AVERAGE_LABEL} </span>
-			{average}
+		<p className="mt-1 flex items-center justify-end gap-1 text-xs font-medium tabular-nums">
+			{isHighestSum && (
+				<Star
+					aria-label={EVENT_TEAM_HIGHEST_SUM_LABEL}
+					className="size-3.5 shrink-0 fill-amber-400 text-amber-400"
+				/>
+			)}
+			<span>
+				<span className="text-fg-muted">{EVENT_TEAM_SUM_LABEL} </span>
+				{sum}
+				<span aria-hidden className="text-fg-muted">
+					{" "}
+					·{" "}
+				</span>
+				<span className="text-fg-muted">{EVENT_TEAM_AVERAGE_LABEL} </span>
+				{average}
+				{projectedWinRate && (
+					<>
+						<span aria-hidden className="text-fg-muted">
+							{" "}
+							·{" "}
+						</span>
+						<span className="text-fg-muted">Chance </span>
+						{projectedWinRate}
+					</>
+				)}
+			</span>
 		</p>
 	);
 }

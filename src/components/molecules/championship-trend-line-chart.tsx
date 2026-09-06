@@ -105,7 +105,10 @@ export function ChampionshipTrendLineChart({
 						dataKey={TREND_LINE_CHART.valueKey}
 						stroke={TREND_LINE_CHART.stroke}
 						strokeWidth={2}
-						dot={{ r: TREND_LINE_CHART.dotRadius, fill: TREND_LINE_CHART.stroke }}
+						dot={{
+							r: TREND_LINE_CHART.dotRadius,
+							fill: TREND_LINE_CHART.stroke,
+						}}
 						isAnimationActive={false}
 					>
 						<LabelList

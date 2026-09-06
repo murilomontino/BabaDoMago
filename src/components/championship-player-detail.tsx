@@ -17,6 +17,10 @@ import { SectionCard } from "@/components/section-card";
 import { Tabs } from "@/components/tabs";
 import { formatEventStartsAt } from "@/const/championship-event";
 import {
+	GOAL_TIMELINE_LABEL,
+	type PlayerFirstGoalOutcomeSummary,
+} from "@/const/championship-goal-timeline";
+import {
 	CHAMPIONSHIP_ROLE_LABEL,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
@@ -28,13 +32,30 @@ import {
 	type GoalkeeperStats,
 } from "@/const/goalkeeper-stats";
 import {
+	formatHiddenStrength,
+	HIDDEN_STRENGTH_LABEL,
+} from "@/const/hidden-strength";
+import {
 	formatPlayerFormDelta,
 	formatPlayerFormStreak,
 	formatPlayerFormWinRate,
 	PLAYER_FORM_LABEL,
 	playerRecentForm,
 } from "@/const/player-form";
+import {
+	formatHeadToHeadCount,
+	formatHeadToHeadWinRate,
+	HEAD_TO_HEAD_LABEL,
+	type HeadToHeadRow,
+} from "@/const/player-head-to-head";
 import { PLAYER_LABEL, playerVisibleName } from "@/const/player-name";
+import {
+	formatPlusMinusCount,
+	formatPlusMinusDiff,
+	formatPlusMinusPerMatch,
+	PLUS_MINUS_LABEL,
+	type PlayerPlusMinus,
+} from "@/const/player-plus-minus";
 import {
 	formatPlayerProfileDelta,
 	PLAYER_PROFILE_HISTORY_ABBR,
@@ -94,6 +115,12 @@ const PlayerRatingHistoryChart = lazy(() =>
 	})),
 );
 
+const ChampionshipFirstGoalOutcomeChart = lazy(() =>
+	import("@/components/molecules/championship-first-goal-outcome-chart").then(
+		(m) => ({ default: m.ChampionshipFirstGoalOutcomeChart }),
+	),
+);
+
 const historyColumnHelper = createColumnHelper<
 	DataTableFeatures,
 	PlayerProfileHistoryRow
@@ -113,8 +140,13 @@ type ChampionshipPlayerDetailProps = {
 	historyPending: boolean;
 	historyError: string | null;
 	partners: readonly SynergyPartnerRow[];
+	headToHead: readonly HeadToHeadRow[];
+	plusMinus: PlayerPlusMinus | null;
+	firstGoalOutcome: PlayerFirstGoalOutcomeSummary;
 	goalkeeper: GoalkeeperStats | null;
 	onOpenEvent: (eventId: number) => void;
+	hiddenLine?: number;
+	hiddenGoalkeeper?: number;
 };
 
 function PlayerProfileHeader({
@@ -125,6 +157,8 @@ function PlayerProfileHeader({
 	isOwnerViewer,
 	career,
 	history,
+	hiddenLine,
+	hiddenGoalkeeper,
 }: {
 	player: ChampionshipPlayer;
 	createdBy: string;
@@ -133,6 +167,8 @@ function PlayerProfileHeader({
 	isOwnerViewer: boolean;
 	career: RosterRow;
 	history: readonly PlayerProfileHistoryRow[];
+	hiddenLine?: number;
+	hiddenGoalkeeper?: number;
 }) {
 	const visibleName = playerVisibleName(player);
 	const showLegalName = visibleName !== player.display_name;
@@ -244,7 +280,25 @@ function PlayerProfileHeader({
 						{isOwnerViewer && (
 							<span className={CHIP_CLASS}>{player.rating}</span>
 						)}
+						{isOwnerViewer && hiddenLine !== undefined && (
+							<span
+								className={`${CHIP_CLASS} text-fg-muted`}
+								title={HIDDEN_STRENGTH_LABEL.ariaLabel}
+							>
+								{formatHiddenStrength(hiddenLine)}
+							</span>
+						)}
 					</div>
+					{isOwnerViewer &&
+						player.is_goalkeeper &&
+						hiddenGoalkeeper !== undefined && (
+							<span
+								className={`${CHIP_CLASS} text-fg-muted`}
+								title={HIDDEN_STRENGTH_LABEL.ariaLabel}
+							>
+								{formatHiddenStrength(hiddenGoalkeeper)}
+							</span>
+						)}
 					<Button
 						variant={BUTTON_VARIANT.secondary}
 						disabled={isSharing}
@@ -543,6 +597,61 @@ function PlayerPartnersTable({
 	);
 }
 
+const headToHeadHelper = createColumnHelper<DataTableFeatures, HeadToHeadRow>();
+
+function HeadToHeadTable({ rows }: { rows: readonly HeadToHeadRow[] }) {
+	const columns = useMemo(
+		() =>
+			headToHeadHelper.columns([
+				headToHeadHelper.accessor((row) => playerVisibleName(row.opponent), {
+					id: "opponent",
+					header: HEAD_TO_HEAD_LABEL.opponent,
+					enableHiding: false,
+					cell: ({ row }) => <PlayerNameLink player={row.original.opponent} />,
+				}),
+				headToHeadHelper.accessor("wins", {
+					id: "wins",
+					header: HEAD_TO_HEAD_LABEL.wins,
+					meta: { align: "right" as const },
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatHeadToHeadCount(getValue())}
+						</span>
+					),
+				}),
+				headToHeadHelper.accessor("matches", {
+					id: "matches",
+					header: HEAD_TO_HEAD_LABEL.matches,
+					meta: { align: "right" as const },
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatHeadToHeadCount(getValue())}
+						</span>
+					),
+				}),
+				headToHeadHelper.accessor("winRate", {
+					id: "winRate",
+					header: HEAD_TO_HEAD_LABEL.winRate,
+					meta: { align: "right" as const },
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatHeadToHeadWinRate(getValue())}
+						</span>
+					),
+				}),
+			]),
+		[],
+	);
+
+	return (
+		<DataTable
+			data={[...rows]}
+			columns={columns}
+			getRowId={(row) => String(row.opponent.id)}
+		/>
+	);
+}
+
 export function ChampionshipPlayerDetail({
 	player,
 	createdBy,
@@ -554,8 +663,13 @@ export function ChampionshipPlayerDetail({
 	historyPending,
 	historyError,
 	partners,
+	headToHead,
+	plusMinus,
+	firstGoalOutcome,
 	goalkeeper,
 	onOpenEvent,
+	hiddenLine,
+	hiddenGoalkeeper,
 }: ChampionshipPlayerDetailProps) {
 	const [tab, setTab] = usePlayerProfileTab();
 	const selectedTab = tab ?? PLAYER_PROFILE_TAB.profile;
@@ -572,6 +686,8 @@ export function ChampionshipPlayerDetail({
 					isOwnerViewer={isOwnerViewer}
 					career={career}
 					history={history}
+					hiddenLine={hiddenLine}
+					hiddenGoalkeeper={hiddenGoalkeeper}
 				/>
 			</section>
 			<Tabs
@@ -686,6 +802,68 @@ export function ChampionshipPlayerDetail({
 							</>
 						)}
 					</SectionCard>
+					<SectionCard title={PLUS_MINUS_LABEL.title}>
+						<p className="mb-3 text-sm text-fg-muted">
+							{PLUS_MINUS_LABEL.hint}
+						</p>
+						{!plusMinus && (
+							<p className="text-sm text-fg-muted">{PLUS_MINUS_LABEL.empty}</p>
+						)}
+						{plusMinus && (
+							<PlayerStatGrid
+								items={[
+									{
+										id: "matches",
+										label: PLUS_MINUS_LABEL.matches,
+										value: formatPlusMinusCount(plusMinus.matches),
+									},
+									{
+										id: "for",
+										label: PLUS_MINUS_LABEL.for,
+										value: formatPlusMinusCount(plusMinus.goalsFor),
+									},
+									{
+										id: "against",
+										label: PLUS_MINUS_LABEL.against,
+										value: formatPlusMinusCount(plusMinus.goalsAgainst),
+									},
+									{
+										id: "diff",
+										label: PLUS_MINUS_LABEL.diff,
+										value: formatPlusMinusDiff(plusMinus.diff),
+									},
+									{
+										id: "perMatch",
+										label: PLUS_MINUS_LABEL.perMatch,
+										value: formatPlusMinusPerMatch(plusMinus.perMatch),
+									},
+								]}
+							/>
+						)}
+					</SectionCard>
+					<SectionCard title={GOAL_TIMELINE_LABEL.playerFirstGoalTitle}>
+						<p className="mb-3 text-sm text-fg-muted">
+							{GOAL_TIMELINE_LABEL.playerFirstGoalHint}
+						</p>
+						{firstGoalOutcome.matches === 0 && (
+							<p className="text-sm text-fg-muted">
+								{GOAL_TIMELINE_LABEL.playerFirstGoalEmpty}
+							</p>
+						)}
+						{firstGoalOutcome.matches > 0 && (
+							<Suspense
+								fallback={
+									<SkeletonRegion label={SKELETON_LABEL.chart}>
+										<Skeleton className="h-[220px] w-full" />
+									</SkeletonRegion>
+								}
+							>
+								<ChampionshipFirstGoalOutcomeChart
+									bars={firstGoalOutcome.bars}
+								/>
+							</Suspense>
+						)}
+					</SectionCard>
 					<SectionCard title={SYNERGY_LABEL.partners}>
 						{historyPending && (
 							<DataTableSkeleton
@@ -703,6 +881,30 @@ export function ChampionshipPlayerDetail({
 						)}
 						{!historyPending && !historyError && partners.length > 0 && (
 							<PlayerPartnersTable partners={partners} />
+						)}
+					</SectionCard>
+					<SectionCard title={HEAD_TO_HEAD_LABEL.title}>
+						<p className="mb-3 text-sm text-fg-muted">
+							{HEAD_TO_HEAD_LABEL.hint}
+						</p>
+						{historyPending && (
+							<DataTableSkeleton
+								headers={[
+									HEAD_TO_HEAD_LABEL.opponent,
+									HEAD_TO_HEAD_LABEL.wins,
+									HEAD_TO_HEAD_LABEL.matches,
+									HEAD_TO_HEAD_LABEL.winRate,
+								]}
+								withPlayerColumn={false}
+							/>
+						)}
+						{!historyPending && headToHead.length === 0 && (
+							<p className="text-sm text-fg-muted">
+								{HEAD_TO_HEAD_LABEL.empty}
+							</p>
+						)}
+						{!historyPending && headToHead.length > 0 && (
+							<HeadToHeadTable rows={headToHead} />
 						)}
 					</SectionCard>
 					<SectionCard

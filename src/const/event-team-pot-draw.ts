@@ -2,6 +2,7 @@ import {
 	type EventTeamBuilderTeam,
 	type EventTeamDraft,
 	emptyTeamSlots,
+	eventDrawInputRating,
 	eventDrawRatings,
 	eventTeamCount,
 	eventTeamDraftIsActive,
@@ -345,10 +346,13 @@ export function eventPotDrawShareCards(
 		nickname: string | null;
 		display_name: string;
 		rating: number;
+		goalkeeper_rating: number;
 		avatar_url: string | null;
 	}[],
+	volunteerIds: readonly number[] = [],
 ): EventTeamShareCard[] {
 	const byId = new Map(players.map((player) => [player.id, player]));
+	const volunteers = new Set(volunteerIds);
 
 	return pots.map((playerIds, index) => ({
 		title: eventPotDrawPotTitle(index),
@@ -359,12 +363,15 @@ export function eventPotDrawShareCards(
 				return [];
 			}
 
+			const isGoalkeeperRating = volunteers.has(player.id);
+
 			return [
 				{
 					id: player.id,
 					number: slotIndex + 1,
 					name: playerVisibleName(player),
-					rating: player.rating,
+					rating: eventDrawInputRating(player, isGoalkeeperRating),
+					isGoalkeeperRating,
 					avatarUrl: player.avatar_url,
 				},
 			];

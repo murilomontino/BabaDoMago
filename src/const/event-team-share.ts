@@ -1,9 +1,13 @@
 import {
 	EVENT_TEAM_AVERAGE_LABEL,
+	EVENT_TEAM_SUM_LABEL,
 	type EventTeamBuilderTeam,
+	eventDrawInputRating,
 	eventTeamRatingAverage,
+	eventTeamRatingSum,
 	formatEventStartsAt,
 	formatEventTeamRatingAverage,
+	formatEventTeamRatingSum,
 } from "./championship-event.ts";
 import { eventTeamName } from "./event-team-color.ts";
 import { playerVisibleName } from "./player-name.ts";
@@ -42,6 +46,7 @@ export const EVENT_TEAM_SHARE_COLOR = {
 	line: "#e7e5e4",
 	starEmpty: "#a8a29e",
 	starFill: "#fbbf24",
+	starFillGoalkeeper: "#ef4444",
 	avatar: "#e7e5e4",
 } as const;
 
@@ -50,6 +55,7 @@ export type EventTeamSharePlayer = {
 	number: number;
 	name: string;
 	rating: number;
+	isGoalkeeperRating: boolean;
 	avatarUrl: string | null;
 };
 
@@ -64,6 +70,7 @@ type EventTeamShareRosterPlayer = {
 	nickname: string | null;
 	display_name: string;
 	rating: number;
+	goalkeeper_rating: number;
 	avatar_url: string | null;
 };
 
@@ -128,13 +135,20 @@ export function eventTeamShareCardHeight(playerCount: number): number {
 
 export function eventTeamShareAverageLabel(
 	ratings: readonly number[],
+	isHighestSum = false,
 ): string | null {
 	if (ratings.length === 0) {
 		return null;
 	}
 
+	const sum = formatEventTeamRatingSum(eventTeamRatingSum(ratings));
 	const average = formatEventTeamRatingAverage(eventTeamRatingAverage(ratings));
-	return `${EVENT_TEAM_AVERAGE_LABEL} ${average}`;
+	const text = `${EVENT_TEAM_SUM_LABEL} ${sum} · ${EVENT_TEAM_AVERAGE_LABEL} ${average}`;
+	if (!isHighestSum) {
+		return text;
+	}
+
+	return `★ ${text}`;
 }
 
 export function eventTeamShareCardWidth(): number {
@@ -164,8 +178,10 @@ export function eventTeamShareImageHeight(
 export function eventTeamsShareCards(
 	teams: readonly EventTeamBuilderTeam[],
 	players: readonly EventTeamShareRosterPlayer[],
+	volunteerIds: readonly number[] = [],
 ): EventTeamShareCard[] {
 	const byId = new Map(players.map((player) => [player.id, player]));
+	const volunteers = new Set(volunteerIds);
 
 	return teams.map((team, teamIndex) => ({
 		title: eventTeamName(team.color, teamIndex),
@@ -180,12 +196,15 @@ export function eventTeamsShareCards(
 				return [];
 			}
 
+			const isGoalkeeperRating = volunteers.has(player.id);
+
 			return [
 				{
 					id: player.id,
 					number: slotIndex + 1,
 					name: playerVisibleName(player),
-					rating: player.rating,
+					rating: eventDrawInputRating(player, isGoalkeeperRating),
+					isGoalkeeperRating,
 					avatarUrl: player.avatar_url,
 				},
 			];

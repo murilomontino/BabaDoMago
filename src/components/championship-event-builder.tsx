@@ -38,6 +38,7 @@ import {
 	eventGoalkeeperIds,
 	eventIsoWeekday,
 	eventTeamCount,
+	eventTeamHighestSumFlags,
 	eventTeamPlayerOptionLabel,
 	eventTeamSlotPool,
 	eventTeamSlotPosition,
@@ -177,7 +178,7 @@ export function ChampionshipEventBuilder({
 	const rosterIds = players.map((player) => player.id);
 	const seedWeekday: EventWeekday = eventIsoWeekday(startsAt);
 	const ceiling = championshipRatingCeiling(
-		players.map((player) => player.rating),
+		players.flatMap((player) => [player.rating, player.goalkeeper_rating]),
 	);
 	const presentPlayers = players.filter((player) =>
 		presentIds.includes(player.id),
@@ -187,7 +188,9 @@ export function ChampionshipEventBuilder({
 		presentIds,
 	);
 	const busy = isPending || isDrawing || isOpeningDraw;
-	const presentRatings = presentPlayers.map((player) => player.rating);
+	const presentRatings = presentPlayers.map((player) =>
+		eventDrawInputRating(player, goalkeeperIds.includes(player.id)),
+	);
 	const teamsStart =
 		initialTeams ??
 		initialBuilderTeams(
@@ -293,10 +296,7 @@ export function ChampionshipEventBuilder({
 			const { worker, done } = runEventTeamDraw({
 				players: presentPlayers.map((player) => ({
 					id: player.id,
-					rating: eventDrawInputRating(
-						player,
-						volunteerSet.has(player.id),
-					),
+					rating: eventDrawInputRating(player, volunteerSet.has(player.id)),
 				})),
 				playersPerTeam,
 				volunteerIds: presentGoalkeeperIds,
@@ -368,7 +368,7 @@ export function ChampionshipEventBuilder({
 		setTeamsError(null);
 		try {
 			await shareEventTeamsImage(
-				eventTeamsShareCards(teams, presentPlayers),
+				eventTeamsShareCards(teams, presentPlayers, goalkeeperIds),
 				ceiling,
 				{ championshipName, startsAt },
 			);
@@ -681,6 +681,30 @@ export function ChampionshipEventBuilder({
 														{ length: playersPerTeam },
 														(_, slot) => slot,
 													);
+													const teamRatingsLists = values.teams.map((item) =>
+														teamSlotsToPlayerIds(item.slots).flatMap(
+															(playerId) => {
+																const player = presentPlayers.find(
+																	(entry) => entry.id === playerId,
+																);
+																if (!player) {
+																	return [];
+																}
+
+																return [
+																	eventDrawInputRating(
+																		player,
+																		goalkeeperIds.includes(playerId),
+																	),
+																];
+															},
+														),
+													);
+													const highestSumFlags = eventTeamHighestSumFlags(
+														teamRatingsLists,
+														presentRatings,
+													);
+													const ratings = teamRatingsLists[teamIndex] ?? [];
 
 													return (
 														<article
@@ -790,10 +814,9 @@ export function ChampionshipEventBuilder({
 																				<EventTeamPlayerRow
 																					player={player}
 																					ceiling={ceiling}
-																					isGoalkeeperVolunteer={
-																						slot !== 0 &&
-																						goalkeeperIds.includes(player.id)
-																					}
+																					isGoalkeeperVolunteer={goalkeeperIds.includes(
+																						player.id,
+																					)}
 																					onRemove={() => {
 																						setFieldValue(
 																							`teams.${teamIndex}.slots.${slot}`,
@@ -831,19 +854,11 @@ export function ChampionshipEventBuilder({
 																})}
 															</ul>
 															<EventTeamRatingAverage
-																ratings={teamSlotsToPlayerIds(
-																	team.slots,
-																).flatMap((playerId) => {
-																	const player = presentPlayers.find(
-																		(item) => item.id === playerId,
-																	);
-																	if (!player) {
-																		return [];
-																	}
-
-																	return [player.rating];
-																})}
+																ratings={ratings}
 																presentRatings={presentRatings}
+																isHighestSum={
+																	highestSumFlags[teamIndex] === true
+																}
 															/>
 														</article>
 													);

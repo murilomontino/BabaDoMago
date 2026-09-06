@@ -1,11 +1,17 @@
 import type { ChampionshipEvent } from "../types/championship-event.ts";
 import { matchClockElapsedSeconds } from "./championship-event-match.ts";
 import type { TrendsPlayerScope } from "./championship-trends-player-scope.ts";
-import { trendsScopedEndedMatches, trendsScopedGoalCount } from "./championship-trends-player-scope.ts";
+import {
+	trendsScopedEndedMatches,
+	trendsScopedGoalCount,
+} from "./championship-trends-player-scope.ts";
+import { isCloseMatch } from "./match-goal-counts.ts";
 import {
 	formatRosterAverage,
 	formatRosterCount,
+	formatRosterWinRate,
 	rosterAverage,
+	rosterWinRate,
 } from "./roster-stats.ts";
 import {
 	championshipTeamBalance,
@@ -19,6 +25,7 @@ export const EVENT_HEALTH_METRIC = {
 	goalsPerMatch: "goalsPerMatch",
 	playedMinutes: "playedMinutes",
 	spread: "spread",
+	closeMatchRate: "closeMatchRate",
 } as const;
 
 export type EventHealthMetric =
@@ -35,6 +42,7 @@ export const EVENT_HEALTH_LABEL = {
 	[EVENT_HEALTH_METRIC.goalsPerMatch]: "Gols / jogo",
 	[EVENT_HEALTH_METRIC.playedMinutes]: "Minutos jogados",
 	[EVENT_HEALTH_METRIC.spread]: TEAM_BALANCE_LABEL.spread,
+	[EVENT_HEALTH_METRIC.closeMatchRate]: "Jogos apertados",
 	avgMatches: "Média de partidas",
 	avgSpread: TEAM_BALANCE_LABEL.spread,
 } as const;
@@ -48,6 +56,8 @@ export const EVENT_HEALTH_METRIC_HINT = {
 		"Média de minutos no cronômetro por partida. Não usa a duração configurada.",
 	[EVENT_HEALTH_METRIC.spread]:
 		"Diferença prevista de nota entre o time mais forte e o mais fraco no sorteio.",
+	[EVENT_HEALTH_METRIC.closeMatchRate]:
+		"Share de partidas decididas por 1 gol ou empate.",
 } as const;
 
 export const EVENT_HEALTH_METRIC_OPTIONS = [
@@ -55,6 +65,7 @@ export const EVENT_HEALTH_METRIC_OPTIONS = [
 	EVENT_HEALTH_METRIC.goalsPerMatch,
 	EVENT_HEALTH_METRIC.playedMinutes,
 	EVENT_HEALTH_METRIC.spread,
+	EVENT_HEALTH_METRIC.closeMatchRate,
 ] as const;
 
 export const EVENT_HEALTH_CHART = {
@@ -76,6 +87,7 @@ export type EventHealthRow = {
 	goalsPerMatch: number;
 	playedSeconds: number;
 	spread: number;
+	closeMatchRate: number;
 };
 
 export type EventHealthSummary = {
@@ -134,6 +146,9 @@ export function championshipEventHealth(
 			const endedAtMs = Date.parse(match.ended_at ?? "");
 			return sum + matchClockElapsedSeconds(match, endedAtMs);
 		}, 0);
+		const closeMatches = endedMatches.filter((match) =>
+			isCloseMatch(match),
+		).length;
 		const balance = eventTeamBalance(event, playerIds);
 
 		return [
@@ -144,6 +159,7 @@ export function championshipEventHealth(
 				goalsPerMatch: rosterAverage(goals, endedMatches.length),
 				playedSeconds: rosterAverage(playedSecondsTotal, endedMatches.length),
 				spread: balance?.spread ?? 0,
+				closeMatchRate: rosterWinRate(closeMatches, endedMatches.length),
 			},
 		];
 	});
@@ -205,6 +221,8 @@ export function formatEventHealthChartValue(
 			return formatRosterAverage(value);
 		case EVENT_HEALTH_METRIC.spread:
 			return formatTeamBalanceSpread(value);
+		case EVENT_HEALTH_METRIC.closeMatchRate:
+			return formatRosterWinRate(value);
 		default: {
 			const _never: never = metric;
 			return _never;
@@ -225,6 +243,8 @@ function eventHealthMetricValue(
 			return row.playedSeconds / 60;
 		case EVENT_HEALTH_METRIC.spread:
 			return row.spread;
+		case EVENT_HEALTH_METRIC.closeMatchRate:
+			return row.closeMatchRate;
 		default: {
 			const _never: never = metric;
 			return _never;

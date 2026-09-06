@@ -1,8 +1,4 @@
-import {
-	HAMMER_VERTICAL_SWIPE,
-	VERTICAL_SWIPE_DIRECTION,
-	verticalSwipeFromDelta,
-} from "./hammer-swipe.ts";
+import { HAMMER_VERTICAL_SWIPE } from "./hammer-swipe.ts";
 
 function check(condition: boolean, message: string) {
 	if (!condition) {
@@ -11,22 +7,13 @@ function check(condition: boolean, message: string) {
 }
 
 check(
-	verticalSwipeFromDelta(-40, HAMMER_VERTICAL_SWIPE.threshold) ===
-		VERTICAL_SWIPE_DIRECTION.up,
-	"negative delta is up",
+	HAMMER_VERTICAL_SWIPE.panThreshold === 5,
+	"pan threshold matches pawkeepr",
 );
 check(
-	verticalSwipeFromDelta(40, HAMMER_VERTICAL_SWIPE.threshold) ===
-		VERTICAL_SWIPE_DIRECTION.down,
-	"positive delta is down",
+	HAMMER_VERTICAL_SWIPE.swipeThreshold === 10,
+	"swipe threshold matches pawkeepr",
 );
-check(
-	verticalSwipeFromDelta(-10, HAMMER_VERTICAL_SWIPE.threshold) === null,
-	"small move is ignored",
-);
-check(
-	verticalSwipeFromDelta(10, HAMMER_VERTICAL_SWIPE.threshold) === null,
-	"small down is ignored",
-);
+check(HAMMER_VERTICAL_SWIPE.velocity === 0.25, "velocity matches pawkeepr");
 
 console.log("hammer-swipe ok");

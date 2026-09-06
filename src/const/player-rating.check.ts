@@ -32,9 +32,15 @@ check(championshipRatingCeiling([10]) === 10, "teto 10");
 check(championshipRatingCeiling([100]) === 100, "teto 100");
 check(championshipRatingCeiling([150, 80]) === 100, "teto geral 100");
 check(championshipRatingFloor([]) === 0.1, "empty floor uses rated floor");
-check(championshipRatingFloor([0, 0]) === 0.1, "unrated floor uses rated floor");
+check(
+	championshipRatingFloor([0, 0]) === 0.1,
+	"unrated floor uses rated floor",
+);
 check(championshipRatingFloor([4, 6]) === 4, "floor min official");
-check(championshipRatingFloor([0.05, 4]) === 0.1, "floor clamps to rated floor");
+check(
+	championshipRatingFloor([0.05, 4]) === 0.1,
+	"floor clamps to rated floor",
+);
 
 check(starFillToRating(5, 5) === 5, "initial 5 stars = 5 points");
 check(starFillToRating(3, 5) === 3, "initial 3 stars = 3 points");

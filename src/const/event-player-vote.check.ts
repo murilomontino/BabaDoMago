@@ -1,7 +1,6 @@
 import {
 	canEditEventPlayerBallot,
 	canOpenEventPlayerVoteShortcut,
-	latestOpenEventPlayerVoteEvent,
 	canSetEventPlayerVoteDraft,
 	canVoteEventPlayer,
 	copyEventPlayerVoteLinkLabel,
@@ -28,6 +27,7 @@ import {
 	isEventPlayerVoteDraftDirty,
 	isEventPlayerVoteLocked,
 	isEventPlayerVotesVoided,
+	latestOpenEventPlayerVoteEvent,
 	nextEventPlayerVoteValue,
 	ownerEventPlayerVoteCounts,
 	ownerEventPlayerVotesSubmitted,
@@ -439,14 +439,8 @@ check(
 	"switch to maintain",
 );
 check(nextEventPlayerVoteValue(null, "blank") === "blank", "press blank");
-check(
-	nextEventPlayerVoteValue("blank", "blank") === null,
-	"toggle off blank",
-);
-check(
-	nextEventPlayerVoteValue("like", "blank") === "blank",
-	"switch to blank",
-);
+check(nextEventPlayerVoteValue("blank", "blank") === null, "toggle off blank");
+check(nextEventPlayerVoteValue("like", "blank") === "blank", "switch to blank");
 check(
 	eventPlayerVoteChoiceLabel("blank") === "Não votar",
 	"choice blank label",

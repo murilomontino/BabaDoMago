@@ -1,6 +1,8 @@
 import {
+	applyEventRatingDelta,
 	EVENT_RATING_ADJUSTMENT,
 	EVENT_RATING_INITIAL,
+	eventRatingDelta,
 } from "./event-rating-adjustment.ts";
 import { PLAYER_RATING } from "./player-rating.ts";
 import {
@@ -54,8 +56,12 @@ const seed = simulatePlayerEventRating({
 	ceiling: 5,
 });
 check(seed.isSeed, true, "seed flag");
-check(seed.to, EVENT_RATING_INITIAL.high, "seed high");
-check(seed.delta, EVENT_RATING_INITIAL.high, "seed delta");
+const seedHigh = applyEventRatingDelta(
+	EVENT_RATING_INITIAL.high,
+	eventRatingDelta(4, 0, 0, 4, EVENT_RATING_INITIAL.high, 5),
+);
+check(seed.to, seedHigh, "seed high depois delta");
+check(seed.delta, seedHigh, "seed delta semente depois aproveitamento");
 
 const bonus = simulatePlayerEventRating({
 	rating: 4,
@@ -118,7 +124,11 @@ const seedMvp = simulatePlayerEventRating({
 	ceiling: 5,
 	isMvp: true,
 });
-check(seedMvp.delta, EVENT_RATING_INITIAL.high + 0.1, "seed mvp delta");
-check(seedMvp.to, EVENT_RATING_INITIAL.high + 0.1, "seed mvp to");
+check(seedMvp.to, 4.9, "seed mvp to");
+check(
+	applyEventRatingDelta(PLAYER_RATING.default, seedMvp.delta),
+	4.9,
+	"seed mvp delta",
+);
 
 console.log("player-rating-sim ok");

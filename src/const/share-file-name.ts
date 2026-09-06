@@ -4,6 +4,7 @@ export const SHARE_FILE = {
 	png: "png",
 	gif: "gif",
 	mp4: "mp4",
+	csv: "csv",
 } as const;
 
 export type ShareFileExtension = (typeof SHARE_FILE)[keyof typeof SHARE_FILE];

@@ -1,8 +1,9 @@
-import { LoaderCircle, Share2, Trophy } from "lucide-react";
+import { FileSpreadsheet, LoaderCircle, Share2, Trophy } from "lucide-react";
 import { lazy, Suspense, useMemo, useState } from "react";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
 import { SectionCard } from "@/components/section-card";
+import { applyComebackGoalCounts } from "@/const/championship-comeback-goal-ranking";
 import {
 	championshipMetricHistoryNowIso,
 	championshipPodiumHistoryMetric,
@@ -11,24 +12,31 @@ import { CHAMPIONSHIP_RATING_HISTORY_CHART } from "@/const/championship-rating-h
 import { CHAMPIONSHIP_RATING_SCATTER_CHART } from "@/const/championship-rating-scatter";
 import { CHAMPIONSHIP_STAT_SCATTER_CHART } from "@/const/championship-stat-scatter";
 import {
+	parseTrendsAudience,
 	TRENDS_AUDIENCE,
 	TRENDS_AUDIENCE_DEFAULT,
 	TRENDS_AUDIENCE_LABEL,
 	TRENDS_AUDIENCE_OPTIONS,
 	type TrendsAudience,
-	parseTrendsAudience,
 	trendsAudienceCaption,
 	trendsAudiencePlayers,
 	trendsHasMonthlyPlayers,
 } from "@/const/championship-trends-window";
+import {
+	championshipTeamHiddenBalance,
+	formatTeamHiddenSpread,
+	formatTeamHiddenWinRate,
+	HIDDEN_STRENGTH_LABEL,
+	hiddenStrengthWalk,
+} from "@/const/hidden-strength";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import {
-	SYNERGY_RANKING_LIMIT,
 	aggregateSynergyPairs,
 	rankSynergyPairRows,
 	rankSynergyPairRowsWorst,
-	topSynergyRows,
+	SYNERGY_RANKING_LIMIT,
 	type SynergyPairRow,
+	topSynergyRows,
 } from "@/const/player-synergy";
 import {
 	aggregatePodiumPlayersFromEvents,
@@ -65,9 +73,11 @@ import {
 	podiumShareCardFromSynergyPairs,
 	podiumShareCardsFromPlayers,
 	podiumShareContext,
+	podiumShareCsvRows,
 	podiumSharePeriodCaption,
 	podiumSharingLabel,
 } from "@/const/podium-share";
+import { shareFileName } from "@/const/share-file-name";
 import { SKELETON_LABEL } from "@/const/skeleton";
 import {
 	championshipTeamBalance,
@@ -79,6 +89,7 @@ import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
 import { CHAMPIONSHIP_EVENTS_QUERY_KEY } from "@/hooks/championships/championships-query-keys";
 import { usePodiumYear } from "@/hooks/use-podium-year";
 import { includeDefined } from "@/lib/include-when";
+import { buildCsv, shareCsvText } from "@/lib/share-csv";
 import {
 	sharePodiumSeparateImages,
 	sharePodiumStackedImage,
@@ -146,8 +157,7 @@ function podiumAudienceSynergyPairs(
 
 	return topSynergyRows(
 		ranked.filter(
-			(pair) =>
-				monthlyIds.has(pair.left.id) && monthlyIds.has(pair.right.id),
+			(pair) => monthlyIds.has(pair.left.id) && monthlyIds.has(pair.right.id),
 		),
 		SYNERGY_RANKING_LIMIT,
 	);
@@ -158,6 +168,7 @@ type ChampionshipPodiumTabProps = {
 	championshipName: string;
 	events?: readonly ChampionshipEvent[];
 	eventStartsAt?: string;
+	isOwner?: boolean;
 };
 
 export function ChampionshipPodiumTab({
@@ -165,6 +176,7 @@ export function ChampionshipPodiumTab({
 	championshipName,
 	events,
 	eventStartsAt,
+	isOwner = false,
 }: ChampionshipPodiumTabProps) {
 	const [metric, setMetric] = useState<PodiumMetricId>(PODIUM_DEFAULT_METRIC);
 	const [semester, setSemester] = useState<PodiumSemester | null>(null);
@@ -174,6 +186,7 @@ export function ChampionshipPodiumTab({
 	);
 	const [yearParam, setYearParam] = usePodiumYear();
 	const [isSharing, setIsSharing] = useState<PodiumShareMode | null>(null);
+	const [isSharingCsv, setIsSharingCsv] = useState(false);
 	const [shareError, setShareError] = useState<string | null>(null);
 	const currentMonth = podiumCurrentMonth();
 	const includeSynergy = !eventStartsAt;
@@ -206,18 +219,30 @@ export function ChampionshipPodiumTab({
 		);
 	}, [eventStartsAt, events, months, semester, year]);
 	const podiumPlayers = useMemo(() => {
-		if (!events || eventStartsAt) {
-			return audiencePlayers;
-		}
+		const basePlayers = (() => {
+			if (!events || eventStartsAt) {
+				return audiencePlayers;
+			}
 
-		return aggregatePodiumPlayersFromEvents(
-			audiencePlayers,
-			events,
-			year,
-			semester,
-			months,
-		);
-	}, [audiencePlayers, eventStartsAt, events, months, semester, year]);
+			return aggregatePodiumPlayersFromEvents(
+				audiencePlayers,
+				events,
+				year,
+				semester,
+				months,
+			);
+		})();
+
+		return applyComebackGoalCounts(basePlayers, periodEvents);
+	}, [
+		audiencePlayers,
+		eventStartsAt,
+		events,
+		months,
+		periodEvents,
+		semester,
+		year,
+	]);
 	const synergyPairs = useMemo(() => {
 		if (!includeSynergy) {
 			return [];
@@ -249,6 +274,16 @@ export function ChampionshipPodiumTab({
 
 		return championshipTeamBalance(periodEvents);
 	}, [includeSynergy, periodEvents]);
+	const teamHiddenBalance = useMemo(() => {
+		if (!includeSynergy || !isOwner || !events) {
+			return null;
+		}
+
+		return championshipTeamHiddenBalance(
+			periodEvents,
+			hiddenStrengthWalk(events),
+		);
+	}, [events, includeSynergy, isOwner, periodEvents]);
 	const ceiling = championshipRatingCeiling(
 		podiumPlayers.map((player) => player.rating),
 	);
@@ -328,6 +363,27 @@ export function ChampionshipPodiumTab({
 			setShareError(PODIUM_SHARE_LABEL.shareFailed);
 		} finally {
 			setIsSharing(null);
+		}
+	}
+
+	async function handleShareCsv() {
+		if (!isPodiumPlayerMetric(metric)) {
+			return;
+		}
+
+		setIsSharingCsv(true);
+		setShareError(null);
+		try {
+			const { headers, rows } = podiumShareCsvRows(podiumPlayers, metric);
+			await shareCsvText(
+				shareFileName(["podio", championshipName, metric], "csv"),
+				buildCsv(headers, rows),
+				PODIUM_SHARE_LABEL.shareCsv,
+			);
+		} catch {
+			setShareError(PODIUM_SHARE_LABEL.shareFailed);
+		} finally {
+			setIsSharingCsv(false);
 		}
 	}
 
@@ -534,6 +590,22 @@ export function ChampionshipPodiumTab({
 									PODIUM_SHARE_LABEL.shareAllSeparate}
 							</Button>
 						)}
+						{isPodiumPlayerMetric(metric) && podiumPlayers.length > 0 && (
+							<Button
+								variant={BUTTON_VARIANT.secondary}
+								disabled={isSharingCsv}
+								onClick={() => {
+									void handleShareCsv();
+								}}
+							>
+								{isSharingCsv && (
+									<LoaderCircle className="size-4 animate-spin" aria-hidden />
+								)}
+								{!isSharingCsv && <FileSpreadsheet className="size-4" />}
+								{isSharingCsv && PODIUM_SHARE_LABEL.sharingCsv}
+								{!isSharingCsv && PODIUM_SHARE_LABEL.shareCsv}
+							</Button>
+						)}
 					</div>
 				)}
 			</div>
@@ -598,6 +670,31 @@ export function ChampionshipPodiumTab({
 							</p>
 						</div>
 					</div>
+					{teamHiddenBalance && teamHiddenBalance.events > 0 && (
+						<>
+							<div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+								<div>
+									<p className="text-xs font-medium text-fg-muted">
+										{HIDDEN_STRENGTH_LABEL.spread}
+									</p>
+									<p className="text-lg font-semibold tabular-nums text-fg">
+										{formatTeamHiddenSpread(teamHiddenBalance.averageSpread)}
+									</p>
+								</div>
+								<div>
+									<p className="text-xs font-medium text-fg-muted">
+										{HIDDEN_STRENGTH_LABEL.favorite}
+									</p>
+									<p className="text-lg font-semibold tabular-nums text-fg">
+										{formatTeamHiddenWinRate(teamHiddenBalance.favoriteWinRate)}
+									</p>
+								</div>
+							</div>
+							<p className="text-xs text-fg-muted">
+								{HIDDEN_STRENGTH_LABEL.hint}
+							</p>
+						</>
+					)}
 				</div>
 			)}
 		</SectionCard>

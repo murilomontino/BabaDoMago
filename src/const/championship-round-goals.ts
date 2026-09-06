@@ -1,10 +1,10 @@
 import type { ChampionshipEvent } from "../types/championship-event.ts";
+import type { TrendLineChartPoint } from "./championship-trend-line-chart.ts";
 import type { TrendsPlayerScope } from "./championship-trends-player-scope.ts";
 import {
 	trendsScopedEndedMatches,
 	trendsScopedGoalCount,
 } from "./championship-trends-player-scope.ts";
-import type { TrendLineChartPoint } from "./championship-trend-line-chart.ts";
 import {
 	formatRosterAverage,
 	formatRosterCount,

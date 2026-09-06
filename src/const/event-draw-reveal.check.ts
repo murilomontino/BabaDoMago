@@ -50,6 +50,7 @@ const ana = {
 	nickname: "Nena",
 	display_name: "Ana",
 	rating: 7.5,
+	goalkeeper_rating: 7.5,
 	avatar_url: null,
 };
 
@@ -58,6 +59,7 @@ const bruno = {
 	nickname: null,
 	display_name: "Bruno",
 	rating: 6,
+	goalkeeper_rating: 6,
 	avatar_url: null,
 };
 
@@ -66,6 +68,7 @@ const caio = {
 	nickname: "Caio",
 	display_name: "Caio",
 	rating: 5,
+	goalkeeper_rating: 5,
 	avatar_url: null,
 };
 
@@ -74,6 +77,7 @@ const dana = {
 	nickname: "Dana",
 	display_name: "Dana",
 	rating: 4,
+	goalkeeper_rating: 4,
 	avatar_url: null,
 };
 
@@ -82,6 +86,7 @@ const eva = {
 	nickname: "Eva",
 	display_name: "Eva",
 	rating: 8,
+	goalkeeper_rating: 8,
 	avatar_url: null,
 };
 

@@ -1,3 +1,4 @@
+import { PlayerNameLink } from "@/components/molecules/player-name-link";
 import { formatEventStartsAt } from "@/const/championship-event";
 import {
 	FORM_HEATMAP_CELL,
@@ -5,35 +6,39 @@ import {
 	type FormHeatmapCell,
 	type FormHeatmapCellKind,
 	type FormHeatmapGrid,
+	formHeatmapCellClassName,
 	formHeatmapCellLabel,
 	formHeatmapCellTitle,
 } from "@/const/championship-form-heatmap";
-import { PlayerNameLink } from "@/components/molecules/player-name-link";
 
 type ChampionshipFormHeatmapProps = {
 	grid: FormHeatmapGrid;
 };
 
-const FORM_HEATMAP_CELL_CLASS: Record<FormHeatmapCellKind, string> = {
-	[FORM_HEATMAP_CELL.absent]: "bg-transparent",
-	[FORM_HEATMAP_CELL.insufficient]:
-		"bg-surface-muted ring-1 ring-inset ring-black/10",
-	[FORM_HEATMAP_CELL.up]: "bg-pitch/25",
-	[FORM_HEATMAP_CELL.down]: "bg-danger/20",
-	[FORM_HEATMAP_CELL.deadZone]: "bg-black/10",
+type FormHeatmapCellSwatchProps = {
+	kind: FormHeatmapCellKind;
+	className?: string;
+	title?: string;
 };
 
-function formHeatmapCellClass(kind: FormHeatmapCellKind): string {
-	return FORM_HEATMAP_CELL_CLASS[kind];
+export function FormHeatmapCellSwatch({
+	kind,
+	className = "",
+	title,
+}: FormHeatmapCellSwatchProps) {
+	return (
+		<div
+			className={`rounded-sm ${formHeatmapCellClassName(kind)} ${className}`}
+			title={title}
+			aria-hidden={title ? undefined : true}
+		/>
+	);
 }
 
 function FormHeatmapLegendItem({ kind }: { kind: FormHeatmapCellKind }) {
 	return (
 		<span className="inline-flex items-center gap-1.5 text-xs text-fg-muted">
-			<span
-				className={`inline-block size-3 rounded-sm ${formHeatmapCellClass(kind)}`}
-				aria-hidden
-			/>
+			<FormHeatmapCellSwatch kind={kind} className="size-3" />
 			{formHeatmapCellLabel(kind)}
 		</span>
 	);
@@ -42,8 +47,9 @@ function FormHeatmapLegendItem({ kind }: { kind: FormHeatmapCellKind }) {
 function FormHeatmapDataCell({ cell }: { cell: FormHeatmapCell }) {
 	return (
 		<td className="p-0.5">
-			<div
-				className={`h-7 min-w-7 rounded-sm ${formHeatmapCellClass(cell.kind)}`}
+			<FormHeatmapCellSwatch
+				kind={cell.kind}
+				className="h-7 min-w-7"
 				title={formHeatmapCellTitle(cell)}
 			/>
 		</td>
@@ -70,9 +76,10 @@ export function FormHeatmapPlayerStrip({
 			aria-label={FORM_HEATMAP_LABEL.title}
 		>
 			{cells.map((cell, index) => (
-				<div
+				<FormHeatmapCellSwatch
 					key={columnIds?.[index] ?? index}
-					className={`h-4 w-4 shrink-0 rounded-sm ${formHeatmapCellClass(cell.kind)}`}
+					kind={cell.kind}
+					className="h-4 w-4 shrink-0"
 					title={formHeatmapCellTitle(cell)}
 				/>
 			))}
@@ -80,7 +87,9 @@ export function FormHeatmapPlayerStrip({
 	);
 }
 
-export function ChampionshipFormHeatmap({ grid }: ChampionshipFormHeatmapProps) {
+export function ChampionshipFormHeatmap({
+	grid,
+}: ChampionshipFormHeatmapProps) {
 	return (
 		<div className="space-y-3">
 			<div className="overflow-x-auto">

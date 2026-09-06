@@ -98,9 +98,16 @@ check(summary.averagePresent === 8, "average present count");
 check(Math.abs(summary.averageShare - 8 / 12) < 0.001, "average share");
 
 const monthlyScope = trendsAudiencePlayerScope(roster, TRENDS_AUDIENCE.monthly);
-const monthlySummary = championshipAttendanceTrend(events, roster, monthlyScope);
+const monthlySummary = championshipAttendanceTrend(
+	events,
+	roster,
+	monthlyScope,
+);
 check(monthlySummary.rows[0]?.presentCount === 2, "monthly present count");
-check(monthlySummary.rows[1]?.presentCount === 2, "monthly present second event");
+check(
+	monthlySummary.rows[1]?.presentCount === 2,
+	"monthly present second event",
+);
 
 const chart = championshipAttendanceTrendChart(
 	summary,

@@ -1,6 +1,12 @@
 import { useNavigate } from "@tanstack/react-router";
 import { Field, Form, Formik } from "formik";
-import { CalendarDays, ChevronRight, MapPin, Plus, ThumbsUp } from "lucide-react";
+import {
+	CalendarDays,
+	ChevronRight,
+	MapPin,
+	Plus,
+	ThumbsUp,
+} from "lucide-react";
 import { useRef, useState } from "react";
 import { SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
@@ -43,15 +49,15 @@ import {
 } from "@/const/championship-event-match";
 import { CHAMPIONSHIP_TAB_LABEL } from "@/const/championship-tab";
 import {
-	EVENT_PLAYER_VOTE_LABEL,
-	latestOpenEventPlayerVoteEvent,
-} from "@/const/event-player-vote";
-import {
 	attendanceMvpPlayerIds,
 	eventMvpCandidates,
 	mvpPlayerIdsWhenAllowed,
 	toggleEventMvpPlayerId,
 } from "@/const/event-mvp";
+import {
+	EVENT_PLAYER_VOTE_LABEL,
+	latestOpenEventPlayerVoteEvent,
+} from "@/const/event-player-vote";
 import {
 	eventRatingPreview,
 	previewRatingTos,
@@ -157,7 +163,8 @@ export function ChampionshipEvents({
 	const events = eventsQuery.data ?? [];
 	const openEvents = openChampionshipEvents(events);
 	const openVoteEvent = latestOpenEventPlayerVoteEvent(events);
-	const showHeaderActions = Boolean(openVoteEvent) || (canManage && !isCreating);
+	const showHeaderActions =
+		Boolean(openVoteEvent) || (canManage && !isCreating);
 	const isPending =
 		createEvent.isPending ||
 		endEvent.isPending ||

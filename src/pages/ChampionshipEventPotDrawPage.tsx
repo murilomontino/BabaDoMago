@@ -172,6 +172,7 @@ export function ChampionshipEventPotDrawPage() {
 					event.attendance.length,
 				),
 				activePlayers,
+				attendanceGoalkeeperIds(event.attendance),
 			),
 		);
 	}, [activePlayers, event]);
@@ -182,10 +183,9 @@ export function ChampionshipEventPotDrawPage() {
 
 		const present = new Set(event.attendance.map((row) => row.player_id));
 		const volunteerSet = new Set(
-			keepGoalkeepersPresent(
-				attendanceGoalkeeperIds(event.attendance),
-				[...present],
-			),
+			keepGoalkeepersPresent(attendanceGoalkeeperIds(event.attendance), [
+				...present,
+			]),
 		);
 		const drawPlayers = activePlayers.flatMap((player) => {
 			if (!present.has(player.id)) {
@@ -204,6 +204,7 @@ export function ChampionshipEventPotDrawPage() {
 			eventPotDrawShareCards(
 				eventPotDrawPots(drawPlayers, event.players_per_team, () => 0),
 				activePlayers,
+				[...volunteerSet],
 			),
 		);
 	}, [activePlayers, event]);
@@ -486,10 +487,7 @@ export function ChampionshipEventPotDrawPage() {
 				return [
 					{
 						id: player.id,
-						rating: eventDrawInputRating(
-							player,
-							volunteerSet.has(player.id),
-						),
+						rating: eventDrawInputRating(player, volunteerSet.has(player.id)),
 					},
 				];
 			});
@@ -522,6 +520,7 @@ export function ChampionshipEventPotDrawPage() {
 				eventTeamsShareCards(
 					builderTeamsFromPotDrafts(drafts, event.players_per_team),
 					activePlayers,
+					volunteerIds,
 				),
 			);
 			const drawnPots = eventDrawRevealCards(
@@ -532,11 +531,15 @@ export function ChampionshipEventPotDrawPage() {
 						mulberry32(seed),
 					),
 					activePlayers,
+					volunteerIds,
 				),
 			);
 			beginCeremony(drawnCards, drawnPots);
 			const drawnCeiling = championshipRatingCeiling(
-				activePlayers.map((player) => player.rating),
+				activePlayers.flatMap((player) => [
+					player.rating,
+					player.goalkeeper_rating,
+				]),
 			);
 			const drawnWhen = formatEventStartsAt(event.starts_at);
 
@@ -620,7 +623,10 @@ export function ChampionshipEventPotDrawPage() {
 
 	const when = formatEventStartsAt(event.starts_at);
 	const ceiling = championshipRatingCeiling(
-		activePlayers.map((player) => player.rating),
+		activePlayers.flatMap((player) => [
+			player.rating,
+			player.goalkeeper_rating,
+		]),
 	);
 	const championshipName = championship.name;
 	const startsAt = event.starts_at;

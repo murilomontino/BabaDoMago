@@ -12,13 +12,13 @@ import {
 	canSetEventMvp,
 	canSetRoles,
 	canTransferOwnership,
-	canVoteEventPlayers,
 	canUnlinkPlayer,
 	canUpdateEventConfig,
 	canUpdateNickname,
 	canUpdateRating,
 	canUpdateVisibility,
 	canViewManagement,
+	canVoteEventPlayers,
 	resolveChampionshipRole,
 } from "./championship-role.ts";
 

@@ -8,6 +8,7 @@ import {
 	FORM_HEATMAP_SHARE_LABEL,
 	formHeatmapShareBarWidth,
 	formHeatmapShareCard,
+	formHeatmapShareCellColor,
 	formHeatmapShareColumnWidth,
 	formHeatmapShareContext,
 	formHeatmapShareDrawsCell,
@@ -104,6 +105,10 @@ check(
 );
 check(formHeatmapShareDrawsCell(FORM_HEATMAP_CELL.up), "draws up");
 check(!formHeatmapShareDrawsCell(FORM_HEATMAP_CELL.absent), "skips absent");
+check(
+	formHeatmapShareCellColor(FORM_HEATMAP_CELL.deadZone) === "#fcd34d",
+	"share cell uses tone",
+);
 check(formHeatmapShareBarWidth(120) >= 48, "bar width");
 check(
 	formHeatmapShareContext(["Últimas 5", "Mensalistas"]) ===
@@ -125,7 +130,10 @@ check(
 	formHeatmapShareColumnWidth(5) >= FORM_HEATMAP_SHARE.columnMinWidth,
 	"col width",
 );
-check(formHeatmapShareImageHeight(1) > FORM_HEATMAP_SHARE.headerHeight, "height");
+check(
+	formHeatmapShareImageHeight(1) > FORM_HEATMAP_SHARE.headerHeight,
+	"height",
+);
 check(formHeatmapShareImageWidth(5) >= FORM_HEATMAP_SHARE.width, "width");
 check(FORM_HEATMAP_SHARE_LABEL.share === "Compartilhar", "share label");
 

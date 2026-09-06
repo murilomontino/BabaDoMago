@@ -6,6 +6,7 @@ import {
 import {
 	EVENT_TEAM_AVERAGE_LABEL,
 	EVENT_TEAM_POSITION_LABEL,
+	EVENT_TEAM_SUM_LABEL,
 	eventTeamSlotPosition,
 } from "@/const/championship-event";
 import { SKELETON_TEAM_SLOTS } from "@/const/skeleton";
@@ -29,6 +30,9 @@ export function TeamCardSkeleton() {
 				})}
 			</ul>
 			<p className="mt-2 text-right text-xs text-fg-muted">
+				{EVENT_TEAM_SUM_LABEL}{" "}
+				<Skeleton className="inline-block h-3 w-8 align-middle" />
+				{" · "}
 				{EVENT_TEAM_AVERAGE_LABEL}{" "}
 				<Skeleton className="inline-block h-3 w-8 align-middle" />
 			</p>

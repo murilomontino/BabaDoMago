@@ -21,6 +21,7 @@ import {
 import {
 	EVENT_ACTION,
 	EVENT_TEAM_POSITION_LABEL,
+	eventTeamHighestSumFlags,
 	eventTeamPlayerPosition,
 	formatEventStartsAt,
 } from "@/const/championship-event";
@@ -132,6 +133,15 @@ export function EventDrawReveal({
 		visibleCount,
 		eventDrawRevealItemCount(cards),
 	);
+	const highestSumFlags = eventTeamHighestSumFlags(
+		cards.map((card) => card.players.map((player) => player.rating)),
+	);
+	const highestSumByKey = new Map(
+		cards.map((card, index) => [
+			eventDrawRevealCardKey(card),
+			highestSumFlags[index] === true,
+		]),
+	);
 
 	return (
 		<div className="mx-auto flex min-h-0 w-full flex-1 flex-col gap-3 overflow-hidden sm:gap-4">
@@ -198,7 +208,11 @@ export function EventDrawReveal({
 													)}
 													<EventTeamPlayerRow
 														player={player}
+														rating={sharePlayer.rating}
 														ceiling={ceiling}
+														isGoalkeeperVolunteer={
+															sharePlayer.isGoalkeeperRating
+														}
 														starClassName={PLAYER_STAR_CLASS.compact}
 													/>
 												</motion.li>
@@ -206,7 +220,12 @@ export function EventDrawReveal({
 										})}
 									</AnimatePresence>
 								</ul>
-								<EventTeamRatingAverage ratings={ratings} />
+								<EventTeamRatingAverage
+									ratings={ratings}
+									isHighestSum={
+										highestSumByKey.get(eventDrawRevealCardKey(card)) === true
+									}
+								/>
 							</motion.li>
 						);
 					})}

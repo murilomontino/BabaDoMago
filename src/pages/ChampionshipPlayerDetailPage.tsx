@@ -7,12 +7,15 @@ import { ChampionshipPlayerDetail } from "@/components/championship-player-detai
 import { DataTableSkeleton } from "@/components/molecules/data-table-skeleton";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
+import { playerFirstGoalOutcome } from "@/const/championship-goal-timeline";
 import {
 	CHAMPIONSHIP_ROLE,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
 import { playerGoalkeeperStats } from "@/const/goalkeeper-stats";
+import { playerHeadToHead } from "@/const/player-head-to-head";
 import { playerVisibleName } from "@/const/player-name";
+import { playerPlusMinus } from "@/const/player-plus-minus";
 import {
 	PLAYER_PROFILE_HISTORY_ABBR,
 	PLAYER_PROFILE_HISTORY_COLUMNS,
@@ -23,7 +26,11 @@ import {
 	ratingsForProfileCeiling,
 } from "@/const/player-profile";
 import { PLAYER_PROFILE_SHARE_LABEL } from "@/const/player-profile-share";
-import { championshipRatingCeiling, PLAYER_STARS } from "@/const/player-rating";
+import {
+	championshipRatingCeiling,
+	PLAYER_RATING,
+	PLAYER_STARS,
+} from "@/const/player-rating";
 import {
 	playerSynergyPartners,
 	SYNERGY_LABEL,
@@ -81,10 +88,43 @@ export function ChampionshipPlayerDetailPage() {
 			),
 		[eventsQuery.data, championshipQuery.data?.players, playerId],
 	);
+	const headToHead = useMemo(
+		() =>
+			playerHeadToHead(
+				eventsQuery.data ?? [],
+				championshipQuery.data?.players ?? [],
+				playerId,
+			),
+		[eventsQuery.data, championshipQuery.data?.players, playerId],
+	);
+	const plusMinus = useMemo(
+		() =>
+			playerPlusMinus(
+				eventsQuery.data ?? [],
+				championshipQuery.data?.players ?? [],
+				playerId,
+			),
+		[eventsQuery.data, championshipQuery.data?.players, playerId],
+	);
+	const firstGoalOutcome = useMemo(
+		() => playerFirstGoalOutcome(eventsQuery.data ?? [], playerId),
+		[eventsQuery.data, playerId],
+	);
 	const goalkeeper = useMemo(
 		() => playerGoalkeeperStats(eventsQuery.data ?? [], playerId),
 		[eventsQuery.data, playerId],
 	);
+	const isOwnerViewer = actorRole === CHAMPIONSHIP_ROLE.owner;
+	const hiddenNotes = useMemo(() => {
+		if (!isOwnerViewer || !player) {
+			return { line: undefined, goalkeeper: undefined };
+		}
+
+		return {
+			line: player.hidden_strength ?? PLAYER_RATING.default,
+			goalkeeper: player.hidden_goalkeeper_strength ?? PLAYER_RATING.default,
+		};
+	}, [isOwnerViewer, player]);
 	const ceiling = championshipRatingCeiling(
 		ratingsForProfileCeiling(championship?.players ?? [], playerId),
 	);
@@ -146,7 +186,7 @@ export function ChampionshipPlayerDetailPage() {
 				createdBy={championship.created_by}
 				championshipName={championship.name}
 				ceiling={ceiling}
-				isOwnerViewer={actorRole === CHAMPIONSHIP_ROLE.owner}
+				isOwnerViewer={isOwnerViewer}
 				career={toRosterRow(player)}
 				history={history}
 				historyPending={eventsQuery.isPending}
@@ -155,7 +195,12 @@ export function ChampionshipPlayerDetailPage() {
 					PLAYER_PROFILE_LABEL.eventsError,
 				)}
 				partners={partners}
+				headToHead={headToHead}
+				plusMinus={plusMinus}
+				firstGoalOutcome={firstGoalOutcome}
 				goalkeeper={goalkeeper}
+				hiddenLine={hiddenNotes.line}
+				hiddenGoalkeeper={hiddenNotes.goalkeeper}
 				onOpenEvent={(eventId) => {
 					void navigate({
 						to: ROUTES.championshipEvent,

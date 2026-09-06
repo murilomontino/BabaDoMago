@@ -1,3 +1,5 @@
+import type { ChampionshipPlayer } from "../types/championship.ts";
+import type { ChampionshipEvent } from "../types/championship-event.ts";
 import {
 	championshipRatingInflation,
 	championshipRatingInflationChart,
@@ -14,8 +16,6 @@ import {
 	ratingInflationShareText,
 	ratingInflationShareYDomain,
 } from "./rating-inflation-share.ts";
-import type { ChampionshipPlayer } from "../types/championship.ts";
-import type { ChampionshipEvent } from "../types/championship-event.ts";
 
 function check(condition: boolean, message: string) {
 	if (!condition) {
@@ -103,13 +103,9 @@ const events = [
 ];
 const summary = championshipRatingInflation(players, events);
 const chart = championshipRatingInflationChart(summary);
-const card = ratingInflationShareCard(
-	summary,
-	"Baba do Mago",
-	"Mensalistas",
-);
+const card = ratingInflationShareCard(summary, "Baba do Mago", "Mensalistas");
 
-check(card.points.length === 2, "two share points");
+check(card.points.length === 3, "entry plus two share points");
 check(card.title === RATING_INFLATION_SHARE.title, "title");
 check(card.points[0]?.averageLabel.length > 0, "average label");
 check(
@@ -122,7 +118,10 @@ check(
 		"Todas as rodadas · Mensalistas",
 	"context",
 );
-check(ratingInflationShareText(card).includes("Inflação da nota"), "share text");
+check(
+	ratingInflationShareText(card).includes("Inflação da nota"),
+	"share text",
+);
 check(
 	ratingInflationShareFileName({
 		championshipName: "Baba do Mago",
@@ -130,7 +129,10 @@ check(
 	}).endsWith(".png"),
 	"png",
 );
-check(ratingInflationShareImageHeight() > RATING_INFLATION_SHARE.chartHeight, "height");
+check(
+	ratingInflationShareImageHeight() > RATING_INFLATION_SHARE.chartHeight,
+	"height",
+);
 check(ratingInflationShareYDomain(card.points).max >= 6, "y domain");
 check(chart.length === card.points.length, "chart sync");
 check(RATING_INFLATION_SHARE_LABEL.share === "Compartilhar", "share label");

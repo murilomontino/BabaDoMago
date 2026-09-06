@@ -1,3 +1,4 @@
+import { eventTeamHighestSumFlags } from "@/const/championship-event";
 import { formatEventRating } from "@/const/event-rating-adjustment";
 import {
 	eventTeamColorFg,
@@ -138,6 +139,7 @@ function drawStars(
 	y: number,
 	rating: number,
 	ceiling: number,
+	fillColor: string = EVENT_TEAM_SHARE_COLOR.starFill,
 ) {
 	const size = EVENT_TEAM_SHARE.star;
 	const fill = ratingToStarFill(rating, ceiling);
@@ -165,7 +167,7 @@ function drawStars(
 		size,
 	);
 	context.clip();
-	paint(EVENT_TEAM_SHARE_COLOR.starFill);
+	paint(fillColor);
 	context.restore();
 }
 
@@ -245,6 +247,9 @@ function drawPlayerRow(
 		midY - EVENT_TEAM_SHARE.star / 2,
 		player.rating,
 		ceiling,
+		player.isGoalkeeperRating
+			? EVENT_TEAM_SHARE_COLOR.starFillGoalkeeper
+			: EVENT_TEAM_SHARE_COLOR.starFill,
 	);
 
 	context.fillStyle = EVENT_TEAM_SHARE_COLOR.fg;
@@ -271,9 +276,11 @@ function drawCardAverage(
 	height: number,
 	card: EventTeamShareCard,
 	color: string,
+	isHighestSum: boolean,
 ) {
 	const label = eventTeamShareAverageLabel(
 		card.players.map((player) => player.rating),
+		isHighestSum,
 	);
 	if (!label) {
 		return;
@@ -304,6 +311,7 @@ function drawCard(
 	card: EventTeamShareCard,
 	ceiling: number,
 	avatars: ReadonlyMap<string, HTMLImageElement>,
+	isHighestSum: boolean,
 ) {
 	const background = shareCardBackground(card.color);
 	const titleColor = shareCardTitleColor(card.color, background);
@@ -355,7 +363,7 @@ function drawCard(
 		);
 	}
 
-	drawCardAverage(context, x, y, width, height, card, titleColor);
+	drawCardAverage(context, x, y, width, height, card, titleColor, isHighestSum);
 }
 
 async function renderEventTeamsPng(
@@ -379,6 +387,9 @@ async function renderEventTeamsPng(
 	context.fillStyle = EVENT_TEAM_SHARE_COLOR.field;
 	context.fillRect(0, 0, width, height);
 
+	const highestFlags = eventTeamHighestSumFlags(
+		cards.map((card) => card.players.map((player) => player.rating)),
+	);
 	const { columns, padding, gap } = EVENT_TEAM_SHARE;
 	const rowCount = Math.ceil(cards.length / columns);
 	let top = padding;
@@ -398,6 +409,7 @@ async function renderEventTeamsPng(
 				card,
 				ceiling,
 				avatars,
+				highestFlags[start + column] === true,
 			);
 		}
 		top += rowHeight + gap;

@@ -5,8 +5,8 @@ import type {
 	ChampionshipEventTeam,
 } from "../types/championship-event.ts";
 import {
-	eventMatchPlayerStats,
 	type EventMatchPlayerStatRow,
+	eventMatchPlayerStats,
 } from "./event-match-player-stats.ts";
 
 function checkEq<T>(actual: T, expected: T, message: string) {

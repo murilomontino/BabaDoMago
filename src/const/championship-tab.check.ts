@@ -30,6 +30,11 @@ check(
 	"monthly without permission falls back to roster",
 );
 check(
+	visibleChampionshipTab(CHAMPIONSHIP_TAB.projections, false) ===
+		CHAMPIONSHIP_TAB.roster,
+	"projections without permission falls back to roster",
+);
+check(
 	visibleChampionshipTab(CHAMPIONSHIP_TAB.events, false) ===
 		CHAMPIONSHIP_TAB.events,
 	"other tabs stay",
@@ -74,8 +79,14 @@ check(
 	"more without management stays at four",
 );
 check(
-	championshipMoreTabs(true).length === 6,
-	"more with permission has monthly and management",
+	championshipMoreTabs(true).length === 7,
+	"more with permission has projections monthly and management",
+);
+check(
+	championshipMoreTabs(true).some(
+		(item) => item.id === CHAMPIONSHIP_TAB.projections,
+	),
+	"more with permission includes projections",
 );
 check(
 	championshipMoreTabs(true).some(
@@ -128,6 +139,16 @@ check(
 );
 check(CHAMPIONSHIP_TAB.monthly === "monthly", "monthly tab id");
 check(CHAMPIONSHIP_TAB_LABEL.monthly === "Mensalistas", "monthly label");
+check(CHAMPIONSHIP_TAB.projections === "projections", "projections tab id");
+check(CHAMPIONSHIP_TAB_LABEL.projections === "Projeções", "projections label");
+check(
+	isChampionshipMoreTab(CHAMPIONSHIP_TAB.projections, true),
+	"projections with permission is more",
+);
+check(
+	!isChampionshipMoreTab(CHAMPIONSHIP_TAB.projections, false),
+	"projections without permission is not more",
+);
 
 const bar = championshipTabBarItems();
 check(bar.length === 3, "tab bar has primary plus more");

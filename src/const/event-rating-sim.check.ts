@@ -77,10 +77,7 @@ function player(id: number, name: string, rating: number): ChampionshipPlayer {
 	};
 }
 
-function team(
-	id: number,
-	playerIds: number[],
-): ChampionshipEventTeam {
+function team(id: number, playerIds: number[]): ChampionshipEventTeam {
 	return {
 		id,
 		event_id: 1,
@@ -215,8 +212,7 @@ const mvpRows = eventRatingSimRows({
 });
 checkEq(mvpRows.find((row) => row.playerId === 1)?.isMvp, true, "mvp flag");
 checkEq(
-	(mvpRows.find((row) => row.playerId === 1)?.to ?? 0) >
-		(ana?.to ?? 0),
+	(mvpRows.find((row) => row.playerId === 1)?.to ?? 0) > (ana?.to ?? 0),
 	true,
 	"mvp raises to",
 );
@@ -230,7 +226,11 @@ const evolvedRows = eventRatingSimRows({
 	skipGuestGoalkeeperMatches: true,
 	mvpPlayerIds: [],
 });
-checkEq(evolvedRows.find((row) => row.playerId === 1)?.from, 4, "sim usa presenca");
+checkEq(
+	evolvedRows.find((row) => row.playerId === 1)?.from,
+	4,
+	"sim usa presenca",
+);
 checkEq(
 	evolvedRows.find((row) => row.playerId === 1)?.to,
 	ana?.to,

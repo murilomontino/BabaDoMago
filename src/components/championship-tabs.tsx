@@ -65,9 +65,11 @@ export function ChampionshipTabs({
 	const isDesktop = useMediaQuery(CHAMPIONSHIP_TABS_DESKTOP_MEDIA);
 	const [isMoreOpen, setIsMoreOpen] = useState(false);
 	const tabListRef = useRef<HTMLDivElement>(null);
+	const edgeRef = useRef<HTMLDivElement>(null);
 	const moreActive = isChampionshipMoreTab(value, includeManagement);
 	const moreItems = championshipMoreTabs(includeManagement);
 	const allItems = championshipTabs(includeManagement);
+	const swipeOpenEnabled = !isDesktop && !isMoreOpen;
 
 	useEffect(() => {
 		if (!isDesktop) {
@@ -84,7 +86,17 @@ export function ChampionshipTabs({
 				setIsMoreOpen(true);
 			},
 		},
-		!isDesktop && !isMoreOpen,
+		swipeOpenEnabled,
+	);
+
+	useHammerVerticalSwipe(
+		edgeRef,
+		{
+			onSwipeUp: () => {
+				setIsMoreOpen(true);
+			},
+		},
+		swipeOpenEnabled,
 	);
 
 	if (isDesktop) {
@@ -113,7 +125,7 @@ export function ChampionshipTabs({
 			<div
 				ref={tabListRef}
 				role="tablist"
-				className="flex touch-pan-y gap-1 overflow-x-auto border-b border-line"
+				className="flex select-none gap-1 overflow-x-auto border-b border-line touch-manipulation [-webkit-tap-highlight-color:transparent]"
 			>
 				{CHAMPIONSHIP_PRIMARY_TABS.map((item) => {
 					const isActive = item.id === value;
@@ -145,6 +157,13 @@ export function ChampionshipTabs({
 					{CHAMPIONSHIP_TAB_LABEL.more}
 				</button>
 			</div>
+			{swipeOpenEnabled && (
+				<div
+					ref={edgeRef}
+					className="fixed inset-x-0 bottom-0 z-40 h-8 touch-manipulation"
+					aria-hidden
+				/>
+			)}
 			<AppDrawer open={isMoreOpen} onClose={handleMoreClose}>
 				<div className={DRAWER_CLASS}>
 					<div

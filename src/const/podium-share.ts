@@ -46,8 +46,10 @@ export const PODIUM_SHARE_LABEL = {
 	shareOne: "Compartilhar",
 	shareAll: "Compartilhar tudo",
 	shareAllSeparate: "Compartilhar tudo separado",
+	shareCsv: "Exportar CSV",
 	sharing: "Gerando imagem...",
 	sharingMany: "Gerando imagens...",
+	sharingCsv: "Gerando CSV...",
 	shareFailed: "Não foi possível compartilhar o pódio",
 } as const;
 
@@ -229,6 +231,22 @@ export function podiumShareText(card: PodiumShareCard): string {
 
 export function podiumShareAllText(cards: readonly PodiumShareCard[]): string {
 	return cards.map(podiumShareText).join("\n\n");
+}
+
+export function podiumShareCsvRows(
+	players: readonly ChampionshipPlayer[],
+	metric: PodiumPlayerMetricId,
+): { headers: string[]; rows: string[][] } {
+	const standings = podiumStandings(players.map(toRosterRow), metric);
+	const headers = ["Posição", "Jogador", podiumMetricLabel(metric)];
+	const rows = standings.flatMap((standing) =>
+		standing.rows.map((row) => [
+			String(standing.place),
+			playerVisibleName(row),
+			formatPodiumMetric(metric, row[metric]),
+		]),
+	);
+	return { headers, rows };
 }
 
 export function podiumShareCaptionText(parts: PodiumShareFileParts): string {

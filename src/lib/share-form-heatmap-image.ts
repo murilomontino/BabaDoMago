@@ -179,7 +179,11 @@ function drawPlayerIdentity(
 		context.fillText(fitText(context, row.name, textWidth), textX, midY - 9);
 		context.fillStyle = FORM_HEATMAP_SHARE_COLOR.fgMuted;
 		context.font = "500 12px system-ui, sans-serif";
-		context.fillText(fitText(context, row.legalName, textWidth), textX, midY + 11);
+		context.fillText(
+			fitText(context, row.legalName, textWidth),
+			textX,
+			midY + 11,
+		);
 		return;
 	}
 
@@ -215,7 +219,10 @@ function drawRow(
 		}
 
 		const cellX =
-			x + playerColumnWidth + index * columnWidth + (columnWidth - barWidth) / 2;
+			x +
+			playerColumnWidth +
+			index * columnWidth +
+			(columnWidth - barWidth) / 2;
 		const cellY = midY - barHeight / 2;
 		context.fillStyle = formHeatmapShareCellColor(kind);
 		context.beginPath();
@@ -224,11 +231,7 @@ function drawRow(
 	}
 }
 
-function drawLegend(
-	context: CanvasRenderingContext2D,
-	x: number,
-	y: number,
-) {
+function drawLegend(context: CanvasRenderingContext2D, x: number, y: number) {
 	const { legendSwatch, legendItemGap } = FORM_HEATMAP_SHARE;
 	let cursorX = x;
 
@@ -268,9 +271,7 @@ function drawLegend(
 	}
 }
 
-async function renderFormHeatmapPng(
-	card: FormHeatmapShareCard,
-): Promise<Blob> {
+async function renderFormHeatmapPng(card: FormHeatmapShareCard): Promise<Blob> {
 	const avatars = await loadAvatarMap(card.rows.map((row) => row.avatarUrl));
 	const columnWidth = formHeatmapShareColumnWidth(card.columns.length);
 	const width = formHeatmapShareImageWidth(card.columns.length);

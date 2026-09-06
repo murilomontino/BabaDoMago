@@ -635,6 +635,10 @@ function overlayAttendanceRow(
 		goalkeeper_rating_delta: 0,
 		vote_rating_delta: 0,
 		goalkeeper_vote_rating_delta: 0,
+		hidden_strength: 0,
+		hidden_strength_delta: 0,
+		hidden_goalkeeper_strength: 0,
+		hidden_goalkeeper_strength_delta: 0,
 		is_mvp: false,
 		mvp_overridden: false,
 	};
