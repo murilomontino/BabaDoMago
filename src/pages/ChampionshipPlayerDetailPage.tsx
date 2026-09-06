@@ -12,10 +12,6 @@ import {
 	resolveChampionshipRole,
 } from "@/const/championship-role";
 import { playerGoalkeeperStats } from "@/const/goalkeeper-stats";
-import {
-	hiddenStrengthChampionshipCeiling,
-	hiddenStrengthDisplayed,
-} from "@/const/hidden-strength";
 import { playerVisibleName } from "@/const/player-name";
 import {
 	PLAYER_PROFILE_HISTORY_ABBR,
@@ -29,6 +25,7 @@ import {
 import { PLAYER_PROFILE_SHARE_LABEL } from "@/const/player-profile-share";
 import {
 	championshipRatingCeiling,
+	PLAYER_RATING,
 	PLAYER_STARS,
 } from "@/const/player-rating";
 import {
@@ -98,22 +95,11 @@ export function ChampionshipPlayerDetailPage() {
 			return { line: undefined, goalkeeper: undefined };
 		}
 
-		const ceiling = hiddenStrengthChampionshipCeiling(
-			championship?.players ?? [],
-		);
 		return {
-			line: hiddenStrengthDisplayed(
-				player.hidden_strength,
-				player.rating,
-				ceiling,
-			),
-			goalkeeper: hiddenStrengthDisplayed(
-				player.hidden_goalkeeper_strength,
-				player.goalkeeper_rating,
-				ceiling,
-			),
+			line: player.hidden_strength ?? PLAYER_RATING.default,
+			goalkeeper: player.hidden_goalkeeper_strength ?? PLAYER_RATING.default,
 		};
-	}, [championship?.players, isOwnerViewer, player]);
+	}, [isOwnerViewer, player]);
 	const ceiling = championshipRatingCeiling(
 		ratingsForProfileCeiling(championship?.players ?? [], playerId),
 	);

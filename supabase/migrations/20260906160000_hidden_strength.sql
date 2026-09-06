@@ -1,5 +1,5 @@
--- Nota oculta 1–100: um rescale inicial da nota pública (teto = maior nota
--- do campeonato). Daí em diante só delta por rodada, clamp 1–100.
+-- Nota oculta 1–100: rescale inicial na migração. Sem oculta, encerrar
+-- rescale da pública e depois aplica o delta. Alterar a estrela não mexe.
 
 alter table public.championship_players
 	add column if not exists hidden_strength numeric(4,1) not null default 0,
@@ -89,40 +89,52 @@ as $$
 	end;
 $$;
 
+drop function if exists public.championship_hidden_strength_delta(
+	integer,
+	integer,
+	integer,
+	integer
+);
+
 create or replace function public.championship_hidden_strength_delta(
 	wins integer,
 	draws integer,
 	losses integer,
-	matches integer
+	matches integer,
+	hidden numeric
 )
 returns numeric
 language sql
 immutable
 set search_path = public
 as $$
-	with pts as (
-		select
-			(3 * wins
-				+ draws * case
-					when draws > losses then 1.5
-					else 1
-				end)::numeric as points,
-			(3 * matches)::numeric as max_points
-	),
-	rated as (
-		select
-			case
-				when matches <= 0 then 0::numeric
-				else pts.points / pts.max_points
-			end as rate
-		from pts
-	)
 	select case
-		when matches < 3 then 0
-		when round(rated.rate * 1000) between 495 and 505 then 0
-		else round((rated.rate - 0.5) * 50, 1)
-	end
-	from rated;
+		when hidden = 0 then 0
+		else public.championship_event_rating_delta(
+			wins,
+			draws,
+			losses,
+			matches,
+			hidden,
+			100
+		)
+	end;
+$$;
+
+create or replace function public.championship_hidden_strength_resolve(
+	hidden numeric,
+	public_rating numeric,
+	ceiling numeric
+)
+returns numeric
+language sql
+immutable
+set search_path = public
+as $$
+	select case
+		when hidden <> 0 then hidden
+		else public.championship_hidden_strength_seed(public_rating, ceiling)
+	end;
 $$;
 
 create or replace function public.championship_hidden_strength_apply(
@@ -270,93 +282,107 @@ begin
 				else p.hidden_strength
 			end as player_hidden,
 			case
-				when a.is_goalkeeper then a.goalkeeper_rating
-				else a.rating
-			end as snapshot,
-			public.championship_hidden_strength_delta(
-				a.wins,
-				a.draws,
-				a.losses,
-				a.matches
-			) as new_delta
+				when a.is_goalkeeper then
+					case
+						when a.goalkeeper_rating <> 0 then a.goalkeeper_rating
+						else p.goalkeeper_rating
+					end
+				else
+					case
+						when a.rating <> 0 then a.rating
+						else p.rating
+					end
+			end as public_rating,
+			a.wins,
+			a.draws,
+			a.losses,
+			a.matches
 		from public.championship_event_attendance a
 		join public.championship_players p
 			on p.id = a.player_id
 		where a.event_id = event.id
 	),
-	seeded as (
+	resolved as (
 		select
 			prepared.*,
-			case
-				when prepared.player_hidden <> 0
-					and prepared.attendance_hidden <> 0 then prepared.attendance_hidden
-				when prepared.player_hidden <> 0 then
-					public.championship_hidden_strength_apply(
-						prepared.player_hidden,
-						-prepared.old_delta
-					)
-				when prepared.snapshot = 0 then 0
-				else public.championship_hidden_strength_seed(
-					prepared.snapshot,
-					ceiling
-				)
-			end as before_hidden
+			public.championship_hidden_strength_resolve(
+				case
+					when prepared.attendance_hidden <> 0 then prepared.attendance_hidden
+					else prepared.player_hidden
+				end,
+				prepared.public_rating,
+				ceiling
+			) as before
 		from prepared
+	),
+	deltas as (
+		select
+			resolved.*,
+			public.championship_hidden_strength_delta(
+				resolved.wins,
+				resolved.draws,
+				resolved.losses,
+				resolved.matches,
+				resolved.before
+			) as new_delta
+		from resolved
+	),
+	nexts as (
+		select
+			d.*,
+			case
+				when d.player_hidden = 0 then
+					public.championship_hidden_strength_apply(d.before, d.new_delta)
+				else
+					public.championship_hidden_strength_apply(
+						d.player_hidden,
+						-d.old_delta + d.new_delta
+					)
+			end as player_next
+		from deltas d
 	),
 	updated_line as (
 		update public.championship_players p
-		set hidden_strength = public.championship_hidden_strength_apply(
-			s.before_hidden,
-			s.new_delta
-		)
-		from seeded s
-		where p.id = s.player_id
-			and s.is_goalkeeper = false
-			and s.before_hidden <> 0
-			and (
-				p.hidden_strength is distinct from
-					public.championship_hidden_strength_apply(s.before_hidden, s.new_delta)
-			)
+		set hidden_strength = d.player_next
+		from nexts d
+		where p.id = d.player_id
+			and d.is_goalkeeper = false
+			and p.hidden_strength is distinct from d.player_next
 		returning p.id
 	),
 	updated_gk as (
 		update public.championship_players p
-		set hidden_goalkeeper_strength = public.championship_hidden_strength_apply(
-			s.before_hidden,
-			s.new_delta
-		)
-		from seeded s
-		where p.id = s.player_id
-			and s.is_goalkeeper = true
-			and s.before_hidden <> 0
-			and (
-				p.hidden_goalkeeper_strength is distinct from
-					public.championship_hidden_strength_apply(s.before_hidden, s.new_delta)
-			)
+		set hidden_goalkeeper_strength = d.player_next
+		from nexts d
+		where p.id = d.player_id
+			and d.is_goalkeeper = true
+			and p.hidden_goalkeeper_strength is distinct from d.player_next
 		returning p.id
 	),
 	updated_att_line as (
 		update public.championship_event_attendance a
-		set hidden_strength = s.before_hidden,
-			hidden_strength_delta = s.new_delta
-		from seeded s
-		where a.id = s.attendance_id
-			and s.is_goalkeeper = false
+		set
+			hidden_strength = d.before,
+			hidden_strength_delta = d.new_delta
+		from nexts d
+		where a.id = d.attendance_id
+			and d.is_goalkeeper = false
 			and (
-				a.hidden_strength is distinct from s.before_hidden
-				or a.hidden_strength_delta is distinct from s.new_delta
+				a.hidden_strength is distinct from d.before
+				or a.hidden_strength_delta is distinct from d.new_delta
 			)
 		returning a.id
 	)
 	update public.championship_event_attendance a
-	set hidden_goalkeeper_strength = s.before_hidden,
-		hidden_goalkeeper_strength_delta = s.new_delta
-	from seeded s
-	where a.id = s.attendance_id
-		and s.is_goalkeeper = true
+	set
+		hidden_goalkeeper_strength = d.before,
+		hidden_goalkeeper_strength_delta = d.new_delta
+	from nexts d
+	where a.id = d.attendance_id
+		and d.is_goalkeeper = true
 		and (
-			a.hidden_goalkeeper_strength is distinct from s.before_hidden
-			or a.hidden_goalkeeper_strength_delta is distinct from s.new_delta
+			a.hidden_goalkeeper_strength is distinct from d.before
+			or a.hidden_goalkeeper_strength_delta is distinct from d.new_delta
 		);
 end;
 $$;
@@ -673,7 +699,8 @@ join (
 where a.event_id = e.id;
 
 revoke all on function public.championship_hidden_strength_seed(numeric, numeric) from public;
-revoke all on function public.championship_hidden_strength_delta(integer, integer, integer, integer) from public;
+revoke all on function public.championship_hidden_strength_delta(integer, integer, integer, integer, numeric) from public;
+revoke all on function public.championship_hidden_strength_resolve(numeric, numeric, numeric) from public;
 revoke all on function public.championship_hidden_strength_apply(numeric, numeric) from public;
 revoke all on function public.rebuild_championship_hidden_strength(bigint) from public;
 revoke all on function public.adjust_championship_player_hidden_strength_for_event(bigint) from public;

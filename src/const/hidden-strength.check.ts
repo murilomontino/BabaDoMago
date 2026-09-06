@@ -12,9 +12,11 @@ import {
 	hiddenStrengthCurrent,
 	hiddenStrengthDelta,
 	hiddenStrengthDeltaFromRate,
-	hiddenStrengthDisplayed,
 	hiddenStrengthForPlayer,
+	hiddenStrengthFromStored,
+	hiddenStrengthNext,
 	hiddenStrengthRateInDeadZone,
+	hiddenStrengthResolve,
 	hiddenStrengthSeed,
 	hiddenStrengthWalk,
 } from "./hidden-strength.ts";
@@ -28,8 +30,8 @@ function check(condition: boolean, message: string) {
 
 check(HIDDEN_STRENGTH.min === 1, "min 1");
 check(HIDDEN_STRENGTH.max === 100, "max 100");
-check(HIDDEN_STRENGTH.downThreshold === 0.495, "down 0.495");
-check(HIDDEN_STRENGTH.upThreshold === 0.505, "up 0.505");
+check(HIDDEN_STRENGTH.downThreshold === 0.45, "down 0.45");
+check(HIDDEN_STRENGTH.upThreshold === 0.55, "up 0.55");
 
 check(hiddenStrengthCeiling([8.1, 7.3, 3, 0]) === 8.1, "teto = maior do campeonato");
 check(hiddenStrengthCeiling([0, 0]) === 0, "sem nota teto 0");
@@ -57,22 +59,26 @@ check(hiddenStrengthApply(99.5, 8.3) === 100, "sobe ate 100");
 check(hiddenStrengthApply(1, -8.3) === 1, "piso 1");
 
 check(hiddenStrengthRateInDeadZone(0.5), "50% dead");
-check(hiddenStrengthRateInDeadZone(0.495), "49.5% dead");
-check(hiddenStrengthRateInDeadZone(0.505), "50.5% dead");
-check(!hiddenStrengthRateInDeadZone(0.494), "49.4% live");
-check(!hiddenStrengthRateInDeadZone(0.506), "50.6% live");
-check(!hiddenStrengthRateInDeadZone(0.45), "45% live for hidden");
-check(!hiddenStrengthRateInDeadZone(0.55), "55% live for hidden");
+check(hiddenStrengthRateInDeadZone(0.45), "45% dead");
+check(hiddenStrengthRateInDeadZone(0.55), "55% dead");
+check(!hiddenStrengthRateInDeadZone(0.449), "44.9% live");
+check(!hiddenStrengthRateInDeadZone(0.551), "55.1% live");
 
 check(hiddenStrengthDeltaFromRate(0.5, 3) === 0, "delta 50%");
-check(hiddenStrengthDeltaFromRate(0.495, 6) === 0, "delta 49.5%");
-check(hiddenStrengthDeltaFromRate(0.505, 6) === 0, "delta 50.5%");
-check(hiddenStrengthDeltaFromRate(0.54, 6) === 2, "delta 54% = +2");
-check(hiddenStrengthDeltaFromRate(0.46, 6) === -2, "delta 46% = -2");
-check(hiddenStrengthDeltaFromRate(0.54, 2) === 0, "few matches");
-check(hiddenStrengthDelta(3, 0, 3, 6) === 0, "3W3L = 50%");
-check(hiddenStrengthDelta(4, 0, 2, 6) === 8.3, "4W2L delta");
-check(hiddenStrengthDelta(2, 0, 4, 6) === -8.3, "2W4L delta");
+check(hiddenStrengthDeltaFromRate(0.45, 6) === 0, "delta 45%");
+check(hiddenStrengthDeltaFromRate(0.55, 6) === 0, "delta 55%");
+check(hiddenStrengthDeltaFromRate(0.56, 6) === 3, "delta 56% = +3");
+check(hiddenStrengthDeltaFromRate(0.44, 6) === -3, "delta 44% = -3");
+check(hiddenStrengthDeltaFromRate(0.56, 2) === 0, "few matches");
+check(hiddenStrengthDelta(3, 0, 3, 6, 60) === 0, "3W3L ranked 50%");
+check(hiddenStrengthDelta(4, 0, 2, 6, 60) === 8.3, "4W2L delta");
+check(hiddenStrengthDelta(2, 0, 4, 6, 60) === -8.3, "2W4L delta");
+check(hiddenStrengthDelta(3, 0, 3, 6, 0) === 0, "sem oculta delta 0");
+check(hiddenStrengthResolve(60, 99, 7.3) === 60, "oculta existente ignora publica");
+check(hiddenStrengthResolve(0, 3, 7.3) === 41.1, "sem oculta rescale publica");
+check(hiddenStrengthResolve(0, 0, 7.3) === 0, "sem oculta sem publica");
+check(hiddenStrengthNext(0, 41.1, 0, 8.3) === 49.4, "primeira vez aplica no rescale");
+check(hiddenStrengthNext(60, 41.1, 8.3, 0) === 51.7, "recompute nao perde nota");
 
 check(formatHiddenStrength(0) === "—", "format sentinel");
 check(formatHiddenStrength(42.5) === "42.5", "format value");
@@ -102,6 +108,10 @@ function attendance(
 		goalkeeper_rating_delta: 0,
 		vote_rating_delta: 0,
 		goalkeeper_vote_rating_delta: 0,
+		hidden_strength: 0,
+		hidden_strength_delta: 0,
+		hidden_goalkeeper_strength: 0,
+		hidden_goalkeeper_strength_delta: 0,
 		is_mvp: false,
 		mvp_overridden: false,
 		...partial,
@@ -140,6 +150,7 @@ const roundZero = eventRow({
 			player_id: 1,
 			display_name: "Ana",
 			rating: 5,
+			hidden_strength: 100,
 			wins: 3,
 			losses: 3,
 			matches: 6,
@@ -149,6 +160,7 @@ const roundZero = eventRow({
 			player_id: 2,
 			display_name: "Bruno",
 			rating: 3,
+			hidden_strength: 60,
 			wins: 3,
 			losses: 3,
 			matches: 6,
@@ -223,17 +235,25 @@ const roundZero = eventRow({
 });
 
 const walkZero = hiddenStrengthWalk([roundZero]);
-check(walkZero.hiddenBeforeEvent.get(1)?.get(1) === 100, "ana seed 5/5 = 100");
-check(walkZero.hiddenBeforeEvent.get(1)?.get(2) === 60, "bruno seed 3/5 = 60");
+check(walkZero.hiddenBeforeEvent.get(1)?.get(1) === 100, "ana stored 100");
+check(walkZero.hiddenBeforeEvent.get(1)?.get(2) === 60, "bruno stored 60");
 check(walkZero.hiddenBeforeEvent.get(1)?.get(3) === 0, "caio sentinel before");
 check(hiddenStrengthForPlayer(walkZero, 1) === 100, "ana after 50% stays");
 check(hiddenStrengthForPlayer(walkZero, 2) === 60, "bruno after 50% stays");
-check(hiddenStrengthForPlayer(walkZero, 3) === 0, "caio still sentinel");
+check(hiddenStrengthForPlayer(walkZero, 3) === 0, "caio sem publica fica 0");
+check(hiddenStrengthFromStored(80, 41.1) === 80, "stored ignora publica");
 check(
-	hiddenStrengthDisplayed(0, 3, 7.3) === 41.1,
-	"fallback usa nota atual / teto",
+	hiddenStrengthWalk([
+		{
+			...roundZero,
+			attendance: roundZero.attendance.map((row) => ({
+				...row,
+				rating: 99,
+			})),
+		},
+	]).hiddenBeforeEvent.get(1)?.get(1) === 100,
+	"nota publica nao altera oculta",
 );
-check(hiddenStrengthDisplayed(80, 3, 7.3) === 80, "stored vence fallback");
 
 const balanceZero = eventTeamHiddenBalance(
 	roundZero,
@@ -274,6 +294,7 @@ const roundTwo = eventRow({
 			player_id: 3,
 			display_name: "Caio",
 			rating: 4,
+			hidden_strength: hiddenStrengthSeed(4, 9),
 			wins: 3,
 			losses: 3,
 			matches: 6,
@@ -284,6 +305,7 @@ const roundTwo = eventRow({
 			player_id: 4,
 			display_name: "Duda",
 			rating: 9,
+			hidden_strength: 100,
 			wins: 3,
 			losses: 3,
 			matches: 6,
@@ -303,7 +325,7 @@ check(
 );
 check(
 	walk.hiddenBeforeEvent.get(2)?.get(3) === hiddenStrengthSeed(4, 9),
-	"caio seeds on first official with that event ceiling",
+	"caio before round 2 = rescale da publica",
 );
 check(walk.hiddenBeforeEvent.get(2)?.get(4) === 100, "duda 9/9 = 100");
 check(
@@ -320,5 +342,44 @@ const summary = championshipTeamHiddenBalance([roundZero], walkZero);
 check(summary.events === 1, "one ended balance");
 check(summary.favoriteWon === 1, "favorite win count");
 check(HIDDEN_STRENGTH_TRACK.line === "line", "line track id");
+
+const roundRescale = eventRow({
+	id: 10,
+	starts_at: "2026-08-15T22:00:00.000Z",
+	ended_at: "2026-08-15T23:00:00.000Z",
+	attendance: [
+		attendance({
+			id: 50,
+			event_id: 10,
+			player_id: 50,
+			display_name: "Diego",
+			rating: 3,
+			wins: 4,
+			losses: 2,
+			matches: 6,
+		}),
+		attendance({
+			id: 51,
+			event_id: 10,
+			player_id: 51,
+			display_name: "Hugo",
+			rating: 7.3,
+			hidden_strength: 100,
+			wins: 3,
+			losses: 3,
+			matches: 6,
+		}),
+	],
+});
+const walkRescale = hiddenStrengthWalk([roundRescale]);
+check(
+	walkRescale.hiddenBeforeEvent.get(10)?.get(50) === 41.1,
+	"diego rescale 3/7.3",
+);
+check(
+	Math.abs(hiddenStrengthForPlayer(walkRescale, 50) - 49.4) < 0.001,
+	"diego 41.1 + 8.3",
+);
+check(walkRescale.hiddenBeforeEvent.get(10)?.get(51) === 100, "hugo stored 100");
 
 console.log("hidden-strength ok");

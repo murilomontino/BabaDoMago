@@ -7,7 +7,7 @@ import { endedChampionshipHistoryEvents } from "./championship-rating-history.ts
 import {
 	EVENT_RATING_ADJUSTMENT,
 	eventActivePlayerRating,
-	eventRatingRate,
+	eventRatingDelta,
 } from "./event-rating-adjustment.ts";
 import { eventTeamName } from "./event-team-color.ts";
 import { averageOrZero, maxOrZero, PLAYER_RATING } from "./player-rating.ts";
@@ -21,10 +21,10 @@ export const HIDDEN_STRENGTH = {
 	min: 1,
 	max: 100,
 	midpoint: 50,
-	downThreshold: 0.495,
-	upThreshold: 0.505,
-	expectedRate: 0.5,
-	scaleDivisor: 2,
+	downThreshold: EVENT_RATING_ADJUSTMENT.downThreshold,
+	upThreshold: EVENT_RATING_ADJUSTMENT.upThreshold,
+	expectedRate: EVENT_RATING_ADJUSTMENT.expectedRate,
+	scaleDivisor: EVENT_RATING_ADJUSTMENT.scaleDivisor,
 	rateMillis: 1000,
 } as const;
 
@@ -34,7 +34,7 @@ export const HIDDEN_STRENGTH_LABEL = {
 	predicted: "Nota oculta prevista",
 	favorite: "Favorito oculto",
 	spread: "Diferença oculta",
-	hint: "Nota oculta: rescale inicial, depois delta por rodada. Teto 100.",
+	hint: "Sem oculta, rescale da pública. Depois delta ao encerrar. Teto 100.",
 } as const;
 
 export const HIDDEN_STRENGTH_TRACK = {
@@ -147,9 +147,53 @@ export function hiddenStrengthDelta(
 	draws: number,
 	losses: number,
 	matches: number,
+	hidden: number,
 ): number {
-	const rate = eventRatingRate(wins, draws, losses, matches);
-	return hiddenStrengthDeltaFromRate(rate, matches);
+	if (hidden === PLAYER_RATING.default) {
+		return PLAYER_RATING.default;
+	}
+
+	return eventRatingDelta(
+		wins,
+		draws,
+		losses,
+		matches,
+		hidden,
+		HIDDEN_STRENGTH.max,
+	);
+}
+
+export function hiddenStrengthKnown(hidden: number, stored: number): number {
+	if (hidden !== PLAYER_RATING.default) {
+		return hidden;
+	}
+
+	return stored;
+}
+
+export function hiddenStrengthResolve(
+	hidden: number,
+	publicRating: number,
+	ceiling: number,
+): number {
+	if (hidden !== PLAYER_RATING.default) {
+		return hidden;
+	}
+
+	return hiddenStrengthSeed(publicRating, ceiling);
+}
+
+export function hiddenStrengthNext(
+	playerHidden: number,
+	before: number,
+	oldDelta: number,
+	newDelta: number,
+): number {
+	if (playerHidden === PLAYER_RATING.default) {
+		return hiddenStrengthApply(before, newDelta);
+	}
+
+	return hiddenStrengthApply(playerHidden, -oldDelta + newDelta);
 }
 
 export function hiddenStrengthApply(hidden: number, delta: number): number {
@@ -209,7 +253,25 @@ export function hiddenStrengthSeed(
 	return clampHidden((attendanceSnapshot / ceiling) * HIDDEN_STRENGTH.max);
 }
 
-function trackSnapshot(
+function trackHiddenSnapshot(
+	isGoalkeeper: boolean,
+	hiddenStrength: number | undefined,
+	hiddenGoalkeeperStrength: number | undefined,
+): number {
+	if (isGoalkeeper) {
+		return hiddenGoalkeeperStrength ?? PLAYER_RATING.default;
+	}
+
+	return hiddenStrength ?? PLAYER_RATING.default;
+}
+
+function eventPublicCeiling(event: ChampionshipEvent): number {
+	return hiddenStrengthCeiling(
+		event.attendance.flatMap((row) => [row.rating, row.goalkeeper_rating]),
+	);
+}
+
+function attendancePublicSnapshot(
 	isGoalkeeper: boolean,
 	rating: number,
 	goalkeeperRating: number,
@@ -223,15 +285,6 @@ function trackKey(isGoalkeeper: boolean): HiddenStrengthTrack {
 	}
 
 	return HIDDEN_STRENGTH_TRACK.line;
-}
-
-function eventHiddenCeiling(event: ChampionshipEvent): number {
-	return hiddenStrengthCeiling(
-		event.attendance.flatMap((row) => [
-			row.rating,
-			row.goalkeeper_rating,
-		]),
-	);
 }
 
 function emptyCurrent(): HiddenStrengthCurrent {
@@ -293,32 +346,32 @@ export function hiddenStrengthWalk(
 
 	for (const event of ended) {
 		const before = new Map<number, number>();
-		const ceiling = eventHiddenCeiling(event);
+		const ceiling = eventPublicCeiling(event);
 
 		for (const row of event.attendance) {
 			const track = trackKey(row.is_goalkeeper);
-			const snapshot = trackSnapshot(
+			const storedHidden = trackHiddenSnapshot(
 				row.is_goalkeeper,
-				row.rating,
-				row.goalkeeper_rating,
+				row.hidden_strength,
+				row.hidden_goalkeeper_strength,
 			);
 			const current = ensurePlayer(state, row.player_id);
 			const existing = readTrack(current, track);
+			const resolved = hiddenStrengthResolve(
+				hiddenStrengthKnown(existing, storedHidden),
+				attendancePublicSnapshot(
+					row.is_goalkeeper,
+					row.rating,
+					row.goalkeeper_rating,
+				),
+				ceiling,
+			);
 
-			if (
-				existing === PLAYER_RATING.default &&
-				snapshot !== PLAYER_RATING.default
-			) {
-				state.set(
-					row.player_id,
-					writeTrack(current, track, hiddenStrengthSeed(snapshot, ceiling)),
-				);
+			if (resolved !== existing) {
+				state.set(row.player_id, writeTrack(current, track, resolved));
 			}
 
-			before.set(
-				row.player_id,
-				readTrack(ensurePlayer(state, row.player_id), track),
-			);
+			before.set(row.player_id, resolved);
 		}
 
 		hiddenBeforeEvent.set(event.id, before);
@@ -327,10 +380,6 @@ export function hiddenStrengthWalk(
 			const track = trackKey(row.is_goalkeeper);
 			const current = ensurePlayer(state, row.player_id);
 			const hidden = readTrack(current, track);
-			if (hidden === PLAYER_RATING.default) {
-				continue;
-			}
-
 			state.set(
 				row.player_id,
 				writeTrack(
@@ -343,6 +392,7 @@ export function hiddenStrengthWalk(
 							row.draws,
 							row.losses,
 							row.matches,
+							hidden,
 						),
 					),
 				),
@@ -384,17 +434,6 @@ export function hiddenStrengthFromStored(
 	}
 
 	return walkValue;
-}
-
-export function hiddenStrengthDisplayed(
-	stored: number | undefined,
-	publicRating: number,
-	ceiling: number,
-): number {
-	return hiddenStrengthFromStored(
-		stored,
-		hiddenStrengthSeed(publicRating, ceiling),
-	);
 }
 
 function teamWinCount(winnerTeamId: number | null, teamId: number): number {

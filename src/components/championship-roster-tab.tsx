@@ -4,11 +4,8 @@ import { Button } from "@/components/button";
 import { ChampionshipRoster } from "@/components/championship-roster";
 import { SectionCard } from "@/components/section-card";
 import type { AssignableChampionshipRole } from "@/const/championship-role";
-import {
-	hiddenStrengthChampionshipCeiling,
-	hiddenStrengthDisplayed,
-	type HiddenStrengthCurrent,
-} from "@/const/hidden-strength";
+import type { HiddenStrengthCurrent } from "@/const/hidden-strength";
+import { PLAYER_RATING } from "@/const/player-rating";
 import { filterPlayersBySearch } from "@/const/player-search";
 import {
 	ROSTER_SHARE_LABEL,
@@ -119,21 +116,13 @@ export function ChampionshipRosterTab({
 			return undefined;
 		}
 
-		const ceiling = hiddenStrengthChampionshipCeiling(players);
 		const merged = new Map(
 			players.map((player) => [
 				player.id,
 				{
-					line: hiddenStrengthDisplayed(
-						player.hidden_strength,
-						player.rating,
-						ceiling,
-					),
-					goalkeeper: hiddenStrengthDisplayed(
-						player.hidden_goalkeeper_strength,
-						player.goalkeeper_rating,
-						ceiling,
-					),
+					line: player.hidden_strength ?? PLAYER_RATING.default,
+					goalkeeper:
+						player.hidden_goalkeeper_strength ?? PLAYER_RATING.default,
 				} satisfies HiddenStrengthCurrent,
 			]),
 		);
