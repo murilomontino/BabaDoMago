@@ -40,6 +40,8 @@ export const CHAMPIONSHIP_METRIC_HISTORY_TITLE = {
 	[ROSTER_COLUMN.assists]: "Evolução das assistências",
 	[ROSTER_COLUMN.assisted_goals]: "Evolução dos gols servidos",
 	[ROSTER_COLUMN.own_goals]: "Evolução dos gols contra",
+	[ROSTER_COLUMN.comebackGoals]: PODIUM_LABEL.comebackGoals,
+	[ROSTER_COLUMN.comebackAssists]: PODIUM_LABEL.comebackAssists,
 	[ROSTER_COLUMN.goalInvolvement]: "Evolução da participação em gols",
 	[ROSTER_COLUMN.wins]: "Evolução das vitórias",
 	[ROSTER_COLUMN.mvps]: "Evolução dos destaques",
@@ -67,6 +69,14 @@ export function championshipPodiumHistoryChart(
 		return { rows: [], series: [] };
 	}
 
+	if (metric === ROSTER_COLUMN.comebackGoals) {
+		return { rows: [], series: [] };
+	}
+
+	if (metric === ROSTER_COLUMN.comebackAssists) {
+		return { rows: [], series: [] };
+	}
+
 	if (metric === ROSTER_COLUMN.rating) {
 		return championshipRatingHistoryChart(players, events, nowIso);
 	}
@@ -91,6 +101,14 @@ export function championshipPodiumHistoryMetric(
 	}
 
 	if (metric === ROSTER_COLUMN.ratingEvolution) {
+		return null;
+	}
+
+	if (metric === ROSTER_COLUMN.comebackGoals) {
+		return null;
+	}
+
+	if (metric === ROSTER_COLUMN.comebackAssists) {
 		return null;
 	}
 

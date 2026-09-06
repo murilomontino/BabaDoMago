@@ -3,6 +3,7 @@ import { lazy, Suspense, useMemo, useState } from "react";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
 import { SectionCard } from "@/components/section-card";
+import { applyComebackGoalCounts } from "@/const/championship-comeback-goal-ranking";
 import {
 	championshipMetricHistoryNowIso,
 	championshipPodiumHistoryMetric,
@@ -218,18 +219,30 @@ export function ChampionshipPodiumTab({
 		);
 	}, [eventStartsAt, events, months, semester, year]);
 	const podiumPlayers = useMemo(() => {
-		if (!events || eventStartsAt) {
-			return audiencePlayers;
-		}
+		const basePlayers = (() => {
+			if (!events || eventStartsAt) {
+				return audiencePlayers;
+			}
 
-		return aggregatePodiumPlayersFromEvents(
-			audiencePlayers,
-			events,
-			year,
-			semester,
-			months,
-		);
-	}, [audiencePlayers, eventStartsAt, events, months, semester, year]);
+			return aggregatePodiumPlayersFromEvents(
+				audiencePlayers,
+				events,
+				year,
+				semester,
+				months,
+			);
+		})();
+
+		return applyComebackGoalCounts(basePlayers, periodEvents);
+	}, [
+		audiencePlayers,
+		eventStartsAt,
+		events,
+		months,
+		periodEvents,
+		semester,
+		year,
+	]);
 	const synergyPairs = useMemo(() => {
 		if (!includeSynergy) {
 			return [];

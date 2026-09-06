@@ -18,6 +18,8 @@ export const ROSTER_COLUMN = {
 	goalsAverage: "goalsAverage",
 	assistsAverage: "assistsAverage",
 	winRate: "winRate",
+	comebackGoals: "comebackGoals",
+	comebackAssists: "comebackAssists",
 	actions: "actions",
 } as const;
 
@@ -40,6 +42,8 @@ export const ROSTER_COLUMN_ABBR = {
 	goalsAverage: "MG",
 	assistsAverage: "MA",
 	winRate: "WR",
+	comebackGoals: "Vir",
+	comebackAssists: "AVir",
 	actions: "Ações",
 } as const;
 
@@ -60,6 +64,8 @@ export const ROSTER_COLUMN_LABEL = {
 	goalsAverage: "Média de Gols",
 	assistsAverage: "Média de Assistências",
 	winRate: "WinRate",
+	comebackGoals: "Gols da virada",
+	comebackAssists: "Assistências da virada",
 	actions: "Ações",
 } as const;
 
@@ -112,6 +118,8 @@ export function isRosterOptionalColumn(
 
 export type RosterPlayerInput = ChampionshipPlayer & {
 	ratingEvolution?: number;
+	comebackGoals?: number;
+	comebackAssists?: number;
 };
 
 export type RosterRow = ChampionshipPlayer & {
@@ -120,6 +128,8 @@ export type RosterRow = ChampionshipPlayer & {
 	assistsAverage: number;
 	winRate: number;
 	ratingEvolution: number;
+	comebackGoals: number;
+	comebackAssists: number;
 };
 
 export function rosterPlayerRatingEvolution(player: RosterPlayerInput): number {
@@ -182,6 +192,8 @@ export function toRosterRow(player: RosterPlayerInput): RosterRow {
 		assistsAverage: rosterAverage(assists, matches),
 		winRate: rosterWinRate(wins, matches),
 		ratingEvolution: rosterPlayerRatingEvolution(player),
+		comebackGoals: rosterSafeCount(player.comebackGoals),
+		comebackAssists: rosterSafeCount(player.comebackAssists),
 	};
 }
 

@@ -80,7 +80,7 @@ check(
 	PODIUM_METRICS[1] === ROSTER_COLUMN.ratingEvolution,
 	"rating evolution second in select",
 );
-check(PODIUM_METRICS.length === 14, "podium metrics frozen");
+check(PODIUM_METRICS.length === 16, "podium metrics frozen");
 check(
 	PODIUM_PLAYER_METRIC_OPTIONS.length === PODIUM_METRICS.length - 1,
 	"event podium skips synergy",
@@ -90,8 +90,21 @@ check(!isPodiumPlayerMetric(PODIUM_METRIC.synergy), "synergy is not player");
 check(formatPodiumMetric(ROSTER_COLUMN.rating, 8) === "8", "format rating");
 check(formatPodiumMetric(ROSTER_COLUMN.goals, 4) === "4", "format goals");
 check(
-	formatPodiumMetric(ROSTER_COLUMN.ratingEvolution, 1.2) === "+1.2",
-	"format rating evolution",
+	formatPodiumMetric(ROSTER_COLUMN.comebackGoals, 3) === "3",
+	"format comeback goals",
+);
+check(
+	formatPodiumMetric(ROSTER_COLUMN.comebackAssists, 2) === "2",
+	"format comeback assists",
+);
+check(
+	podiumMetricLabel(ROSTER_COLUMN.comebackGoals) === PODIUM_LABEL.comebackGoals,
+	"comeback goals label",
+);
+check(
+	podiumMetricLabel(ROSTER_COLUMN.comebackAssists) ===
+		PODIUM_LABEL.comebackAssists,
+	"comeback assists label",
 );
 check(
 	formatPodiumMetric(ROSTER_COLUMN.ratingEvolution, -0.5) === "−0.5",

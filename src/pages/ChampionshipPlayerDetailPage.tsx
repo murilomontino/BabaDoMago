@@ -7,6 +7,7 @@ import { ChampionshipPlayerDetail } from "@/components/championship-player-detai
 import { DataTableSkeleton } from "@/components/molecules/data-table-skeleton";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
+import { playerFirstGoalOutcome } from "@/const/championship-goal-timeline";
 import {
 	CHAMPIONSHIP_ROLE,
 	resolveChampionshipRole,
@@ -105,6 +106,10 @@ export function ChampionshipPlayerDetailPage() {
 			),
 		[eventsQuery.data, championshipQuery.data?.players, playerId],
 	);
+	const firstGoalOutcome = useMemo(
+		() => playerFirstGoalOutcome(eventsQuery.data ?? [], playerId),
+		[eventsQuery.data, playerId],
+	);
 	const goalkeeper = useMemo(
 		() => playerGoalkeeperStats(eventsQuery.data ?? [], playerId),
 		[eventsQuery.data, playerId],
@@ -192,6 +197,7 @@ export function ChampionshipPlayerDetailPage() {
 				partners={partners}
 				headToHead={headToHead}
 				plusMinus={plusMinus}
+				firstGoalOutcome={firstGoalOutcome}
 				goalkeeper={goalkeeper}
 				hiddenLine={hiddenNotes.line}
 				hiddenGoalkeeper={hiddenNotes.goalkeeper}

@@ -1,7 +1,6 @@
 import { createColumnHelper } from "@tanstack/react-table";
-import { Crosshair, Scale, Sparkles } from "lucide-react";
+import { Crosshair, Scale } from "lucide-react";
 import { useMemo } from "react";
-import { EmptyState } from "@/components/empty-state";
 import { PlayerNameLink } from "@/components/molecules/player-name-link";
 import {
 	DataTable,
@@ -16,12 +15,6 @@ import {
 	type ProjectionCalibrationRow,
 } from "@/const/championship-projection-calibration";
 import {
-	formatProjectedWinRate,
-	MATCH_PROJECTION_LABEL,
-	projectedFieldWinRates,
-	projectionScaleFromFavoriteRates,
-} from "@/const/championship-match-projection";
-import {
 	championshipRatingGap,
 	formatRatingGap,
 	formatRatingGapValue,
@@ -29,13 +22,7 @@ import {
 	ratingGapKindLabel,
 	type RatingGapRow,
 } from "@/const/championship-rating-gap";
-import {
-	eventTeamHiddenBalance,
-	hiddenStrengthWalk,
-} from "@/const/hidden-strength";
 import { playerVisibleName } from "@/const/player-name";
-import { eventTeamBalance } from "@/const/team-balance-stats";
-import { CHAMPIONSHIP_EVENTS_QUERY_KEY } from "@/hooks/championships/championships-query-keys";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type { ChampionshipEvent } from "@/types/championship-event";
 
@@ -151,76 +138,19 @@ function GapTable({ rows }: { rows: RatingGapRow[] }) {
 	);
 }
 
-function latestOpenOrEndedEvent(
-	events: readonly ChampionshipEvent[],
-): ChampionshipEvent | null {
-	const open = events.find((event) => event.ended_at === null);
-	if (open) {
-		return open;
-	}
-
-	return events[0] ?? null;
-}
-
 export function ChampionshipProjectionsTab({
 	players,
 	events,
 	isOwner,
 }: ChampionshipProjectionsTabProps) {
-	const walk = useMemo(() => hiddenStrengthWalk(events), [events]);
 	const calibration = useMemo(
 		() => championshipProjectionCalibration(events, isOwner),
 		[events, isOwner],
-	);
-	const scale = useMemo(
-		() => projectionScaleFromFavoriteRates(calibration.samples),
-		[calibration.samples],
 	);
 	const gapRows = useMemo(
 		() => (isOwner ? championshipRatingGap(players) : []),
 		[isOwner, players],
 	);
-	const focusEvent = useMemo(() => latestOpenOrEndedEvent(events), [events]);
-	const projection = useMemo(() => {
-		if (!focusEvent || focusEvent.teams.length < 2) {
-			return null;
-		}
-
-		const hidden = eventTeamHiddenBalance(
-			focusEvent,
-			walk.hiddenBeforeEvent.get(focusEvent.id),
-		);
-		if (isOwner && hidden && hidden.teams.length >= 2) {
-			const rates = projectedFieldWinRates(
-				hidden.teams.map((team) => team.predictedHidden),
-				scale,
-			);
-			return {
-				teams: hidden.teams.map((team, index) => ({
-					label: team.label,
-					rate: rates[index] ?? 0,
-				})),
-				source: "hidden" as const,
-			};
-		}
-
-		const publicBalance = eventTeamBalance(focusEvent);
-		if (!publicBalance || publicBalance.teams.length < 2) {
-			return null;
-		}
-
-		const rates = projectedFieldWinRates(
-			publicBalance.teams.map((team) => team.predictedRating),
-			scale,
-		);
-		return {
-			teams: publicBalance.teams.map((team, index) => ({
-				label: team.label,
-				rate: rates[index] ?? 0,
-			})),
-			source: "public" as const,
-		};
-	}, [focusEvent, isOwner, scale, walk.hiddenBeforeEvent]);
 
 	const sourceLabel = () => {
 		if (calibration.source === "hidden") {
@@ -232,32 +162,6 @@ export function ChampionshipProjectionsTab({
 
 	return (
 		<div className="space-y-6">
-			<SectionCard
-				title={MATCH_PROJECTION_LABEL.title}
-				icon={<Sparkles className="size-4 text-pitch-fg" />}
-				queryKey={CHAMPIONSHIP_EVENTS_QUERY_KEY}
-			>
-				<p className="text-sm text-fg-muted">{MATCH_PROJECTION_LABEL.hint}</p>
-				{!projection && (
-					<EmptyState
-						icon={<Sparkles className="size-10" />}
-						title={MATCH_PROJECTION_LABEL.empty}
-					/>
-				)}
-				{projection && (
-					<div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-						{projection.teams.map((team) => (
-							<div key={team.label}>
-								<p className="text-xs font-medium text-fg-muted">{team.label}</p>
-								<p className="text-lg font-semibold tabular-nums text-fg">
-									{formatProjectedWinRate(team.rate)}
-								</p>
-							</div>
-						))}
-					</div>
-				)}
-			</SectionCard>
-
 			<SectionCard
 				title={PROJECTION_CALIBRATION_LABEL.title}
 				icon={<Scale className="size-4 text-pitch-fg" />}

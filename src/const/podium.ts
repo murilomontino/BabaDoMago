@@ -46,6 +46,8 @@ export const PODIUM_LABEL = {
 	synergy: "Sinergia",
 	assistedGoals: "O mais servido",
 	ratingEvolution: "Evolução da nota",
+	comebackGoals: "Gols da virada",
+	comebackAssists: "Assistências da virada",
 	emptyPlayers: "Nenhum jogador ainda",
 	emptyStats: "Nenhuma estatística ainda",
 } as const;
@@ -103,6 +105,8 @@ export const PODIUM_PLAYER_METRICS = [
 	ROSTER_COLUMN.assists,
 	ROSTER_COLUMN.assisted_goals,
 	ROSTER_COLUMN.own_goals,
+	ROSTER_COLUMN.comebackGoals,
+	ROSTER_COLUMN.comebackAssists,
 	ROSTER_COLUMN.goalInvolvement,
 	ROSTER_COLUMN.wins,
 	ROSTER_COLUMN.mvps,
@@ -138,6 +142,14 @@ export function podiumMetricLabel(metric: PodiumMetricId): string {
 
 	if (metric === ROSTER_COLUMN.ratingEvolution) {
 		return PODIUM_LABEL.ratingEvolution;
+	}
+
+	if (metric === ROSTER_COLUMN.comebackGoals) {
+		return PODIUM_LABEL.comebackGoals;
+	}
+
+	if (metric === ROSTER_COLUMN.comebackAssists) {
+		return PODIUM_LABEL.comebackAssists;
 	}
 
 	return ROSTER_COLUMN_LABEL[metric];
@@ -228,6 +240,9 @@ export function formatPodiumMetric(
 			return formatRosterCount(value);
 		case ROSTER_COLUMN.ratingEvolution:
 			return formatPlayerProfileDelta(value);
+		case ROSTER_COLUMN.comebackGoals:
+		case ROSTER_COLUMN.comebackAssists:
+			return formatRosterCount(value);
 		case ROSTER_COLUMN.goals:
 		case ROSTER_COLUMN.assists:
 		case ROSTER_COLUMN.assisted_goals:

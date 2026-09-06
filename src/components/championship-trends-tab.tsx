@@ -65,10 +65,15 @@ import {
 	FORM_HEATMAP_LABEL,
 } from "@/const/championship-form-heatmap";
 import {
-	formHeatmapShareCard,
-	formHeatmapShareContext,
-	FORM_HEATMAP_SHARE_LABEL,
-} from "@/const/form-heatmap-share";
+	championshipFirstGoalOutcome,
+	championshipGoalMinuteHistogram,
+	championshipGoalScoreStateScatter,
+	championshipGoalTimeline,
+	formatGoalTimelineCoverage,
+	formatGoalTimelineFirstGoal,
+	formatGoalTimelineLateShare,
+	GOAL_TIMELINE_LABEL,
+} from "@/const/championship-goal-timeline";
 import {
 	championshipGoalkeeperRanking,
 	formatGoalkeeperAverage,
@@ -79,20 +84,15 @@ import {
 	goalkeeperTrendLabel,
 } from "@/const/championship-goalkeeper-ranking";
 import {
-	championshipRoundGoals,
-	championshipRoundGoalsChart,
-	formatRoundGoalsChartValue,
-	formatRoundGoalsKpi,
-	ROUND_GOALS_LABEL,
-} from "@/const/championship-round-goals";
+	CHAMPIONSHIP_RATING_HISTORY_CHART,
+	endedChampionshipHistoryEvents,
+} from "@/const/championship-rating-history";
 import {
-	championshipGoalTimeline,
-	championshipGoalTimelineChart,
-	formatGoalTimelineCoverage,
-	formatGoalTimelineFirstGoal,
-	formatGoalTimelineLateShare,
-	GOAL_TIMELINE_LABEL,
-} from "@/const/championship-goal-timeline";
+	championshipRatingInflation,
+	championshipRatingInflationChart,
+	RATING_INFLATION_CHART,
+	RATING_INFLATION_LABEL,
+} from "@/const/championship-rating-inflation";
 import {
 	championshipRecentForm,
 	formatRecentFormDelta,
@@ -105,17 +105,14 @@ import {
 	recentFormTrendLabel,
 } from "@/const/championship-recent-form";
 import {
-	championshipRatingInflation,
-	championshipRatingInflationChart,
-	RATING_INFLATION_CHART,
-	RATING_INFLATION_LABEL,
-} from "@/const/championship-rating-inflation";
-import {
-	CHAMPIONSHIP_RATING_HISTORY_CHART,
-	endedChampionshipHistoryEvents,
-} from "@/const/championship-rating-history";
-import { TREND_LINE_CHART } from "@/const/championship-trend-line-chart";
+	championshipRoundGoals,
+	championshipRoundGoalsChart,
+	formatRoundGoalsChartValue,
+	formatRoundGoalsKpi,
+	ROUND_GOALS_LABEL,
+} from "@/const/championship-round-goals";
 import { CHAMPIONSHIP_TAB_LABEL } from "@/const/championship-tab";
+import { TREND_LINE_CHART } from "@/const/championship-trend-line-chart";
 import { trendsAudiencePlayerScope } from "@/const/championship-trends-player-scope";
 import {
 	championshipTrendsEvents,
@@ -125,24 +122,29 @@ import {
 	TRENDS_AUDIENCE_DEFAULT,
 	TRENDS_AUDIENCE_LABEL,
 	TRENDS_AUDIENCE_OPTIONS,
+	TRENDS_RATING_HISTORY_LABEL,
+	TRENDS_WINDOW_DEFAULT,
+	TRENDS_WINDOW_LABEL,
+	TRENDS_WINDOW_OPTIONS,
 	type TrendsAudience,
+	type TrendsWindow,
 	trendsAudienceCaption,
 	trendsAudiencePlayers,
 	trendsHasMonthlyPlayers,
 	trendsSectionEmptyLabel,
-	TRENDS_WINDOW_DEFAULT,
-	TRENDS_WINDOW_LABEL,
-	TRENDS_WINDOW_OPTIONS,
-	TRENDS_RATING_HISTORY_LABEL,
-	type TrendsWindow,
 	trendsWindowCaption,
 } from "@/const/championship-trends-window";
-import { ROSTER_COLUMN } from "@/const/roster-stats";
 import {
+	FORM_HEATMAP_SHARE_LABEL,
+	formHeatmapShareCard,
+	formHeatmapShareContext,
+} from "@/const/form-heatmap-share";
+import {
+	RATING_INFLATION_SHARE_LABEL,
 	ratingInflationShareCard,
 	ratingInflationShareContext,
-	RATING_INFLATION_SHARE_LABEL,
 } from "@/const/rating-inflation-share";
+import { ROSTER_COLUMN } from "@/const/roster-stats";
 import { SKELETON_LABEL } from "@/const/skeleton";
 import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
 import { CHAMPIONSHIP_EVENTS_QUERY_KEY } from "@/hooks/championships/championships-query-keys";
@@ -154,14 +156,16 @@ import type { ChampionshipEvent } from "@/types/championship-event";
 const ChampionshipFormHeatmap = lazy(() =>
 	import("@/components/molecules/championship-form-heatmap").then((m) => ({
 		default: m.ChampionshipFormHeatmap,
-	}),
-));
+	})),
+);
 
 const ChampionshipMetricHistoryChart = lazy(() =>
-	import("@/components/molecules/championship-rating-history-chart").then((m) => ({
-		default: m.ChampionshipMetricHistoryChart,
-	}),
-));
+	import("@/components/molecules/championship-rating-history-chart").then(
+		(m) => ({
+			default: m.ChampionshipMetricHistoryChart,
+		}),
+	),
+);
 
 const ChampionshipRatingInflationChart = lazy(() =>
 	import("@/components/molecules/championship-rating-inflation-chart").then(
@@ -172,12 +176,30 @@ const ChampionshipRatingInflationChart = lazy(() =>
 const ChampionshipTrendLineChart = lazy(() =>
 	import("@/components/molecules/championship-trend-line-chart").then((m) => ({
 		default: m.ChampionshipTrendLineChart,
-	}),
-));
+	})),
+);
 
 const ChampionshipConsistencyScatterChart = lazy(() =>
 	import("@/components/molecules/championship-consistency-scatter-chart").then(
 		(m) => ({ default: m.ChampionshipConsistencyScatterChart }),
+	),
+);
+
+const ChampionshipGoalMinuteHistogramChart = lazy(() =>
+	import(
+		"@/components/molecules/championship-goal-minute-histogram-chart"
+	).then((m) => ({ default: m.ChampionshipGoalMinuteHistogramChart })),
+);
+
+const ChampionshipFirstGoalOutcomeChart = lazy(() =>
+	import("@/components/molecules/championship-first-goal-outcome-chart").then(
+		(m) => ({ default: m.ChampionshipFirstGoalOutcomeChart }),
+	),
+);
+
+const ChampionshipGoalScoreStateChart = lazy(() =>
+	import("@/components/molecules/championship-goal-score-state-chart").then(
+		(m) => ({ default: m.ChampionshipGoalScoreStateChart }),
 	),
 );
 
@@ -487,7 +509,9 @@ export function ChampionshipTrendsTab({
 	events,
 }: ChampionshipTrendsTabProps) {
 	const [window, setWindow] = useState<TrendsWindow>(TRENDS_WINDOW_DEFAULT);
-	const [audience, setAudience] = useState<TrendsAudience>(TRENDS_AUDIENCE_DEFAULT);
+	const [audience, setAudience] = useState<TrendsAudience>(
+		TRENDS_AUDIENCE_DEFAULT,
+	);
 	const [attendanceMetric, setAttendanceMetric] =
 		useState<AttendanceTrendMetric>(ATTENDANCE_TREND_METRIC_DEFAULT);
 	const [consistencyMetric, setConsistencyMetric] = useState<ConsistencyMetric>(
@@ -527,8 +551,7 @@ export function ChampionshipTrendsTab({
 		[events],
 	);
 	const attendance = useMemo(
-		() =>
-			championshipAttendanceTrend(allEndedEvents, players, scopedPlayerIds),
+		() => championshipAttendanceTrend(allEndedEvents, players, scopedPlayerIds),
 		[allEndedEvents, players, scopedPlayerIds],
 	);
 	const attendanceChart = useMemo(
@@ -536,8 +559,7 @@ export function ChampionshipTrendsTab({
 		[attendance, attendanceMetric],
 	);
 	const inflation = useMemo(
-		() =>
-			championshipRatingInflation(players, allEndedEvents, scopedPlayerIds),
+		() => championshipRatingInflation(players, allEndedEvents, scopedPlayerIds),
 		[players, allEndedEvents, scopedPlayerIds],
 	);
 	const inflationChart = useMemo(
@@ -553,7 +575,8 @@ export function ChampionshipTrendsTab({
 		[scopedPlayers, windowEvents],
 	);
 	const consistencyPoints = useMemo(
-		() => championshipConsistencyPoints(scopedPlayers, events, consistencyMetric),
+		() =>
+			championshipConsistencyPoints(scopedPlayers, events, consistencyMetric),
 		[scopedPlayers, events, consistencyMetric],
 	);
 	const consistencyEmpty = championshipConsistencyEmptyLabel(consistencyPoints);
@@ -573,9 +596,17 @@ export function ChampionshipTrendsTab({
 		() => championshipGoalTimeline(windowEvents, scopedPlayerIds),
 		[windowEvents, scopedPlayerIds],
 	);
-	const goalTimelineChart = useMemo(
-		() => championshipGoalTimelineChart(goalTimeline),
-		[goalTimeline],
+	const goalMinuteHistogram = useMemo(
+		() => championshipGoalMinuteHistogram(windowEvents, scopedPlayerIds),
+		[windowEvents, scopedPlayerIds],
+	);
+	const firstGoalOutcome = useMemo(
+		() => championshipFirstGoalOutcome(windowEvents, scopedPlayerIds),
+		[windowEvents, scopedPlayerIds],
+	);
+	const goalScoreStateScatter = useMemo(
+		() => championshipGoalScoreStateScatter(windowEvents, scopedPlayerIds),
+		[windowEvents, scopedPlayerIds],
 	);
 	const health = useMemo(
 		() => championshipEventHealth(windowEvents, scopedPlayerIds),
@@ -722,7 +753,10 @@ export function ChampionshipTrendsTab({
 						</div>
 						{attendance.events === 0 && (
 							<p className="text-sm text-fg-muted">
-								{trendsSectionEmptyLabel(audience, ATTENDANCE_TREND_LABEL.empty)}
+								{trendsSectionEmptyLabel(
+									audience,
+									ATTENDANCE_TREND_LABEL.empty,
+								)}
 							</p>
 						)}
 						{attendance.events > 0 && (
@@ -767,7 +801,9 @@ export function ChampionshipTrendsTab({
 										{RATING_INFLATION_LABEL.title}
 									</h3>
 								</div>
-								<p className="text-sm text-fg-muted">{RATING_INFLATION_LABEL.hint}</p>
+								<p className="text-sm text-fg-muted">
+									{RATING_INFLATION_LABEL.hint}
+								</p>
 								<p className="text-xs text-fg-muted">
 									{TRENDS_WINDOW_LABEL.allEndedCaption}
 								</p>
@@ -795,7 +831,10 @@ export function ChampionshipTrendsTab({
 						)}
 						{inflation.events === 0 && (
 							<p className="text-sm text-fg-muted">
-								{trendsSectionEmptyLabel(audience, RATING_INFLATION_LABEL.empty)}
+								{trendsSectionEmptyLabel(
+									audience,
+									RATING_INFLATION_LABEL.empty,
+								)}
 							</p>
 						)}
 						{inflation.events > 0 && (
@@ -828,7 +867,9 @@ export function ChampionshipTrendsTab({
 						<Suspense
 							fallback={
 								<SkeletonRegion label={SKELETON_LABEL.chart}>
-									<div style={{ height: CHAMPIONSHIP_RATING_HISTORY_CHART.height }}>
+									<div
+										style={{ height: CHAMPIONSHIP_RATING_HISTORY_CHART.height }}
+									>
 										<Skeleton className="h-full w-full" />
 									</div>
 								</SkeletonRegion>
@@ -1072,7 +1113,9 @@ export function ChampionshipTrendsTab({
 									{GOAL_TIMELINE_LABEL.title}
 								</h3>
 							</div>
-							<p className="text-sm text-fg-muted">{GOAL_TIMELINE_LABEL.hint}</p>
+							<p className="text-sm text-fg-muted">
+								{GOAL_TIMELINE_LABEL.hint}
+							</p>
 						</div>
 						{!goalTimeline.enoughCoverage && (
 							<p className="text-sm text-fg-muted">
@@ -1107,6 +1150,9 @@ export function ChampionshipTrendsTab({
 										</p>
 									</div>
 								</div>
+								<p className="text-sm text-fg-muted">
+									{GOAL_TIMELINE_LABEL.histogramHint}
+								</p>
 								<Suspense
 									fallback={
 										<SkeletonRegion label={SKELETON_LABEL.chart}>
@@ -1116,10 +1162,60 @@ export function ChampionshipTrendsTab({
 										</SkeletonRegion>
 									}
 								>
-									<ChampionshipTrendLineChart
-										points={goalTimelineChart}
-										caption={GOAL_TIMELINE_LABEL.title}
-										formatValue={(value) => String(value)}
+									<ChampionshipGoalMinuteHistogramChart
+										histogram={goalMinuteHistogram}
+									/>
+								</Suspense>
+								<div className="space-y-1 pt-2">
+									<h4 className="text-sm font-semibold text-fg">
+										{GOAL_TIMELINE_LABEL.firstGoalTitle}
+									</h4>
+									<p className="text-sm text-fg-muted">
+										{GOAL_TIMELINE_LABEL.firstGoalHint}
+									</p>
+								</div>
+								{firstGoalOutcome.matches === 0 && (
+									<p className="text-sm text-fg-muted">
+										{trendsSectionEmptyLabel(
+											audience,
+											GOAL_TIMELINE_LABEL.empty,
+										)}
+									</p>
+								)}
+								{firstGoalOutcome.matches > 0 && (
+									<Suspense
+										fallback={
+											<SkeletonRegion label={SKELETON_LABEL.chart}>
+												<div style={{ height: TREND_LINE_CHART.height }}>
+													<Skeleton className="h-full w-full" />
+												</div>
+											</SkeletonRegion>
+										}
+									>
+										<ChampionshipFirstGoalOutcomeChart
+											bars={firstGoalOutcome.bars}
+										/>
+									</Suspense>
+								)}
+								<div className="space-y-1 pt-2">
+									<h4 className="text-sm font-semibold text-fg">
+										{GOAL_TIMELINE_LABEL.scoreStateTitle}
+									</h4>
+									<p className="text-sm text-fg-muted">
+										{GOAL_TIMELINE_LABEL.scoreStateHint}
+									</p>
+								</div>
+								<Suspense
+									fallback={
+										<SkeletonRegion label={SKELETON_LABEL.chart}>
+											<div style={{ height: TREND_LINE_CHART.height }}>
+												<Skeleton className="h-full w-full" />
+											</div>
+										</SkeletonRegion>
+									}
+								>
+									<ChampionshipGoalScoreStateChart
+										scatter={goalScoreStateScatter}
 									/>
 								</Suspense>
 							</>
@@ -1135,7 +1231,9 @@ export function ChampionshipTrendsTab({
 										{FORM_HEATMAP_LABEL.title}
 									</h3>
 								</div>
-								<p className="text-sm text-fg-muted">{FORM_HEATMAP_LABEL.hint}</p>
+								<p className="text-sm text-fg-muted">
+									{FORM_HEATMAP_LABEL.hint}
+								</p>
 								{formHeatmap.truncated && (
 									<p className="text-xs text-fg-muted">
 										{FORM_HEATMAP_LABEL.limitNote}

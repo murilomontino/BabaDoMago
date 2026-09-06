@@ -4,6 +4,8 @@ import {
 	championshipFormHeatmap,
 	eventAttendanceFormCell,
 	FORM_HEATMAP_CELL,
+	formHeatmapCellClassName,
+	formHeatmapCellShareColor,
 	playerFormHeatmapCells,
 } from "./championship-form-heatmap.ts";
 import {
@@ -174,6 +176,23 @@ check(
 check(
 	EVENT_RATING_ADJUSTMENT.minMatches === 3,
 	"min matches aligned with recent form",
+);
+
+check(
+	formHeatmapCellShareColor(FORM_HEATMAP_CELL.up) === "#86efac",
+	"tone share up",
+);
+check(
+	formHeatmapCellShareColor(FORM_HEATMAP_CELL.deadZone) === "#fcd34d",
+	"tone share dead zone",
+);
+check(
+	formHeatmapCellShareColor(FORM_HEATMAP_CELL.insufficient) === "#a8a29e",
+	"tone share insufficient",
+);
+check(
+	formHeatmapCellClassName(FORM_HEATMAP_CELL.up).includes("emerald"),
+	"tone class up",
 );
 
 console.log("championship-form-heatmap.check.ts ok");

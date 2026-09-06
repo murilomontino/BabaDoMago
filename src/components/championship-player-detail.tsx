@@ -17,6 +17,10 @@ import { SectionCard } from "@/components/section-card";
 import { Tabs } from "@/components/tabs";
 import { formatEventStartsAt } from "@/const/championship-event";
 import {
+	GOAL_TIMELINE_LABEL,
+	type PlayerFirstGoalOutcomeSummary,
+} from "@/const/championship-goal-timeline";
+import {
 	CHAMPIONSHIP_ROLE_LABEL,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
@@ -38,7 +42,20 @@ import {
 	PLAYER_FORM_LABEL,
 	playerRecentForm,
 } from "@/const/player-form";
+import {
+	formatHeadToHeadCount,
+	formatHeadToHeadWinRate,
+	HEAD_TO_HEAD_LABEL,
+	type HeadToHeadRow,
+} from "@/const/player-head-to-head";
 import { PLAYER_LABEL, playerVisibleName } from "@/const/player-name";
+import {
+	formatPlusMinusCount,
+	formatPlusMinusDiff,
+	formatPlusMinusPerMatch,
+	PLUS_MINUS_LABEL,
+	type PlayerPlusMinus,
+} from "@/const/player-plus-minus";
 import {
 	formatPlayerProfileDelta,
 	PLAYER_PROFILE_HISTORY_ABBR,
@@ -60,19 +77,6 @@ import {
 	PLAYER_PROFILE_TABS,
 } from "@/const/player-profile-tab";
 import { PLAYER_RATING_SIM_LABEL } from "@/const/player-rating-sim";
-import {
-	formatHeadToHeadCount,
-	formatHeadToHeadWinRate,
-	HEAD_TO_HEAD_LABEL,
-	type HeadToHeadRow,
-} from "@/const/player-head-to-head";
-import {
-	formatPlusMinusCount,
-	formatPlusMinusDiff,
-	formatPlusMinusPerMatch,
-	PLUS_MINUS_LABEL,
-	type PlayerPlusMinus,
-} from "@/const/player-plus-minus";
 import {
 	formatSynergyStat,
 	SYNERGY_COLUMN,
@@ -111,6 +115,12 @@ const PlayerRatingHistoryChart = lazy(() =>
 	})),
 );
 
+const ChampionshipFirstGoalOutcomeChart = lazy(() =>
+	import("@/components/molecules/championship-first-goal-outcome-chart").then(
+		(m) => ({ default: m.ChampionshipFirstGoalOutcomeChart }),
+	),
+);
+
 const historyColumnHelper = createColumnHelper<
 	DataTableFeatures,
 	PlayerProfileHistoryRow
@@ -132,6 +142,7 @@ type ChampionshipPlayerDetailProps = {
 	partners: readonly SynergyPartnerRow[];
 	headToHead: readonly HeadToHeadRow[];
 	plusMinus: PlayerPlusMinus | null;
+	firstGoalOutcome: PlayerFirstGoalOutcomeSummary;
 	goalkeeper: GoalkeeperStats | null;
 	onOpenEvent: (eventId: number) => void;
 	hiddenLine?: number;
@@ -654,6 +665,7 @@ export function ChampionshipPlayerDetail({
 	partners,
 	headToHead,
 	plusMinus,
+	firstGoalOutcome,
 	goalkeeper,
 	onOpenEvent,
 	hiddenLine,
@@ -791,7 +803,9 @@ export function ChampionshipPlayerDetail({
 						)}
 					</SectionCard>
 					<SectionCard title={PLUS_MINUS_LABEL.title}>
-						<p className="mb-3 text-sm text-fg-muted">{PLUS_MINUS_LABEL.hint}</p>
+						<p className="mb-3 text-sm text-fg-muted">
+							{PLUS_MINUS_LABEL.hint}
+						</p>
 						{!plusMinus && (
 							<p className="text-sm text-fg-muted">{PLUS_MINUS_LABEL.empty}</p>
 						)}
@@ -827,6 +841,29 @@ export function ChampionshipPlayerDetail({
 							/>
 						)}
 					</SectionCard>
+					<SectionCard title={GOAL_TIMELINE_LABEL.playerFirstGoalTitle}>
+						<p className="mb-3 text-sm text-fg-muted">
+							{GOAL_TIMELINE_LABEL.playerFirstGoalHint}
+						</p>
+						{firstGoalOutcome.matches === 0 && (
+							<p className="text-sm text-fg-muted">
+								{GOAL_TIMELINE_LABEL.playerFirstGoalEmpty}
+							</p>
+						)}
+						{firstGoalOutcome.matches > 0 && (
+							<Suspense
+								fallback={
+									<SkeletonRegion label={SKELETON_LABEL.chart}>
+										<Skeleton className="h-[220px] w-full" />
+									</SkeletonRegion>
+								}
+							>
+								<ChampionshipFirstGoalOutcomeChart
+									bars={firstGoalOutcome.bars}
+								/>
+							</Suspense>
+						)}
+					</SectionCard>
 					<SectionCard title={SYNERGY_LABEL.partners}>
 						{historyPending && (
 							<DataTableSkeleton
@@ -847,7 +884,9 @@ export function ChampionshipPlayerDetail({
 						)}
 					</SectionCard>
 					<SectionCard title={HEAD_TO_HEAD_LABEL.title}>
-						<p className="mb-3 text-sm text-fg-muted">{HEAD_TO_HEAD_LABEL.hint}</p>
+						<p className="mb-3 text-sm text-fg-muted">
+							{HEAD_TO_HEAD_LABEL.hint}
+						</p>
 						{historyPending && (
 							<DataTableSkeleton
 								headers={[
@@ -860,7 +899,9 @@ export function ChampionshipPlayerDetail({
 							/>
 						)}
 						{!historyPending && headToHead.length === 0 && (
-							<p className="text-sm text-fg-muted">{HEAD_TO_HEAD_LABEL.empty}</p>
+							<p className="text-sm text-fg-muted">
+								{HEAD_TO_HEAD_LABEL.empty}
+							</p>
 						)}
 						{!historyPending && headToHead.length > 0 && (
 							<HeadToHeadTable rows={headToHead} />

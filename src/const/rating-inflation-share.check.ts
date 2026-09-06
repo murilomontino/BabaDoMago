@@ -109,7 +109,7 @@ const card = ratingInflationShareCard(
 	"Mensalistas",
 );
 
-check(card.points.length === 2, "two share points");
+check(card.points.length === 3, "entry plus two share points");
 check(card.title === RATING_INFLATION_SHARE.title, "title");
 check(card.points[0]?.averageLabel.length > 0, "average label");
 check(

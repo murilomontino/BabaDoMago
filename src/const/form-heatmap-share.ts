@@ -5,6 +5,7 @@ import {
 	type FormHeatmapCellKind,
 	type FormHeatmapGrid,
 	formHeatmapCellLabel,
+	formHeatmapCellShareColor,
 } from "./championship-form-heatmap.ts";
 import { playerVisibleName } from "./player-name.ts";
 import { shareFileDateStamp, sharePngFileName } from "./share-file-name.ts";
@@ -47,11 +48,6 @@ export const FORM_HEATMAP_SHARE_COLOR = {
 	pitch: "#166534",
 	avatar: "#dcfce7",
 	avatarText: "#166534",
-	[FORM_HEATMAP_CELL.absent]: "transparent",
-	[FORM_HEATMAP_CELL.insufficient]: "#e7e5e4",
-	[FORM_HEATMAP_CELL.up]: "#86efac",
-	[FORM_HEATMAP_CELL.down]: "#fca5a5",
-	[FORM_HEATMAP_CELL.deadZone]: "#d6d3d1",
 } as const;
 
 export const FORM_HEATMAP_SHARE_LEGEND = [
@@ -155,7 +151,7 @@ export function formHeatmapShareText(card: FormHeatmapShareCard): string {
 }
 
 export function formHeatmapShareCellColor(kind: FormHeatmapCellKind): string {
-	return FORM_HEATMAP_SHARE_COLOR[kind];
+	return formHeatmapCellShareColor(kind);
 }
 
 export function formHeatmapShareLegendLabel(kind: FormHeatmapCellKind): string {

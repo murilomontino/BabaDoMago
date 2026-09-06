@@ -5,7 +5,7 @@ type GoalIconProps = {
 	"aria-label"?: string;
 };
 
-function GoalGlyph() {
+export function GoalGlyph() {
 	return (
 		<path
 			fillRule="evenodd"

@@ -39,7 +39,40 @@ export const FORM_HEATMAP_LABEL = {
 	[FORM_HEATMAP_CELL.absent]: "Ausente",
 } as const;
 
+/** UI className + hex do share (tema claro). Uma fonte para Tendências, voto e PNG. */
+export const FORM_HEATMAP_CELL_TONE = {
+	[FORM_HEATMAP_CELL.absent]: {
+		className: "bg-transparent",
+		share: "transparent",
+	},
+	[FORM_HEATMAP_CELL.insufficient]: {
+		className:
+			"bg-stone-400 ring-1 ring-inset ring-stone-500 dark:bg-stone-600 dark:ring-stone-400",
+		share: "#a8a29e",
+	},
+	[FORM_HEATMAP_CELL.up]: {
+		className: "bg-emerald-300 dark:bg-pitch-fg/40",
+		share: "#86efac",
+	},
+	[FORM_HEATMAP_CELL.down]: {
+		className: "bg-red-300 dark:bg-danger/45",
+		share: "#fca5a5",
+	},
+	[FORM_HEATMAP_CELL.deadZone]: {
+		className: "bg-amber-300 dark:bg-amber-500/50",
+		share: "#fcd34d",
+	},
+} as const;
+
 export const FORM_HEATMAP_MAX_ROWS = 20 as const;
+
+export function formHeatmapCellClassName(kind: FormHeatmapCellKind): string {
+	return FORM_HEATMAP_CELL_TONE[kind].className;
+}
+
+export function formHeatmapCellShareColor(kind: FormHeatmapCellKind): string {
+	return FORM_HEATMAP_CELL_TONE[kind].share;
+}
 
 export type FormHeatmapColumn = {
 	eventId: number;

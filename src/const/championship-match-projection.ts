@@ -5,14 +5,6 @@ import { formatRosterWinRate, rosterWinRate } from "./roster-stats.ts";
 // Teto: nao modela empate nem ordem das partidas. Upgrade = 3 saidas (V/E/D).
 export const MATCH_PROJECTION_DEFAULT_SCALE = 8 as const;
 
-export const MATCH_PROJECTION_LABEL = {
-	title: "Probabilidade de vitória",
-	empty: "Precisa de times sorteados",
-	hint: "Diferença de força prevista vira chance. Não modela empate.",
-	favorite: "Favorito",
-	underdog: "Azarão",
-} as const;
-
 export function projectedWinRate(
 	spread: number,
 	scale: number = MATCH_PROJECTION_DEFAULT_SCALE,
