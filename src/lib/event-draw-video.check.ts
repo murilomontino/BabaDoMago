@@ -36,6 +36,7 @@ function card(title: string, ratings: number[]): EventTeamShareCard {
 			number: index + 1,
 			name: `Jogador ${index + 1}`,
 			rating,
+			isGoalkeeperRating: false,
 			avatarUrl: null,
 		})),
 	};

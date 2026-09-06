@@ -12,6 +12,10 @@ import {
 	resolveChampionshipRole,
 } from "@/const/championship-role";
 import { playerGoalkeeperStats } from "@/const/goalkeeper-stats";
+import {
+	hiddenStrengthChampionshipCeiling,
+	hiddenStrengthDisplayed,
+} from "@/const/hidden-strength";
 import { playerVisibleName } from "@/const/player-name";
 import {
 	PLAYER_PROFILE_HISTORY_ABBR,
@@ -23,7 +27,10 @@ import {
 	ratingsForProfileCeiling,
 } from "@/const/player-profile";
 import { PLAYER_PROFILE_SHARE_LABEL } from "@/const/player-profile-share";
-import { championshipRatingCeiling, PLAYER_STARS } from "@/const/player-rating";
+import {
+	championshipRatingCeiling,
+	PLAYER_STARS,
+} from "@/const/player-rating";
 import {
 	playerSynergyPartners,
 	SYNERGY_LABEL,
@@ -85,6 +92,28 @@ export function ChampionshipPlayerDetailPage() {
 		() => playerGoalkeeperStats(eventsQuery.data ?? [], playerId),
 		[eventsQuery.data, playerId],
 	);
+	const isOwnerViewer = actorRole === CHAMPIONSHIP_ROLE.owner;
+	const hiddenNotes = useMemo(() => {
+		if (!isOwnerViewer || !player) {
+			return { line: undefined, goalkeeper: undefined };
+		}
+
+		const ceiling = hiddenStrengthChampionshipCeiling(
+			championship?.players ?? [],
+		);
+		return {
+			line: hiddenStrengthDisplayed(
+				player.hidden_strength,
+				player.rating,
+				ceiling,
+			),
+			goalkeeper: hiddenStrengthDisplayed(
+				player.hidden_goalkeeper_strength,
+				player.goalkeeper_rating,
+				ceiling,
+			),
+		};
+	}, [championship?.players, isOwnerViewer, player]);
 	const ceiling = championshipRatingCeiling(
 		ratingsForProfileCeiling(championship?.players ?? [], playerId),
 	);
@@ -146,7 +175,7 @@ export function ChampionshipPlayerDetailPage() {
 				createdBy={championship.created_by}
 				championshipName={championship.name}
 				ceiling={ceiling}
-				isOwnerViewer={actorRole === CHAMPIONSHIP_ROLE.owner}
+				isOwnerViewer={isOwnerViewer}
 				career={toRosterRow(player)}
 				history={history}
 				historyPending={eventsQuery.isPending}
@@ -156,6 +185,8 @@ export function ChampionshipPlayerDetailPage() {
 				)}
 				partners={partners}
 				goalkeeper={goalkeeper}
+				hiddenLine={hiddenNotes.line}
+				hiddenGoalkeeper={hiddenNotes.goalkeeper}
 				onOpenEvent={(eventId) => {
 					void navigate({
 						to: ROUTES.championshipEvent,

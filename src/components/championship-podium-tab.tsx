@@ -11,24 +11,31 @@ import { CHAMPIONSHIP_RATING_HISTORY_CHART } from "@/const/championship-rating-h
 import { CHAMPIONSHIP_RATING_SCATTER_CHART } from "@/const/championship-rating-scatter";
 import { CHAMPIONSHIP_STAT_SCATTER_CHART } from "@/const/championship-stat-scatter";
 import {
+	parseTrendsAudience,
 	TRENDS_AUDIENCE,
 	TRENDS_AUDIENCE_DEFAULT,
 	TRENDS_AUDIENCE_LABEL,
 	TRENDS_AUDIENCE_OPTIONS,
 	type TrendsAudience,
-	parseTrendsAudience,
 	trendsAudienceCaption,
 	trendsAudiencePlayers,
 	trendsHasMonthlyPlayers,
 } from "@/const/championship-trends-window";
+import {
+	championshipTeamHiddenBalance,
+	formatTeamHiddenSpread,
+	formatTeamHiddenWinRate,
+	HIDDEN_STRENGTH_LABEL,
+	hiddenStrengthWalk,
+} from "@/const/hidden-strength";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import {
-	SYNERGY_RANKING_LIMIT,
 	aggregateSynergyPairs,
 	rankSynergyPairRows,
 	rankSynergyPairRowsWorst,
-	topSynergyRows,
+	SYNERGY_RANKING_LIMIT,
 	type SynergyPairRow,
+	topSynergyRows,
 } from "@/const/player-synergy";
 import {
 	aggregatePodiumPlayersFromEvents,
@@ -146,8 +153,7 @@ function podiumAudienceSynergyPairs(
 
 	return topSynergyRows(
 		ranked.filter(
-			(pair) =>
-				monthlyIds.has(pair.left.id) && monthlyIds.has(pair.right.id),
+			(pair) => monthlyIds.has(pair.left.id) && monthlyIds.has(pair.right.id),
 		),
 		SYNERGY_RANKING_LIMIT,
 	);
@@ -158,6 +164,7 @@ type ChampionshipPodiumTabProps = {
 	championshipName: string;
 	events?: readonly ChampionshipEvent[];
 	eventStartsAt?: string;
+	isOwner?: boolean;
 };
 
 export function ChampionshipPodiumTab({
@@ -165,6 +172,7 @@ export function ChampionshipPodiumTab({
 	championshipName,
 	events,
 	eventStartsAt,
+	isOwner = false,
 }: ChampionshipPodiumTabProps) {
 	const [metric, setMetric] = useState<PodiumMetricId>(PODIUM_DEFAULT_METRIC);
 	const [semester, setSemester] = useState<PodiumSemester | null>(null);
@@ -249,6 +257,16 @@ export function ChampionshipPodiumTab({
 
 		return championshipTeamBalance(periodEvents);
 	}, [includeSynergy, periodEvents]);
+	const teamHiddenBalance = useMemo(() => {
+		if (!includeSynergy || !isOwner || !events) {
+			return null;
+		}
+
+		return championshipTeamHiddenBalance(
+			periodEvents,
+			hiddenStrengthWalk(events),
+		);
+	}, [events, includeSynergy, isOwner, periodEvents]);
 	const ceiling = championshipRatingCeiling(
 		podiumPlayers.map((player) => player.rating),
 	);
@@ -598,6 +616,31 @@ export function ChampionshipPodiumTab({
 							</p>
 						</div>
 					</div>
+					{teamHiddenBalance && teamHiddenBalance.events > 0 && (
+						<>
+							<div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+								<div>
+									<p className="text-xs font-medium text-fg-muted">
+										{HIDDEN_STRENGTH_LABEL.spread}
+									</p>
+									<p className="text-lg font-semibold tabular-nums text-fg">
+										{formatTeamHiddenSpread(teamHiddenBalance.averageSpread)}
+									</p>
+								</div>
+								<div>
+									<p className="text-xs font-medium text-fg-muted">
+										{HIDDEN_STRENGTH_LABEL.favorite}
+									</p>
+									<p className="text-lg font-semibold tabular-nums text-fg">
+										{formatTeamHiddenWinRate(teamHiddenBalance.favoriteWinRate)}
+									</p>
+								</div>
+							</div>
+							<p className="text-xs text-fg-muted">
+								{HIDDEN_STRENGTH_LABEL.hint}
+							</p>
+						</>
+					)}
 				</div>
 			)}
 		</SectionCard>

@@ -150,6 +150,7 @@ export function ChampionshipEventDrawPage() {
 					event.attendance.length,
 				),
 				activePlayers,
+				attendanceGoalkeeperIds(event.attendance),
 			),
 		);
 	}, [activePlayers, event]);
@@ -378,10 +379,14 @@ export function ChampionshipEventDrawPage() {
 				eventTeamsShareCards(
 					builderTeamsFromDrafts(drafts, event.players_per_team),
 					activePlayers,
+					volunteerIds,
 				),
 			);
 			const drawnCeiling = championshipRatingCeiling(
-				activePlayers.map((player) => player.rating),
+				activePlayers.flatMap((player) => [
+					player.rating,
+					player.goalkeeper_rating,
+				]),
 			);
 			const drawnWhen = formatEventStartsAt(event.starts_at);
 
@@ -464,7 +469,10 @@ export function ChampionshipEventDrawPage() {
 
 	const when = formatEventStartsAt(event.starts_at);
 	const ceiling = championshipRatingCeiling(
-		activePlayers.map((player) => player.rating),
+		activePlayers.flatMap((player) => [
+			player.rating,
+			player.goalkeeper_rating,
+		]),
 	);
 	const championshipName = championship.name;
 	const startsAt = event.starts_at;

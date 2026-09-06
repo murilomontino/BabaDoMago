@@ -21,6 +21,7 @@ import {
 	type EventWeekday,
 	eventDrawInputRating,
 	eventGoalkeeperIds,
+	eventTeamHighestSumFlags,
 	eventTeamSlotPosition,
 	keepGoalkeepersPresent,
 	seedPresentIdsFromHistory,
@@ -81,6 +82,7 @@ function DrawSimTeamCard({
 	goalkeeperIds,
 	ceiling,
 	presentRatings,
+	isHighestSum,
 }: {
 	team: EventTeamBuilderTeam;
 	teamIndex: number;
@@ -88,6 +90,7 @@ function DrawSimTeamCard({
 	goalkeeperIds: readonly number[];
 	ceiling: number;
 	presentRatings: readonly number[];
+	isHighestSum: boolean;
 }) {
 	const cardStyle = eventTeamColorStyle(team.color);
 	const playerIds = teamSlotsToPlayerIds(team.slots);
@@ -97,7 +100,9 @@ function DrawSimTeamCard({
 			return [];
 		}
 
-		return [player.rating];
+		return [
+			eventDrawInputRating(player, goalkeeperIds.includes(playerId)),
+		];
 	});
 
 	return (
@@ -131,9 +136,9 @@ function DrawSimTeamCard({
 							<EventTeamPlayerRow
 								player={player}
 								ceiling={ceiling}
-								isGoalkeeperVolunteer={
-									slot !== 0 && goalkeeperIds.includes(player.id)
-								}
+								isGoalkeeperVolunteer={goalkeeperIds.includes(
+									player.id,
+								)}
 							/>
 						</li>,
 					];
@@ -142,6 +147,7 @@ function DrawSimTeamCard({
 			<EventTeamRatingAverage
 				ratings={ratings}
 				presentRatings={presentRatings}
+				isHighestSum={isHighestSum}
 			/>
 		</article>
 	);
@@ -169,7 +175,7 @@ export function ChampionshipEventDrawSim({
 	const rosterIds = players.map((player) => player.id);
 	const seedWeekday: EventWeekday | null = drawSimSeedWeekday(eventWeekday);
 	const ceiling = championshipRatingCeiling(
-		players.map((player) => player.rating),
+		players.flatMap((player) => [player.rating, player.goalkeeper_rating]),
 	);
 	const presentPlayers = players.filter((player) =>
 		presentIds.includes(player.id),
@@ -177,7 +183,9 @@ export function ChampionshipEventDrawSim({
 	const presentById = new Map(
 		presentPlayers.map((player) => [player.id, player]),
 	);
-	const presentRatings = presentPlayers.map((player) => player.rating);
+	const presentRatings = presentPlayers.map((player) =>
+		eventDrawInputRating(player, goalkeeperIds.includes(player.id)),
+	);
 	const presentGoalkeeperIds = keepGoalkeepersPresent(
 		goalkeeperIds,
 		presentIds,
@@ -275,7 +283,7 @@ export function ChampionshipEventDrawSim({
 		setError(null);
 		try {
 			await shareEventTeamsImage(
-				eventTeamsShareCards(teams, presentPlayers),
+				eventTeamsShareCards(teams, presentPlayers, goalkeeperIds),
 				ceiling,
 				{
 					championshipName,
@@ -377,17 +385,40 @@ export function ChampionshipEventDrawSim({
 
 			{hasTeams && (
 				<div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-					{teams.map((team, teamIndex) => (
-						<DrawSimTeamCard
-							key={team.key}
-							team={team}
-							teamIndex={teamIndex}
-							presentById={presentById}
-							goalkeeperIds={presentGoalkeeperIds}
-							ceiling={ceiling}
-							presentRatings={presentRatings}
-						/>
-					))}
+					{(() => {
+						const teamRatingsLists = teams.map((team) =>
+							teamSlotsToPlayerIds(team.slots).flatMap((playerId) => {
+								const player = presentById.get(playerId);
+								if (!player) {
+									return [];
+								}
+
+								return [
+									eventDrawInputRating(
+										player,
+										presentGoalkeeperIds.includes(playerId),
+									),
+								];
+							}),
+						);
+						const highestSumFlags = eventTeamHighestSumFlags(
+							teamRatingsLists,
+							presentRatings,
+						);
+
+						return teams.map((team, teamIndex) => (
+							<DrawSimTeamCard
+								key={team.key}
+								team={team}
+								teamIndex={teamIndex}
+								presentById={presentById}
+								goalkeeperIds={presentGoalkeeperIds}
+								ceiling={ceiling}
+								presentRatings={presentRatings}
+								isHighestSum={highestSumFlags[teamIndex] === true}
+							/>
+						));
+					})()}
 				</div>
 			)}
 

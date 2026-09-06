@@ -4,6 +4,11 @@ import { Button } from "@/components/button";
 import { ChampionshipRoster } from "@/components/championship-roster";
 import { SectionCard } from "@/components/section-card";
 import type { AssignableChampionshipRole } from "@/const/championship-role";
+import {
+	hiddenStrengthChampionshipCeiling,
+	hiddenStrengthDisplayed,
+	type HiddenStrengthCurrent,
+} from "@/const/hidden-strength";
 import { filterPlayersBySearch } from "@/const/player-search";
 import {
 	ROSTER_SHARE_LABEL,
@@ -108,6 +113,33 @@ export function ChampionshipRosterTab({
 	const [shareError, setShareError] = useState<string | null>(null);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [sorting, setSorting] = useState<RosterShareSort | null>(null);
+	const isOwnerViewer = Boolean(currentUserId && currentUserId === createdBy);
+	const hiddenByPlayer = useMemo(() => {
+		if (!isOwnerViewer) {
+			return undefined;
+		}
+
+		const ceiling = hiddenStrengthChampionshipCeiling(players);
+		const merged = new Map(
+			players.map((player) => [
+				player.id,
+				{
+					line: hiddenStrengthDisplayed(
+						player.hidden_strength,
+						player.rating,
+						ceiling,
+					),
+					goalkeeper: hiddenStrengthDisplayed(
+						player.hidden_goalkeeper_strength,
+						player.goalkeeper_rating,
+						ceiling,
+					),
+				} satisfies HiddenStrengthCurrent,
+			]),
+		);
+
+		return merged;
+	}, [isOwnerViewer, players]);
 	const visiblePlayers = useMemo(
 		() => filterPlayersBySearch(players, searchQuery),
 		[players, searchQuery],
@@ -217,6 +249,7 @@ export function ChampionshipRosterTab({
 				isAddingPlayer={isAddingPlayer}
 				addPlayerError={addPlayerError}
 				onAddPlayer={handlerWhenAllowed(canInvite, onAddPlayer)}
+				hiddenByPlayer={hiddenByPlayer}
 			/>
 			{shareError && <p className={`mt-4 ${ERROR_CLASS}`}>{shareError}</p>}
 			{claimError && <p className={`mt-4 ${ERROR_CLASS}`}>{claimError}</p>}

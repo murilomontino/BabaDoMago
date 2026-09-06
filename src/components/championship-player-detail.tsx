@@ -28,6 +28,10 @@ import {
 	type GoalkeeperStats,
 } from "@/const/goalkeeper-stats";
 import {
+	formatHiddenStrength,
+	HIDDEN_STRENGTH_LABEL,
+} from "@/const/hidden-strength";
+import {
 	formatPlayerFormDelta,
 	formatPlayerFormStreak,
 	formatPlayerFormWinRate,
@@ -115,6 +119,8 @@ type ChampionshipPlayerDetailProps = {
 	partners: readonly SynergyPartnerRow[];
 	goalkeeper: GoalkeeperStats | null;
 	onOpenEvent: (eventId: number) => void;
+	hiddenLine?: number;
+	hiddenGoalkeeper?: number;
 };
 
 function PlayerProfileHeader({
@@ -125,6 +131,8 @@ function PlayerProfileHeader({
 	isOwnerViewer,
 	career,
 	history,
+	hiddenLine,
+	hiddenGoalkeeper,
 }: {
 	player: ChampionshipPlayer;
 	createdBy: string;
@@ -133,6 +141,8 @@ function PlayerProfileHeader({
 	isOwnerViewer: boolean;
 	career: RosterRow;
 	history: readonly PlayerProfileHistoryRow[];
+	hiddenLine?: number;
+	hiddenGoalkeeper?: number;
 }) {
 	const visibleName = playerVisibleName(player);
 	const showLegalName = visibleName !== player.display_name;
@@ -244,7 +254,25 @@ function PlayerProfileHeader({
 						{isOwnerViewer && (
 							<span className={CHIP_CLASS}>{player.rating}</span>
 						)}
+						{isOwnerViewer && hiddenLine !== undefined && (
+							<span
+								className={`${CHIP_CLASS} text-fg-muted`}
+								title={HIDDEN_STRENGTH_LABEL.ariaLabel}
+							>
+								{formatHiddenStrength(hiddenLine)}
+							</span>
+						)}
 					</div>
+					{isOwnerViewer &&
+						player.is_goalkeeper &&
+						hiddenGoalkeeper !== undefined && (
+							<span
+								className={`${CHIP_CLASS} text-fg-muted`}
+								title={HIDDEN_STRENGTH_LABEL.ariaLabel}
+							>
+								{formatHiddenStrength(hiddenGoalkeeper)}
+							</span>
+						)}
 					<Button
 						variant={BUTTON_VARIANT.secondary}
 						disabled={isSharing}
@@ -556,6 +584,8 @@ export function ChampionshipPlayerDetail({
 	partners,
 	goalkeeper,
 	onOpenEvent,
+	hiddenLine,
+	hiddenGoalkeeper,
 }: ChampionshipPlayerDetailProps) {
 	const [tab, setTab] = usePlayerProfileTab();
 	const selectedTab = tab ?? PLAYER_PROFILE_TAB.profile;
@@ -572,6 +602,8 @@ export function ChampionshipPlayerDetail({
 					isOwnerViewer={isOwnerViewer}
 					career={career}
 					history={history}
+					hiddenLine={hiddenLine}
+					hiddenGoalkeeper={hiddenGoalkeeper}
 				/>
 			</section>
 			<Tabs

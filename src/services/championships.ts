@@ -3,8 +3,8 @@ import {
 	parseChampionshipLocation,
 	parseEventTime,
 	parseEventWeekday,
-	parsePlayerVoteQuorum,
 	parsePlayersPerTeam,
+	parsePlayerVoteQuorum,
 } from "@/const/championship-event";
 import {
 	assertChampionshipLogoFile,
@@ -28,7 +28,7 @@ import type {
 } from "@/types/championship";
 
 const PLAYER_COLUMNS =
-	"id, championship_id, user_id, display_name, nickname, nickname_tags, avatar_url, rating, goalkeeper_rating, role, is_goalkeeper, is_monthly, deleted_at, goals, assists, assisted_goals, own_goals, wins, losses, draws, matches, mvps" as const;
+	"id, championship_id, user_id, display_name, nickname, nickname_tags, avatar_url, rating, goalkeeper_rating, hidden_strength, hidden_goalkeeper_strength, role, is_goalkeeper, is_monthly, deleted_at, goals, assists, assisted_goals, own_goals, wins, losses, draws, matches, mvps" as const;
 
 const CHAMPIONSHIP_COLUMNS =
 	"id, name, invite_code, created_by, logo_path, event_time, event_weekday, location, players_per_team, skip_guest_goalkeeper_matches, rating_drop_goal_share, rating_drop_share_exclude_top, player_vote_quorum, player_vote_allow_self, is_visible" as const;
@@ -81,11 +81,33 @@ function asPlayer(value: unknown): ChampionshipPlayer {
 		throw new Error("player: invalid payload");
 	}
 
-	const goalkeeperRating = Number(row.goalkeeper_rating ?? PLAYER_RATING.default);
+	const goalkeeperRating = Number(
+		row.goalkeeper_rating ?? PLAYER_RATING.default,
+	);
 	if (
 		!Number.isFinite(goalkeeperRating) ||
 		goalkeeperRating < PLAYER_RATING.min ||
 		goalkeeperRating > PLAYER_RATING.max
+	) {
+		throw new Error("player: invalid payload");
+	}
+
+	const hiddenStrength = Number(row.hidden_strength ?? PLAYER_RATING.default);
+	if (
+		!Number.isFinite(hiddenStrength) ||
+		hiddenStrength < PLAYER_RATING.min ||
+		hiddenStrength > PLAYER_RATING.max
+	) {
+		throw new Error("player: invalid payload");
+	}
+
+	const hiddenGoalkeeperStrength = Number(
+		row.hidden_goalkeeper_strength ?? PLAYER_RATING.default,
+	);
+	if (
+		!Number.isFinite(hiddenGoalkeeperStrength) ||
+		hiddenGoalkeeperStrength < PLAYER_RATING.min ||
+		hiddenGoalkeeperStrength > PLAYER_RATING.max
 	) {
 		throw new Error("player: invalid payload");
 	}
@@ -106,6 +128,8 @@ function asPlayer(value: unknown): ChampionshipPlayer {
 		avatar_url: optionalString(row.avatar_url),
 		rating,
 		goalkeeper_rating: goalkeeperRating,
+		hidden_strength: hiddenStrength,
+		hidden_goalkeeper_strength: hiddenGoalkeeperStrength,
 		role: optionalString(row.role) ?? CHAMPIONSHIP_ROLE.member,
 		is_goalkeeper: row.is_goalkeeper === true,
 		is_monthly: row.is_monthly === true,
@@ -331,10 +355,13 @@ export async function updatePlayerGoalkeeperRating(
 	playerId: number,
 	rating: number,
 ): Promise<ChampionshipPlayer> {
-	const { data, error } = await supabase.rpc("update_player_goalkeeper_rating", {
-		player_id: playerId,
-		rating,
-	});
+	const { data, error } = await supabase.rpc(
+		"update_player_goalkeeper_rating",
+		{
+			player_id: playerId,
+			rating,
+		},
+	);
 
 	if (error) {
 		throw error;

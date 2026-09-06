@@ -4,6 +4,10 @@ import { PlayerRating } from "@/components/player-rating";
 import { PlayerRatingField } from "@/components/player-rating-field";
 import { playerRatingSchema } from "@/const/form-schema";
 import {
+	formatHiddenStrength,
+	HIDDEN_STRENGTH_LABEL,
+} from "@/const/hidden-strength";
+import {
 	PLAYER_RATING_INPUT,
 	PLAYER_STAR_FILL_CLASS,
 	parsePlayerRatingInput,
@@ -19,6 +23,8 @@ export type RosterPlayerRatingProps = {
 	onChangeRating?: (playerId: number, rating: number) => void;
 	onChangeGoalkeeperRating?: (playerId: number, rating: number) => void;
 	ratingPlayerId?: number | null;
+	hiddenLine?: number;
+	hiddenGoalkeeper?: number;
 };
 
 function RosterRatingInput({
@@ -92,6 +98,7 @@ function RosterRatingTrack({
 	ariaLabel,
 	fillClassName,
 	onChange,
+	hiddenStrength,
 }: {
 	rating: number;
 	ceiling: number;
@@ -100,6 +107,7 @@ function RosterRatingTrack({
 	ariaLabel: string;
 	fillClassName: string;
 	onChange?: (rating: number) => void;
+	hiddenStrength?: number;
 }) {
 	return (
 		<div className="flex items-center gap-2">
@@ -136,6 +144,14 @@ function RosterRatingTrack({
 			{isOwnerViewer && !onChange && (
 				<span className={CHIP_CLASS}>{rating}</span>
 			)}
+			{isOwnerViewer && hiddenStrength !== undefined && (
+				<span
+					className={`${CHIP_CLASS} text-fg-muted`}
+					title={HIDDEN_STRENGTH_LABEL.ariaLabel}
+				>
+					{formatHiddenStrength(hiddenStrength)}
+				</span>
+			)}
 		</div>
 	);
 }
@@ -148,6 +164,8 @@ export function RosterPlayerRating({
 	onChangeRating,
 	onChangeGoalkeeperRating,
 	ratingPlayerId,
+	hiddenLine,
+	hiddenGoalkeeper,
 }: RosterPlayerRatingProps) {
 	const busy = ratingPlayerId === player.id;
 
@@ -165,6 +183,7 @@ export function RosterPlayerRating({
 						? (rating) => onChangeRating(player.id, rating)
 						: undefined
 				}
+				hiddenStrength={hiddenLine}
 			/>
 			{player.is_goalkeeper && (
 				<RosterRatingTrack
@@ -179,6 +198,7 @@ export function RosterPlayerRating({
 							? (rating) => onChangeGoalkeeperRating(player.id, rating)
 							: undefined
 					}
+					hiddenStrength={hiddenGoalkeeper}
 				/>
 			)}
 		</div>

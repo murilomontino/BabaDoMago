@@ -29,6 +29,7 @@ import {
 	CHAMPIONSHIP_ROLE,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
+import type { HiddenStrengthCurrent } from "@/const/hidden-strength";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import { filterPlayersBySearch, PLAYER_SEARCH } from "@/const/player-search";
 import {
@@ -87,6 +88,7 @@ type ChampionshipRosterProps = {
 		rating: number;
 		isGoalkeeper: boolean;
 	}) => Promise<void>;
+	hiddenByPlayer?: ReadonlyMap<number, HiddenStrengthCurrent>;
 };
 
 function rosterRowId(row: RosterRow): string {
@@ -102,9 +104,19 @@ function rosterPlayerCellProps(
 
 function rosterPlayerRatingProps(
 	player: ChampionshipPlayer,
-	shared: Omit<RosterPlayerRatingProps, "player">,
+	shared: Omit<
+		RosterPlayerRatingProps,
+		"player" | "hiddenLine" | "hiddenGoalkeeper"
+	>,
+	hiddenByPlayer: ReadonlyMap<number, HiddenStrengthCurrent> | undefined,
 ): RosterPlayerRatingProps {
-	return { ...shared, player };
+	const hidden = hiddenByPlayer?.get(player.id);
+	return {
+		...shared,
+		player,
+		hiddenLine: hidden?.line,
+		hiddenGoalkeeper: hidden?.goalkeeper,
+	};
 }
 
 function rosterPlayerActionsProps(
@@ -147,6 +159,7 @@ export function ChampionshipRoster({
 	isAddingPlayer = false,
 	addPlayerError = null,
 	onAddPlayer,
+	hiddenByPlayer,
 }: ChampionshipRosterProps) {
 	const [uncontrolledQuery, setUncontrolledQuery] = useState("");
 	const query = searchQueryProp ?? uncontrolledQuery;
@@ -285,7 +298,11 @@ export function ChampionshipRoster({
 					meta: { title: ROSTER_COLUMN_LABEL.rating },
 					cell: ({ row }) => (
 						<RosterPlayerRating
-							{...rosterPlayerRatingProps(row.original, playerRatingShared)}
+							{...rosterPlayerRatingProps(
+								row.original,
+								playerRatingShared,
+								hiddenByPlayer,
+							)}
 						/>
 					),
 				}),
@@ -441,7 +458,7 @@ export function ChampionshipRoster({
 					),
 				}),
 			]),
-		[playerCellShared, playerRatingShared, playerActionsShared],
+		[playerCellShared, playerRatingShared, playerActionsShared, hiddenByPlayer],
 	);
 
 	const addCeiling = rosterCeiling ?? ceiling;
@@ -526,7 +543,11 @@ export function ChampionshipRoster({
 									{...rosterPlayerCellProps(player, playerCellShared)}
 								/>
 								<RosterPlayerRating
-									{...rosterPlayerRatingProps(player, playerRatingShared)}
+									{...rosterPlayerRatingProps(
+										player,
+										playerRatingShared,
+										hiddenByPlayer,
+									)}
 								/>
 							</div>
 							<RosterPlayerActions

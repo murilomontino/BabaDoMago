@@ -1,5 +1,6 @@
 import {
 	EVENT_TEAM_POSITION_LABEL,
+	eventTeamHighestSumFlags,
 	eventTeamPlayerPosition,
 } from "@/const/championship-event";
 import {
@@ -100,6 +101,7 @@ const VIDEO_COLOR = {
 	line: "#e7e5e4",
 	starEmpty: "#a8a29e",
 	starFill: "#fbbf24",
+	starFillGoalkeeper: "#ef4444",
 	avatar: "#e7e5e4",
 	accent: "#166534",
 } as const;
@@ -146,6 +148,7 @@ function drawStars(
 	size: number,
 	rating: number,
 	ceiling: number,
+	fillColor = VIDEO_COLOR.starFill,
 ) {
 	const fill = ratingToStarFill(rating, ceiling);
 	const path = new Path2D(PLAYER_STAR_PATH);
@@ -167,7 +170,7 @@ function drawStars(
 	ctx.beginPath();
 	ctx.rect(x, y, fill * size, size);
 	ctx.clip();
-	paint(VIDEO_COLOR.starFill);
+	paint(fillColor);
 	ctx.restore();
 }
 
@@ -283,7 +286,17 @@ function drawPlayerRow(
 	const rightX = x + width - padX;
 	const starsX = rightX - starsWidth;
 
-	drawStars(ctx, starsX, midY - starSize / 2, starSize, player.rating, ceiling);
+	drawStars(
+		ctx,
+		starsX,
+		midY - starSize / 2,
+		starSize,
+		player.rating,
+		ceiling,
+		player.isGoalkeeperRating
+			? VIDEO_COLOR.starFillGoalkeeper
+			: VIDEO_COLOR.starFill,
+	);
 
 	const nameX = avatarX + avatarSize + 6;
 	const nameMaxW = Math.max(0, starsX - 6 - nameX);
@@ -328,6 +341,7 @@ function drawCard(
 	entry: CardRender,
 	ceiling: number,
 	avatars: ReadonlyMap<string, HTMLImageElement>,
+	isHighestSum: boolean,
 ) {
 	const { card, revealed, rowProgress, cardProgress } = entry;
 	const height = cardHeight(revealed);
@@ -391,15 +405,15 @@ function drawCard(
 
 	const label = eventTeamShareAverageLabel(
 		card.players.slice(0, revealed).map((p) => p.rating),
+		isHighestSum,
 	);
 	if (label) {
-		const average = label.split(" ").at(-1) ?? label;
 		ctx.fillStyle = fg;
 		ctx.font = "500 11px system-ui, sans-serif";
 		ctx.textAlign = "end";
 		ctx.textBaseline = "middle";
 		ctx.fillText(
-			average,
+			label,
 			x + width - LAYOUT.cardPad,
 			y + height - LAYOUT.cardPad - 4,
 		);
@@ -703,6 +717,9 @@ function drawRevealGrid(
 	const columns = revealGridColumns(cards.length);
 	const cardWidth = revealCardWidth(width, columns);
 	const scale = gridScale(cards, height);
+	const highestFlags = eventTeamHighestSumFlags(
+		cards.map((card) => card.players.map((player) => player.rating)),
+	);
 
 	ctx.save();
 	ctx.translate(width / 2, LAYOUT.headerBottom);
@@ -720,6 +737,10 @@ function drawRevealGrid(
 			if (entry.revealed === 0) {
 				continue;
 			}
+			const cardIndex = start + col;
+			const isHighestSum =
+				highestFlags[cardIndex] === true &&
+				entry.revealed === entry.card.players.length;
 			drawCard(
 				ctx,
 				LAYOUT.padding + col * (cardWidth + LAYOUT.gap),
@@ -728,6 +749,7 @@ function drawRevealGrid(
 				entry,
 				ceiling,
 				avatars,
+				isHighestSum,
 			);
 		}
 

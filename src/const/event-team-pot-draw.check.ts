@@ -120,21 +120,53 @@ const potShare = [
 		title: "Cabeças de chave",
 		color: null,
 		players: [
-			{ id: 1, number: 1, name: "A", rating: 5, avatarUrl: null },
-			{ id: 2, number: 2, name: "B", rating: 4, avatarUrl: null },
+			{
+				id: 1,
+				number: 1,
+				name: "A",
+				rating: 5,
+				isGoalkeeperRating: false,
+				avatarUrl: null,
+			},
+			{
+				id: 2,
+				number: 2,
+				name: "B",
+				rating: 4,
+				isGoalkeeperRating: false,
+				avatarUrl: null,
+			},
 		],
 	},
 	{
 		title: "Pote 2",
 		color: null,
-		players: [{ id: 3, number: 1, name: "C", rating: 3, avatarUrl: null }],
+		players: [
+			{
+				id: 3,
+				number: 1,
+				name: "C",
+				rating: 3,
+				isGoalkeeperRating: false,
+				avatarUrl: null,
+			},
+		],
 	},
 ];
 const teamShare = [
 	{
 		title: "Time 1",
 		color: null,
-		players: [{ id: 1, number: 1, name: "A", rating: 5, avatarUrl: null }],
+		players: [
+			{
+				id: 1,
+				number: 1,
+				name: "A",
+				rating: 5,
+				isGoalkeeperRating: false,
+				avatarUrl: null,
+			},
+		],
 	},
 ];
 check(

@@ -22,6 +22,8 @@ type ChampionshipPlayersRow = {
 	nickname_tags: string[];
 	rating: number;
 	goalkeeper_rating: number;
+	hidden_strength: number;
+	hidden_goalkeeper_strength: number;
 	removed_at: string | null;
 	role: string;
 	is_goalkeeper: boolean;
@@ -104,6 +106,10 @@ export type Database = {
 					vote_rating_applied: number;
 					goalkeeper_vote_rating_delta: number;
 					goalkeeper_vote_rating_applied: number;
+					hidden_strength: number;
+					hidden_strength_delta: number;
+					hidden_goalkeeper_strength: number;
+					hidden_goalkeeper_strength_delta: number;
 					wins: number;
 					losses: number;
 					draws: number;
@@ -130,6 +136,10 @@ export type Database = {
 					vote_rating_applied?: number;
 					goalkeeper_vote_rating_delta?: number;
 					goalkeeper_vote_rating_applied?: number;
+					hidden_strength?: number;
+					hidden_strength_delta?: number;
+					hidden_goalkeeper_strength?: number;
+					hidden_goalkeeper_strength_delta?: number;
 					wins?: number;
 					losses?: number;
 					draws?: number;
@@ -156,6 +166,10 @@ export type Database = {
 					vote_rating_applied?: number;
 					goalkeeper_vote_rating_delta?: number;
 					goalkeeper_vote_rating_applied?: number;
+					hidden_strength?: number;
+					hidden_strength_delta?: number;
+					hidden_goalkeeper_strength?: number;
+					hidden_goalkeeper_strength_delta?: number;
 					wins?: number;
 					losses?: number;
 					draws?: number;
@@ -549,6 +563,8 @@ export type Database = {
 					own_goals?: number;
 					rating?: number;
 					goalkeeper_rating?: number;
+					hidden_strength?: number;
+					hidden_goalkeeper_strength?: number;
 					removed_at?: string | null;
 					role?: string;
 					is_goalkeeper?: boolean;
@@ -575,6 +591,8 @@ export type Database = {
 					own_goals?: number;
 					rating?: number;
 					goalkeeper_rating?: number;
+					hidden_strength?: number;
+					hidden_goalkeeper_strength?: number;
 					removed_at?: string | null;
 					role?: string;
 					is_goalkeeper?: boolean;

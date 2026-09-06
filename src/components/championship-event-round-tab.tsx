@@ -63,7 +63,9 @@ import {
 	type EventRsvpStatus,
 	type EventStatus,
 	type EventTeamDraft,
+	eventDrawInputRating,
 	eventRsvpButtonVariant,
+	eventTeamHighestSumFlags,
 	eventTeamPlayerIds,
 	eventTeamPlayerPosition,
 	eventTeamSourcePlayers,
@@ -365,11 +367,17 @@ export function ChampionshipEventRoundTab({
 	const ended = status === EVENT_STATUS.ended;
 	const presentPlayers = resolveEventPlayers(event.attendance, rosterById);
 	const volunteerGoalkeeperIds = attendanceGoalkeeperIds(event.attendance);
+	const volunteerSet = new Set(volunteerGoalkeeperIds);
 	const teamPlayerIds = eventTeamPlayerIds(event.teams);
-	const presentRatings = presentPlayers.map((player) => player.rating);
+	const presentRatings = presentPlayers.map((player) =>
+		eventDrawInputRating(player, volunteerSet.has(player.id)),
+	);
 	const ceiling = championshipRatingCeiling([
-		...players.map((player) => player.rating),
-		...event.attendance.map((row) => row.rating),
+		...players.flatMap((player) => [player.rating, player.goalkeeper_rating]),
+		...event.attendance.flatMap((row) => [
+			row.rating,
+			row.goalkeeper_rating,
+		]),
 	]);
 	const teamsEditable = canManage && canEditEventTeams(event);
 	const detailTeams = builderTeamsFromEvent(
@@ -430,7 +438,7 @@ export function ChampionshipEventRoundTab({
 		setShareError(null);
 		try {
 			await shareEventTeamsImage(
-				eventTeamsShareCards(detailTeams, players),
+				eventTeamsShareCards(detailTeams, players, volunteerGoalkeeperIds),
 				ceiling,
 				{ championshipName, startsAt: event.starts_at },
 			);
@@ -467,6 +475,20 @@ export function ChampionshipEventRoundTab({
 		event.attendance,
 	);
 	const showShareRecap = event.ended_at !== null;
+	const teamRatingsLists = event.teams.map((team) =>
+		eventTeamSourcePlayers(team).map((row) => {
+			const player = resolveRosterPlayer(
+				row.player_id,
+				attendanceNameByPlayerId.get(row.player_id) ?? "",
+				rosterById,
+			);
+			return eventDrawInputRating(player, volunteerSet.has(player.id));
+		}),
+	);
+	const highestSumFlags = eventTeamHighestSumFlags(
+		teamRatingsLists,
+		presentRatings,
+	);
 
 	async function handleShareRecap() {
 		setIsSharingRecap(true);
@@ -623,7 +645,7 @@ export function ChampionshipEventRoundTab({
 					{shareError && <p className={ERROR_CLASS}>{shareError}</p>}
 					{recapError && <p className={ERROR_CLASS}>{recapError}</p>}
 					<ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-						{event.teams.map((team) => {
+						{event.teams.map((team, teamIndex) => {
 							const cardStyle = eventTeamColorStyle(team.color);
 							const sourcePlayers = eventTeamSourcePlayers(team);
 							const teamRoster = sourcePlayers.map((row) => ({
@@ -689,14 +711,18 @@ export function ChampionshipEventRoundTab({
 													<EventTeamPlayerRow
 														player={player}
 														ceiling={ceiling}
+														isGoalkeeperVolunteer={volunteerSet.has(
+															player.id,
+														)}
 													/>
 												</li>
 											);
 										})}
 									</ul>
 									<EventTeamRatingAverage
-										ratings={teamRoster.map(({ player }) => player.rating)}
+										ratings={teamRatingsLists[teamIndex] ?? []}
 										presentRatings={presentRatings}
+										isHighestSum={highestSumFlags[teamIndex] === true}
 									/>
 								</li>
 							);

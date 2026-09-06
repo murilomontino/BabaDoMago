@@ -904,6 +904,7 @@ export function ChampionshipDetailPage() {
 								players={activePlayers}
 								championshipName={data.name}
 								events={eventsQuery.data ?? []}
+								isOwner={isOwner}
 							/>
 						</TabPanel>
 					)}
