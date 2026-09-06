@@ -47,6 +47,7 @@ function drawerBackdropMotion() {
 export function AppDrawer({ open, children, onClose }: AppDrawerProps) {
 	const ref = useRef<HTMLDialogElement>(null);
 	const panelRef = useRef<HTMLDivElement>(null);
+	const overlayRef = useRef<HTMLButtonElement>(null);
 	const [mounted, setMounted] = useState(open);
 	const reduceMotion = useReducedMotion();
 	const panelMotion = drawerPanelMotion(reduceMotion);
@@ -57,7 +58,15 @@ export function AppDrawer({ open, children, onClose }: AppDrawerProps) {
 		{
 			onSwipeDown: onClose,
 		},
-		open,
+		open && mounted,
+	);
+
+	useHammerVerticalSwipe(
+		overlayRef,
+		{
+			onSwipeDown: onClose,
+		},
+		open && mounted,
 	);
 
 	useEffect(() => {
@@ -121,9 +130,10 @@ export function AppDrawer({ open, children, onClose }: AppDrawerProps) {
 				{open && (
 					<motion.button
 						key="drawer-backdrop"
+						ref={overlayRef}
 						type="button"
 						aria-label={DRAWER_CLOSE_LABEL}
-						className="absolute inset-0 border-0 bg-black/60 p-0"
+						className="absolute inset-0 border-0 bg-black/60 p-0 touch-manipulation"
 						initial={backdropMotion.initial}
 						animate={backdropMotion.animate}
 						exit={backdropMotion.exit}
@@ -135,7 +145,7 @@ export function AppDrawer({ open, children, onClose }: AppDrawerProps) {
 					<motion.div
 						key="drawer-panel"
 						ref={panelRef}
-						className="relative z-10 w-full touch-pan-y"
+						className="relative z-10 w-full select-none touch-manipulation [-webkit-tap-highlight-color:transparent]"
 						initial={panelMotion.initial}
 						animate={panelMotion.animate}
 						exit={panelMotion.exit}
