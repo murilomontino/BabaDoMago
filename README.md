@@ -116,7 +116,7 @@ Schema e RPCs em [`supabase/migrations/`](supabase/migrations/), ordem cronológ
 | Rodadas | Presença, sorteio, partida, encerrar |
 | Classificação | Tabela agregada no cliente |
 | Pódio | Rankings do período + share |
-| Tendências | Forma, inflação, saúde, gols, heatmap… |
+| Tendências | Forma, contribuição, mapa, inflação, saúde, gols, heatmap… |
 | Simular Sorteio | Prévia sem gravar |
 | Projeções | Calibração / gap (dono) |
 | Mensalistas | Quem é mensalista |
@@ -606,6 +606,7 @@ Para cada superfície abaixo: **o que mostra**, **como ler**, **como usar** e **
 | Filtro | Onde | Valores | Default |
 | --- | --- | --- | --- |
 | Janela | Tendências | Últimas 3 / Últimas 5 rodadas encerradas | Últimas 5 |
+| Janela | Mapa de Performance | Últimas 3 / 5 / 8, 1 mês, 2 meses | Últimas 5 |
 | Elenco | Tendências, Pódio | Todos / Mensalistas | Todos |
 | Período | Pódio | Temporada (ano), 1º semestre (jan–jun), 2º semestre (jul–dez), Mês atual, Todos os meses | Temporada |
 | Período | Scatters do pódio | Últimas 4, Últimas 8, 1 mês, 2 meses | Últimas 8 |
@@ -668,7 +669,36 @@ Aba `trends`. Componente `championship-trends-tab.tsx`. Diagnóstico da liga: qu
 - **Limite:** Δ nota é **da janela**, não a nota atual. Zona morta não é queda.
 - **Fonte:** `championship-recent-form.ts`.
 
-#### 5. Ranking de goleiros
+#### 5. Mapa de Performance
+
+- **Mostra:** scatter **X = rating atual** do elenco, **Y = aproveitamento** da fórmula da nota na janela local do card, **tamanho = jogos**, **cor = estado**. Tabela abaixo com Gap.
+- **Estados:**
+
+| Rótulo | Regra |
+| --- | --- |
+| Elite | aproveitamento > 55% e rating ≥ mediana |
+| Ascensão | aproveitamento > 55% e rating < mediana |
+| Queda | aproveitamento < 45% e rating ≥ mediana |
+| Baixo | aproveitamento < 45% e rating < mediana |
+| Neutro | zona morta 45%–55% |
+| Poucos jogos | menos de 3 jogos (oculto por default; toggle) |
+| Sem nota | sentinela `rating === 0` (sempre oculto) |
+
+- **Cortes:** faixas horizontais em 45% / 55%; linha vertical = **mediana do rating** no recorte (só notas `> 0`).
+- **Gap:** `aproveitamento − (rating ÷ teto)` — sinal de quanto a forma atual difere do nível relativo da nota (não é pp do mesmo eixo).
+- **Como usar:** achar quem está acima ou abaixo do próprio nível; separar fase de nota acumulada.
+- **Limite:** janela própria do card (não a janela global da aba). Não altera a nota. Amostra < 3 jogos não classifica.
+- **Fonte:** `championship-performance-map.ts`.
+
+#### 6. Contribuição × Resultado
+
+- **Mostra:** scatter **X = WinRate** (V ÷ J, não o aproveitamento da nota), **Y = métrica** (padrão: participação em gols = (G+A) ÷ gols do time nas partidas em que jogou), **tamanho = jogos**. Seletor: participação, gols/jogo, assistências/jogo, MVP/rodada, Δ rating. Tabela e insights opcionais.
+- **Como ler:** canto superior direito = produção + vitórias. Superior esquerdo = produz e vence pouco. Inferior direito = vence com pouca participação direta em gols.
+- **Como usar:** cruzar rankings isolados (G, A, WinRate, MVP) sem afirmar causalidade.
+- **Limite:** mínimo 3 jogos (toggle para poucos). Partidas sem gols do time não viram 0% de participação. Usa a janela/elenco da aba Tendências. Clique no ponto abre a ficha.
+- **Fonte:** `championship-contribution.ts`.
+
+#### 7. Ranking de goleiros
 
 - **Mostra:** só quem pegou **3+ jogos** no gol na janela. Colunas: `J`, `V`, `E`, `D`, gols sofridos, média sofrida, **Sem sofrer** (clean sheets), WinRate e Tendência.
 - **Como ler:** ordenado pela **menor média de gols sofridos**. Tendência compara a média sofrida da primeira rodada com a última (mín. 3 rodadas): sofrer menos = “Em alta”.
@@ -676,7 +706,7 @@ Aba `trends`. Componente `championship-trends-tab.tsx`. Diagnóstico da liga: qu
 - **Limite:** WinRate do gol (V ÷ J) **não** é o aproveitamento da nota. Partida de goleiro convidado pode ser ignorada pela config da rodada (`skip_guest_goalkeeper_matches`).
 - **Fonte:** `championship-goalkeeper-ranking.ts`.
 
-#### 6. Consistência × volume
+#### 8. Consistência × volume
 
 - **Mostra:** scatter com **X = jogos** e **Y = desvio-padrão amostral** da métrica entre rodadas. Métricas: gols/jogo, assistências/jogo, participação em gols/jogo, delta da nota.
 - **Como ler:** direita e baixo = joga muito e rende sempre igual. Direita e alto = joga muito e oscila. Esquerda = pouco volume, amostra fraca.
@@ -684,7 +714,7 @@ Aba `trends`. Componente `championship-trends-tab.tsx`. Diagnóstico da liga: qu
 - **Limite:** exige **3+ presenças**; com n=3 o desvio é ruidoso (marcado como `ponytail:` no código). Desvio alto não significa jogador ruim.
 - **Fonte:** `championship-consistency.ts`.
 
-#### 7. Saúde da rodada
+#### 9. Saúde da rodada
 
 - **Mostra:** uma métrica por rodada, à escolha — `Partidas`, `Gols / jogo`, `Minutos jogados`, `Diferença prevista` (spread do sorteio) e `Jogos apertados` (decididos por 1 gol ou empate). Default: diferença prevista. KPIs: média de partidas e diferença prevista.
 - **Como ler:** spread alto = sorteio desequilibrado naquela rodada. Muitos “jogos apertados” = times parelhos.
@@ -692,14 +722,14 @@ Aba `trends`. Componente `championship-trends-tab.tsx`. Diagnóstico da liga: qu
 - **Limite:** `Minutos jogados` vem do **cronômetro real**, não da duração configurada. Spread é previsão pela nota, não placar.
 - **Fonte:** `championship-event-health.ts`.
 
-#### 8. Gols da rodada
+#### 10. Gols da rodada
 
 - **Mostra:** total de gols por rodada + média.
 - **Como usar:** complementa `gols / jogo`: rodada com muitos jogos infla o total sem o jogo ficar mais ofensivo.
 - **Limite:** não atribui mérito individual.
 - **Fonte:** `championship-round-goals.ts`.
 
-#### 9. Timeline de gols
+#### 11. Timeline de gols
 
 Bloco só de gols **com minuto** registrado no cronômetro.
 
@@ -712,7 +742,7 @@ Bloco só de gols **com minuto** registrado no cronômetro.
 - **Limite:** gol sem minuto não entra. Não prevê a próxima partida.
 - **Fonte:** `championship-goal-timeline.ts`.
 
-#### 10. Heatmap de forma
+#### 12. Heatmap de forma
 
 - **Mostra:** grid jogador × rodada. Cada célula é o aproveitamento naquela rodada: **Em alta**, **Em baixa**, **Zona morta**, **Poucos jogos**, **Ausente**.
 - **Como ler:** faixa verde seguida = fase boa. Coluna toda amarela = rodada equilibrada.
@@ -817,6 +847,7 @@ Aba `projections`. Valida se a nota **prevê** resultado.
 | A pelada está esvaziando? | Tendências → Presença no tempo |
 | Por que todo mundo subiu de nota? | Tendências → Inflação da nota |
 | Quem está em fase? | Tendências → Forma recente / Heatmap |
+| Quem está acima do próprio rating? | Tendências → Mapa de Performance |
 | Quem vai pro gol? | Tendências → Ranking de goleiros |
 | O sorteio está equilibrando? | Saúde da rodada (spread) + Pódio → Equilíbrio dos times |
 | A nota prevê resultado? | Projeções → Calibração do favorito |
@@ -830,6 +861,7 @@ Aba `projections`. Valida se a nota **prevê** resultado.
 | --- | --- |
 | Tendências (aba) | 3 rodadas encerradas |
 | Forma recente / Heatmap | 1+ jogo na janela (3+ jogos para não cair em “Poucos jogos”) |
+| Mapa de Performance | 3+ jogos na janela (poucos jogos opcional; nota `0` oculto) |
 | Ranking de goleiros | 3 jogos no gol |
 | Consistência × volume | 3 presenças |
 | Timeline de gols | cobertura de minuto ≥ 50% |

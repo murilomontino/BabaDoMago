@@ -4,6 +4,7 @@ import {
 	ArrowRight,
 	ArrowUp,
 	ChartColumn,
+	ChartScatter,
 	Goal,
 	Grid2x2,
 	LineChart as LineChartIcon,
@@ -48,6 +49,23 @@ import {
 	parseConsistencyMetric,
 } from "@/const/championship-consistency";
 import {
+	CONTRIBUTION_CHART,
+	CONTRIBUTION_LABEL,
+	CONTRIBUTION_METRIC_DEFAULT,
+	CONTRIBUTION_METRIC_OPTIONS,
+	type ContributionMetric,
+	championshipContribution,
+	championshipContributionEmptyLabel,
+	contributionInsights,
+	contributionMetricCaption,
+	contributionSubtitle,
+	formatContributionCount,
+	formatContributionMetricValue,
+	formatContributionWinRate,
+	type PlayerContributionPoint,
+	parseContributionMetric,
+} from "@/const/championship-contribution";
+import {
 	championshipEventHealth,
 	championshipEventHealthChart,
 	EVENT_HEALTH_CHART,
@@ -83,6 +101,26 @@ import {
 	type GoalkeeperRankingRow,
 	goalkeeperTrendLabel,
 } from "@/const/championship-goalkeeper-ranking";
+import {
+	championshipPerformanceMap,
+	championshipPerformanceMapEmptyLabel,
+	championshipPerformanceMapVisible,
+	formatPerformanceMapCount,
+	formatPerformanceMapGap,
+	formatPerformanceMapRate,
+	formatPerformanceMapRating,
+	PERFORMANCE_MAP_CHART,
+	PERFORMANCE_MAP_COLUMN,
+	PERFORMANCE_MAP_LABEL,
+	PERFORMANCE_MAP_STATE,
+	PERFORMANCE_MAP_WINDOW_DEFAULT,
+	PERFORMANCE_MAP_WINDOW_OPTIONS,
+	type PerformanceMapPoint,
+	type PerformanceMapWindow,
+	parsePerformanceMapWindow,
+	performanceMapStateLabel,
+	performanceMapWindowCaption,
+} from "@/const/championship-performance-map";
 import {
 	CHAMPIONSHIP_RATING_HISTORY_CHART,
 	endedChampionshipHistoryEvents,
@@ -185,6 +223,18 @@ const ChampionshipConsistencyScatterChart = lazy(() =>
 	),
 );
 
+const ChampionshipContributionScatterChart = lazy(() =>
+	import("@/components/molecules/championship-contribution-scatter-chart").then(
+		(m) => ({ default: m.ChampionshipContributionScatterChart }),
+	),
+);
+
+const ChampionshipPerformanceMapChart = lazy(() =>
+	import("@/components/molecules/championship-performance-map-chart").then(
+		(m) => ({ default: m.ChampionshipPerformanceMapChart }),
+	),
+);
+
 const ChampionshipGoalMinuteHistogramChart = lazy(() =>
 	import(
 		"@/components/molecules/championship-goal-minute-histogram-chart"
@@ -227,9 +277,19 @@ const recentFormColumnHelper = createColumnHelper<
 	RecentFormRow
 >();
 
+const performanceMapColumnHelper = createColumnHelper<
+	DataTableFeatures,
+	PerformanceMapPoint
+>();
+
 const goalkeeperColumnHelper = createColumnHelper<
 	DataTableFeatures,
 	GoalkeeperRankingRow
+>();
+
+const contributionColumnHelper = createColumnHelper<
+	DataTableFeatures,
+	PlayerContributionPoint
 >();
 
 type ChampionshipTrendsTabProps = {
@@ -370,6 +430,257 @@ function RecentFormTable({ rows }: { rows: RecentFormRow[] }) {
 			data={rows}
 			columns={columns}
 			getRowId={(row) => String(row.player.id)}
+		/>
+	);
+}
+
+function PerformanceMapStateIcon({
+	state,
+}: {
+	state: PerformanceMapPoint["state"];
+}) {
+	switch (state) {
+		case PERFORMANCE_MAP_STATE.rising:
+			return <ArrowUp className="size-3.5 text-pitch-fg" aria-hidden />;
+		case PERFORMANCE_MAP_STATE.elite:
+			return <ArrowUp className="size-3.5 text-amber-600" aria-hidden />;
+		case PERFORMANCE_MAP_STATE.falling:
+			return <ArrowDown className="size-3.5 text-danger-fg" aria-hidden />;
+		case PERFORMANCE_MAP_STATE.low:
+			return <ArrowDown className="size-3.5 text-fg-muted" aria-hidden />;
+		case PERFORMANCE_MAP_STATE.neutral:
+			return <ArrowRight className="size-3.5 text-fg-muted" aria-hidden />;
+		case PERFORMANCE_MAP_STATE.few_matches:
+			return <ArrowRight className="size-3.5 text-fg-muted" aria-hidden />;
+		case PERFORMANCE_MAP_STATE.unrated:
+			return <ArrowRight className="size-3.5 text-fg-muted" aria-hidden />;
+		default: {
+			const _never: never = state;
+			return _never;
+		}
+	}
+}
+
+function PerformanceMapTable({
+	points,
+	players,
+}: {
+	points: PerformanceMapPoint[];
+	players: readonly ChampionshipPlayer[];
+}) {
+	const playersById = useMemo(() => {
+		const map = new Map<number, ChampionshipPlayer>();
+		for (const player of players) {
+			map.set(player.id, player);
+		}
+		return map;
+	}, [players]);
+
+	const columns = useMemo(
+		() =>
+			performanceMapColumnHelper.columns([
+				performanceMapColumnHelper.accessor("name", {
+					id: PERFORMANCE_MAP_COLUMN.player,
+					header: "Jog",
+					enableHiding: false,
+					meta: { title: PERFORMANCE_MAP_LABEL.player },
+					cell: ({ row }) => {
+						const player = playersById.get(row.original.playerId);
+						if (!player) {
+							return row.original.name;
+						}
+
+						return <PlayerNameLink player={player} />;
+					},
+				}),
+				performanceMapColumnHelper.accessor("rating", {
+					id: PERFORMANCE_MAP_COLUMN.rating,
+					header: PERFORMANCE_MAP_LABEL.rating,
+					meta: {
+						align: "right" as const,
+						title: PERFORMANCE_MAP_LABEL.rating,
+					},
+					cell: ({ row }) => (
+						<span className="tabular-nums">
+							{formatPerformanceMapRating(row.original.rating)}
+						</span>
+					),
+				}),
+				performanceMapColumnHelper.accessor("rate", {
+					id: PERFORMANCE_MAP_COLUMN.rate,
+					header: "Apr",
+					meta: {
+						align: "right" as const,
+						title: PERFORMANCE_MAP_LABEL.rate,
+					},
+					cell: ({ row }) => (
+						<span className="tabular-nums">
+							{formatPerformanceMapRate(row.original.rate)}
+						</span>
+					),
+				}),
+				performanceMapColumnHelper.accessor("matches", {
+					id: PERFORMANCE_MAP_COLUMN.matches,
+					header: PERFORMANCE_MAP_LABEL.matches,
+					meta: {
+						align: "right" as const,
+						title: PERFORMANCE_MAP_LABEL.matches,
+					},
+					cell: ({ row }) => (
+						<span className="tabular-nums">
+							{formatPerformanceMapCount(row.original.matches)}
+						</span>
+					),
+				}),
+				performanceMapColumnHelper.accessor("gap", {
+					id: PERFORMANCE_MAP_COLUMN.gap,
+					header: PERFORMANCE_MAP_LABEL.gap,
+					meta: {
+						align: "right" as const,
+						title: PERFORMANCE_MAP_LABEL.gapHint,
+					},
+					cell: ({ row }) => (
+						<span className="tabular-nums">
+							{formatPerformanceMapGap(row.original.gap)}
+						</span>
+					),
+				}),
+				performanceMapColumnHelper.accessor("state", {
+					id: PERFORMANCE_MAP_COLUMN.state,
+					header: PERFORMANCE_MAP_LABEL.state,
+					meta: { title: PERFORMANCE_MAP_LABEL.state },
+					cell: ({ row }) => (
+						<span className="inline-flex items-center gap-1 text-xs font-medium text-fg">
+							<span
+								className="inline-block size-2 rounded-full"
+								style={{ backgroundColor: row.original.color }}
+								aria-hidden
+							/>
+							<PerformanceMapStateIcon state={row.original.state} />
+							{performanceMapStateLabel(row.original.state)}
+						</span>
+					),
+				}),
+			]),
+		[playersById],
+	);
+
+	return (
+		<DataTable
+			data={points}
+			columns={columns}
+			getRowId={(row) => String(row.playerId)}
+		/>
+	);
+}
+
+function ContributionTable({
+	points,
+	metric,
+}: {
+	points: PlayerContributionPoint[];
+	metric: ContributionMetric;
+}) {
+	const columns = useMemo(
+		() =>
+			contributionColumnHelper.columns([
+				contributionColumnHelper.accessor("name", {
+					id: "player",
+					header: "Jog",
+					enableHiding: false,
+					meta: { title: "Jogador" },
+					cell: ({ row }) => <PlayerNameLink player={row.original.player} />,
+				}),
+				contributionColumnHelper.accessor("winRate", {
+					id: "winRate",
+					header: CONTRIBUTION_LABEL.winRate,
+					meta: {
+						align: "right" as const,
+						title: CONTRIBUTION_LABEL.winRate,
+					},
+					cell: ({ row }) => (
+						<span className="tabular-nums">
+							{formatContributionWinRate(row.original.winRate)}
+						</span>
+					),
+				}),
+				contributionColumnHelper.accessor("selectedMetric", {
+					id: "metric",
+					header: contributionMetricCaption(metric),
+					meta: {
+						align: "right" as const,
+						title: contributionMetricCaption(metric),
+					},
+					cell: ({ row }) => (
+						<span className="tabular-nums">
+							{formatContributionMetricValue(
+								metric,
+								row.original.selectedMetric,
+							)}
+						</span>
+					),
+				}),
+				contributionColumnHelper.accessor("games", {
+					id: "games",
+					header: CONTRIBUTION_LABEL.games,
+					meta: {
+						align: "right" as const,
+						title: CONTRIBUTION_LABEL.games,
+					},
+					cell: ({ row }) => (
+						<span className="tabular-nums">
+							{formatContributionCount(row.original.games)}
+						</span>
+					),
+				}),
+				contributionColumnHelper.accessor("goals", {
+					id: "goals",
+					header: "G",
+					meta: {
+						align: "right" as const,
+						title: CONTRIBUTION_LABEL.goals,
+					},
+					cell: ({ row }) => (
+						<span className="tabular-nums">
+							{formatContributionCount(row.original.goals)}
+						</span>
+					),
+				}),
+				contributionColumnHelper.accessor("assists", {
+					id: "assists",
+					header: "A",
+					meta: {
+						align: "right" as const,
+						title: CONTRIBUTION_LABEL.assists,
+					},
+					cell: ({ row }) => (
+						<span className="tabular-nums">
+							{formatContributionCount(row.original.assists)}
+						</span>
+					),
+				}),
+				contributionColumnHelper.accessor("mvps", {
+					id: "mvps",
+					header: CONTRIBUTION_LABEL.mvps,
+					meta: {
+						align: "right" as const,
+						title: CONTRIBUTION_LABEL.mvps,
+					},
+					cell: ({ row }) => (
+						<span className="tabular-nums">
+							{formatContributionCount(row.original.mvps)}
+						</span>
+					),
+				}),
+			]),
+		[metric],
+	);
+
+	return (
+		<DataTable
+			data={points}
+			columns={columns}
+			getRowId={(row) => String(row.playerId)}
 		/>
 	);
 }
@@ -517,6 +828,15 @@ export function ChampionshipTrendsTab({
 	const [consistencyMetric, setConsistencyMetric] = useState<ConsistencyMetric>(
 		CONSISTENCY_METRIC_DEFAULT,
 	);
+	const [performanceWindow, setPerformanceWindow] =
+		useState<PerformanceMapWindow>(PERFORMANCE_MAP_WINDOW_DEFAULT);
+	const [showFewMatches, setShowFewMatches] = useState(false);
+	const [showPerformanceNames, setShowPerformanceNames] = useState(false);
+	const [contributionMetric, setContributionMetric] =
+		useState<ContributionMetric>(CONTRIBUTION_METRIC_DEFAULT);
+	const [showContributionBelowMin, setShowContributionBelowMin] =
+		useState(false);
+	const [showContributionTable, setShowContributionTable] = useState(true);
 	const [healthMetric, setHealthMetric] = useState<EventHealthMetric>(
 		EVENT_HEALTH_METRIC_DEFAULT,
 	);
@@ -569,6 +889,44 @@ export function ChampionshipTrendsTab({
 	const formRows = useMemo(
 		() => championshipRecentForm(scopedPlayers, windowEvents),
 		[scopedPlayers, windowEvents],
+	);
+	const performanceMap = useMemo(
+		() => championshipPerformanceMap(scopedPlayers, events, performanceWindow),
+		[scopedPlayers, events, performanceWindow],
+	);
+	const performancePoints = useMemo(
+		() => championshipPerformanceMapVisible(performanceMap, showFewMatches),
+		[performanceMap, showFewMatches],
+	);
+	const performanceEmpty =
+		championshipPerformanceMapEmptyLabel(performancePoints);
+	const contributionPoints = useMemo(
+		() =>
+			championshipContribution({
+				players,
+				events,
+				window,
+				audience,
+				metric: contributionMetric,
+				includeBelowMin: showContributionBelowMin,
+			}),
+		[
+			players,
+			events,
+			window,
+			audience,
+			contributionMetric,
+			showContributionBelowMin,
+		],
+	);
+	const contributionEmpty = championshipContributionEmptyLabel(
+		contributionPoints,
+		contributionMetric,
+		showContributionBelowMin,
+	);
+	const contributionInsightRows = useMemo(
+		() => contributionInsights(contributionPoints),
+		[contributionPoints],
 	);
 	const goalkeeperRows = useMemo(
 		() => championshipGoalkeeperRanking(scopedPlayers, windowEvents),
@@ -899,6 +1257,198 @@ export function ChampionshipTrendsTab({
 							</p>
 						)}
 						{formRows.length > 0 && <RecentFormTable rows={formRows} />}
+					</section>
+
+					<section className="space-y-3">
+						<div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+							<div className="space-y-1">
+								<div className="flex items-center gap-2">
+									<ChartScatter className="size-4 text-pitch-fg" />
+									<h3 className="text-sm font-semibold text-fg">
+										{PERFORMANCE_MAP_LABEL.title}
+									</h3>
+								</div>
+								<p className="text-sm text-fg-muted">
+									{PERFORMANCE_MAP_LABEL.subtitle}
+								</p>
+								<p className="text-sm text-fg-muted">
+									{PERFORMANCE_MAP_LABEL.hint}
+								</p>
+							</div>
+							<div className="flex flex-col gap-2 sm:items-end">
+								<label className="block text-xs text-fg-muted">
+									{PERFORMANCE_MAP_LABEL.filter}
+									<select
+										value={performanceWindow}
+										className={`mt-1 ${FIELD_CLASS}`}
+										onChange={(event) => {
+											setPerformanceWindow(
+												parsePerformanceMapWindow(event.target.value),
+											);
+										}}
+									>
+										{PERFORMANCE_MAP_WINDOW_OPTIONS.map((option) => (
+											<option key={option} value={option}>
+												{performanceMapWindowCaption(option)}
+											</option>
+										))}
+									</select>
+								</label>
+								<label className="inline-flex items-center gap-2 text-xs text-fg-muted">
+									<input
+										type="checkbox"
+										checked={showFewMatches}
+										onChange={(event) => {
+											setShowFewMatches(event.target.checked);
+										}}
+									/>
+									{PERFORMANCE_MAP_LABEL.showFewMatches}
+								</label>
+								<label className="inline-flex items-center gap-2 text-xs text-fg-muted">
+									<input
+										type="checkbox"
+										checked={showPerformanceNames}
+										onChange={(event) => {
+											setShowPerformanceNames(event.target.checked);
+										}}
+									/>
+									{PERFORMANCE_MAP_LABEL.showNames}
+								</label>
+							</div>
+						</div>
+						{performanceEmpty && (
+							<p className="text-sm text-fg-muted">
+								{trendsSectionEmptyLabel(audience, performanceEmpty)}
+							</p>
+						)}
+						{!performanceEmpty && (
+							<>
+								<Suspense
+									fallback={
+										<SkeletonRegion label={SKELETON_LABEL.chart}>
+											<div style={{ height: PERFORMANCE_MAP_CHART.height }}>
+												<Skeleton className="h-full w-full" />
+											</div>
+										</SkeletonRegion>
+									}
+								>
+									<ChampionshipPerformanceMapChart
+										points={performancePoints}
+										median={performanceMap.median}
+										showNames={showPerformanceNames}
+									/>
+								</Suspense>
+								<p className="text-xs text-fg-muted">
+									{PERFORMANCE_MAP_LABEL.medianLegend}
+								</p>
+								<PerformanceMapTable
+									points={performancePoints}
+									players={scopedPlayers}
+								/>
+							</>
+						)}
+					</section>
+
+					<section className="space-y-3">
+						<div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+							<div className="space-y-1">
+								<div className="flex items-center gap-2">
+									<TrendingUp className="size-4 text-pitch-fg" />
+									<h3 className="text-sm font-semibold text-fg">
+										{CONTRIBUTION_LABEL.title}
+									</h3>
+								</div>
+								<p className="text-sm font-medium text-fg">
+									{contributionSubtitle(contributionMetric)}
+								</p>
+								<p className="text-sm text-fg-muted">
+									{CONTRIBUTION_LABEL.hint}
+								</p>
+							</div>
+							<div className="flex flex-col gap-2 sm:items-end">
+								<label className="block text-xs text-fg-muted">
+									{CONTRIBUTION_LABEL.filter}
+									<select
+										value={contributionMetric}
+										className={`mt-1 ${FIELD_CLASS}`}
+										onChange={(event) => {
+											setContributionMetric(
+												parseContributionMetric(event.target.value),
+											);
+										}}
+									>
+										{CONTRIBUTION_METRIC_OPTIONS.map((option) => (
+											<option key={option} value={option}>
+												{contributionMetricCaption(option)}
+											</option>
+										))}
+									</select>
+								</label>
+								<label className="inline-flex items-center gap-2 text-xs text-fg-muted">
+									<input
+										type="checkbox"
+										checked={showContributionBelowMin}
+										onChange={(event) => {
+											setShowContributionBelowMin(event.target.checked);
+										}}
+									/>
+									{CONTRIBUTION_LABEL.showBelowMin}
+								</label>
+								<label className="inline-flex items-center gap-2 text-xs text-fg-muted">
+									<input
+										type="checkbox"
+										checked={showContributionTable}
+										onChange={(event) => {
+											setShowContributionTable(event.target.checked);
+										}}
+									/>
+									{showContributionTable && CONTRIBUTION_LABEL.hideTable}
+									{!showContributionTable && CONTRIBUTION_LABEL.showTable}
+								</label>
+							</div>
+						</div>
+						{contributionEmpty && (
+							<p className="text-sm text-fg-muted">
+								{trendsSectionEmptyLabel(audience, contributionEmpty)}
+							</p>
+						)}
+						{!contributionEmpty && (
+							<>
+								{contributionInsightRows.length > 0 && (
+									<ul className="space-y-1 text-sm text-fg-muted">
+										{contributionInsightRows.map((insight) => (
+											<li key={insight.kind}>
+												<span className="font-medium text-fg">
+													{insight.label}
+												</span>
+												{" → "}
+												{insight.name} — {insight.detail}
+											</li>
+										))}
+									</ul>
+								)}
+								<Suspense
+									fallback={
+										<SkeletonRegion label={SKELETON_LABEL.chart}>
+											<div style={{ height: CONTRIBUTION_CHART.height }}>
+												<Skeleton className="h-full w-full" />
+											</div>
+										</SkeletonRegion>
+									}
+								>
+									<ChampionshipContributionScatterChart
+										points={contributionPoints}
+										metric={contributionMetric}
+									/>
+								</Suspense>
+								{showContributionTable && (
+									<ContributionTable
+										points={[...contributionPoints]}
+										metric={contributionMetric}
+									/>
+								)}
+							</>
+						)}
 					</section>
 
 					<section className="space-y-3">
