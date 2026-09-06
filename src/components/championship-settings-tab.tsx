@@ -232,8 +232,7 @@ export function ChampionshipSettingsTab({
 										skipGuestGoalkeeperMatches:
 											values.skipGuestGoalkeeperMatches,
 										ratingDropGoalShare: values.ratingDropGoalShare,
-										ratingDropShareExcludeTop:
-											values.ratingDropShareExcludeTop,
+										ratingDropShareExcludeTop: values.ratingDropShareExcludeTop,
 										playerVoteQuorum: parsePlayerVoteQuorum(
 											values.playerVoteQuorum,
 										),

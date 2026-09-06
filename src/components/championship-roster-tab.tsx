@@ -1,4 +1,10 @@
-import { Copy, FileSpreadsheet, LoaderCircle, Share2, Users } from "lucide-react";
+import {
+	Copy,
+	FileSpreadsheet,
+	LoaderCircle,
+	Share2,
+	Users,
+} from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/button";
 import { ChampionshipRoster } from "@/components/championship-roster";

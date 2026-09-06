@@ -161,7 +161,13 @@ function drawSeriesDots(
 	const color = ratingInflationShareSeriesColor(series);
 	for (const point of coords) {
 		context.beginPath();
-		context.arc(point.x, point.y, RATING_INFLATION_SHARE.dotRadius, 0, Math.PI * 2);
+		context.arc(
+			point.x,
+			point.y,
+			RATING_INFLATION_SHARE.dotRadius,
+			0,
+			Math.PI * 2,
+		);
 		context.fillStyle = color;
 		context.fill();
 		context.strokeStyle = RATING_INFLATION_SHARE_COLOR.surface;
@@ -189,23 +195,15 @@ function drawChart(
 	y: number,
 	width: number,
 ) {
-	const {
-		chartHeight,
-		chartAxis,
-		chartBottom,
-		chartTopPad,
-	} = RATING_INFLATION_SHARE;
+	const { chartHeight, chartAxis, chartBottom, chartTopPad } =
+		RATING_INFLATION_SHARE;
 	const domain = ratingInflationShareYDomain(points);
 	const plotX = x + chartAxis;
 	const plotY = y + chartTopPad;
 	const plotW = width - chartAxis;
 	const plotH = chartHeight - chartTopPad - chartBottom;
 	const lastIndex = points.length - 1;
-	const ticks = [
-		domain.min,
-		(domain.min + domain.max) / 2,
-		domain.max,
-	];
+	const ticks = [domain.min, (domain.min + domain.max) / 2, domain.max];
 
 	for (const tick of ticks) {
 		const ty = valueToY(tick, plotY, plotH, domain.min, domain.max);
@@ -261,11 +259,7 @@ function drawChart(
 	}
 }
 
-function drawLegend(
-	context: CanvasRenderingContext2D,
-	x: number,
-	y: number,
-) {
+function drawLegend(context: CanvasRenderingContext2D, x: number, y: number) {
 	const { legendSwatch, legendItemGap } = RATING_INFLATION_SHARE;
 	let cursorX = x;
 

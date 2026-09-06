@@ -1,3 +1,4 @@
+import { PlayerNameLink } from "@/components/molecules/player-name-link";
 import { formatEventStartsAt } from "@/const/championship-event";
 import {
 	FORM_HEATMAP_CELL,
@@ -9,7 +10,6 @@ import {
 	formHeatmapCellLabel,
 	formHeatmapCellTitle,
 } from "@/const/championship-form-heatmap";
-import { PlayerNameLink } from "@/components/molecules/player-name-link";
 
 type ChampionshipFormHeatmapProps = {
 	grid: FormHeatmapGrid;
@@ -87,7 +87,9 @@ export function FormHeatmapPlayerStrip({
 	);
 }
 
-export function ChampionshipFormHeatmap({ grid }: ChampionshipFormHeatmapProps) {
+export function ChampionshipFormHeatmap({
+	grid,
+}: ChampionshipFormHeatmapProps) {
 	return (
 		<div className="space-y-3">
 			<div className="overflow-x-auto">

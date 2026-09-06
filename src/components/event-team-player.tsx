@@ -200,8 +200,7 @@ export function EventTeamPlayerRow({
 }: EventTeamPlayerRowProps) {
 	const visibleName = playerVisibleName(player);
 	const displayRating =
-		rating ??
-		eventDrawInputRating(player, isGoalkeeperVolunteer);
+		rating ?? eventDrawInputRating(player, isGoalkeeperVolunteer);
 	const fillClassName = isGoalkeeperVolunteer
 		? PLAYER_STAR_FILL_CLASS.goalkeeper
 		: PLAYER_STAR_FILL_CLASS.line;

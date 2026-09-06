@@ -42,8 +42,10 @@ export const ATTENDANCE_RELIABILITY_COLUMN_ABBR = {
 
 export const ATTENDANCE_RELIABILITY_COLUMN_LABEL = {
 	[ATTENDANCE_RELIABILITY_COLUMN.player]: "Jogador",
-	[ATTENDANCE_RELIABILITY_COLUMN.confirmed]: ATTENDANCE_RELIABILITY_LABEL.confirmed,
-	[ATTENDANCE_RELIABILITY_COLUMN.attended]: ATTENDANCE_RELIABILITY_LABEL.attended,
+	[ATTENDANCE_RELIABILITY_COLUMN.confirmed]:
+		ATTENDANCE_RELIABILITY_LABEL.confirmed,
+	[ATTENDANCE_RELIABILITY_COLUMN.attended]:
+		ATTENDANCE_RELIABILITY_LABEL.attended,
 	[ATTENDANCE_RELIABILITY_COLUMN.noShows]: ATTENDANCE_RELIABILITY_LABEL.noShows,
 	[ATTENDANCE_RELIABILITY_COLUMN.rate]: ATTENDANCE_RELIABILITY_LABEL.rate,
 	[ATTENDANCE_RELIABILITY_COLUMN.streak]: ATTENDANCE_RELIABILITY_LABEL.streak,
@@ -78,9 +80,7 @@ function noShowStreakFromNewest(
 			continue;
 		}
 
-		const present = event.attendance.some(
-			(row) => row.player_id === playerId,
-		);
+		const present = event.attendance.some((row) => row.player_id === playerId);
 		if (present) {
 			return streak;
 		}
@@ -110,8 +110,7 @@ export function championshipAttendanceReliability(
 
 		for (const event of ended) {
 			const going = event.rsvps.some(
-				(rsvp) =>
-					rsvp.player_id === player.id && isGoingRsvp(rsvp.status),
+				(rsvp) => rsvp.player_id === player.id && isGoingRsvp(rsvp.status),
 			);
 			if (!going) {
 				continue;

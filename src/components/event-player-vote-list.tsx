@@ -1,5 +1,5 @@
-import { CircleOff, Equal, ThumbsDown, ThumbsUp } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { CircleOff, Equal, ThumbsDown, ThumbsUp } from "lucide-react";
 import { Button } from "@/components/button";
 import { EventTeamColorDot } from "@/components/event-team-player";
 import { FormHeatmapPlayerStrip } from "@/components/molecules/championship-form-heatmap";
@@ -193,20 +193,20 @@ export function EventPlayerVoteList({
 				!votesVoided &&
 				!votesClosed &&
 				!voterPresent && (
-				<p className="text-sm text-fg-muted">
-					{EVENT_PLAYER_VOTE_LABEL.needPresent}
-				</p>
-			)}
+					<p className="text-sm text-fg-muted">
+						{EVENT_PLAYER_VOTE_LABEL.needPresent}
+					</p>
+				)}
 			{ballotLocked &&
 				canVoteRole &&
 				eventEnded &&
 				!votesVoided &&
 				!votesClosed &&
 				voterPresent && (
-				<p className="text-sm text-fg-muted">
-					{EVENT_PLAYER_VOTE_LABEL.votesSubmitted}
-				</p>
-			)}
+					<p className="text-sm text-fg-muted">
+						{EVENT_PLAYER_VOTE_LABEL.votesSubmitted}
+					</p>
+				)}
 			{showBudget && (
 				<p className="text-sm text-fg-muted">
 					{eventPlayerVoteBudgetSummary(draftVotes)}
@@ -289,7 +289,11 @@ export function EventPlayerVoteList({
 								const nextBlank = nextEventPlayerVoteValue(draftVote, "blank");
 								const canLike =
 									canVote &&
-									canSetEventPlayerVoteDraft(draftVotes, row.player_id, nextLike);
+									canSetEventPlayerVoteDraft(
+										draftVotes,
+										row.player_id,
+										nextLike,
+									);
 								const canDislike =
 									canVote &&
 									canSetEventPlayerVoteDraft(

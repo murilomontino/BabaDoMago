@@ -6,7 +6,10 @@ function check(condition: boolean, message: string) {
 	}
 }
 
-check(HAMMER_VERTICAL_SWIPE.panThreshold === 5, "pan threshold matches pawkeepr");
+check(
+	HAMMER_VERTICAL_SWIPE.panThreshold === 5,
+	"pan threshold matches pawkeepr",
+);
 check(
 	HAMMER_VERTICAL_SWIPE.swipeThreshold === 10,
 	"swipe threshold matches pawkeepr",

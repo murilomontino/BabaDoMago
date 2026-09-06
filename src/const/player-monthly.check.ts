@@ -39,7 +39,11 @@ function stubPlayer(id: number, isMonthly: boolean): ChampionshipPlayer {
 	};
 }
 
-const players = [stubPlayer(1, true), stubPlayer(2, false), stubPlayer(3, true)];
+const players = [
+	stubPlayer(1, true),
+	stubPlayer(2, false),
+	stubPlayer(3, true),
+];
 
 check(PLAYER_MONTHLY_LABEL.title === "Mensalistas", "title label");
 check(

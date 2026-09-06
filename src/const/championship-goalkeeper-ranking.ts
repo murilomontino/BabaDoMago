@@ -125,9 +125,7 @@ export function championshipGoalkeeperRanking(
 				goalsConcededAverage: rosterAverage(goalsConceded, matches.length),
 				cleanSheets,
 				winRate: rosterWinRate(wins, matches.length),
-				trend: goalkeeperAverageTrend(
-					goalkeeperEventAverages(matches),
-				),
+				trend: goalkeeperAverageTrend(goalkeeperEventAverages(matches)),
 			},
 		];
 	});

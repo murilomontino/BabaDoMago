@@ -1,5 +1,8 @@
 import type { ChampionshipPlayer } from "../types/championship.ts";
-import { championshipRatingGap, RATING_GAP_KIND } from "./championship-rating-gap.ts";
+import {
+	championshipRatingGap,
+	RATING_GAP_KIND,
+} from "./championship-rating-gap.ts";
 import { CHAMPIONSHIP_ROLE } from "./championship-role.ts";
 import { PLAYER_RATING } from "./player-rating.ts";
 

@@ -192,7 +192,8 @@ function seedPlayerRatingFromAttendance(
 function attendanceRatingAfterEvent(row: AttendanceRatingRow): number {
 	const ratingFrom = playerProfileDelta(row.rating);
 	const delta =
-		playerProfileDelta(row.rating_delta) + playerProfileDelta(row.vote_rating_delta);
+		playerProfileDelta(row.rating_delta) +
+		playerProfileDelta(row.vote_rating_delta);
 	return applyEventRatingDelta(ratingFrom, delta);
 }
 
@@ -250,7 +251,9 @@ function rosterInflationCeiling(
 	roster: readonly ChampionshipPlayer[],
 	playerRatings: ReadonlyMap<number, number>,
 ): number {
-	return championshipRatingCeiling(rosterInflationRatings(roster, playerRatings));
+	return championshipRatingCeiling(
+		rosterInflationRatings(roster, playerRatings),
+	);
 }
 
 function rosterInflationFloor(

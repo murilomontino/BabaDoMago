@@ -1,5 +1,5 @@
-import { endedChampionshipHistoryEvents } from "./championship-rating-history.ts";
 import type { ChampionshipPlayer } from "../types/championship.ts";
+import { endedChampionshipHistoryEvents } from "./championship-rating-history.ts";
 
 export const TRENDS_WINDOW = {
 	last3: "last3",

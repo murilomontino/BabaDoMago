@@ -223,8 +223,7 @@ export function EventDrawReveal({
 								<EventTeamRatingAverage
 									ratings={ratings}
 									isHighestSum={
-										highestSumByKey.get(eventDrawRevealCardKey(card)) ===
-										true
+										highestSumByKey.get(eventDrawRevealCardKey(card)) === true
 									}
 								/>
 							</motion.li>

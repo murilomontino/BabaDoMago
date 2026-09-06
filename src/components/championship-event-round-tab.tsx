@@ -374,10 +374,7 @@ export function ChampionshipEventRoundTab({
 	);
 	const ceiling = championshipRatingCeiling([
 		...players.flatMap((player) => [player.rating, player.goalkeeper_rating]),
-		...event.attendance.flatMap((row) => [
-			row.rating,
-			row.goalkeeper_rating,
-		]),
+		...event.attendance.flatMap((row) => [row.rating, row.goalkeeper_rating]),
 	]);
 	const teamsEditable = canManage && canEditEventTeams(event);
 	const detailTeams = builderTeamsFromEvent(
@@ -711,9 +708,7 @@ export function ChampionshipEventRoundTab({
 													<EventTeamPlayerRow
 														player={player}
 														ceiling={ceiling}
-														isGoalkeeperVolunteer={volunteerSet.has(
-															player.id,
-														)}
+														isGoalkeeperVolunteer={volunteerSet.has(player.id)}
 													/>
 												</li>
 											);
@@ -814,33 +809,33 @@ export function ChampionshipEventRoundTab({
 								{ended &&
 									!isEventPlayerVotesVoided(event.player_votes_voided_at) &&
 									event.attendance.length > 0 && (
-									<IconTooltipButton
-										showLabel
-										label={EVENT_PLAYER_VOTE_LABEL.open}
-										icon={<ThumbsUp className="size-4" />}
-										onClick={() => {
-											void navigate({
-												to: ROUTES.championshipEventVote,
-												params: {
-													championshipId: String(event.championship_id),
-													eventId: String(event.id),
-												},
-											});
-										}}
-									/>
-								)}
+										<IconTooltipButton
+											showLabel
+											label={EVENT_PLAYER_VOTE_LABEL.open}
+											icon={<ThumbsUp className="size-4" />}
+											onClick={() => {
+												void navigate({
+													to: ROUTES.championshipEventVote,
+													params: {
+														championshipId: String(event.championship_id),
+														eventId: String(event.id),
+													},
+												});
+											}}
+										/>
+									)}
 								{ended &&
 									!isEventPlayerVotesVoided(event.player_votes_voided_at) &&
 									event.attendance.length > 0 && (
-									<IconTooltipButton
-										showLabel
-										label={copyEventPlayerVoteLinkLabel(copiedVoteLink)}
-										icon={<Link2 className="size-4" />}
-										onClick={() => {
-											void handleCopyVoteLink();
-										}}
-									/>
-								)}
+										<IconTooltipButton
+											showLabel
+											label={copyEventPlayerVoteLinkLabel(copiedVoteLink)}
+											icon={<Link2 className="size-4" />}
+											onClick={() => {
+												void handleCopyVoteLink();
+											}}
+										/>
+									)}
 								{canSetMvp && ended && event.attendance.length > 0 && (
 									<IconTooltipButton
 										showLabel

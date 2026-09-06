@@ -105,7 +105,10 @@ const zeroCell = eventAttendanceFormCell({
 	losses: 0,
 	matches: 0,
 });
-check(zeroCell.kind === FORM_HEATMAP_CELL.insufficient, "zero matches insufficient");
+check(
+	zeroCell.kind === FORM_HEATMAP_CELL.insufficient,
+	"zero matches insufficient",
+);
 
 const fewCell = eventAttendanceFormCell({
 	wins: 1,
@@ -113,7 +116,10 @@ const fewCell = eventAttendanceFormCell({
 	losses: 1,
 	matches: 2,
 });
-check(fewCell.kind === FORM_HEATMAP_CELL.insufficient, "two matches insufficient");
+check(
+	fewCell.kind === FORM_HEATMAP_CELL.insufficient,
+	"two matches insufficient",
+);
 
 const upCell = eventAttendanceFormCell({
 	wins: 3,
@@ -162,14 +168,19 @@ check(grid.rows[0]?.cells[0]?.kind === FORM_HEATMAP_CELL.up, "present cell");
 check(grid.rows[0]?.cells[1]?.kind === FORM_HEATMAP_CELL.absent, "absent cell");
 
 const monthlyGrid = championshipFormHeatmap(
-	trendsAudiencePlayers([monthlyPlayer, player(2, "Bruno")], TRENDS_AUDIENCE.monthly),
+	trendsAudiencePlayers(
+		[monthlyPlayer, player(2, "Bruno")],
+		TRENDS_AUDIENCE.monthly,
+	),
 	events,
 );
 check(monthlyGrid.rows.length === 1, "monthly filter one row");
 check(monthlyGrid.rows[0]?.player.is_monthly === true, "monthly filter player");
 check(
-	trendsAudiencePlayers([monthlyPlayer, player(2, "Bruno")], TRENDS_AUDIENCE.monthly)
-		.length === 1,
+	trendsAudiencePlayers(
+		[monthlyPlayer, player(2, "Bruno")],
+		TRENDS_AUDIENCE.monthly,
+	).length === 1,
 	"monthly audience players",
 );
 

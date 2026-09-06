@@ -22,6 +22,7 @@ import {
 	eventDrawInputRating,
 	eventGoalkeeperIds,
 	eventTeamHighestSumFlags,
+	eventTeamRatingAverage,
 	eventTeamSlotPosition,
 	keepGoalkeepersPresent,
 	seedPresentIdsFromHistory,
@@ -47,7 +48,6 @@ import {
 	eventTeamsShareCards,
 } from "@/const/event-team-share";
 import { championshipRatingCeiling } from "@/const/player-rating";
-import { eventTeamRatingAverage } from "@/const/championship-event";
 import { BUTTON_VARIANT, CARD_CLASS, ERROR_CLASS } from "@/const/ui";
 import { runEventTeamDraw } from "@/lib/event-team-draw";
 import { runEventTeamPotDraw } from "@/lib/event-team-pot-draw";
@@ -107,9 +107,7 @@ function DrawSimTeamCard({
 			return [];
 		}
 
-		return [
-			eventDrawInputRating(player, goalkeeperIds.includes(playerId)),
-		];
+		return [eventDrawInputRating(player, goalkeeperIds.includes(playerId))];
 	});
 
 	return (
@@ -143,9 +141,7 @@ function DrawSimTeamCard({
 							<EventTeamPlayerRow
 								player={player}
 								ceiling={ceiling}
-								isGoalkeeperVolunteer={goalkeeperIds.includes(
-									player.id,
-								)}
+								isGoalkeeperVolunteer={goalkeeperIds.includes(player.id)}
 							/>
 						</li>,
 					];
@@ -251,10 +247,7 @@ export function ChampionshipEventDrawSim({
 			const input = {
 				players: presentPlayers.map((player) => ({
 					id: player.id,
-					rating: eventDrawInputRating(
-						player,
-						volunteerSet.has(player.id),
-					),
+					rating: eventDrawInputRating(player, volunteerSet.has(player.id)),
 				})),
 				playersPerTeam,
 				volunteerIds: presentGoalkeeperIds,

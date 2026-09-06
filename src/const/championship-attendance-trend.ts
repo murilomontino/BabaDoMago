@@ -1,12 +1,12 @@
-import type { ChampionshipEvent } from "../types/championship-event.ts";
 import type { ChampionshipPlayer } from "../types/championship.ts";
+import type { ChampionshipEvent } from "../types/championship-event.ts";
 import { endedChampionshipHistoryEvents } from "./championship-rating-history.ts";
+import type { TrendLineChartPoint } from "./championship-trend-line-chart.ts";
 import type { TrendsPlayerScope } from "./championship-trends-player-scope.ts";
 import {
 	trendsScopedPresentCount,
 	trendsScopedRosterSize,
 } from "./championship-trends-player-scope.ts";
-import type { TrendLineChartPoint } from "./championship-trend-line-chart.ts";
 import {
 	formatRosterAverage,
 	formatRosterCount,
@@ -22,8 +22,7 @@ export const ATTENDANCE_TREND_METRIC = {
 export type AttendanceTrendMetric =
 	(typeof ATTENDANCE_TREND_METRIC)[keyof typeof ATTENDANCE_TREND_METRIC];
 
-export const ATTENDANCE_TREND_METRIC_DEFAULT =
-	ATTENDANCE_TREND_METRIC.count;
+export const ATTENDANCE_TREND_METRIC_DEFAULT = ATTENDANCE_TREND_METRIC.count;
 
 export const ATTENDANCE_TREND_LABEL = {
 	title: "Presença no tempo",

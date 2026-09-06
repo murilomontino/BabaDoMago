@@ -472,9 +472,7 @@ function TeamPick({
 										<EventTeamPlayerRow
 											player={player}
 											ceiling={ceiling}
-											isGoalkeeperVolunteer={goalkeeperIds.includes(
-												player.id,
-											)}
+											isGoalkeeperVolunteer={goalkeeperIds.includes(player.id)}
 										/>
 									</li>
 								);
@@ -994,9 +992,7 @@ export function ChampionshipEventPlay({
 					return [];
 				}
 
-				return [
-					eventDrawInputRating(player, volunteerSet.has(row.player_id)),
-				];
+				return [eventDrawInputRating(player, volunteerSet.has(row.player_id))];
 			}),
 		),
 		presentRatings,

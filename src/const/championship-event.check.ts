@@ -40,19 +40,19 @@ import {
 	type EventTeamDraft,
 	emptyTeamSlots,
 	eventDateYmd,
-	eventDrawRatings,
 	eventDrawInputRating,
+	eventDrawRatings,
 	eventGoalkeeperIds,
 	eventIsoWeekday,
 	eventListActionFlags,
 	eventTeamByPlayerId,
 	eventTeamCount,
 	eventTeamDrawCountLabel,
+	eventTeamHasHighestRatingSum,
+	eventTeamHighestSumFlags,
 	eventTeamPlayerIds,
 	eventTeamPlayerOptionLabel,
 	eventTeamPlayerPosition,
-	eventTeamHasHighestRatingSum,
-	eventTeamHighestSumFlags,
 	eventTeamRatingAverage,
 	eventTeamRatingSum,
 	eventTeamSlotPool,
@@ -878,14 +878,8 @@ check(
 	"10,9,8",
 );
 
-check(
-	eventDrawInputRating({ rating: 4, goalkeeper_rating: 7 }, true),
-	7,
-);
-check(
-	eventDrawInputRating({ rating: 4, goalkeeper_rating: 7 }, false),
-	4,
-);
+check(eventDrawInputRating({ rating: 4, goalkeeper_rating: 7 }, true), 7);
+check(eventDrawInputRating({ rating: 4, goalkeeper_rating: 7 }, false), 4);
 const allUnset = [
 	{ id: 1, rating: PLAYER_RATING.default },
 	{ id: 2, rating: PLAYER_RATING.default },

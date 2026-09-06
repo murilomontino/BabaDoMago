@@ -3,8 +3,8 @@ import {
 	EVENT_RATING_ADJUSTMENT,
 	EVENT_RATING_DROP_SHARE,
 	EVENT_RATING_INITIAL,
-	eventRatingApplyDropShare,
 	eventActivePlayerRating,
+	eventRatingApplyDropShare,
 	eventRatingDelta,
 	eventRatingDrawPoints,
 	eventRatingDropShareExcludedPlayerIds,
@@ -530,7 +530,11 @@ check(
 
 check(eventRatingPreviewFrom(4, 4.4), 4, "snapshot vence elenco");
 check(eventRatingPreviewFrom(undefined, 4.4), 4.4, "sem snapshot usa elenco");
-check(eventRatingPreviewFrom(undefined, undefined), 0, "sem nota vira sentinela");
+check(
+	eventRatingPreviewFrom(undefined, undefined),
+	0,
+	"sem nota vira sentinela",
+);
 check(eventRatingPreviewFrom(0, 3.5), 0, "sentinela da presenca fica 0");
 
 check(eventActivePlayerRating(true, 4, 7), 7, "ativo goleiro");
@@ -580,17 +584,9 @@ const gkPreview = eventRatingPreview({
 	presentPlayerIds: null,
 });
 check(gkPreview[0]?.from, 0, "gk preview usa nota goleiro");
-check(
-	(gkPreview[0]?.to ?? 0) > 0,
-	true,
-	"gk sentinela recebe semente",
-);
+check((gkPreview[0]?.to ?? 0) > 0, true, "gk sentinela recebe semente");
 check(gkPreview[1]?.from, 4, "linha preview usa rating");
-check(
-	(gkPreview[1]?.to ?? 4) < 4,
-	true,
-	"linha cai sem tocar nota goleiro",
-);
+check((gkPreview[1]?.to ?? 4) < 4, true, "linha cai sem tocar nota goleiro");
 
 const alreadyEvolvedPreview = eventRatingPreview({
 	attendance: [
@@ -615,7 +611,11 @@ const alreadyEvolvedPreview = eventRatingPreview({
 	presentPlayerIds: null,
 });
 check(alreadyEvolvedPreview[0]?.from, 4, "preview after end usa presenca");
-check(alreadyEvolvedPreview[0]?.to, 4.4, "preview after end nao aplica de novo");
+check(
+	alreadyEvolvedPreview[0]?.to,
+	4.4,
+	"preview after end nao aplica de novo",
+);
 
 check(EVENT_RATING_DROP_SHARE.cap, 1, "drop share cap");
 check(EVENT_RATING_DROP_SHARE.excludeTop, 10, "exclude top n");
@@ -644,13 +644,15 @@ check(excludedTop.has(2), true, "top 2 excluido");
 check(excludedTop.has(3), false, "3o nao excluido");
 check(excludedTop.has(4), false, "sentinela nao entra no top");
 check(
-	[...eventRatingDropShareExcludedPlayerIds(
-		[
-			{ id: 10, rating: 5 },
-			{ id: 2, rating: 5 },
-		],
-		1,
-	)][0],
+	[
+		...eventRatingDropShareExcludedPlayerIds(
+			[
+				{ id: 10, rating: 5 },
+				{ id: 2, rating: 5 },
+			],
+			1,
+		),
+	][0],
 	2,
 	"empate de nota desempatado por id",
 );

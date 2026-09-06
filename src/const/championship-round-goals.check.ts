@@ -24,12 +24,7 @@ function goal(id: number, matchId: number, eventId: number) {
 	};
 }
 
-function match(
-	id: number,
-	eventId: number,
-	goalCount: number,
-	ended: boolean,
-) {
+function match(id: number, eventId: number, goalCount: number, ended: boolean) {
 	return {
 		id,
 		event_id: eventId,

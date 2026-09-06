@@ -343,10 +343,7 @@ export function ChampionshipEventDrawPage() {
 				return [
 					{
 						id: player.id,
-						rating: eventDrawInputRating(
-							player,
-							volunteerSet.has(player.id),
-						),
+						rating: eventDrawInputRating(player, volunteerSet.has(player.id)),
 					},
 				];
 			});

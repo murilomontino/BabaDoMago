@@ -33,7 +33,10 @@ check(HIDDEN_STRENGTH.max === 100, "max 100");
 check(HIDDEN_STRENGTH.downThreshold === 0.45, "down 0.45");
 check(HIDDEN_STRENGTH.upThreshold === 0.55, "up 0.55");
 
-check(hiddenStrengthCeiling([8.1, 7.3, 3, 0]) === 8.1, "teto = maior do campeonato");
+check(
+	hiddenStrengthCeiling([8.1, 7.3, 3, 0]) === 8.1,
+	"teto = maior do campeonato",
+);
 check(hiddenStrengthCeiling([0, 0]) === 0, "sem nota teto 0");
 check(
 	hiddenStrengthChampionshipCeiling([
@@ -74,11 +77,20 @@ check(hiddenStrengthDelta(3, 0, 3, 6, 60) === 0, "3W3L ranked 50%");
 check(hiddenStrengthDelta(4, 0, 2, 6, 60) === 8.3, "4W2L delta");
 check(hiddenStrengthDelta(2, 0, 4, 6, 60) === -8.3, "2W4L delta");
 check(hiddenStrengthDelta(3, 0, 3, 6, 0) === 0, "sem oculta delta 0");
-check(hiddenStrengthResolve(60, 99, 7.3) === 60, "oculta existente ignora publica");
+check(
+	hiddenStrengthResolve(60, 99, 7.3) === 60,
+	"oculta existente ignora publica",
+);
 check(hiddenStrengthResolve(0, 3, 7.3) === 41.1, "sem oculta rescale publica");
 check(hiddenStrengthResolve(0, 0, 7.3) === 0, "sem oculta sem publica");
-check(hiddenStrengthNext(0, 41.1, 0, 8.3) === 49.4, "primeira vez aplica no rescale");
-check(hiddenStrengthNext(60, 41.1, 8.3, 0) === 51.7, "recompute nao perde nota");
+check(
+	hiddenStrengthNext(0, 41.1, 0, 8.3) === 49.4,
+	"primeira vez aplica no rescale",
+);
+check(
+	hiddenStrengthNext(60, 41.1, 8.3, 0) === 51.7,
+	"recompute nao perde nota",
+);
 
 check(formatHiddenStrength(0) === "—", "format sentinel");
 check(formatHiddenStrength(42.5) === "42.5", "format value");
@@ -251,7 +263,9 @@ check(
 				rating: 99,
 			})),
 		},
-	]).hiddenBeforeEvent.get(1)?.get(1) === 100,
+	])
+		.hiddenBeforeEvent.get(1)
+		?.get(1) === 100,
 	"nota publica nao altera oculta",
 );
 
@@ -380,6 +394,9 @@ check(
 	Math.abs(hiddenStrengthForPlayer(walkRescale, 50) - 49.4) < 0.001,
 	"diego 41.1 + 8.3",
 );
-check(walkRescale.hiddenBeforeEvent.get(10)?.get(51) === 100, "hugo stored 100");
+check(
+	walkRescale.hiddenBeforeEvent.get(10)?.get(51) === 100,
+	"hugo stored 100",
+);
 
 console.log("hidden-strength ok");

@@ -1,8 +1,8 @@
 import type { ChampionshipPlayer } from "../types/championship.ts";
 import type { ChampionshipEvent } from "../types/championship-event.ts";
 import { EVENT_TEAM_COLOR } from "./event-team-color.ts";
-import { playerPlusMinus } from "./player-plus-minus.ts";
 import { playerHeadToHead } from "./player-head-to-head.ts";
+import { playerPlusMinus } from "./player-plus-minus.ts";
 
 function check(condition: boolean, message: string) {
 	if (!condition) {
@@ -57,12 +57,7 @@ function matchPlayer(
 	};
 }
 
-function goal(
-	id: number,
-	matchId: number,
-	scorer: number,
-	own = false,
-) {
+function goal(id: number, matchId: number, scorer: number, own = false) {
 	return {
 		id,
 		match_id: matchId,
@@ -200,7 +195,10 @@ check(pm?.diff === 2, "diff +2");
 
 const h2h = playerHeadToHead([event], players, 1);
 check(h2h.length === 2, "two opponents");
-check(h2h.every((row) => row.matches === 3), "three each");
+check(
+	h2h.every((row) => row.matches === 3),
+	"three each",
+);
 const vsBruno = h2h.find((row) => row.opponent.id === 2);
 check(vsBruno?.wins === 2, "ana beat bruno twice");
 

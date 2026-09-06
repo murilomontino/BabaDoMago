@@ -19,8 +19,8 @@ import {
 	formatRatingGap,
 	formatRatingGapValue,
 	RATING_GAP_LABEL,
-	ratingGapKindLabel,
 	type RatingGapRow,
+	ratingGapKindLabel,
 } from "@/const/championship-rating-gap";
 import { playerVisibleName } from "@/const/player-name";
 import type { ChampionshipPlayer } from "@/types/championship";
@@ -72,11 +72,7 @@ function CalibrationTable({ rows }: { rows: ProjectionCalibrationRow[] }) {
 	);
 
 	return (
-		<DataTable
-			data={rows}
-			columns={columns}
-			getRowId={(row) => row.bandId}
-		/>
+		<DataTable data={rows} columns={columns} getRowId={(row) => row.bandId} />
 	);
 }
 

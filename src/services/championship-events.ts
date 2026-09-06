@@ -176,9 +176,7 @@ function asAttendance(value: unknown): ChampionshipEventAttendance {
 		goalkeeper_rating: Number(row.goalkeeper_rating ?? 0),
 		goalkeeper_rating_delta: Number(row.goalkeeper_rating_delta ?? 0),
 		vote_rating_delta: Number(row.vote_rating_delta ?? 0),
-		goalkeeper_vote_rating_delta: Number(
-			row.goalkeeper_vote_rating_delta ?? 0,
-		),
+		goalkeeper_vote_rating_delta: Number(row.goalkeeper_vote_rating_delta ?? 0),
 		hidden_strength: Number(row.hidden_strength ?? 0),
 		hidden_strength_delta: Number(row.hidden_strength_delta ?? 0),
 		hidden_goalkeeper_strength: Number(row.hidden_goalkeeper_strength ?? 0),

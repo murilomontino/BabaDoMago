@@ -16,7 +16,9 @@ import {
 
 function checkEq<T>(actual: T, expected: T, message: string) {
 	if (actual !== expected) {
-		throw new Error(`${message}: got ${String(actual)}, want ${String(expected)}`);
+		throw new Error(
+			`${message}: got ${String(actual)}, want ${String(expected)}`,
+		);
 	}
 }
 
@@ -131,10 +133,7 @@ const winMatch = endedMatch({
 	teamAId: 10,
 	teamBId: 20,
 	winnerTeamId: 10,
-	players: [
-		matchPlayer(1, 10, 1),
-		matchPlayer(2, 20, 2),
-	],
+	players: [matchPlayer(1, 10, 1), matchPlayer(2, 20, 2)],
 	goals: [goal(1, 1), goal(2, 1), goal(3, 2)],
 });
 
@@ -159,10 +158,7 @@ const drawMatch = endedMatch({
 	teamAId: 10,
 	teamBId: 20,
 	winnerTeamId: null,
-	players: [
-		matchPlayer(3, 10, 1),
-		matchPlayer(4, 20, 2),
-	],
+	players: [matchPlayer(3, 10, 1), matchPlayer(4, 20, 2)],
 	goals: [goal(4, 1), goal(5, 2)],
 });
 

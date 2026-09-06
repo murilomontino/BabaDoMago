@@ -1,3 +1,4 @@
+import { eventTeamHighestSumFlags } from "@/const/championship-event";
 import { formatEventRating } from "@/const/event-rating-adjustment";
 import {
 	eventTeamColorFg,
@@ -15,7 +16,6 @@ import {
 	eventTeamShareImageHeight,
 	eventTeamsShareText,
 } from "@/const/event-team-share";
-import { eventTeamHighestSumFlags } from "@/const/championship-event";
 import {
 	PLAYER_RATING,
 	PLAYER_STAR_PATH,

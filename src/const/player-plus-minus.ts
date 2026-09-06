@@ -1,9 +1,6 @@
 import type { ChampionshipPlayer } from "../types/championship.ts";
 import type { ChampionshipEvent } from "../types/championship-event.ts";
-import {
-	matchGoalsConceded,
-	matchGoalsForTeam,
-} from "./match-goal-counts.ts";
+import { matchGoalsConceded, matchGoalsForTeam } from "./match-goal-counts.ts";
 import { playerVisibleName } from "./player-name.ts";
 import { countsForSynergy, SYNERGY_MIN_MATCHES } from "./player-synergy.ts";
 import {

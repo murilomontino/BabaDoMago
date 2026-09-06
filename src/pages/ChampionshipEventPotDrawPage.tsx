@@ -183,10 +183,9 @@ export function ChampionshipEventPotDrawPage() {
 
 		const present = new Set(event.attendance.map((row) => row.player_id));
 		const volunteerSet = new Set(
-			keepGoalkeepersPresent(
-				attendanceGoalkeeperIds(event.attendance),
-				[...present],
-			),
+			keepGoalkeepersPresent(attendanceGoalkeeperIds(event.attendance), [
+				...present,
+			]),
 		);
 		const drawPlayers = activePlayers.flatMap((player) => {
 			if (!present.has(player.id)) {
@@ -488,10 +487,7 @@ export function ChampionshipEventPotDrawPage() {
 				return [
 					{
 						id: player.id,
-						rating: eventDrawInputRating(
-							player,
-							volunteerSet.has(player.id),
-						),
+						rating: eventDrawInputRating(player, volunteerSet.has(player.id)),
 					},
 				];
 			});

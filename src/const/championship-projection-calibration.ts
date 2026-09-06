@@ -5,10 +5,14 @@ import {
 	type TeamHiddenBalanceEvent,
 } from "./hidden-strength.ts";
 import {
+	formatRosterCount,
+	formatRosterWinRate,
+	rosterWinRate,
+} from "./roster-stats.ts";
+import {
 	championshipTeamBalance,
 	type TeamBalanceEvent,
 } from "./team-balance-stats.ts";
-import { formatRosterCount, formatRosterWinRate, rosterWinRate } from "./roster-stats.ts";
 
 export const PROJECTION_CALIBRATION_MIN_EVENTS = 3 as const;
 

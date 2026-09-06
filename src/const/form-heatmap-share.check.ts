@@ -130,7 +130,10 @@ check(
 	formHeatmapShareColumnWidth(5) >= FORM_HEATMAP_SHARE.columnMinWidth,
 	"col width",
 );
-check(formHeatmapShareImageHeight(1) > FORM_HEATMAP_SHARE.headerHeight, "height");
+check(
+	formHeatmapShareImageHeight(1) > FORM_HEATMAP_SHARE.headerHeight,
+	"height",
+);
 check(formHeatmapShareImageWidth(5) >= FORM_HEATMAP_SHARE.width, "width");
 check(FORM_HEATMAP_SHARE_LABEL.share === "Compartilhar", "share label");
 

@@ -100,10 +100,7 @@ function player(
 const players = [player(1, "Ana", 5), player(2, "Bruno", 6)];
 
 const events = [
-	eventRow(1, "2026-01-01", [
-		attendance(1, 4, 0),
-		attendance(2, 6, 0),
-	]),
+	eventRow(1, "2026-01-01", [attendance(1, 4, 0), attendance(2, 6, 0)]),
 	eventRow(2, "2026-01-08", [attendance(1, 4.5, 0.5)]),
 ];
 
@@ -119,12 +116,7 @@ check(summary.rows[2]?.averageRating === 5, "second round average");
 
 const initialFive = championshipRatingInflation(
 	[player(1, "Ana", 5), player(2, "Bruno", 5)],
-	[
-		eventRow(1, "2026-01-01", [
-			attendance(1, 5, 0.4),
-			attendance(2, 5, -0.4),
-		]),
-	],
+	[eventRow(1, "2026-01-01", [attendance(1, 5, 0.4), attendance(2, 5, -0.4)])],
 );
 check(initialFive.events === 2, "entry then after first");
 check(initialFive.rows[0]?.averageRating === 5, "initial presence average 5");

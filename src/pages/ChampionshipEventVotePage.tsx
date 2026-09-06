@@ -13,6 +13,10 @@ import {
 	resolveChampionshipRole,
 } from "@/const/championship-role";
 import {
+	championshipTrendsEvents,
+	TRENDS_WINDOW_DEFAULT,
+} from "@/const/championship-trends-window";
+import {
 	canEditEventPlayerBallot,
 	EVENT_PLAYER_VOTE_LABEL,
 	type EventPlayerVoteChoice,
@@ -34,10 +38,6 @@ import { ROUTES } from "@/const/routes";
 import { SKELETON_LABEL } from "@/const/skeleton";
 import { BUTTON_VARIANT, ERROR_CLASS, PAGE_SHELL_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
-import {
-	championshipTrendsEvents,
-	TRENDS_WINDOW_DEFAULT,
-} from "@/const/championship-trends-window";
 import {
 	useChampionshipEvent,
 	useChampionshipEventPlayerVoteCounts,
@@ -147,10 +147,7 @@ export function ChampionshipEventVotePage() {
 	);
 	const formWindowEvents = useMemo(
 		() =>
-			championshipTrendsEvents(
-				eventsQuery.data ?? [],
-				TRENDS_WINDOW_DEFAULT,
-			),
+			championshipTrendsEvents(eventsQuery.data ?? [], TRENDS_WINDOW_DEFAULT),
 		[eventsQuery.data],
 	);
 	const savedVotes = useMemo(() => {

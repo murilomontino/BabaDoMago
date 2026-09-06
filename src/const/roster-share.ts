@@ -297,9 +297,10 @@ export function rosterShareText(card: RosterShareCard): string {
 		.join("\n");
 }
 
-export function rosterShareCsvRows(
-	players: readonly ChampionshipPlayer[],
-): { headers: string[]; rows: string[][] } {
+export function rosterShareCsvRows(players: readonly ChampionshipPlayer[]): {
+	headers: string[];
+	rows: string[][];
+} {
 	const headers = [
 		ROSTER_COLUMN_LABEL.player,
 		ROSTER_COLUMN_LABEL.rating,

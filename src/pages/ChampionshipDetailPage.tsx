@@ -107,8 +107,8 @@ import {
 	useUnlinkPlayer,
 	useUpdateChampionshipEventConfig,
 	useUpdateChampionshipVisibility,
-	useUpdatePlayerNickname,
 	useUpdatePlayerGoalkeeperRating,
+	useUpdatePlayerNickname,
 	useUpdatePlayerRating,
 	useUploadChampionshipLogo,
 } from "@/hooks/championships/use-championships";

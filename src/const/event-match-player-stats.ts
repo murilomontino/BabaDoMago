@@ -122,10 +122,9 @@ export function eventMatchPlayerStats(input: {
 }): Map<number, EventMatchPlayerStatRow> {
 	const rosterTeam = rosterTeamByPlayerId(input.teams);
 	const byPlayer = new Map(
-		input.playerIds.map((playerId) => [
-			playerId,
-			emptyStatRow(playerId),
-		] as const),
+		input.playerIds.map(
+			(playerId) => [playerId, emptyStatRow(playerId)] as const,
+		),
 	);
 
 	return input.matches.reduce((acc, match) => {

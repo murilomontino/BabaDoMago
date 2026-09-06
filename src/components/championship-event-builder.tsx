@@ -296,10 +296,7 @@ export function ChampionshipEventBuilder({
 			const { worker, done } = runEventTeamDraw({
 				players: presentPlayers.map((player) => ({
 					id: player.id,
-					rating: eventDrawInputRating(
-						player,
-						volunteerSet.has(player.id),
-					),
+					rating: eventDrawInputRating(player, volunteerSet.has(player.id)),
 				})),
 				playersPerTeam,
 				volunteerIds: presentGoalkeeperIds,
@@ -684,25 +681,24 @@ export function ChampionshipEventBuilder({
 														{ length: playersPerTeam },
 														(_, slot) => slot,
 													);
-													const teamRatingsLists = values.teams.map(
-														(item) =>
-															teamSlotsToPlayerIds(item.slots).flatMap(
-																(playerId) => {
-																	const player = presentPlayers.find(
-																		(entry) => entry.id === playerId,
-																	);
-																	if (!player) {
-																		return [];
-																	}
+													const teamRatingsLists = values.teams.map((item) =>
+														teamSlotsToPlayerIds(item.slots).flatMap(
+															(playerId) => {
+																const player = presentPlayers.find(
+																	(entry) => entry.id === playerId,
+																);
+																if (!player) {
+																	return [];
+																}
 
-																	return [
-																		eventDrawInputRating(
-																			player,
-																			goalkeeperIds.includes(playerId),
-																		),
-																	];
-																},
-															),
+																return [
+																	eventDrawInputRating(
+																		player,
+																		goalkeeperIds.includes(playerId),
+																	),
+																];
+															},
+														),
 													);
 													const highestSumFlags = eventTeamHighestSumFlags(
 														teamRatingsLists,

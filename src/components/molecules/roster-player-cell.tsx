@@ -9,6 +9,7 @@ import {
 	CHAMPIONSHIP_ROLE_LABEL,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
+import { PLAYER_MONTHLY_LABEL } from "@/const/player-monthly";
 import {
 	isGoalkeeperKind,
 	PLAYER_KIND,
@@ -17,7 +18,6 @@ import {
 	PLAYER_LABEL,
 	playerKindFromGoalkeeper,
 } from "@/const/player-name";
-import { PLAYER_MONTHLY_LABEL } from "@/const/player-monthly";
 import { PLAYER_PROFILE_LABEL } from "@/const/player-profile";
 import { MODAL_CLASS, PLAYER_KIND_SELECT_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";

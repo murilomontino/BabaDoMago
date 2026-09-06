@@ -130,9 +130,10 @@ check(anaRow?.rate === 1, "ana always came");
 check(anaRow?.noShowStreak === 0, "ana streak 0");
 
 check(
-	championshipAttendanceReliability([caio], [
-		eventRow(3, "2026-01-15", [], [rsvp(3, 3, "out")]),
-	]).length === 0,
+	championshipAttendanceReliability(
+		[caio],
+		[eventRow(3, "2026-01-15", [], [rsvp(3, 3, "out")])],
+	).length === 0,
 	"out alone does not count",
 );
 

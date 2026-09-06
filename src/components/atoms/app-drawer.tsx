@@ -1,3 +1,4 @@
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
 	type ReactNode,
 	useCallback,
@@ -5,7 +6,6 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { DRAWER_CLOSE_LABEL } from "@/const/hammer-swipe";
 import { useHammerVerticalSwipe } from "@/hooks/use-hammer-vertical-swipe";
 
