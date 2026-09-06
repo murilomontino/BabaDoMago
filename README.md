@@ -17,10 +17,21 @@ Documento único para compartilhar (produto, arquitetura, fórmulas, filas, grá
 7. [Arquitetura](#arquitetura)
 8. [Filas de partida](#filas-de-partida-clock--ops)
 9. [Nota (rating)](#nota-rating-do-jogador)
+    - [Fórmula](#fórmula-já-ranqueado)
+    - [Evolução pós-rodada](#evolução-pós-rodada)
+    - [Evolução da nota: métrica, histórico e recompute](#evolução-da-nota-métrica-histórico-e-recompute)
 10. [Voto do elenco](#voto-do-elenco)
 11. [Sorteio](#sorteio-de-times)
 12. [Nota oculta](#nota-oculta-hidden-strength)
 13. [Gráficos e métricas](#gráficos-e-métricas-da-ui)
+    - [Recortes e filtros](#recortes-e-filtros)
+    - [Tendências](#tendências)
+    - [Pódio](#pódio)
+    - [Classificação](#classificação)
+    - [Projeções](#projeções-só-dono)
+    - [Ficha do jogador](#ficha-do-jogador)
+    - [Gestão](#gestão)
+    - [Receitas rápidas](#receitas-rápidas)
 
 ---
 
@@ -368,6 +379,128 @@ Nota do elenco **só no SQL**. Cliente não grava `championship_players.rating` 
 
 `rating_drop_goal_share` (default off). Só delta negativo; share G+A no próprio time **> 40%** → `delta *= (1 − share)`. `rating_drop_share_exclude_top`: top 10 da liga não entram. Gol **não** sobe nota.
 
+### Evolução da nota (métrica, histórico e recompute)
+
+Três coisas com nome parecido, contas diferentes. Confundir isso gera discussão no grupo.
+
+| Nome na UI | O que é | Conta |
+| --- | --- | --- |
+| `Rating` / estrela | Nota atual no elenco | `championship_players.rating` |
+| **Evolução da nota** (coluna `Evol.` / métrica do pódio) | Quanto a nota **variou** no período | `nota final − nota inicial` do período |
+| **Evolução da nota** (gráfico de linha) | Série da nota rodada a rodada | `ratingTo` de cada presença |
+| **Δ nota** (Forma recente) | Soma dos deltas da janela | `Σ rating_delta` |
+| **Delta** (histórico da ficha) | Delta daquela rodada | `attendance.rating_delta` |
+
+#### Campos que alimentam tudo
+
+Na presença (`championship_event_attendance`):
+
+| Campo | Significado |
+| --- | --- |
+| `rating` | **Snapshot**: nota que o jogador tinha **antes** da rodada |
+| `rating_delta` | Delta aplicado pela fórmula (aproveitamento/semente + MVP + amortecimento) |
+| `goalkeeper_rating_delta` | Mesmo papel, no track de goleiro |
+| `vote_rating_delta` | Overlay do voto (±0,5), **fora** da fórmula |
+| `vote_rating_applied` | Evita aplicar o voto duas vezes |
+
+#### Nota depois da rodada
+
+```text
+attendanceRatingAfter(row) = apply(row.rating, row.rating_delta + row.vote_rating_delta)
+attendanceRatingEvolution(row) = round1(after − row.rating)
+```
+
+`apply` faz o clamp (`0,1 … 100`) e mantém a sentinela `0` quando o resultado não passa de 0. `round1` arredonda 1 casa **para longe do zero** (`+1.25 → +1.3`, `−1.25 → −1.3`). Formato na tela: `+1.2`, `−0.5`, `0`.
+
+#### Métrica do pódio (variação no período)
+
+```text
+from = rating (snapshot) da PRIMEIRA rodada do período
+to   = ratingAfter da ÚLTIMA rodada do período
+evolução = round1(to − from)
+```
+
+- “Primeira” e “última” ordenam por `starts_at` e desempatam por `id`.
+- Se o período **inclui hoje** (temporada corrente, mês atual…), `to` passa a ser a **nota viva do elenco** (`player.rating`). Assim edição manual de estrela e voto já aplicado aparecem na evolução do mês.
+- Só entra quem tem presença no período. Valor `0` não sobe ao pódio.
+- Fonte: `podiumRatingEvolution`, `aggregatePodiumPlayersFromEvents` em `src/const/podium.ts`.
+
+#### Gráfico de evolução (campeonato)
+
+`championshipRatingHistoryChart(players, events, nowIso)`:
+
+1. Eixo X = rodadas encerradas em ordem cronológica.
+2. Valor por rodada = `ratingTo` da presença (`snapshot + rating_delta`).
+3. Rodada sem presença **carrega o último valor** — linha reta, não buraco.
+4. Antes da primeira nota oficial o valor é `null`: a linha só começa quando existe nota.
+5. Quando o jogador já entrou com nota, o gráfico insere um **ponto de entrada** antes da primeira rodada dele.
+6. Com `nowIso`, o último ponto é a **nota atual do elenco** — a linha fecha no valor real de hoje.
+7. Sentinela `0` não vira ponto. Sem nenhum valor oficial a série sai do gráfico (“Ainda sem nota”).
+8. Eixo Y vai de `0` ao **teto da liga**. Cor é fixa por id do jogador (paleta de 12).
+
+O mesmo motor serve às outras métricas do pódio:
+
+| Tipo | Métricas | Comportamento |
+| --- | --- | --- |
+| Nota | Rating | valor por rodada, com carry-forward |
+| Contagem acumulada | Gols, Assistências, Gols servidos, Gols contra, Participação em gols, Vitórias, MVP, Jogos | soma acumulada ao longo das rodadas |
+| Razão acumulada | Média de gols, Média de assistências, WinRate | razão do acumulado (Y do WinRate travado em 0–1) |
+| Sem série | Evolução da nota, Gols da virada, Assistências da virada | por design: são deltas/derivados, não acumulam |
+
+**Corrida da nota** exporta esse gráfico como GIF ou vídeo, com limite `Melhores` / `Piores` (3, 5, 10, 15, 20) ou `Todos`.
+
+Fontes: `championship-rating-history.ts`, `championship-count-history.ts`, `championship-ratio-history.ts`, `championship-metric-history.ts`, `rating-race-share.ts`.
+
+#### Histórico na ficha do jogador
+
+`playerProfileHistory(events, playerId)` devolve uma linha por rodada encerrada em que ele teve presença, da **mais recente** para a mais antiga:
+
+```text
+ratingFrom = attendance.rating          (snapshot)
+ratingDelta = attendance.rating_delta
+ratingTo    = apply(ratingFrom, ratingDelta)
+```
+
+Colunas: Data, `G`, `A`, `GS`, `GC`, `V`, `D`, `E`, `MVP`, `J` e `Δ`.
+
+O gráfico da ficha desenha: `ratingFrom` da rodada mais antiga → `ratingTo` de cada rodada → **nota atual** como último ponto.
+
+**Atenção à diferença de conta:** ficha e gráfico do campeonato usam só `rating_delta`. Pódio e inflação usam `rating_delta + vote_rating_delta`. Quando um voto fecha com ±0,5, o último ponto (nota atual) “corrige” o degrau que a soma dos deltas não mostra.
+
+#### Inflação da nota
+
+Reconstrói a liga rodada a rodada: para cada presença aplica `rating_delta + vote_rating_delta` e guarda a nota resultante por jogador; depois calcula **média dos presentes ranqueados**, **teto** e **piso** do elenco no escopo. Sentinela `0` fica fora da média. Fonte: `championship-rating-inflation.ts`.
+
+#### Persistência e recompute
+
+- Nota do elenco **só muda no SQL**, no encerrar da rodada: `adjust_championship_player_ratings_for_event` grava `rating_delta` (ou `goalkeeper_rating_delta`) e depois sincroniza voto pendente.
+- Corrigir estatística de uma rodada já encerrada **não** recalcula em cima da nota atual:
+
+```text
+nova nota = apply(rating, −old_delta + eventRatingDelta(V, E, D, J, snapshot, teto))
+```
+
+  A fórmula usa o **snapshot da presença**, não a nota de hoje (`recomputePlayerEventRating`, `playerEventRatingAfterSave`).
+- Recálculo em massa: [`supabase/scripts/recompute_ratings_from_attendance.sql`](supabase/scripts/recompute_ratings_from_attendance.sql).
+
+#### Onde a evolução aparece
+
+| Tela | O que mostra |
+| --- | --- |
+| Elenco | coluna `Evol.` (variação) |
+| Pódio | métrica **Evolução da nota** + gráfico da métrica escolhida |
+| Tendências | `Δ nota` na Forma recente, Evolução da nota do recorte, Inflação |
+| Ficha do jogador | histórico com `Δ`, gráfico pessoal, aba Simulação |
+| Rodada | prévia da nota antes de encerrar (`eventRatingPreview`) |
+
+#### Pegadinhas
+
+- Δ da janela (Tendências) ≠ evolução do período (Pódio) ≠ nota atual: recortes e contas diferentes.
+- Edição manual de estrela aparece na **evolução do período corrente** (compara início e nota viva), mas não na soma de deltas.
+- Primeira rodada válida de quem estava com `0` mostra salto grande: é a **semente** (2,7 / 3 / 3,5) mais o delta.
+- Track de goleiro evolui separado; o gráfico histórico de goleiro ainda não existe.
+- Rodada cancelada / voto anulado (`void`) devolvem a nota, mas os deltas gravados continuam na presença.
+
 ### Código da nota
 
 | Camada | Onde |
@@ -464,50 +597,253 @@ Sem oculta: rescale da pública + deltas. Usos: equilíbrio oculto no pódio, ca
 
 ## Gráficos e métricas da UI
 
-Agregações no **cliente**. Filtros: janela (`TRENDS_WINDOW`) e audiência todos/mensalistas.
+Tudo aqui é **agregação no cliente** a partir das rodadas encerradas que já estão no cache. Nada disso é gravado no banco. Cada bloco tem título, dica curta na tela e estado vazio próprio.
+
+Para cada superfície abaixo: **o que mostra**, **como ler**, **como usar** e **limite**.
+
+### Recortes e filtros
+
+| Filtro | Onde | Valores | Default |
+| --- | --- | --- | --- |
+| Janela | Tendências | Últimas 3 / Últimas 5 rodadas encerradas | Últimas 5 |
+| Elenco | Tendências, Pódio | Todos / Mensalistas | Todos |
+| Período | Pódio | Temporada (ano), 1º semestre (jan–jun), 2º semestre (jul–dez), Mês atual, Todos os meses | Temporada |
+| Período | Scatters do pódio | Últimas 4, Últimas 8, 1 mês, 2 meses | Últimas 8 |
+| Métrica | vários blocos | seletor por bloco | por bloco |
+
+Regras dos recortes:
+
+- Tendências só abre com **3+ rodadas encerradas** (`TRENDS_WINDOW_MIN_ENDED`). Antes disso: “Precisa de pelo menos 3 rodadas encerradas”.
+- Blocos com a legenda **“Todas as rodadas encerradas”** ignoram a janela de propósito (presença no tempo, inflação, consistência, saúde da rodada): série longa precisa de história.
+- Elenco = Mensalistas filtra por `is_monthly`. Sem dados: “Nenhum mensalista com dados no recorte”.
+- Rodada em aberto nunca entra. Partida descartada e partida não encerrada também não.
+
+---
 
 ### Tendências
 
-| Gráfico | Métrica | Motivo | Limite |
-| --- | --- | --- | --- |
-| Presença no tempo | Presentes; % / elenco ativo | Enche ou esvazia? | Não mede qualidade |
-| Inflação da nota | Média / teto / piso por rodada | Explicar “todo mundo subiu” | Clima da liga, não mérito |
-| Evolução da nota | Nota no recorte | Quem subiu/desceu | Recorte curto mente |
-| Forma recente | Aproveitamento, Δ, voto | Hot/cold | Zona morta ≠ queda |
-| Ranking goleiros | V/E/D, sofridos, clean sheets | Track goleiro | WinRate ≠ aproveitamento nota |
-| Consistência × volume | Jogos × desvio-padrão | Estável vs irregular | Desvio ≠ pior; ≥3 presenças |
-| Saúde da rodada | Partidas, gols/jogo, minutos clock, spread, apertados | Diagnóstico operacional | Minutos = cronômetro |
-| Gols da rodada | Total por rodada | Complementa saúde | Sem mérito individual |
-| Timeline de gols | Histograma minuto; abertura×virada | Quando o jogo explode | Precisa cobertura de minuto |
-| Heatmap de forma | Aproveitamento por célula (≤20) | Share rápido | Cap 20 |
+Aba `trends`. Componente `championship-trends-tab.tsx`. Diagnóstico da liga: quem está quente, se a pelada está cheia, se o sorteio equilibra.
+
+#### 1. Presença no tempo
+
+- **Mostra:** um ponto por rodada encerrada. Métrica `Presentes` (contagem) ou `% do elenco` (presentes ÷ elenco ativo do escopo). KPI: média presente / média do elenco.
+- **Como ler:** linha subindo = pelada enchendo. Queda constante = risco de faltar gente pra fechar os times.
+- **Como usar:** decidir quantos times sortear, quando chamar reforço, quando mudar horário.
+- **Limite:** não mede qualidade do jogo. O `%` depende do tamanho do elenco; jogador desativado sai da conta e “infla” o percentual.
+- **Fonte:** `championship-attendance-trend.ts`.
+
+#### 2. Inflação da nota
+
+- **Mostra:** três linhas por rodada — **Média** dos presentes ranqueados **depois** da rodada, **Teto** e **Piso** do elenco.
+- **Como ler:** a nota é relativa ao teto da liga (`delta = (rate − 0,5) × teto ÷ 2`). Teto subindo = todo mundo passa a ganhar e perder mais por rodada.
+- **Como usar:** responder “por que todo mundo subiu?”, checar a escala antes de editar estrelas na mão ou ligar o amortecimento de queda.
+- **Limite:** sentinela `0` fica fora da média. É clima da liga, não mérito individual.
+- **Share:** imagem PNG (`rating-inflation-share.ts`).
+- **Fonte:** `championship-rating-inflation.ts`.
+
+#### 3. Evolução da nota (recorte)
+
+- **Mostra:** uma linha por jogador ao longo das rodadas do recorte. Chips `Todos` / `Nenhum` ligam e desligam séries; cor é fixa por id do jogador.
+- **Corrida da nota:** exporta a animação em **GIF** ou **vídeo**, com limite `Melhores` / `Piores` (3, 5, 10, 15, 20) ou `Todos`. Default: Top 10.
+- **Como usar:** contar a história do mês no grupo do WhatsApp.
+- **Limite:** recorte curto engana. Export é mídia, não dado canônico.
+- **Detalhe da conta:** [Evolução da nota](#evolução-da-nota-métrica-histórico-e-recompute) — carry-forward, ponto de entrada, ponto “agora”.
+- **Fonte:** `championship-rating-history.ts`, `rating-race-share.ts`.
+
+#### 4. Forma recente (tabela)
+
+- **Mostra:** por jogador na janela — `J`, `V`, `E`, `D`, **Aproveitamento** (mesma fórmula da nota, empate vale 1,5 se `E > D`), **Δ nota** (soma dos `rating_delta`), **Voto** (soma dos `vote_rating_delta`) e **Tendência**.
+- **Tendência:**
+
+| Rótulo | Regra |
+| --- | --- |
+| Em alta | aproveitamento > 55% |
+| Em baixa | aproveitamento < 45% |
+| Zona morta | 45%–55% |
+| Semente | primeira rodada válida ainda com nota `0` |
+| Poucos jogos | menos de 3 jogos na janela |
+
+- **Como ler:** ordenada por aproveitamento; “Poucos jogos” cai pro fim da lista.
+- **Como usar:** escolher quem chamar, abrir conversa antes da votação, explicar queda sem discussão.
+- **Limite:** Δ nota é **da janela**, não a nota atual. Zona morta não é queda.
+- **Fonte:** `championship-recent-form.ts`.
+
+#### 5. Ranking de goleiros
+
+- **Mostra:** só quem pegou **3+ jogos** no gol na janela. Colunas: `J`, `V`, `E`, `D`, gols sofridos, média sofrida, **Sem sofrer** (clean sheets), WinRate e Tendência.
+- **Como ler:** ordenado pela **menor média de gols sofridos**. Tendência compara a média sofrida da primeira rodada com a última (mín. 3 rodadas): sofrer menos = “Em alta”.
+- **Como usar:** decidir quem vai pro gol e reconhecer goleiro fixo (track de goleiro tem nota própria).
+- **Limite:** WinRate do gol (V ÷ J) **não** é o aproveitamento da nota. Partida de goleiro convidado pode ser ignorada pela config da rodada (`skip_guest_goalkeeper_matches`).
+- **Fonte:** `championship-goalkeeper-ranking.ts`.
+
+#### 6. Consistência × volume
+
+- **Mostra:** scatter com **X = jogos** e **Y = desvio-padrão amostral** da métrica entre rodadas. Métricas: gols/jogo, assistências/jogo, participação em gols/jogo, delta da nota.
+- **Como ler:** direita e baixo = joga muito e rende sempre igual. Direita e alto = joga muito e oscila. Esquerda = pouco volume, amostra fraca.
+- **Como usar:** separar aposta segura de jogador de fase.
+- **Limite:** exige **3+ presenças**; com n=3 o desvio é ruidoso (marcado como `ponytail:` no código). Desvio alto não significa jogador ruim.
+- **Fonte:** `championship-consistency.ts`.
+
+#### 7. Saúde da rodada
+
+- **Mostra:** uma métrica por rodada, à escolha — `Partidas`, `Gols / jogo`, `Minutos jogados`, `Diferença prevista` (spread do sorteio) e `Jogos apertados` (decididos por 1 gol ou empate). Default: diferença prevista. KPIs: média de partidas e diferença prevista.
+- **Como ler:** spread alto = sorteio desequilibrado naquela rodada. Muitos “jogos apertados” = times parelhos.
+- **Como usar:** calibrar duração da partida, número de times e avaliar se a nota está sorteando bem.
+- **Limite:** `Minutos jogados` vem do **cronômetro real**, não da duração configurada. Spread é previsão pela nota, não placar.
+- **Fonte:** `championship-event-health.ts`.
+
+#### 8. Gols da rodada
+
+- **Mostra:** total de gols por rodada + média.
+- **Como usar:** complementa `gols / jogo`: rodada com muitos jogos infla o total sem o jogo ficar mais ofensivo.
+- **Limite:** não atribui mérito individual.
+- **Fonte:** `championship-round-goals.ts`.
+
+#### 9. Timeline de gols
+
+Bloco só de gols **com minuto** registrado no cronômetro.
+
+- **Cobertura de minuto:** gols com minuto ÷ gols totais. Abaixo de **50%** o bloco se esconde — dado ruim engana mais que ajuda.
+- **KPIs:** cobertura, tempo médio até o 1º gol, share de gols no terço final.
+- **Histograma:** quantos gols saíram em cada minuto inteiro.
+- **Abertura × virada:** partidas com gol classificadas em *abriu e ganhou*, *virada* e *abriu e empatou*.
+- **Gol × placar:** cada gol como ponto — X = minuto, Y = **saldo do time que marcou antes do gol** (negativo perdendo, 0 empatado, positivo vencendo). Marca gol contra.
+- **Como usar:** saber se a pelada decide no fim, se abrir o placar segura o jogo, se o time reage atrás.
+- **Limite:** gol sem minuto não entra. Não prevê a próxima partida.
+- **Fonte:** `championship-goal-timeline.ts`.
+
+#### 10. Heatmap de forma
+
+- **Mostra:** grid jogador × rodada. Cada célula é o aproveitamento naquela rodada: **Em alta**, **Em baixa**, **Zona morta**, **Poucos jogos**, **Ausente**.
+- **Como ler:** faixa verde seguida = fase boa. Coluna toda amarela = rodada equilibrada.
+- **Limite:** máximo de **20 linhas** (os 20 de melhor aproveitamento agregado). Ausência não é aproveitamento zero.
+- **Share:** PNG. O mesmo heatmap (últimas 5 rodadas) aparece no card da **votação**, para votar olhando fase e não memória.
+- **Fonte:** `championship-form-heatmap.ts`, `form-heatmap-share.ts`.
+
+---
 
 ### Pódio
 
-Rankings do período (gols, assists, MVP, evolução, viradas, “mais servido”…), sinergia de duplas, equilíbrio público/oculto, share imagem/CSV/GIF corrida da nota.
+Aba `podium`. Ranking do período para fechar mês e postar no grupo. Ordem na tela:
 
-**Limite:** filtro mensalistas muda ranking; previsto ≠ placar; recap não reaplica delta.
+1. **Pódio 1º / 2º / 3º** — degraus com animação e confete (respeita `prefers-reduced-motion`).
+2. **Evolução da métrica** — série histórica da métrica escolhida; o título acompanha (“Evolução dos gols”, “Evolução do WinRate”…).
+3. **Scatter de nota** — nota inicial × atual.
+4. **Scatter gols × assistências** — com opção de inverter eixos.
+5. **Equilíbrio dos times** — e, para o dono, o equilíbrio pela nota oculta.
+
+#### Métricas do pódio
+
+Rating, Evolução da nota, Gols, Assistências, Gols servidos (“O mais servido”), Gols contra, **Gols da virada**, **Assistências da virada**, Participação em gols, Vitórias, Destaque da rodada (MVP), Jogos, Média de gols, Média de assistências, WinRate e **Sinergia**.
+
+- **Como ler:** empate na métrica divide o mesmo degrau. Desempate: rating, depois nome. Valor **zero não sobe** ao pódio.
+- **Como usar:** premiação do mês, sorteio de brinde, resenha.
+- **Limite:** o filtro Mensalistas muda o ranking; média engana com poucos jogos.
+- **Evolução da nota:** variação `fim − início` do período (no período corrente o fim é a nota viva). Conta completa em [Evolução da nota](#evolução-da-nota-métrica-histórico-e-recompute).
+
+#### Sinergia
+
+- **Mostra:** duplas com **3+ jogos juntos**; melhores e piores por WinRate da dupla.
+- **Como usar:** montar (ou separar) dupla no sorteio manual.
+- **Limite:** piso de 3 jogos ainda deixa ruído (`ponytail:` no código); dupla que sempre joga junta compartilha o resultado do time inteiro.
+
+#### Equilíbrio dos times
+
+- **Mostra:** **Diferença prevista** (spread da nota prevista entre time mais forte e mais fraco, pelo snapshot da presença) e **Favorito venceu** (%).
+- **Como usar:** provar que o sorteio equilibra — ou que precisa ajustar nota.
+- **Limite:** previsto ≠ placar. Time muda a cada rodada.
+
+#### Share do pódio
+
+`Compartilhar` (um pódio), `Compartilhar tudo`, `tudo separado` e `Exportar CSV`.
+
+Cuidado conhecido: recap/share **não** reaplica delta de nota já aplicado — imagem é leitura, não escrita.
+
+**Fontes:** `podium.ts`, `player-synergy.ts`, `team-balance-stats.ts`, `championship-metric-history.ts`, `podium-share.ts`.
+
+---
 
 ### Classificação
 
-Agregação só no cliente. Não é “oficial FIFA”; depende do cache.
+Aba `standings`. Uma tabela **por rodada**, da mais recente para a mais antiga.
 
-### Projeções (dono)
+Colunas: `Time`, `J`, `V`, `E`, `D`, `GP` (gols pró), `GC` (gols sofridos), `SG` (saldo), `Pts` e `Aproveitamento`. Pontos: vitória **3**, empate **1**, derrota **0**.
 
-| | Calibração do favorito | Gap pública × oculta |
-| --- | --- | --- |
-| **Métrica** | Favorito venceu por faixa de spread | Oculta vs rescale |
-| **Motivo** | Validar se a nota prevê | Achar estrela errada |
-| **Limite** | **Não** é prob. de vitória futura (times mudam) | Não altera sorteio sozinho |
+- **Como usar:** fechar a rodada com a tabela na tela; o título linka para a rodada.
+- **Limite:** só partidas encerradas. Não é pontos corridos do campeonato: os times são sorteados de novo a cada rodada.
+- **Fonte:** `event-team-standings.ts`.
 
-### Scatter / ficha
+---
 
-Rating scatter (inicial×atual), gols×assists, histórico na ficha, corrida GIF/vídeo (mídia, não canônico).
+### Projeções (só dono)
+
+Aba `projections`. Valida se a nota **prevê** resultado.
+
+#### Calibração do favorito
+
+- **Mostra:** faixas de diferença prevista — `0–2`, `2–5`, `5–10`, `10+` — com quantas rodadas caíram na faixa e o **% de vezes que o favorito venceu**. Fonte selecionável: **nota pública** ou **nota oculta**.
+- **Como ler:** calibrado = quanto maior a diferença prevista, maior o % do favorito. Faixa com poucas rodadas some (mín. 3).
+- **Como usar:** decidir se vale confiar na nota para equilibrar, ou se a oculta prevê melhor.
+- **Limite:** é **histórico**, não probabilidade de vitória de um jogo futuro. O produto não mostra “chance de vitória” de propósito — os times mudam toda rodada.
+
+#### Gap pública × oculta
+
+- **Mostra:** rescale da estrela × nota oculta atual, com o gap e o rótulo **Subvalorizado** / **Supervalorizado**.
+- **Como usar:** achar estrela desalinhada antes de o sorteio errar de novo.
+- **Limite:** o gap não muda o sorteio sozinho; ajuste é manual. Ver [Nota oculta](#nota-oculta-hidden-strength).
+
+**Fontes:** `championship-projection-calibration.ts`, `championship-rating-gap.ts`.
+
+---
+
+### Ficha do jogador
+
+- **Evolução da nota** pessoal por rodada.
+- **Abertura × virada** do ponto de vista do time dele: abriu e ganhou, virou o jogo, sofreu virada, empate, não virou.
+- **Sinergia**: parceiros com 3+ jogos.
+- **Simulação**: informa V/E/D e vê de → para com o teto real da liga. Não grava nada.
+
+### Gestão
+
+- **Confiabilidade de presença:** `Confirmou` (RSVP going), `Compareceu`, `Furou`, `Comparecimento %` e `Furos seguidos`. Quem não deu RSVP não entra. Uso: cobrar quem confirma e não aparece.
+- **Histórico de votos** (fechados, cancelados) e **auditoria do sorteio** (quem sorteou, quando, quantas vezes).
+
+---
+
+### Receitas rápidas
+
+| Pergunta | Onde olhar |
+| --- | --- |
+| A pelada está esvaziando? | Tendências → Presença no tempo |
+| Por que todo mundo subiu de nota? | Tendências → Inflação da nota |
+| Quem está em fase? | Tendências → Forma recente / Heatmap |
+| Quem vai pro gol? | Tendências → Ranking de goleiros |
+| O sorteio está equilibrando? | Saúde da rodada (spread) + Pódio → Equilíbrio dos times |
+| A nota prevê resultado? | Projeções → Calibração do favorito |
+| Quem levou o mês? | Pódio (período + métrica) |
+| Como ficou a rodada? | Classificação |
+| Quem confirma e fura? | Gestão → Confiabilidade de presença |
+
+### Thresholds e estados vazios
+
+| Bloco | Mínimo para aparecer |
+| --- | --- |
+| Tendências (aba) | 3 rodadas encerradas |
+| Forma recente / Heatmap | 1+ jogo na janela (3+ jogos para não cair em “Poucos jogos”) |
+| Ranking de goleiros | 3 jogos no gol |
+| Consistência × volume | 3 presenças |
+| Timeline de gols | cobertura de minuto ≥ 50% |
+| Heatmap de forma | teto de 20 jogadores |
+| Sinergia | 3 jogos na dupla |
+| Calibração do favorito | 3 rodadas com favorito decidido |
+| Pódio | métrica > 0 |
 
 ### O que o produto não mostra de propósito
 
-- Probabilidade de vitória entre times fixos
-- Elo / K-factor / ajuste por adversário na fórmula base
-- Oculta para o elenco inteiro
+- **Probabilidade de vitória** entre times: os times são sorteados de novo a cada rodada; o gráfico enganava e saiu.
+- **Elo / K-factor / ajuste por adversário** na fórmula base da nota.
+- **Nota oculta** para o elenco inteiro — só o dono.
+- Gol **subindo** nota: G+A só amortece queda, e apenas com a flag ligada.
 
 ---
 
