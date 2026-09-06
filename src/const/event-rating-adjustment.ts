@@ -189,16 +189,14 @@ export function eventRatingInDeadZone(
 	return pointUnits <= upUnits && pointUnits >= downUnits;
 }
 
-export function eventRatingDelta(
+export function eventRatingInitial(
 	wins: number,
 	draws: number,
 	losses: number,
 	matches: number,
-	rating: number,
-	ceiling: number,
 ): number {
 	if (matches < EVENT_RATING_ADJUSTMENT.minMatches) {
-		return 0;
+		return PLAYER_RATING.default;
 	}
 
 	const { pointUnits, upUnits } = eventRatingPointUnits(
@@ -207,21 +205,30 @@ export function eventRatingDelta(
 		losses,
 		matches,
 	);
-	const inDeadZone = eventRatingInDeadZone(wins, draws, losses, matches);
 
-	if (rating === PLAYER_RATING.default) {
-		if (inDeadZone) {
-			return EVENT_RATING_INITIAL.mid;
-		}
-
-		if (pointUnits > upUnits) {
-			return EVENT_RATING_INITIAL.high;
-		}
-
-		return EVENT_RATING_INITIAL.low;
+	if (eventRatingInDeadZone(wins, draws, losses, matches)) {
+		return EVENT_RATING_INITIAL.mid;
 	}
 
-	if (inDeadZone) {
+	if (pointUnits > upUnits) {
+		return EVENT_RATING_INITIAL.high;
+	}
+
+	return EVENT_RATING_INITIAL.low;
+}
+
+function eventRatingRankedDelta(
+	wins: number,
+	draws: number,
+	losses: number,
+	matches: number,
+	ceiling: number,
+): number {
+	if (matches < EVENT_RATING_ADJUSTMENT.minMatches) {
+		return 0;
+	}
+
+	if (eventRatingInDeadZone(wins, draws, losses, matches)) {
 		return 0;
 	}
 
@@ -235,6 +242,29 @@ export function eventRatingDelta(
 		(2 * points - maxPoints) * ceilingTenths,
 		2 * EVENT_RATING_ADJUSTMENT.scaleDivisor * maxPoints,
 	);
+}
+
+export function eventRatingDelta(
+	wins: number,
+	draws: number,
+	losses: number,
+	matches: number,
+	rating: number,
+	ceiling: number,
+): number {
+	if (matches < EVENT_RATING_ADJUSTMENT.minMatches) {
+		return 0;
+	}
+
+	if (rating === PLAYER_RATING.default) {
+		const seed = eventRatingInitial(wins, draws, losses, matches);
+		return applyEventRatingDelta(
+			seed,
+			eventRatingRankedDelta(wins, draws, losses, matches, ceiling),
+		);
+	}
+
+	return eventRatingRankedDelta(wins, draws, losses, matches, ceiling);
 }
 
 export function applyEventRatingDelta(rating: number, delta: number): number {

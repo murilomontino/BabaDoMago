@@ -9,6 +9,7 @@ import {
 	eventRatingDrawPoints,
 	eventRatingDropShareExcludedPlayerIds,
 	eventRatingInDeadZone,
+	eventRatingInitial,
 	eventRatingPreview,
 	eventRatingPreviewFrom,
 	eventRatingRate,
@@ -40,6 +41,10 @@ check(eventRatingDrawPoints(1, 2), 1, "E < D usa 1");
 check(EVENT_RATING_INITIAL.low, 2.7, "semente baixa");
 check(EVENT_RATING_INITIAL.mid, 3, "semente media");
 check(EVENT_RATING_INITIAL.high, 3.5, "semente alta");
+check(eventRatingInitial(4, 0, 0, 6), EVENT_RATING_INITIAL.high, "escolhe 3.5");
+check(eventRatingInitial(1, 0, 2, 3), EVENT_RATING_INITIAL.low, "escolhe 2.7");
+check(eventRatingInitial(2, 0, 2, 4), EVENT_RATING_INITIAL.mid, "escolhe 3");
+check(eventRatingInitial(1, 0, 1, 2), 0, "escolhe nada abaixo do piso");
 check(eventRatingRate(0, 0, 0, 0), 0, "rate zero matches");
 check(eventRatingRate(4, 0, 2, 6), 12 / 18, "rate 4V/2D");
 check(eventRatingInDeadZone(2, 0, 2, 4), true, "dead zone 50%");
@@ -73,18 +78,24 @@ check(eventRatingDelta(1, 0, 1, 2, 4, 5), 0, "abaixo do piso 2 jogos");
 check(eventRatingDelta(1, 0, 0, 1, 4, 5), 0, "abaixo do piso 1 jogo");
 check(
 	eventRatingDelta(4, 0, 0, 6, PLAYER_RATING.default, 5),
-	EVENT_RATING_INITIAL.high,
-	"sentinela 4V/6J vira 3.5",
+	applyEventRatingDelta(
+		EVENT_RATING_INITIAL.high,
+		eventRatingDelta(4, 0, 0, 6, EVENT_RATING_INITIAL.high, 5),
+	),
+	"sentinela 4V/6J semente depois delta",
 );
 check(
 	eventRatingDelta(1, 0, 2, 3, PLAYER_RATING.default, 5),
-	EVENT_RATING_INITIAL.low,
-	"sentinela 1V/3J vira 2.7",
+	applyEventRatingDelta(
+		EVENT_RATING_INITIAL.low,
+		eventRatingDelta(1, 0, 2, 3, EVENT_RATING_INITIAL.low, 5),
+	),
+	"sentinela 1V/3J semente depois delta",
 );
 check(
 	eventRatingDelta(2, 0, 2, 4, PLAYER_RATING.default, 5),
 	EVENT_RATING_INITIAL.mid,
-	"sentinela zona morta vira 3",
+	"sentinela zona morta fica 3",
 );
 check(
 	eventRatingDelta(1, 0, 1, 2, PLAYER_RATING.default, 5),
@@ -93,8 +104,11 @@ check(
 );
 check(
 	eventRatingDelta(2, 2, 0, 4, PLAYER_RATING.default, 5),
-	EVENT_RATING_INITIAL.high,
-	"sentinela 2V 2E 0D usa 1.5",
+	applyEventRatingDelta(
+		EVENT_RATING_INITIAL.high,
+		eventRatingDelta(2, 2, 0, 4, EVENT_RATING_INITIAL.high, 5),
+	),
+	"sentinela 2V 2E 0D semente depois delta",
 );
 check(
 	eventRatingDelta(0, 3, 0, 3, PLAYER_RATING.default, 5),
@@ -278,7 +292,10 @@ const seedMvpPreview = eventRatingPreview({
 });
 check(
 	seedMvpPreview[0]?.to,
-	EVENT_RATING_INITIAL.high + 0.1,
+	applyEventRatingDelta(
+		EVENT_RATING_INITIAL.high,
+		eventRatingDelta(4, 0, 0, 6, EVENT_RATING_INITIAL.high, 5),
+	) + 0.1,
 	"sentinela mvp soma piso",
 );
 
@@ -339,8 +356,11 @@ const seedPreview = eventRatingPreview({
 check(seedPreview[0]?.from, 0, "preview sentinela from");
 check(
 	seedPreview[0]?.to,
-	EVENT_RATING_INITIAL.high,
-	"preview sentinela to 3.5",
+	applyEventRatingDelta(
+		EVENT_RATING_INITIAL.high,
+		eventRatingDelta(4, 0, 0, 6, EVENT_RATING_INITIAL.high, 5),
+	),
+	"preview sentinela semente depois delta",
 );
 
 check(
@@ -428,8 +448,11 @@ check(
 		matches: 6,
 		ceiling: 5,
 	}),
-	EVENT_RATING_INITIAL.high,
-	"sentinela afterSave aplica semente",
+	applyEventRatingDelta(
+		EVENT_RATING_INITIAL.high,
+		eventRatingDelta(4, 0, 0, 6, EVENT_RATING_INITIAL.high, 5),
+	),
+	"sentinela afterSave semente depois delta",
 );
 check(
 	playerEventRatingAfterSave({
@@ -445,7 +468,10 @@ check(
 		matches: 3,
 		ceiling: 5,
 	}),
-	EVENT_RATING_INITIAL.low,
+	applyEventRatingDelta(
+		EVENT_RATING_INITIAL.low,
+		eventRatingDelta(1, 0, 2, 3, EVENT_RATING_INITIAL.low, 5),
+	),
 	"sentinela afterSave nao congela",
 );
 check(
@@ -463,7 +489,10 @@ check(
 		ceiling: 5,
 		snapshotRating: PLAYER_RATING.default,
 	}),
-	EVENT_RATING_INITIAL.low,
+	applyEventRatingDelta(
+		EVENT_RATING_INITIAL.low,
+		eventRatingDelta(1, 0, 2, 3, EVENT_RATING_INITIAL.low, 5),
+	),
 	"sentinela afterSave usa snapshot",
 );
 check(
@@ -477,7 +506,10 @@ check(
 		5,
 		PLAYER_RATING.default,
 	),
-	EVENT_RATING_INITIAL.low,
+	applyEventRatingDelta(
+		EVENT_RATING_INITIAL.low,
+		eventRatingDelta(1, 0, 2, 3, EVENT_RATING_INITIAL.low, 5),
+	),
 	"sentinela recompute troca faixa",
 );
 check(previewRatingTos(null).join(","), "", "null preview");

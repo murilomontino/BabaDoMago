@@ -78,7 +78,7 @@ Isso evita punir quem “segura o resultado” mais do que perde.
 
 ## Nota inicial (sentinela `rating === 0`)
 
-Na **primeira** rodada com 3+ jogos, a nota **passa a ser a semente**, não um delta incremental:
+Na **primeira** rodada com 3+ jogos, escolhe a semente e **depois** aplica o mesmo delta ranqueado nessa nota:
 
 | Aproveitamento | Semente |
 | --- | --- |
@@ -86,7 +86,7 @@ Na **primeira** rodada com 3+ jogos, a nota **passa a ser a semente**, não um d
 | 45% a 55% (inclusive) | 3 |
 | acima de 55% | 3.5 |
 
-Valores absolutos, **sem** escalar pelo teto. O campo `rating_delta` da presença guarda essa semente.
+A semente não escala pelo teto. O delta seguinte usa o teto da liga. O campo `rating_delta` guarda o resultado (`semente + delta`).
 
 Exceção: snapshot de presença com `rating = 0`, nota manual já preenchida no elenco e `rating_delta = 0` → **não** aplica semente de novo.
 
@@ -209,16 +209,16 @@ Liga madura (teto alto) move mais a nota pelo mesmo rendimento.
 
 ### Primeira nota (sentinela `0`)
 
-Aqui o “delta” **é a semente** (vira a nota), sem somar à nota atual:
+Aqui o “delta” gravado é `apply(semente, delta ranqueado)` (parte de 0):
 
-| Cenário | V / E / D / J | rate | Semente | Resultado |
-| --- | --- | --- | --- | --- |
-| Bom | 4 / 0 / 0 / 4 | 100% | 3,5 | **0 → 3,5** |
-| Médio (zona) | 2 / 0 / 2 / 4 | 50% | 3 | **0 → 3** |
-| Fraco | 1 / 0 / 2 / 3 | 33,3% | 2,7 | **0 → 2,7** |
-| 3 empates (1,5 pts) | 0 / 3 / 0 / 3 | 50% | 3 | **0 → 3** |
-| 2V 2E sem derrota | 2 / 2 / 0 / 4 | 75% | 3,5 | **0 → 3,5** |
-| Só 2 jogos | 1 / 0 / 1 / 2 | — | — | **fica 0** |
+| Cenário | V / E / D / J | rate | Semente | Teto 5 | Resultado |
+| --- | --- | --- | --- | --- | --- |
+| Bom | 4 / 0 / 2 / 6 | 66,7% | 3,5 | +0,4 | **0 → 3,9** |
+| Médio (zona) | 2 / 0 / 2 / 4 | 50% | 3 | 0 | **0 → 3** |
+| Fraco | 1 / 0 / 2 / 3 | 33,3% | 2,7 | −0,4 | **0 → 2,3** |
+| 3 empates (1,5 pts) | 0 / 3 / 0 / 3 | 50% | 3 | 0 | **0 → 3** |
+| 2V 2E sem derrota | 2 / 2 / 0 / 4 | 75% | 3,5 | +0,6 | **0 → 4,1** |
+| Só 2 jogos | 1 / 0 / 1 / 2 | — | — | — | **fica 0** |
 
 ### MVP
 
