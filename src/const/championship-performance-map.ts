@@ -88,11 +88,6 @@ export const PERFORMANCE_MAP_LABEL = {
 	projectedStable: "Estável",
 	projectedStableHint: "Mesmo alvo da próxima (Gap neutro)",
 	projectedRounds: "Rodadas",
-	pathTitle: "Até estabilizar",
-	pathHint: "Simulação no app; não grava. Assume a mesma forma. O salto é o quanto falta para o Gap neutro.",
-	pathRound: "Rodada",
-	pathRating: "Nota",
-	pathAligned: "Já alinhado",
 	reading: "Leitura",
 	state: "Estado",
 	player: "Jogador",
@@ -454,23 +449,6 @@ export type PerformanceMapProjection = {
 	projectedStop: PerformanceMapProjectedStop;
 };
 
-export type PerformanceMapProjectPathStep = {
-	round: number;
-	rating: number;
-};
-
-export type PerformanceMapProjectPath = {
-	steps: PerformanceMapProjectPathStep[];
-	stop: PerformanceMapProjectedStop;
-};
-
-export const PERFORMANCE_MAP_PATH_CHART = {
-	height: 180,
-	indexKey: "round",
-	ratingKey: "rating",
-	stroke: "#7c3aed",
-} as const;
-
 export function performanceMapProjectRating(input: {
 	rating: number;
 	rate: number;
@@ -514,36 +492,6 @@ export function performanceMapProjectRating(input: {
 		projectedStable,
 		projectedRounds: 1,
 		projectedStop: PERFORMANCE_MAP_PROJECTED_STOP.gapNeutral,
-	};
-}
-
-export function performanceMapProjectPath(input: {
-	rating: number;
-	rate: number;
-	matches: number;
-	ceiling: number;
-}): PerformanceMapProjectPath {
-	const projection = performanceMapProjectRating(input);
-	const start = clampProjectedRating(input.rating);
-	const steps: PerformanceMapProjectPathStep[] = [
-		{ round: 0, rating: start },
-	];
-
-	if (projection.projectedRounds === 0) {
-		return {
-			steps,
-			stop: projection.projectedStop,
-		};
-	}
-
-	steps.push({
-		round: 1,
-		rating: projection.projectedStable,
-	});
-
-	return {
-		steps,
-		stop: projection.projectedStop,
 	};
 }
 

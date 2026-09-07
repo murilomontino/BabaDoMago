@@ -18,11 +18,6 @@ import { SectionCard } from "@/components/section-card";
 import { Tabs } from "@/components/tabs";
 import { formatEventStartsAt } from "@/const/championship-event";
 import {
-	PERFORMANCE_MAP_LABEL,
-	PERFORMANCE_MAP_PATH_CHART,
-	type PerformanceMapProjectPath,
-} from "@/const/championship-performance-map";
-import {
 	GOAL_TIMELINE_LABEL,
 	type PlayerFirstGoalOutcomeSummary,
 } from "@/const/championship-goal-timeline";
@@ -80,6 +75,7 @@ import {
 	formatPlayerProjectionHistoryProjected,
 	formatPlayerProjectionHistoryRating,
 	formatPlayerProjectionHistoryRatingTo,
+	formatPlayerProjectionHistoryStable,
 	PLAYER_PROJECTION_HISTORY_CHART,
 	PLAYER_PROJECTION_HISTORY_COLUMN,
 	PLAYER_PROJECTION_HISTORY_COLUMN_LABEL,
@@ -88,8 +84,6 @@ import {
 	type PlayerProjectionHistoryRow,
 	playerProjectionHistoryChartSeries,
 	playerProjectionHistoryEmptyLabel,
-	playerProjectionHistoryFutureRow,
-	playerProjectionHistoryStablePath,
 } from "@/const/player-projection-history";
 import {
 	PLAYER_PROFILE_SHARE_LABEL,
@@ -140,14 +134,6 @@ const PlayerProjectionHistoryChart = lazy(() =>
 	import("@/components/molecules/player-projection-history-chart").then(
 		(m) => ({
 			default: m.PlayerProjectionHistoryChart,
-		}),
-	),
-);
-
-const PlayerProjectionStablePathChart = lazy(() =>
-	import("@/components/molecules/player-projection-stable-path-chart").then(
-		(m) => ({
-			default: m.PlayerProjectionStablePathChart,
 		}),
 	),
 );
@@ -613,6 +599,20 @@ function PlayerProjectionHistoryTable({
 						</span>
 					),
 				}),
+				projectionColumnHelper.accessor("projectedStable", {
+					id: PLAYER_PROJECTION_HISTORY_COLUMN.projectedStable,
+					header: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.projectedStable,
+					enableHiding: false,
+					meta: {
+						align: "right" as const,
+						title: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.projectedStable,
+					},
+					cell: ({ row }) => (
+						<span className="tabular-nums">
+							{formatPlayerProjectionHistoryStable(row.original)}
+						</span>
+					),
+				}),
 				projectionColumnHelper.accessor("ratingTo", {
 					id: PLAYER_PROJECTION_HISTORY_COLUMN.ratingTo,
 					header: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.ratingTo,
@@ -772,17 +772,6 @@ export function ChampionshipPlayerDetail({
 			}),
 		[events, rosterPlayers, player.id, synergyWindow],
 	);
-	const futureProjection = useMemo(
-		() => playerProjectionHistoryFutureRow(projectionHistory),
-		[projectionHistory],
-	);
-	const stablePath = useMemo(() => {
-		if (!futureProjection) {
-			return null;
-		}
-
-		return playerProjectionHistoryStablePath(futureProjection, ceiling);
-	}, [futureProjection, ceiling]);
 
 	return (
 		<div className="space-y-4">
@@ -1079,86 +1068,9 @@ export function ChampionshipPlayerDetail({
 										rows={projectionHistory}
 										onOpenEvent={onOpenEvent}
 									/>
-									{futureProjection && stablePath && (
-										<PlayerProjectionStablePathBlock
-											path={stablePath}
-											ceiling={ceiling}
-											projectedRounds={futureProjection.projectedRounds}
-										/>
-									)}
 								</div>
 							)}
 					</SectionCard>
-				</>
-			)}
-		</div>
-	);
-}
-
-function PlayerProjectionStablePathBlock({
-	path,
-	ceiling,
-	projectedRounds,
-}: {
-	path: PerformanceMapProjectPath;
-	ceiling: number;
-	projectedRounds: number;
-}) {
-	return (
-		<div className="space-y-3 border-t border-pitch-soft pt-4">
-			<div>
-				<h3 className="text-sm font-semibold text-pitch-fg">
-					{PERFORMANCE_MAP_LABEL.pathTitle}
-				</h3>
-				<p className="mt-1 text-sm text-fg-muted">
-					{PERFORMANCE_MAP_LABEL.pathHint}
-				</p>
-			</div>
-			{projectedRounds === 0 && (
-				<p className="text-sm text-fg-muted">
-					{PERFORMANCE_MAP_LABEL.pathAligned}
-				</p>
-			)}
-			{projectedRounds > 0 && (
-				<>
-					<Suspense
-						fallback={
-							<SkeletonRegion label={SKELETON_LABEL.chart}>
-								<div style={{ height: PERFORMANCE_MAP_PATH_CHART.height }}>
-									<Skeleton className="h-full w-full" />
-								</div>
-							</SkeletonRegion>
-						}
-					>
-						<PlayerProjectionStablePathChart
-							steps={path.steps}
-							ceiling={ceiling}
-						/>
-					</Suspense>
-					<div className="overflow-x-auto">
-						<table className="w-full min-w-[12rem] text-sm">
-							<thead>
-								<tr className="text-left text-fg-muted">
-									<th className="py-1 pr-4 font-medium">
-										{PERFORMANCE_MAP_LABEL.pathRound}
-									</th>
-									<th className="py-1 text-right font-medium">
-										{PERFORMANCE_MAP_LABEL.pathRating}
-									</th>
-								</tr>
-							</thead>
-							<tbody>
-								{path.steps.map((step) => (
-									<tr key={step.round} className="border-t border-pitch-soft">
-										<td className="py-1.5 pr-4 tabular-nums">{step.round}</td>
-										<td className="py-1.5 text-right tabular-nums">
-											{formatPlayerProjectionHistoryRating(step.rating)}
-										</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					</div>
 				</>
 			)}
 		</div>

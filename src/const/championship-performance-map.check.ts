@@ -14,7 +14,6 @@ import {
 	performanceMapEliteCutoff,
 	performanceMapEvents,
 	performanceMapGapReading,
-	performanceMapProjectPath,
 	performanceMapProjectRating,
 	performanceMapRatingMedian,
 	performanceMapStateReading,
@@ -524,6 +523,14 @@ check(
 );
 check(dropProjection.projectedRounds === 1, "one jump to neutral");
 check(
+	Math.abs(dropProjection.projectedNextDelta - -0.3) > 1e-9,
+	"not fixed 0.3 step on large gap",
+);
+check(
+	Math.abs(dropProjection.projectedNextDelta) > 0.3,
+	"large gap moves more than 0.3",
+);
+check(
 	dropProjection.projectedStop === PERFORMANCE_MAP_PROJECTED_STOP.gapNeutral,
 	"drop stops at gap neutral",
 );
@@ -576,36 +583,6 @@ check(fewProjection.projectedNext === 6, "few matches next = rating");
 check(
 	fewProjection.projectedStop === PERFORMANCE_MAP_PROJECTED_STOP.unchanged,
 	"few matches unchanged",
-);
-
-const dropPath = performanceMapProjectPath({
-	rating: 7.4,
-	rate: 0.5,
-	matches: 6,
-	ceiling: 8,
-});
-check(dropPath.steps[0]?.rating === 7.4, "path starts at rating");
-check((dropPath.steps.length ?? 0) > 1, "path has steps");
-check(
-	(dropPath.steps[1]?.rating ?? 99) < 7.4,
-	"negative gap path drops each step",
-);
-check(
-	Math.abs((dropPath.steps.at(-1)?.rating ?? 0) - dropProjection.projectedStable) <
-		1e-9,
-	"path ends at stable",
-);
-
-const fewPath = performanceMapProjectPath({
-	rating: 6,
-	rate: 1,
-	matches: 2,
-	ceiling: 8,
-});
-check(fewPath.steps.length === 1, "few matches path single point");
-check(
-	fewPath.stop === PERFORMANCE_MAP_PROJECTED_STOP.unchanged,
-	"few matches path unchanged",
 );
 
 const fallingPoint = risingMap.points.find((point) => point.playerId === 2);

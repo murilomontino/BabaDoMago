@@ -8,10 +8,8 @@ import {
 	formatPerformanceMapRating,
 	PERFORMANCE_MAP_WINDOW_COUNT,
 	PERFORMANCE_MAP_WINDOW_DEFAULT,
-	performanceMapProjectPath,
 	performanceMapProjectRating,
 	type PerformanceMapProjectedStop,
-	type PerformanceMapProjectPath,
 } from "./championship-performance-map.ts";
 import {
 	applyEventRatingDelta,
@@ -30,13 +28,14 @@ import { rosterSafeCount } from "./roster-stats.ts";
 
 export const PLAYER_PROJECTION_HISTORY_LABEL = {
 	title: "Projeção × realizado",
-	hint: "Prevista = um passo rumo ao equilíbrio com a forma das 5 rodadas anteriores no mesmo posto (linha ou gol). Fica gravada na hora e não muda depois, mesmo se a nota ou a regra mudarem.",
+	hint: "Prevista = nota em que o Gap fica neutro: aproveitamento das 5 rodadas anteriores (mesmo posto, linha ou gol) × teto da liga. Gap grande sobe ou desce mais; Gap pequeno, ajuste pequeno. Gravada na hora e não muda depois. Estável = mesma nota-alvo.",
 	empty: "Ainda sem rodadas para comparar projeção",
 	emptyProjection: "Poucos jogos antes — sem previsão",
 	future: "Próxima",
 	pendingRealized: "Ainda não",
 	ratingFrom: "Nota",
 	projected: "Prevista",
+	projectedStable: "Estável",
 	ratingTo: "Realizada",
 	miss: "Erro",
 	gap: "Gap",
@@ -60,6 +59,7 @@ export const PLAYER_PROJECTION_HISTORY_COLUMN = {
 	date: "date",
 	ratingFrom: "ratingFrom",
 	projectedNext: "projectedNext",
+	projectedStable: "projectedStable",
 	ratingTo: "ratingTo",
 	miss: "miss",
 	gap: "gap",
@@ -72,6 +72,7 @@ export const PLAYER_PROJECTION_HISTORY_COLUMNS = [
 	PLAYER_PROJECTION_HISTORY_COLUMN.date,
 	PLAYER_PROJECTION_HISTORY_COLUMN.ratingFrom,
 	PLAYER_PROJECTION_HISTORY_COLUMN.projectedNext,
+	PLAYER_PROJECTION_HISTORY_COLUMN.projectedStable,
 	PLAYER_PROJECTION_HISTORY_COLUMN.ratingTo,
 	PLAYER_PROJECTION_HISTORY_COLUMN.miss,
 	PLAYER_PROJECTION_HISTORY_COLUMN.gap,
@@ -81,6 +82,7 @@ export const PLAYER_PROJECTION_HISTORY_COLUMN_LABEL = {
 	date: PLAYER_PROJECTION_HISTORY_LABEL.date,
 	ratingFrom: PLAYER_PROJECTION_HISTORY_LABEL.ratingFrom,
 	projectedNext: PLAYER_PROJECTION_HISTORY_LABEL.projected,
+	projectedStable: PLAYER_PROJECTION_HISTORY_LABEL.projectedStable,
 	ratingTo: PLAYER_PROJECTION_HISTORY_LABEL.ratingTo,
 	miss: PLAYER_PROJECTION_HISTORY_LABEL.miss,
 	gap: PLAYER_PROJECTION_HISTORY_LABEL.gap,
@@ -314,33 +316,6 @@ export function playerProjectionHistoryEmptyLabel(
 	return null;
 }
 
-export function playerProjectionHistoryFutureRow(
-	rows: readonly PlayerProjectionHistoryRow[],
-): PlayerProjectionHistoryRow | null {
-	const future = rows.find((row) => row.isFuture && row.hasProjection);
-	if (!future) {
-		return null;
-	}
-
-	return future;
-}
-
-export function playerProjectionHistoryStablePath(
-	row: PlayerProjectionHistoryRow,
-	ceiling: number,
-): PerformanceMapProjectPath | null {
-	if (!row.hasProjection) {
-		return null;
-	}
-
-	return performanceMapProjectPath({
-		rating: row.ratingFrom,
-		rate: row.rate,
-		matches: row.matches,
-		ceiling,
-	});
-}
-
 export function formatPlayerProjectionHistoryGap(gap: number): string {
 	return formatPerformanceMapGap(gap);
 }
@@ -377,6 +352,16 @@ export function formatPlayerProjectionHistoryProjected(
 	}
 
 	return formatEventRating(row.projectedNext);
+}
+
+export function formatPlayerProjectionHistoryStable(
+	row: PlayerProjectionHistoryRow,
+): string {
+	if (!row.hasProjection) {
+		return PLAYER_PROJECTION_HISTORY_LABEL.emptyProjection;
+	}
+
+	return formatEventRating(row.projectedStable);
 }
 
 export function playerProjectionHistoryChartTickLabel(
