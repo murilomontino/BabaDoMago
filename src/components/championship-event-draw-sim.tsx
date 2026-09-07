@@ -44,12 +44,16 @@ import {
 	EVENT_DRAW_SIM_MODE,
 	type EventDrawSimMode,
 } from "@/const/event-draw-sim";
-import { matchupTeamsFromBuilderTeams } from "@/const/event-matchup-analysis";
+import {
+	matchupPlayerHiddenRating,
+	matchupTeamsFromBuilderTeams,
+} from "@/const/event-matchup-analysis";
 import { eventTeamColorStyle, eventTeamName } from "@/const/event-team-color";
 import {
 	EVENT_TEAM_SHARE_LABEL,
 	eventTeamsShareCards,
 } from "@/const/event-team-share";
+import { hiddenStrengthChampionshipCeiling } from "@/const/hidden-strength";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import { BUTTON_VARIANT, CARD_CLASS, ERROR_CLASS } from "@/const/ui";
 import { runEventTeamDraw } from "@/lib/event-team-draw";
@@ -199,16 +203,22 @@ export function ChampionshipEventDrawSim({
 	);
 	const hasTeams = builderTeamsHavePlayers(teams);
 	const busy = isDrawing || isSharing;
-	const matchupTeams = useMemo(
-		() =>
-			matchupTeamsFromBuilderTeams(
-				teams,
-				presentPlayers,
-				presentGoalkeeperIds,
-				eventDrawInputRating,
-			),
-		[teams, presentPlayers, presentGoalkeeperIds],
-	);
+	const matchupTeams = useMemo(() => {
+		const ceiling = hiddenStrengthChampionshipCeiling(presentPlayers);
+		return matchupTeamsFromBuilderTeams(
+			teams,
+			presentPlayers,
+			presentGoalkeeperIds,
+			(player, isGk) =>
+				matchupPlayerHiddenRating({
+					isGoalkeeper: isGk,
+					publicRating: eventDrawInputRating(player, isGk),
+					hiddenStrength: player.hidden_strength,
+					hiddenGoalkeeperStrength: player.hidden_goalkeeper_strength,
+					ceiling,
+				}),
+		);
+	}, [teams, presentPlayers, presentGoalkeeperIds]);
 	const matchupHistory = useMemo(
 		() => endedChampionshipHistoryEvents(seedEvents),
 		[seedEvents],

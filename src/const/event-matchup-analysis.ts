@@ -22,8 +22,13 @@ import {
 import { eventActivePlayerRating } from "./event-rating-adjustment.ts";
 import { eventTeamName } from "./event-team-color.ts";
 import type { EventTeamShareCard } from "./event-team-share.ts";
+import {
+	hiddenStrengthCeiling,
+	hiddenStrengthResolve,
+} from "./hidden-strength.ts";
 import { matchGoalsConceded, matchGoalsForTeam } from "./match-goal-counts.ts";
 import { playerVisibleName } from "./player-name.ts";
+import { PLAYER_RATING } from "./player-rating.ts";
 import { countsForSynergy, SYNERGY_MIN_MATCHES } from "./player-synergy.ts";
 import {
 	formatRosterWinRate,
@@ -68,15 +73,15 @@ export type MatchupBalanceLevel =
 	(typeof MATCHUP_BALANCE)[keyof typeof MATCHUP_BALANCE];
 
 export const MATCHUP_BALANCE_SPREAD = {
-	extreme: 0.15,
-	balanced: 0.3,
-	slight: 0.5,
-	clear: 0.8,
+	extreme: 2,
+	balanced: 5,
+	slight: 10,
+	clear: 18,
 } as const;
 
 /** Absolute gap below this → neutral for that metric. */
 export const MATCHUP_NEUTRAL_THRESHOLD = {
-	[MATCHUP_METRIC.rating]: 0.1,
+	[MATCHUP_METRIC.rating]: 2,
 	[MATCHUP_METRIC.attack]: 0.08,
 	[MATCHUP_METRIC.creation]: 0.08,
 	[MATCHUP_METRIC.defense]: 0.08,
@@ -86,7 +91,7 @@ export const MATCHUP_NEUTRAL_THRESHOLD = {
 
 /** Reference for relative gap (decisive / warning). */
 export const MATCHUP_METRIC_REF = {
-	[MATCHUP_METRIC.rating]: 0.5,
+	[MATCHUP_METRIC.rating]: 10,
 	[MATCHUP_METRIC.attack]: 0.5,
 	[MATCHUP_METRIC.creation]: 0.4,
 	[MATCHUP_METRIC.defense]: 0.5,
@@ -98,7 +103,7 @@ export const MATCHUP_LABEL = {
 	title: "Análise do Confronto",
 	favoriteByRating: "Favorito",
 	favoriteByFields: "Favorito pelos campos",
-	rating: "Média",
+	rating: "Média oculta",
 	attack: "Ataque",
 	creation: "Criação",
 	defense: "Defesa",
@@ -111,6 +116,8 @@ export const MATCHUP_LABEL = {
 	creator: "Principal criador",
 	bestGoalkeeper: "Melhor goleiro",
 	formPlayer: "Em alta",
+	cleanSheetPlayer: "Melhor clean sheet",
+	defensePlayer: "Menos gols sofridos",
 	goalsPerGame: "Gols/jogo",
 	assistsPerGame: "Assistências/jogo",
 	goalShare: "Participação em gols",
@@ -235,6 +242,8 @@ export type MatchupAnalysis = {
 		creator: MatchupPlayerHighlight | null;
 		goalkeeper: MatchupPlayerHighlight | null;
 		form: MatchupPlayerHighlight | null;
+		cleanSheet: MatchupPlayerHighlight | null;
+		goalsConceded: MatchupPlayerHighlight | null;
 	};
 	decisiveFactor: MatchupMetricKey | typeof MATCHUP_SIDE.neutral;
 	warningFactor: MatchupMetricKey | typeof MATCHUP_SIDE.neutral;
@@ -344,6 +353,50 @@ export function teamMatchupRatingAverage(team: MatchupTeamInput): number {
 	});
 
 	return eventTeamRatingAverage(ratings);
+}
+
+export function matchupHiddenCeiling(
+	attendance: Iterable<
+		Pick<ChampionshipEventAttendance, "rating" | "goalkeeper_rating">
+	>,
+): number {
+	return hiddenStrengthCeiling(
+		[...attendance].flatMap((row) => [row.rating, row.goalkeeper_rating]),
+	);
+}
+
+export function matchupPlayerHiddenRating(input: {
+	isGoalkeeper: boolean;
+	publicRating: number;
+	hiddenStrength: number | undefined;
+	hiddenGoalkeeperStrength: number | undefined;
+	ceiling: number;
+}): number {
+	const stored = input.isGoalkeeper
+		? (input.hiddenGoalkeeperStrength ?? PLAYER_RATING.default)
+		: (input.hiddenStrength ?? PLAYER_RATING.default);
+
+	return hiddenStrengthResolve(stored, input.publicRating, input.ceiling);
+}
+
+function matchupHiddenRatingFromAttendance(
+	isGoalkeeper: boolean,
+	attendance: ChampionshipEventAttendance | undefined,
+	ceiling: number,
+): number {
+	const publicRating = eventActivePlayerRating(
+		isGoalkeeper,
+		attendance?.rating ?? PLAYER_RATING.default,
+		attendance?.goalkeeper_rating ?? PLAYER_RATING.default,
+	);
+
+	return matchupPlayerHiddenRating({
+		isGoalkeeper,
+		publicRating,
+		hiddenStrength: attendance?.hidden_strength,
+		hiddenGoalkeeperStrength: attendance?.hidden_goalkeeper_strength,
+		ceiling,
+	});
 }
 
 export function teamGoalsPerGame(
@@ -683,11 +736,31 @@ function asMarkedGoalkeeperSet(
 
 export function matchupTeamsFromShareCards(
 	cards: readonly EventTeamShareCard[],
+	attendance: readonly ChampionshipEventAttendance[] = [],
 ): MatchupTeamInput[] {
+	const attendanceByPlayer = new Map(
+		attendance.map((row) => [row.player_id, row] as const),
+	);
+	const ceiling = matchupHiddenCeiling(attendance);
+
 	return cards.map((card, index) => {
 		const playerIds = card.players.map((player) => player.id);
 		const ratings = new Map(
-			card.players.map((player) => [player.id, player.rating] as const),
+			card.players.map((player) => {
+				const row = attendanceByPlayer.get(player.id);
+				if (!row && attendance.length === 0) {
+					return [player.id, player.rating] as const;
+				}
+
+				return [
+					player.id,
+					matchupHiddenRatingFromAttendance(
+						player.isGoalkeeperRating,
+						row,
+						ceiling,
+					),
+				] as const;
+			}),
 		);
 		const marked = card.players.flatMap((player) => {
 			if (!player.isGoalkeeperRating) {
@@ -750,8 +823,11 @@ export function matchupTeamFromMatchLineup(input: {
 	team: ChampionshipEventTeam;
 	lineup: readonly ChampionshipEventMatchPlayer[];
 	attendanceByPlayer: ReadonlyMap<number, ChampionshipEventAttendance>;
+	ceiling?: number;
 }): MatchupTeamInput {
 	const { team, lineup, attendanceByPlayer } = input;
+	const ceiling =
+		input.ceiling ?? matchupHiddenCeiling(attendanceByPlayer.values());
 	const playerIds = lineup.map((row) => row.player_id);
 	const markedGkIds = lineup.flatMap((row) => {
 		const attendance = attendanceByPlayer.get(row.player_id);
@@ -765,10 +841,10 @@ export function matchupTeamFromMatchLineup(input: {
 		lineup.map((row) => {
 			const attendance = attendanceByPlayer.get(row.player_id);
 			const isMarkedGk = attendance?.is_goalkeeper === true;
-			const rating = eventActivePlayerRating(
+			const rating = matchupHiddenRatingFromAttendance(
 				isMarkedGk,
-				attendance?.rating ?? 0,
-				attendance?.goalkeeper_rating ?? 0,
+				attendance,
+				ceiling,
 			);
 			return [row.player_id, rating] as const;
 		}),
@@ -921,8 +997,11 @@ export function matchupFavoriteWonValue(
 export function matchupTeamFromEventTeam(input: {
 	team: ChampionshipEventTeam;
 	attendanceByPlayer: ReadonlyMap<number, ChampionshipEventAttendance>;
+	ceiling?: number;
 }): MatchupTeamInput {
 	const { team, attendanceByPlayer } = input;
+	const ceiling =
+		input.ceiling ?? matchupHiddenCeiling(attendanceByPlayer.values());
 	const playerIds = team.players.map((row) => row.player_id);
 	const markedGkIds = team.players.flatMap((row) => {
 		const attendance = attendanceByPlayer.get(row.player_id);
@@ -936,10 +1015,10 @@ export function matchupTeamFromEventTeam(input: {
 		team.players.map((row) => {
 			const attendance = attendanceByPlayer.get(row.player_id);
 			const isMarkedGk = attendance?.is_goalkeeper === true;
-			const rating = eventActivePlayerRating(
+			const rating = matchupHiddenRatingFromAttendance(
 				isMarkedGk,
-				attendance?.rating ?? 0,
-				attendance?.goalkeeper_rating ?? 0,
+				attendance,
+				ceiling,
 			);
 			return [row.player_id, rating] as const;
 		}),
@@ -969,13 +1048,16 @@ export function buildStartMatchMatchup(input: {
 	const attendanceByPlayer = new Map(
 		input.attendance.map((row) => [row.player_id, row] as const),
 	);
+	const ceiling = matchupHiddenCeiling(input.attendance);
 	const home = matchupTeamFromEventTeam({
 		team: input.teamA,
 		attendanceByPlayer,
+		ceiling,
 	});
 	const away = matchupTeamFromEventTeam({
 		team: input.teamB,
 		attendanceByPlayer,
+		ceiling,
 	});
 	const analysis = analyzeEventMatchup({
 		home,
@@ -1055,15 +1137,18 @@ export function analyzeMatchHistoryMatchup(input: {
 	const attendanceByPlayer = new Map(
 		input.attendance.map((row) => [row.player_id, row] as const),
 	);
+	const ceiling = matchupHiddenCeiling(input.attendance);
 	const home = matchupTeamFromMatchLineup({
 		team: input.teamA,
 		lineup: lineupA,
 		attendanceByPlayer,
+		ceiling,
 	});
 	const away = matchupTeamFromMatchLineup({
 		team: input.teamB,
 		lineup: lineupB,
 		attendanceByPlayer,
+		ceiling,
 	});
 	const analysis = analyzeEventMatchup({
 		home,
@@ -1355,11 +1440,57 @@ function buildKeyPlayers(
 		];
 	});
 
+	const cleanSheets = allIds.flatMap((playerId) => {
+		const agg = playerDefenseAgg(events, playerId);
+		if (!agg || agg.matches < MATCHUP_MIN_SAMPLE) {
+			return [];
+		}
+
+		const player = roster.find((row) => row.id === playerId);
+		if (!player) {
+			return [];
+		}
+
+		return [
+			{
+				playerId,
+				name: playerVisibleName(player),
+				value: rosterAverage(agg.cleanSheets, agg.matches),
+				label: MATCHUP_LABEL.cleanSheetPlayer,
+				side: sideOf(playerId),
+			},
+		];
+	});
+
+	const goalsConceded = allIds.flatMap((playerId) => {
+		const agg = playerDefenseAgg(events, playerId);
+		if (!agg || agg.matches < MATCHUP_MIN_SAMPLE) {
+			return [];
+		}
+
+		const player = roster.find((row) => row.id === playerId);
+		if (!player) {
+			return [];
+		}
+
+		return [
+			{
+				playerId,
+				name: playerVisibleName(player),
+				value: rosterAverage(agg.goalsAgainst, agg.matches),
+				label: MATCHUP_LABEL.defensePlayer,
+				side: sideOf(playerId),
+			},
+		];
+	});
+
 	return {
 		scorer: maxHighlight(scorers),
 		creator: maxHighlight(creators),
 		goalkeeper: maxHighlight(goalkeepers),
 		form: maxHighlight(formHighlights),
+		cleanSheet: maxHighlight(cleanSheets),
+		goalsConceded: minHighlight(goalsConceded),
 	};
 }
 
@@ -1372,6 +1503,22 @@ function maxHighlight(
 
 	return rows.reduce((left, right) => {
 		if (right.value > left.value) {
+			return right;
+		}
+
+		return left;
+	});
+}
+
+function minHighlight(
+	rows: readonly MatchupPlayerHighlight[],
+): MatchupPlayerHighlight | null {
+	if (rows.length === 0) {
+		return null;
+	}
+
+	return rows.reduce((left, right) => {
+		if (right.value < left.value) {
 			return right;
 		}
 

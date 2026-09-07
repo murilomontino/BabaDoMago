@@ -245,14 +245,11 @@ function teamInput(
 }
 
 // --- balance / advantage (average scale) ---
-check(matchupBalanceLevel(0.05) === MATCHUP_BALANCE.extreme, "balance extreme");
-check(
-	matchupBalanceLevel(0.2) === MATCHUP_BALANCE.balanced,
-	"balance balanced",
-);
-check(matchupBalanceLevel(0.4) === MATCHUP_BALANCE.slight, "balance slight");
-check(matchupBalanceLevel(0.6) === MATCHUP_BALANCE.clear, "balance clear");
-check(matchupBalanceLevel(1) === MATCHUP_BALANCE.large, "balance large");
+check(matchupBalanceLevel(0.5) === MATCHUP_BALANCE.extreme, "balance extreme");
+check(matchupBalanceLevel(3) === MATCHUP_BALANCE.balanced, "balance balanced");
+check(matchupBalanceLevel(7) === MATCHUP_BALANCE.slight, "balance slight");
+check(matchupBalanceLevel(12) === MATCHUP_BALANCE.clear, "balance clear");
+check(matchupBalanceLevel(20) === MATCHUP_BALANCE.large, "balance large");
 
 check(
 	matchupAdvantage(1.2, 0.8, true, 0.08) === MATCHUP_SIDE.home,
@@ -636,6 +633,11 @@ check(
 	"key goalkeeper is best rating",
 );
 check(analysis.keyPlayers.scorer !== null, "scorer highlight exists");
+check(analysis.keyPlayers.cleanSheet !== null, "clean sheet highlight exists");
+check(
+	analysis.keyPlayers.goalsConceded !== null,
+	"goals conceded highlight exists",
+);
 
 check(
 	analysis.decisiveFactor !== MATCHUP_SIDE.neutral ||
@@ -861,12 +863,12 @@ check(
 	"match lineup uses attendance mark, not match is_goalkeeper slot",
 );
 check(
-	fromLineup.ratings.get(2) === 6.5,
-	"marked attendance GK uses goalkeeper_rating snapshot",
+	nearly(fromLineup.ratings.get(2) ?? 0, 72.2, 0.05),
+	"marked GK uses hidden seed from goalkeeper_rating",
 );
 check(
-	fromLineup.ratings.get(1) === 4,
-	"unmarked presence keeps line rating even if match slot is GK",
+	nearly(fromLineup.ratings.get(1) ?? 0, 44.4, 0.05),
+	"unmarked presence uses hidden seed from line rating",
 );
 
 const noPresenceMark = matchupTeamFromMatchLineup({

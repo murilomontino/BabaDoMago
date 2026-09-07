@@ -239,8 +239,8 @@ export function ChampionshipEventPotDrawPage() {
 	useWakeLock(playing);
 
 	const matchupTeams = useMemo(
-		() => matchupTeamsFromShareCards(teamCards),
-		[teamCards],
+		() => matchupTeamsFromShareCards(teamCards, event?.attendance ?? []),
+		[teamCards, event?.attendance],
 	);
 	const matchupHistory = useMemo(() => {
 		if (!event) {

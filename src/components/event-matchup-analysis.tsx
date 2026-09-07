@@ -486,7 +486,9 @@ export function EventMatchupAnalysis({
 					{(analysis.keyPlayers.scorer ||
 						analysis.keyPlayers.creator ||
 						analysis.keyPlayers.goalkeeper ||
-						analysis.keyPlayers.form) && (
+						analysis.keyPlayers.form ||
+						analysis.keyPlayers.cleanSheet ||
+						analysis.keyPlayers.goalsConceded) && (
 						<div className="rounded-lg border border-line p-3">
 							<p className="mb-2 text-sm font-semibold text-fg">
 								{MATCHUP_LABEL.keyPlayers}
@@ -513,6 +515,22 @@ export function EventMatchupAnalysis({
 										label={MATCHUP_LABEL.bestGoalkeeper}
 										name={analysis.keyPlayers.goalkeeper.name}
 										value={analysis.keyPlayers.goalkeeper.value}
+										formatValue={formatMatchupPerGame}
+									/>
+								)}
+								{analysis.keyPlayers.cleanSheet && (
+									<KeyPlayerRow
+										label={MATCHUP_LABEL.cleanSheetPlayer}
+										name={analysis.keyPlayers.cleanSheet.name}
+										value={analysis.keyPlayers.cleanSheet.value}
+										formatValue={formatMatchupPercent}
+									/>
+								)}
+								{analysis.keyPlayers.goalsConceded && (
+									<KeyPlayerRow
+										label={MATCHUP_LABEL.defensePlayer}
+										name={analysis.keyPlayers.goalsConceded.name}
+										value={analysis.keyPlayers.goalsConceded.value}
 										formatValue={formatMatchupPerGame}
 									/>
 								)}
