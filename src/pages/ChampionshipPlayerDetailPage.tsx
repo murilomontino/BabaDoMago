@@ -31,11 +31,7 @@ import {
 	PLAYER_RATING,
 	PLAYER_STARS,
 } from "@/const/player-rating";
-import {
-	playerSynergyPartners,
-	SYNERGY_LABEL,
-	SYNERGY_PARTNER_LEGEND,
-} from "@/const/player-synergy";
+import { SYNERGY_LABEL, SYNERGY_PARTNER_LEGEND } from "@/const/player-synergy";
 import {
 	ROSTER_COLUMN_ABBR,
 	ROSTER_STAT_COLUMNS,
@@ -78,15 +74,6 @@ export function ChampionshipPlayerDetailPage() {
 	const history = useMemo(
 		() => playerProfileHistory(eventsQuery.data ?? [], playerId),
 		[eventsQuery.data, playerId],
-	);
-	const partners = useMemo(
-		() =>
-			playerSynergyPartners(
-				eventsQuery.data ?? [],
-				championshipQuery.data?.players ?? [],
-				playerId,
-			),
-		[eventsQuery.data, championshipQuery.data?.players, playerId],
 	);
 	const headToHead = useMemo(
 		() =>
@@ -194,7 +181,8 @@ export function ChampionshipPlayerDetailPage() {
 					eventsQuery,
 					PLAYER_PROFILE_LABEL.eventsError,
 				)}
-				partners={partners}
+				events={eventsQuery.data ?? []}
+				rosterPlayers={championship.players}
 				headToHead={headToHead}
 				plusMinus={plusMinus}
 				firstGoalOutcome={firstGoalOutcome}
@@ -267,7 +255,7 @@ function ChampionshipPlayerDetailPageSkeleton({
 							))}
 						</div>
 					</SectionCard>
-					<SectionCard title={SYNERGY_LABEL.partners}>
+					<SectionCard title={SYNERGY_LABEL.network}>
 						<DataTableSkeleton
 							headers={SYNERGY_PARTNER_LEGEND.map((item) => item.abbr)}
 							legendItems={SYNERGY_PARTNER_LEGEND}

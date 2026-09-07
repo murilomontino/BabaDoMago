@@ -21,7 +21,9 @@ import {
 	type PerformanceMapPoint,
 	performanceMapDomainX,
 	performanceMapDotRadius,
+	performanceMapGapReading,
 	performanceMapStateLabel,
+	performanceMapStateReading,
 } from "@/const/championship-performance-map";
 import { EVENT_RATING_ADJUSTMENT } from "@/const/event-rating-adjustment";
 
@@ -52,9 +54,17 @@ function PerformanceMapTooltip({
 	}
 
 	return (
-		<div className="max-w-56 rounded-md border border-black/10 bg-surface px-2.5 py-2 text-xs shadow-sm">
+		<div className="max-w-64 rounded-md border border-black/10 bg-surface px-2.5 py-2 text-xs shadow-sm">
 			<p className="font-medium text-fg">{point.name}</p>
-			<p className="text-fg-muted">
+			<p className="mt-1 font-medium text-fg">
+				{PERFORMANCE_MAP_LABEL.gap}: {formatPerformanceMapGap(point.gap)}
+			</p>
+			<p className="text-fg">{performanceMapGapReading(point)}</p>
+			<p className="mt-1 text-fg-muted">
+				{PERFORMANCE_MAP_LABEL.state}: {performanceMapStateLabel(point.state)}
+			</p>
+			<p className="text-fg-muted">{performanceMapStateReading(point.state)}</p>
+			<p className="mt-1 text-fg-muted">
 				{PERFORMANCE_MAP_LABEL.rating}:{" "}
 				{formatPerformanceMapRating(point.rating)}
 			</p>
@@ -74,12 +84,6 @@ function PerformanceMapTooltip({
 			<p className="text-fg-muted">
 				{PERFORMANCE_MAP_LABEL.deltaRating}:{" "}
 				{formatPerformanceMapDelta(point.deltaRating)}
-			</p>
-			<p className="text-fg-muted">
-				{PERFORMANCE_MAP_LABEL.gapHint}: {formatPerformanceMapGap(point.gap)}
-			</p>
-			<p className="text-fg-muted">
-				{PERFORMANCE_MAP_LABEL.state}: {performanceMapStateLabel(point.state)}
 			</p>
 		</div>
 	);

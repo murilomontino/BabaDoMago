@@ -7,10 +7,14 @@ import {
 	championshipPerformanceMap,
 	championshipPerformanceMapVisible,
 	formatPerformanceMapGap,
+	PERFORMANCE_MAP_GAP_READING,
 	PERFORMANCE_MAP_STATE,
 	PERFORMANCE_MAP_WINDOW,
+	performanceMapEliteCutoff,
 	performanceMapEvents,
+	performanceMapGapReading,
 	performanceMapRatingMedian,
+	performanceMapStateReading,
 } from "./championship-performance-map.ts";
 import { eventRatingRate } from "./event-rating-adjustment.ts";
 import { PLAYER_RATING } from "./player-rating.ts";
@@ -117,6 +121,9 @@ const monthly = player(5, "Mensal", 4.0, true);
 check(performanceMapRatingMedian([4, 5, 6]) === 5, "median odd");
 check(performanceMapRatingMedian([4, 6]) === 5, "median even");
 check(performanceMapRatingMedian([]) === null, "median empty");
+check(performanceMapEliteCutoff([4, 5, 6, 7]) === 7, "elite top 25% of 4");
+check(performanceMapEliteCutoff([4, 7]) === 7, "elite top of 2");
+check(performanceMapEliteCutoff([]) === null, "elite cutoff empty");
 
 const risingEvent = eventWith(1, [
 	attendance({
@@ -177,12 +184,63 @@ const eliteMap = championshipPerformanceMap(
 check(
 	eliteMap.points.find((point) => point.playerId === 2)?.state ===
 		PERFORMANCE_MAP_STATE.elite,
-	"high rate + high rating → elite",
+	"high rate + top rating → elite",
 );
 check(
 	eliteMap.points.find((point) => point.playerId === 1)?.state ===
 		PERFORMANCE_MAP_STATE.low,
 	"low rate + low rating → low",
+);
+
+const onLevelRated = player(6, "Carlos", 6.0);
+const onLevelEvent = eventWith(1, [
+	attendance({
+		player_id: 1,
+		wins: 5,
+		draws: 0,
+		losses: 1,
+		matches: 6,
+	}),
+	attendance({
+		player_id: 3,
+		wins: 5,
+		draws: 0,
+		losses: 1,
+		matches: 6,
+	}),
+	attendance({
+		player_id: 6,
+		wins: 5,
+		draws: 0,
+		losses: 1,
+		matches: 6,
+	}),
+	attendance({
+		player_id: 2,
+		wins: 5,
+		draws: 0,
+		losses: 1,
+		matches: 6,
+	}),
+]);
+const onLevelMap = championshipPerformanceMap(
+	[lowRated, midRated, onLevelRated, highRated],
+	[onLevelEvent],
+);
+check(
+	onLevelMap.points.find((point) => point.playerId === 2)?.state ===
+		PERFORMANCE_MAP_STATE.elite,
+	"top 25% + high form → elite",
+);
+check(
+	onLevelMap.points.find((point) => point.playerId === 6)?.state ===
+		PERFORMANCE_MAP_STATE.onLevel,
+	"≥ mediana fora do top 25% → on level",
+);
+check(
+	onLevelMap.points.find((point) => point.playerId === 1)?.state ===
+		PERFORMANCE_MAP_STATE.rising,
+	"abaixo da mediana + high form → rising",
 );
 
 const neutralEvent = eventWith(1, [
@@ -390,6 +448,7 @@ check(
 );
 check(
 	monthlyOnly.points[0]?.state === PERFORMANCE_MAP_STATE.rising ||
+		monthlyOnly.points[0]?.state === PERFORMANCE_MAP_STATE.onLevel ||
 		monthlyOnly.points[0]?.state === PERFORMANCE_MAP_STATE.elite,
 	"mensalista classificado",
 );
@@ -402,6 +461,32 @@ check(
 	gapPoint !== undefined &&
 		Math.abs(gapPoint.gap - (gapPoint.rate - gapPoint.ratingRelative)) < 1e-9,
 	"gap = rate − ratingRelative",
+);
+
+check(
+	performanceMapGapReading({
+		gap: 0.2,
+		state: PERFORMANCE_MAP_STATE.rising,
+	}) === PERFORMANCE_MAP_GAP_READING.strongAbove,
+	"gap strong above reading",
+);
+check(
+	performanceMapGapReading({
+		gap: -0.2,
+		state: PERFORMANCE_MAP_STATE.falling,
+	}) === PERFORMANCE_MAP_GAP_READING.strongBelow,
+	"gap strong below reading",
+);
+check(
+	performanceMapGapReading({
+		gap: 0.01,
+		state: PERFORMANCE_MAP_STATE.neutral,
+	}) === PERFORMANCE_MAP_GAP_READING.aligned,
+	"gap aligned reading",
+);
+check(
+	performanceMapStateReading(PERFORMANCE_MAP_STATE.falling).includes("abaixo"),
+	"state falling reading",
 );
 
 console.log("championship-performance-map ok");

@@ -66,6 +66,14 @@ import {
 	parseContributionMetric,
 } from "@/const/championship-contribution";
 import {
+	BALANCE_INDEX_CHART,
+	BALANCE_INDEX_LABEL,
+	calculateChampionshipBalanceIndex,
+	championshipBalanceHistoryChart,
+	formatBalanceIndexScore,
+	goalDifferenceDistribution,
+} from "@/const/championship-event-balance-index";
+import {
 	championshipEventHealth,
 	championshipEventHealthChart,
 	EVENT_HEALTH_CHART,
@@ -82,6 +90,14 @@ import {
 	championshipFormHeatmap,
 	FORM_HEATMAP_LABEL,
 } from "@/const/championship-form-heatmap";
+import {
+	EVENT_BALANCE_INDEX_CSV_HEADERS,
+	EVENT_BALANCE_INDEX_SHARE_LABEL,
+	eventBalanceIndexCsvFileName,
+	eventBalanceIndexCsvRows,
+	eventBalanceIndexShareCard,
+	eventBalanceIndexShareContext,
+} from "@/const/event-balance-index-share";
 import {
 	championshipFirstGoalOutcome,
 	championshipGoalMinuteHistogram,
@@ -118,6 +134,7 @@ import {
 	type PerformanceMapPoint,
 	type PerformanceMapWindow,
 	parsePerformanceMapWindow,
+	performanceMapGapReading,
 	performanceMapStateLabel,
 	performanceMapWindowCaption,
 } from "@/const/championship-performance-map";
@@ -186,6 +203,8 @@ import { ROSTER_COLUMN } from "@/const/roster-stats";
 import { SKELETON_LABEL } from "@/const/skeleton";
 import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
 import { CHAMPIONSHIP_EVENTS_QUERY_KEY } from "@/hooks/championships/championships-query-keys";
+import { buildCsv, shareCsvText } from "@/lib/share-csv";
+import { shareEventBalanceIndexImage } from "@/lib/share-event-balance-index-image";
 import { shareFormHeatmapImage } from "@/lib/share-form-heatmap-image";
 import { shareRatingInflationImage } from "@/lib/share-rating-inflation-image";
 import type { ChampionshipPlayer } from "@/types/championship";
@@ -259,6 +278,36 @@ const ChampionshipEventHealthChart = lazy(() =>
 	),
 );
 
+const ChampionshipEventBalanceIndex = lazy(() =>
+	import("@/components/molecules/championship-event-balance-index").then(
+		(m) => ({ default: m.ChampionshipEventBalanceIndex }),
+	),
+);
+
+const ChampionshipBalanceHistory = lazy(() =>
+	import("@/components/molecules/championship-balance-history").then((m) => ({
+		default: m.ChampionshipBalanceHistory,
+	})),
+);
+
+const ChampionshipGoalDifferenceDistribution = lazy(() =>
+	import(
+		"@/components/molecules/championship-goal-difference-distribution"
+	).then((m) => ({ default: m.ChampionshipGoalDifferenceDistribution })),
+);
+
+const ChampionshipBalancePredictedVsRealized = lazy(() =>
+	import(
+		"@/components/molecules/championship-balance-predicted-vs-realized"
+	).then((m) => ({ default: m.ChampionshipBalancePredictedVsRealized })),
+);
+
+const ChampionshipPredictedVsRealized = lazy(() =>
+	import(
+		"@/components/championship/championship-predicted-vs-realized"
+	).then((m) => ({ default: m.ChampionshipPredictedVsRealized })),
+);
+
 const FILTER_CHIP =
 	"inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium transition";
 const FILTER_CHIP_ON = `${FILTER_CHIP} bg-pitch text-white hover:bg-pitch-dark`;
@@ -293,6 +342,7 @@ const contributionColumnHelper = createColumnHelper<
 >();
 
 type ChampionshipTrendsTabProps = {
+	championshipId: number;
 	championshipName: string;
 	players: ChampionshipPlayer[];
 	events: readonly ChampionshipEvent[];
@@ -442,8 +492,10 @@ function PerformanceMapStateIcon({
 	switch (state) {
 		case PERFORMANCE_MAP_STATE.rising:
 			return <ArrowUp className="size-3.5 text-pitch-fg" aria-hidden />;
+		case PERFORMANCE_MAP_STATE.onLevel:
+			return <ArrowUp className="size-3.5 text-amber-500" aria-hidden />;
 		case PERFORMANCE_MAP_STATE.elite:
-			return <ArrowUp className="size-3.5 text-amber-600" aria-hidden />;
+			return <ArrowUp className="size-3.5 text-amber-700" aria-hidden />;
 		case PERFORMANCE_MAP_STATE.falling:
 			return <ArrowDown className="size-3.5 text-danger-fg" aria-hidden />;
 		case PERFORMANCE_MAP_STATE.low:
@@ -540,7 +592,10 @@ function PerformanceMapTable({
 						title: PERFORMANCE_MAP_LABEL.gapHint,
 					},
 					cell: ({ row }) => (
-						<span className="tabular-nums">
+						<span
+							className="tabular-nums"
+							title={performanceMapGapReading(row.original)}
+						>
 							{formatPerformanceMapGap(row.original.gap)}
 						</span>
 					),
@@ -815,6 +870,7 @@ function GoalkeeperTable({ rows }: { rows: GoalkeeperRankingRow[] }) {
 }
 
 export function ChampionshipTrendsTab({
+	championshipId,
 	championshipName,
 	players,
 	events,
@@ -846,6 +902,11 @@ export function ChampionshipTrendsTab({
 	);
 	const [isSharingInflation, setIsSharingInflation] = useState(false);
 	const [inflationShareError, setInflationShareError] = useState<string | null>(
+		null,
+	);
+	const [isSharingBalance, setIsSharingBalance] = useState(false);
+	const [isSharingBalanceCsv, setIsSharingBalanceCsv] = useState(false);
+	const [balanceShareError, setBalanceShareError] = useState<string | null>(
 		null,
 	);
 
@@ -974,6 +1035,18 @@ export function ChampionshipTrendsTab({
 		() => championshipEventHealthChart(health, healthMetric),
 		[health, healthMetric],
 	);
+	const balanceIndex = useMemo(
+		() => calculateChampionshipBalanceIndex(windowEvents),
+		[windowEvents],
+	);
+	const balanceHistoryChart = useMemo(
+		() => championshipBalanceHistoryChart(balanceIndex.history),
+		[balanceIndex.history],
+	);
+	const balanceGoalDiff = useMemo(
+		() => goalDifferenceDistribution(windowEvents),
+		[windowEvents],
+	);
 
 	async function handleShareHeatmap() {
 		setIsSharingHeatmap(true);
@@ -1012,6 +1085,54 @@ export function ChampionshipTrendsTab({
 			setInflationShareError(RATING_INFLATION_SHARE_LABEL.shareFailed);
 		} finally {
 			setIsSharingInflation(false);
+		}
+	}
+
+	async function handleShareBalance() {
+		const current = balanceIndex.current;
+		if (!current) {
+			return;
+		}
+
+		setIsSharingBalance(true);
+		setBalanceShareError(null);
+		const context = eventBalanceIndexShareContext([
+			trendsWindowCaption(window),
+		]);
+		try {
+			await shareEventBalanceIndexImage(
+				eventBalanceIndexShareCard(current, championshipName, context),
+			);
+		} catch {
+			setBalanceShareError(EVENT_BALANCE_INDEX_SHARE_LABEL.shareFailed);
+		} finally {
+			setIsSharingBalance(false);
+		}
+	}
+
+	async function handleShareBalanceCsv() {
+		if (balanceIndex.history.length === 0) {
+			return;
+		}
+
+		setIsSharingBalanceCsv(true);
+		setBalanceShareError(null);
+		try {
+			await shareCsvText(
+				eventBalanceIndexCsvFileName({
+					championshipName,
+					generatedAt: new Date().toISOString(),
+				}),
+				buildCsv(
+					EVENT_BALANCE_INDEX_CSV_HEADERS,
+					eventBalanceIndexCsvRows(balanceIndex),
+				),
+				EVENT_BALANCE_INDEX_SHARE_LABEL.shareCsv,
+			);
+		} catch {
+			setBalanceShareError(EVENT_BALANCE_INDEX_SHARE_LABEL.shareFailed);
+		} finally {
+			setIsSharingBalanceCsv(false);
 		}
 	}
 
@@ -1341,6 +1462,9 @@ export function ChampionshipTrendsTab({
 								<p className="text-xs text-fg-muted">
 									{PERFORMANCE_MAP_LABEL.medianLegend}
 								</p>
+								<p className="text-xs text-fg-muted">
+									{PERFORMANCE_MAP_LABEL.gapExplain}
+								</p>
 								<PerformanceMapTable
 									points={performancePoints}
 									players={scopedPlayers}
@@ -1610,6 +1734,168 @@ export function ChampionshipTrendsTab({
 							</>
 						)}
 					</section>
+
+					<section className="space-y-3">
+						<div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+							<div className="space-y-1">
+								<div className="flex items-center gap-2">
+									<Scale className="size-4 text-pitch-fg" />
+									<h3 className="text-sm font-semibold text-fg">
+										{BALANCE_INDEX_LABEL.title}
+									</h3>
+								</div>
+								<p className="text-sm text-fg-muted">{BALANCE_INDEX_LABEL.hint}</p>
+							</div>
+							{balanceIndex.history.length > 0 && (
+								<div className="flex flex-col gap-2 sm:flex-row">
+									<Button
+										variant={BUTTON_VARIANT.secondary}
+										className="w-full sm:w-auto"
+										disabled={isSharingBalance || !balanceIndex.current}
+										onClick={() => {
+											void handleShareBalance();
+										}}
+									>
+										{isSharingBalance && (
+											<LoaderCircle
+												className="size-4 animate-spin"
+												aria-hidden
+											/>
+										)}
+										{!isSharingBalance && <Share2 className="size-4" />}
+										{isSharingBalance && EVENT_BALANCE_INDEX_SHARE_LABEL.sharing}
+										{!isSharingBalance && EVENT_BALANCE_INDEX_SHARE_LABEL.share}
+									</Button>
+									<Button
+										variant={BUTTON_VARIANT.secondary}
+										className="w-full sm:w-auto"
+										disabled={isSharingBalanceCsv}
+										onClick={() => {
+											void handleShareBalanceCsv();
+										}}
+									>
+										{isSharingBalanceCsv && (
+											<LoaderCircle
+												className="size-4 animate-spin"
+												aria-hidden
+											/>
+										)}
+										{!isSharingBalanceCsv &&
+											EVENT_BALANCE_INDEX_SHARE_LABEL.shareCsv}
+										{isSharingBalanceCsv &&
+											EVENT_BALANCE_INDEX_SHARE_LABEL.sharing}
+									</Button>
+								</div>
+							)}
+						</div>
+						{balanceShareError && (
+							<p className={ERROR_CLASS}>{balanceShareError}</p>
+						)}
+						{balanceIndex.history.length === 0 && (
+							<p className="text-sm text-fg-muted">
+								{BALANCE_INDEX_LABEL.empty}
+							</p>
+						)}
+						{balanceIndex.history.length > 0 && (
+							<>
+								{balanceIndex.overall && (
+									<div>
+										<p className="text-xs font-medium text-fg-muted">
+											{BALANCE_INDEX_LABEL.overall}
+										</p>
+										<p className="text-lg font-semibold tabular-nums text-fg">
+											{formatBalanceIndexScore(balanceIndex.overall.balanceIndex)}
+											/100
+										</p>
+									</div>
+								)}
+								<Suspense
+									fallback={
+										<SkeletonRegion label={SKELETON_LABEL.chart}>
+											<div className="h-48 w-full">
+												<Skeleton className="h-full w-full" />
+											</div>
+										</SkeletonRegion>
+									}
+								>
+									<ChampionshipEventBalanceIndex
+										row={balanceIndex.current}
+										emptyLabel={BALANCE_INDEX_LABEL.emptyEvent}
+									/>
+								</Suspense>
+								{balanceIndex.current && (
+									<Suspense
+										fallback={
+											<SkeletonRegion label={SKELETON_LABEL.chart}>
+												<div className="h-28 w-full">
+													<Skeleton className="h-full w-full" />
+												</div>
+											</SkeletonRegion>
+										}
+									>
+										<ChampionshipBalancePredictedVsRealized
+											row={balanceIndex.current}
+										/>
+									</Suspense>
+								)}
+								<div className="space-y-1">
+									<p className="text-sm font-semibold text-fg">
+										{BALANCE_INDEX_LABEL.history}
+									</p>
+									<Suspense
+										fallback={
+											<SkeletonRegion label={SKELETON_LABEL.chart}>
+												<div style={{ height: BALANCE_INDEX_CHART.height }}>
+													<Skeleton className="h-full w-full" />
+												</div>
+											</SkeletonRegion>
+										}
+									>
+										<ChampionshipBalanceHistory
+											history={balanceIndex.history}
+											points={balanceHistoryChart}
+										/>
+									</Suspense>
+								</div>
+								<div className="space-y-1">
+									<p className="text-sm font-semibold text-fg">
+										{BALANCE_INDEX_LABEL.distribution}
+									</p>
+									<Suspense
+										fallback={
+											<SkeletonRegion label={SKELETON_LABEL.chart}>
+												<div className="h-56 w-full">
+													<Skeleton className="h-full w-full" />
+												</div>
+											</SkeletonRegion>
+										}
+									>
+										<ChampionshipGoalDifferenceDistribution
+											rows={balanceGoalDiff}
+										/>
+									</Suspense>
+								</div>
+							</>
+						)}
+					</section>
+
+					<Suspense
+						fallback={
+							<SkeletonRegion label={SKELETON_LABEL.chart}>
+								<div className="h-80 w-full">
+									<Skeleton className="h-full w-full" />
+								</div>
+							</SkeletonRegion>
+						}
+					>
+						<ChampionshipPredictedVsRealized
+							championshipId={championshipId}
+							championshipName={championshipName}
+							players={players}
+							events={events}
+							audience={audience}
+						/>
+					</Suspense>
 
 					<section className="space-y-3">
 						<div className="space-y-1">

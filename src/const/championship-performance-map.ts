@@ -48,6 +48,7 @@ export const PERFORMANCE_MAP_WINDOW_OPTIONS = [
 
 export const PERFORMANCE_MAP_STATE = {
 	rising: "rising",
+	onLevel: "on_level",
 	elite: "elite",
 	falling: "falling",
 	low: "low",
@@ -62,7 +63,9 @@ export type PerformanceMapState =
 export const PERFORMANCE_MAP_LABEL = {
 	title: "Mapa de Performance",
 	subtitle: "Rating atual × aproveitamento recente",
-	hint: "Compara o nível atual do jogador com o aproveitamento da fórmula da nota. Linha vertical = mediana do rating no recorte. Gap = forma − nível relativo da nota.",
+	hint: "Compara o nível atual do jogador com o aproveitamento da fórmula da nota. Elite = top 25% de nota + forma boa; No nível = ≥ mediana + forma boa. Linha vertical = mediana do rating no recorte.",
+	gapExplain:
+		"Gap = forma recente − nível relativo da nota (rating ÷ teto). Em pp (pontos percentuais): diferença entre as duas taxas. Positivo = forma acima da nota. Negativo = a nota sugere que ainda dá para render mais.",
 	empty: "Ninguém com jogos suficientes na janela",
 	filter: "Janela",
 	showFewMatches: "Mostrar poucos jogos",
@@ -77,9 +80,11 @@ export const PERFORMANCE_MAP_LABEL = {
 	deltaRating: "Δ nota",
 	gap: "Gap",
 	gapHint: "Gap vs nível da nota",
+	reading: "Leitura",
 	state: "Estado",
 	player: "Jogador",
 	[PERFORMANCE_MAP_STATE.rising]: "Ascensão",
+	[PERFORMANCE_MAP_STATE.onLevel]: "No nível",
 	[PERFORMANCE_MAP_STATE.elite]: "Elite",
 	[PERFORMANCE_MAP_STATE.falling]: "Queda",
 	[PERFORMANCE_MAP_STATE.low]: "Baixo",
@@ -93,9 +98,47 @@ export const PERFORMANCE_MAP_LABEL = {
 	[PERFORMANCE_MAP_WINDOW.month2]: "2 meses",
 } as const;
 
+export const PERFORMANCE_MAP_GAP_READING = {
+	strongAbove:
+		"Forma bem acima da nota — está rendendo mais do que o nível sugere.",
+	above: "Forma um pouco acima da nota — fase melhor que o histórico.",
+	aligned: "Forma alinhada com a nota — desempenho no esperado.",
+	below: "Forma um pouco abaixo da nota — ainda dá para render mais.",
+	strongBelow:
+		"Forma bem abaixo da nota — este jogador pode desempenhar mais do que mostra agora.",
+	fewMatches: "Poucos jogos — Gap ainda é barulho.",
+	unrated: "Sem nota — Gap não se aplica.",
+} as const;
+
+export const PERFORMANCE_MAP_STATE_READING = {
+	[PERFORMANCE_MAP_STATE.rising]:
+		"Nota ainda abaixo da mediana, mas forma boa — candidato a subir.",
+	[PERFORMANCE_MAP_STATE.onLevel]:
+		"Nota na metade de cima e forma boa — está no próprio nível.",
+	[PERFORMANCE_MAP_STATE.elite]:
+		"Topo da liga (top 25% de nota) e forma boa — referência do recorte.",
+	[PERFORMANCE_MAP_STATE.falling]:
+		"Nota alta com forma fraca — rende abaixo do que a nota promete.",
+	[PERFORMANCE_MAP_STATE.low]: "Nota e forma baixas — fase fraca no recorte.",
+	[PERFORMANCE_MAP_STATE.neutral]:
+		"Na zona morta — resultado estável, sem sinal forte.",
+	[PERFORMANCE_MAP_STATE.few_matches]:
+		"Menos de 3 jogos — cedo demais para classificar.",
+	[PERFORMANCE_MAP_STATE.unrated]:
+		"Nota sentinela — ainda não entrou no mapa de nível.",
+} as const;
+
+/** |gap| abaixo disso conta como alinhado (8 pp). */
+export const PERFORMANCE_MAP_GAP_ALIGNED = 0.08 as const;
+/** |gap| a partir disso conta como bem acima/abaixo (18 pp). */
+export const PERFORMANCE_MAP_GAP_STRONG = 0.18 as const;
+/** Fração do elenco ranqueado que pode ser Elite (top 25%). */
+export const PERFORMANCE_MAP_ELITE_TOP_FRACTION = 0.25 as const;
+
 export const PERFORMANCE_MAP_COLOR = {
 	[PERFORMANCE_MAP_STATE.rising]: "#16a34a",
-	[PERFORMANCE_MAP_STATE.elite]: "#ca8a04",
+	[PERFORMANCE_MAP_STATE.onLevel]: "#ca8a04",
+	[PERFORMANCE_MAP_STATE.elite]: "#b45309",
 	[PERFORMANCE_MAP_STATE.falling]: "#dc2626",
 	[PERFORMANCE_MAP_STATE.low]: "#64748b",
 	[PERFORMANCE_MAP_STATE.neutral]: "#94a3b8",
@@ -228,22 +271,28 @@ export function championshipPerformanceMap(
 	const ceiling = championshipRatingCeiling(
 		players.map((player) => player.rating),
 	);
-	const median = performanceMapRatingMedian(
-		formRows.flatMap((row) => {
-			if (row.player.rating === PLAYER_RATING.default) {
-				return [];
-			}
+	const ratedRatings = formRows.flatMap((row) => {
+		if (row.player.rating === PLAYER_RATING.default) {
+			return [];
+		}
 
-			return [row.player.rating];
-		}),
-	);
+		return [row.player.rating];
+	});
+	const median = performanceMapRatingMedian(ratedRatings);
+	const eliteCutoff = performanceMapEliteCutoff(ratedRatings);
 
 	const points = formRows
 		.map((row) => {
 			const rating = row.player.rating;
 			const ratingRelative = rating / ceiling;
 			const gap = row.rate - ratingRelative;
-			const state = performanceMapState(row.matches, rating, row.rate, median);
+			const state = performanceMapState(
+				row.matches,
+				rating,
+				row.rate,
+				median,
+				eliteCutoff,
+			);
 
 			return {
 				playerId: row.player.id,
@@ -287,6 +336,41 @@ export function championshipPerformanceMapEmptyLabel(
 
 export function performanceMapStateLabel(state: PerformanceMapState): string {
 	return PERFORMANCE_MAP_LABEL[state];
+}
+
+export function performanceMapGapReading(point: {
+	gap: number;
+	state: PerformanceMapState;
+}): string {
+	if (point.state === PERFORMANCE_MAP_STATE.few_matches) {
+		return PERFORMANCE_MAP_GAP_READING.fewMatches;
+	}
+
+	if (point.state === PERFORMANCE_MAP_STATE.unrated) {
+		return PERFORMANCE_MAP_GAP_READING.unrated;
+	}
+
+	if (point.gap >= PERFORMANCE_MAP_GAP_STRONG) {
+		return PERFORMANCE_MAP_GAP_READING.strongAbove;
+	}
+
+	if (point.gap >= PERFORMANCE_MAP_GAP_ALIGNED) {
+		return PERFORMANCE_MAP_GAP_READING.above;
+	}
+
+	if (point.gap <= -PERFORMANCE_MAP_GAP_STRONG) {
+		return PERFORMANCE_MAP_GAP_READING.strongBelow;
+	}
+
+	if (point.gap <= -PERFORMANCE_MAP_GAP_ALIGNED) {
+		return PERFORMANCE_MAP_GAP_READING.below;
+	}
+
+	return PERFORMANCE_MAP_GAP_READING.aligned;
+}
+
+export function performanceMapStateReading(state: PerformanceMapState): string {
+	return PERFORMANCE_MAP_STATE_READING[state];
 }
 
 export function formatPerformanceMapGap(gap: number): string {
@@ -372,11 +456,26 @@ export function performanceMapRatingMedian(
 	return (low + high) / 2;
 }
 
+/** Nota mínima para entrar no top fraction (Elite). */
+export function performanceMapEliteCutoff(
+	ratings: readonly number[],
+	topFraction: number = PERFORMANCE_MAP_ELITE_TOP_FRACTION,
+): number | null {
+	if (ratings.length === 0) {
+		return null;
+	}
+
+	const sorted = [...ratings].sort((left, right) => left - right);
+	const startIndex = Math.floor(sorted.length * (1 - topFraction));
+	return sorted[startIndex] ?? null;
+}
+
 function performanceMapState(
 	matches: number,
 	rating: number,
 	rate: number,
 	median: number | null,
+	eliteCutoff: number | null,
 ): PerformanceMapState {
 	if (matches < EVENT_RATING_ADJUSTMENT.minMatches) {
 		return PERFORMANCE_MAP_STATE.few_matches;
@@ -387,10 +486,15 @@ function performanceMapState(
 	}
 
 	const highRating = median !== null && rating >= median;
+	const topRating = eliteCutoff !== null && rating >= eliteCutoff;
 
 	if (rate > EVENT_RATING_ADJUSTMENT.upThreshold) {
-		if (highRating) {
+		if (topRating) {
 			return PERFORMANCE_MAP_STATE.elite;
+		}
+
+		if (highRating) {
+			return PERFORMANCE_MAP_STATE.onLevel;
 		}
 
 		return PERFORMANCE_MAP_STATE.rising;

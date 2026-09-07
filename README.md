@@ -676,7 +676,8 @@ Aba `trends`. Componente `championship-trends-tab.tsx`. Diagnóstico da liga: qu
 
 | Rótulo | Regra |
 | --- | --- |
-| Elite | aproveitamento > 55% e rating ≥ mediana |
+| Elite | aproveitamento > 55% e rating no **top 25%** do elenco ranqueado no recorte |
+| No nível | aproveitamento > 55% e rating ≥ mediana (mas fora do top 25%) |
 | Ascensão | aproveitamento > 55% e rating < mediana |
 | Queda | aproveitamento < 45% e rating ≥ mediana |
 | Baixo | aproveitamento < 45% e rating < mediana |
@@ -685,7 +686,7 @@ Aba `trends`. Componente `championship-trends-tab.tsx`. Diagnóstico da liga: qu
 | Sem nota | sentinela `rating === 0` (sempre oculto) |
 
 - **Cortes:** faixas horizontais em 45% / 55%; linha vertical = **mediana do rating** no recorte (só notas `> 0`).
-- **Gap:** `aproveitamento − (rating ÷ teto)` — sinal de quanto a forma atual difere do nível relativo da nota (não é pp do mesmo eixo).
+- **Gap:** `aproveitamento − (rating ÷ teto)` — em **pp**. Positivo = forma acima da nota; negativo = a nota sugere que ainda dá para render mais. Tooltip e legenda sob o gráfico explicam a leitura.
 - **Como usar:** achar quem está acima ou abaixo do próprio nível; separar fase de nota acumulada.
 - **Limite:** janela própria do card (não a janela global da aba). Não altera a nota. Amostra < 3 jogos não classifica.
 - **Fonte:** `championship-performance-map.ts`.
@@ -722,14 +723,22 @@ Aba `trends`. Componente `championship-trends-tab.tsx`. Diagnóstico da liga: qu
 - **Limite:** `Minutos jogados` vem do **cronômetro real**, não da duração configurada. Spread é previsão pela nota, não placar.
 - **Fonte:** `championship-event-health.ts`.
 
-#### 10. Gols da rodada
+#### 10. Índice de equilíbrio da rodada
+
+- **Mostra:** KPI **0–100** da rodada atual na janela, com classificação (Excelente → Muito desequilibrada), decomposição (previsto / realizado / jogos apertados), histórico por rodada, histograma de diferença de gols e card Previsto × Realizado. Favorito venceu aparece só como contexto.
+- **Como ler:** índice alto = partidas próximas no sorteio e no placar. Realizado pesa mais que previsto (40% vs 25%). Diferença prevista aqui é a **média por partida** `abs(nota A − nota B)`, distinta do spread max−min da Saúde.
+- **Como usar:** resumir se a rodada foi equilibrada sem substituir os indicadores brutos da Saúde.
+- **Limite:** analítico apenas — **não** altera nota, sorteio nem probabilidade. Com 1 partida marca amostra pequena. Mensalistas não recompõem os times do índice coletivo.
+- **Fonte:** `championship-event-balance-index.ts`. Exporta PNG e CSV.
+
+#### 11. Gols da rodada
 
 - **Mostra:** total de gols por rodada + média.
 - **Como usar:** complementa `gols / jogo`: rodada com muitos jogos infla o total sem o jogo ficar mais ofensivo.
 - **Limite:** não atribui mérito individual.
 - **Fonte:** `championship-round-goals.ts`.
 
-#### 11. Timeline de gols
+#### 12. Timeline de gols
 
 Bloco só de gols **com minuto** registrado no cronômetro.
 
@@ -742,7 +751,7 @@ Bloco só de gols **com minuto** registrado no cronômetro.
 - **Limite:** gol sem minuto não entra. Não prevê a próxima partida.
 - **Fonte:** `championship-goal-timeline.ts`.
 
-#### 12. Heatmap de forma
+#### 13. Heatmap de forma
 
 - **Mostra:** grid jogador × rodada. Cada célula é o aproveitamento naquela rodada: **Em alta**, **Em baixa**, **Zona morta**, **Poucos jogos**, **Ausente**.
 - **Como ler:** faixa verde seguida = fase boa. Coluna toda amarela = rodada equilibrada.
@@ -830,7 +839,7 @@ Aba `projections`. Valida se a nota **prevê** resultado.
 
 - **Evolução da nota** pessoal por rodada.
 - **Abertura × virada** do ponto de vista do time dele: abriu e ganhou, virou o jogo, sofreu virada, empate, não virou.
-- **Sinergia**: parceiros com 3+ jogos.
+- **Rede de sinergia**: parceiros com 3+ jogos no mesmo time; WinRate da dupla, volume, Δ vs WinRate individual; filtros de janela e melhores/piores. Só associação observada — não muda o sorteio.
 - **Simulação**: informa V/E/D e vê de → para com o teto real da liga. Não grava nada.
 
 ### Gestão
@@ -849,7 +858,7 @@ Aba `projections`. Valida se a nota **prevê** resultado.
 | Quem está em fase? | Tendências → Forma recente / Heatmap |
 | Quem está acima do próprio rating? | Tendências → Mapa de Performance |
 | Quem vai pro gol? | Tendências → Ranking de goleiros |
-| O sorteio está equilibrando? | Saúde da rodada (spread) + Pódio → Equilíbrio dos times |
+| O sorteio está equilibrando? | Saúde da rodada (spread) + Índice de equilíbrio + Pódio → Equilíbrio dos times |
 | A nota prevê resultado? | Projeções → Calibração do favorito |
 | Quem levou o mês? | Pódio (período + métrica) |
 | Como ficou a rodada? | Classificação |
