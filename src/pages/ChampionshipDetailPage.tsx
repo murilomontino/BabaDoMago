@@ -912,6 +912,7 @@ export function ChampionshipDetailPage() {
 					{mountedTabsRef.current.trends && (
 						<TabPanel active={selectedTab === CHAMPIONSHIP_TAB.trends}>
 							<ChampionshipTrendsTab
+								championshipId={data.id}
 								championshipName={data.name}
 								players={activePlayers}
 								events={eventsQuery.data ?? []}

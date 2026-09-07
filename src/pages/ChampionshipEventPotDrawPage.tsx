@@ -10,6 +10,7 @@ import {
 	EventDrawWaiting,
 } from "@/components/event-draw-reveal";
 import { EventDrawViewers } from "@/components/event-draw-viewers";
+import { EventMatchupAnalysis } from "@/components/event-matchup-analysis";
 import { EventTeamDrawLog } from "@/components/event-team-draw-log";
 import { TeamCardSkeleton } from "@/components/molecules/team-card-skeleton";
 import {
@@ -46,6 +47,10 @@ import {
 	eventDrawUrl,
 } from "@/const/event-draw-reveal";
 import {
+	matchupHistoryEvents,
+	matchupTeamsFromShareCards,
+} from "@/const/event-matchup-analysis";
+import {
 	builderTeamsFromPotDrafts,
 	EVENT_POT_DRAW_STAGE,
 	type EventPotDrawStage,
@@ -73,6 +78,7 @@ import { BUTTON_VARIANT, ERROR_CLASS, MODAL_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
 import {
 	useChampionshipEvent,
+	useChampionshipEvents,
 	useSaveChampionshipEventTeams,
 } from "@/hooks/championships/use-championship-events";
 import { useChampionship } from "@/hooks/championships/use-championships";
@@ -103,6 +109,7 @@ export function ChampionshipEventPotDrawPage() {
 	const { user } = useAuth();
 	const championshipQuery = useChampionship(championshipId);
 	const eventQuery = useChampionshipEvent(championshipId, eventId);
+	const eventsQuery = useChampionshipEvents(championshipId);
 	const saveTeams = useSaveChampionshipEventTeams(championshipId);
 	const reduceMotion = useReducedMotion();
 	const [frozenCards, setFrozenCards] = useState<EventTeamShareCard[] | null>(
@@ -230,6 +237,18 @@ export function ChampionshipEventPotDrawPage() {
 	);
 	const playing = phase === EVENT_DRAW_REVEAL_PHASE.playing;
 	useWakeLock(playing);
+
+	const matchupTeams = useMemo(
+		() => matchupTeamsFromShareCards(teamCards, event?.attendance ?? []),
+		[teamCards, event?.attendance],
+	);
+	const matchupHistory = useMemo(() => {
+		if (!event) {
+			return [];
+		}
+
+		return matchupHistoryEvents(eventsQuery.data ?? [], event);
+	}, [event, eventsQuery.data]);
 
 	const pageStatus = eventDrawRevealPageStatus({
 		championshipPending: championshipQuery.isPending,
@@ -756,6 +775,13 @@ export function ChampionshipEventPotDrawPage() {
 					title={eventPotDrawCeremonyTitle(ceremonyStage)}
 					showPosition={eventPotDrawShowsPosition(ceremonyStage)}
 					canAdvance={eventPotDrawAdvanceOverride(ceremonyStage)}
+					footer={
+						<EventMatchupAnalysis
+							teams={matchupTeams}
+							historyEvents={matchupHistory}
+							roster={activePlayers}
+						/>
+					}
 				/>
 			)}
 			{videoStatus === "generating" && (

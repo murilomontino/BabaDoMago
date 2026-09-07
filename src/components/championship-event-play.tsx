@@ -4,6 +4,7 @@ import {
 	LoaderCircle,
 	Pause,
 	Play,
+	Star,
 	X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -96,6 +97,16 @@ import {
 } from "@/const/championship-event-match-ops";
 import { resolveEventPlayers } from "@/const/championship-event-roster";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
+import {
+	analyzeMatchHistoryMatchup,
+	buildStartMatchMatchup,
+	eventMatchupFavoriteStats,
+	formatMatchupFavoriteHitRate,
+	MATCHUP_LABEL,
+	type MatchupSnapshot,
+	matchFavoriteTeamId,
+	matchupFavoriteTeamId,
+} from "@/const/event-matchup-analysis";
 import {
 	type EventTeamColor,
 	eventTeamColorStyle,
@@ -267,10 +278,19 @@ type ChampionshipEventPlayProps = {
 	event: ChampionshipEvent;
 	match: ChampionshipEventMatch | null;
 	players: readonly ChampionshipPlayer[];
+	historyEvents: readonly ChampionshipEvent[];
 	opsError: string | null;
 	pendingOps: number;
 	clockError: string | null;
-	onStart: (teamAId: number, teamBId: number, durationMinutes: number) => void;
+	onStart: (
+		teamAId: number,
+		teamBId: number,
+		durationMinutes: number,
+		matchup: {
+			snapshot: MatchupSnapshot;
+			favoriteTeamId: number | null;
+		},
+	) => void;
 	onSetPlayer: (
 		teamId: number,
 		slot: number,
@@ -631,6 +651,7 @@ function MatchTeamBlock({
 	slots,
 	rosterById,
 	disabled,
+	isFavorite,
 	onMarkGoal,
 	onSetGoalkeeper,
 	onEditSlot,
@@ -642,6 +663,7 @@ function MatchTeamBlock({
 	slots: readonly (ChampionshipEventMatchPlayer | null)[];
 	rosterById: Map<number, ChampionshipPlayer>;
 	disabled: boolean;
+	isFavorite: boolean;
 	onMarkGoal: (player: ChampionshipEventMatchPlayer) => void;
 	onSetGoalkeeper: (player: ChampionshipEventMatchPlayer) => void;
 	onEditSlot: (slot: number) => void;
@@ -657,8 +679,16 @@ function MatchTeamBlock({
 		>
 			<EventTeamColorDot color={color} />
 			<div className="mb-1 flex shrink-0 items-center gap-1 pr-5">
-				<p className="min-w-0 flex-1 text-xs font-medium">
-					{eventTeamName(color, sortOrder)}
+				<p className="flex min-w-0 flex-1 items-center gap-1 text-xs font-medium">
+					{isFavorite && (
+						<Star
+							aria-label={MATCHUP_LABEL.favoriteByFields}
+							className="size-3.5 shrink-0 fill-amber-400 text-amber-400"
+						/>
+					)}
+					<span className="min-w-0 truncate">
+						{eventTeamName(color, sortOrder)}
+					</span>
 				</p>
 				{onSwapTeam && (
 					<Button
@@ -906,6 +936,7 @@ export function ChampionshipEventPlay({
 	event,
 	match,
 	players,
+	historyEvents,
 	opsError,
 	pendingOps,
 	clockError,
@@ -1112,7 +1143,23 @@ export function ChampionshipEventPlay({
 									return;
 								}
 
-								void onStart(teamAId, teamBId, durationMinutes);
+								const teamA = teamById.get(teamAId);
+								const teamB = teamById.get(teamBId);
+								if (!teamA || !teamB) {
+									return;
+								}
+
+								const matchup = buildStartMatchMatchup({
+									teamA,
+									teamB,
+									attendance: event.attendance,
+									historyEvents,
+									roster: players,
+								});
+								void onStart(teamAId, teamBId, durationMinutes, {
+									snapshot: matchup.snapshot,
+									favoriteTeamId: matchup.favoriteTeamId,
+								});
 							}}
 						>
 							{EVENT_ACTION.startMatch}
@@ -1162,6 +1209,33 @@ export function ChampionshipEventPlay({
 	if (!teamA || !teamB) {
 		return <p className={ERROR_CLASS}>Time da partida não encontrado.</p>;
 	}
+
+	const matchupReview = analyzeMatchHistoryMatchup({
+		match,
+		teamA,
+		teamB,
+		attendance: event.attendance,
+		historyEvents,
+		roster: players,
+	});
+	const frozenFavoriteId = matchFavoriteTeamId(match);
+	const liveFavoriteId =
+		matchupReview === null
+			? null
+			: matchupFavoriteTeamId(
+					matchupReview.analysis.favoriteSide,
+					match.team_a_id,
+					match.team_b_id,
+				);
+	const favoriteTeamId =
+		frozenFavoriteId === undefined ? liveFavoriteId : frozenFavoriteId;
+	const teamAFavorite = favoriteTeamId === match.team_a_id;
+	const teamBFavorite = favoriteTeamId === match.team_b_id;
+	const favoriteStats = eventMatchupFavoriteStats(event.matches);
+	const favoriteHitCaption =
+		favoriteStats.decreed > 0
+			? formatMatchupFavoriteHitRate(favoriteStats)
+			: null;
 
 	const teamAIds = new Set(
 		match.players
@@ -1251,6 +1325,11 @@ export function ChampionshipEventPlay({
 	return (
 		<div className="relative flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden">
 			{showQueueBanner && <MatchOpsQueueBanner online={online} />}
+			{favoriteHitCaption && (
+				<p className="shrink-0 text-center text-xs font-medium tabular-nums text-fg-muted">
+					{MATCHUP_LABEL.favoriteHitRate}: {favoriteHitCaption}
+				</p>
+			)}
 			<MatchTeamBlock
 				color={teamA.color}
 				sortOrder={teamA.sort_order}
@@ -1261,6 +1340,7 @@ export function ChampionshipEventPlay({
 				)}
 				rosterById={rosterById}
 				disabled={goalModalOpen}
+				isFavorite={teamAFavorite}
 				onMarkGoal={(player) => {
 					beginGoalClockHold();
 					setGoalTarget({ teamId: match.team_a_id, player });
@@ -1289,8 +1369,14 @@ export function ChampionshipEventPlay({
 								setOwnGoalTeamId(match.team_a_id);
 							}}
 						/>
-						<p className="min-w-0 flex-1 truncate text-right text-sm font-medium text-fg">
-							{starA}
+						<p className="flex min-w-0 flex-1 items-center justify-end gap-1 truncate text-right text-sm font-medium text-fg">
+							{teamAFavorite && (
+								<Star
+									aria-label={MATCHUP_LABEL.favoriteByFields}
+									className="size-3.5 shrink-0 fill-amber-400 text-amber-400"
+								/>
+							)}
+							<span className="min-w-0 truncate">{starA}</span>
 						</p>
 						<EventTeamChip
 							color={teamA.color}
@@ -1307,8 +1393,14 @@ export function ChampionshipEventPlay({
 							sortOrder={teamB.sort_order}
 							tip={EVENT_TEAM_CHIP_TIP.start}
 						/>
-						<p className="min-w-0 flex-1 truncate text-sm font-medium text-fg">
-							{starB}
+						<p className="flex min-w-0 flex-1 items-center gap-1 truncate text-sm font-medium text-fg">
+							{teamBFavorite && (
+								<Star
+									aria-label={MATCHUP_LABEL.favoriteByFields}
+									className="size-3.5 shrink-0 fill-amber-400 text-amber-400"
+								/>
+							)}
+							<span className="min-w-0 truncate">{starB}</span>
 						</p>
 						<OwnGoalButton
 							disabled={goalModalOpen}
@@ -1379,6 +1471,7 @@ export function ChampionshipEventPlay({
 				)}
 				rosterById={rosterById}
 				disabled={goalModalOpen}
+				isFavorite={teamBFavorite}
 				onMarkGoal={(player) => {
 					beginGoalClockHold();
 					setGoalTarget({ teamId: match.team_b_id, player });

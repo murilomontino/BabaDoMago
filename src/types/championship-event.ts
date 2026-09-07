@@ -17,6 +17,7 @@ export type ChampionshipEventAttendance = {
 	matches: number;
 	rating: number;
 	rating_delta: number;
+	rating_projected?: number | null;
 	goalkeeper_rating: number;
 	goalkeeper_rating_delta: number;
 	vote_rating_delta: number;
@@ -93,6 +94,9 @@ export type ChampionshipEventMatch = {
 	started_at: string | null;
 	paused_at: string | null;
 	pause_accumulated_seconds: number;
+	matchup_snapshot?: unknown;
+	favorite_team_id?: number | null;
+	favorite_won?: boolean | null;
 	players: ChampionshipEventMatchPlayer[];
 	goals: ChampionshipEventGoal[];
 };

@@ -1,6 +1,7 @@
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ArrowLeft, Share2 } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
 import { ChampionshipPlayerDetail } from "@/components/championship-player-detail";
@@ -25,17 +26,14 @@ import {
 	playerProfileHistory,
 	ratingsForProfileCeiling,
 } from "@/const/player-profile";
+import { playerProjectionHistory } from "@/const/player-projection-history";
 import { PLAYER_PROFILE_SHARE_LABEL } from "@/const/player-profile-share";
 import {
 	championshipRatingCeiling,
 	PLAYER_RATING,
 	PLAYER_STARS,
 } from "@/const/player-rating";
-import {
-	playerSynergyPartners,
-	SYNERGY_LABEL,
-	SYNERGY_PARTNER_LEGEND,
-} from "@/const/player-synergy";
+import { SYNERGY_LABEL, SYNERGY_PARTNER_LEGEND } from "@/const/player-synergy";
 import {
 	ROSTER_COLUMN_ABBR,
 	ROSTER_STAT_COLUMNS,
@@ -48,10 +46,13 @@ import { useAuth } from "@/contexts/auth";
 import {
 	CHAMPIONSHIP_BY_ID_QUERY_KEY,
 	CHAMPIONSHIP_EVENTS_QUERY_KEY,
+	invalidateChampionshipEventQueries,
+	invalidateChampionshipQueries,
 } from "@/hooks/championships/championships-query-keys";
 import { useChampionshipEvents } from "@/hooks/championships/use-championship-events";
 import { useChampionship } from "@/hooks/championships/use-championships";
 import { prefixedErrorMessage } from "@/lib/error-message";
+import { ensureChampionshipPlayerNextRatingProjected } from "@/services/championship-events";
 
 export function ChampionshipPlayerDetailPage() {
 	const { championshipId: championshipIdParam, playerId: playerIdParam } =
@@ -61,9 +62,39 @@ export function ChampionshipPlayerDetailPage() {
 	const championshipId = Number(championshipIdParam);
 	const playerId = Number(playerIdParam);
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 	const { user } = useAuth();
 	const championshipQuery = useChampionship(championshipId);
 	const eventsQuery = useChampionshipEvents(championshipId);
+
+	useEffect(() => {
+		if (!Number.isFinite(championshipId) || !Number.isFinite(playerId)) {
+			return;
+		}
+
+		let cancelled = false;
+		void ensureChampionshipPlayerNextRatingProjected(
+			championshipId,
+			playerId,
+		)
+			.then(async (result) => {
+				if (cancelled || !result.created) {
+					return;
+				}
+
+				await Promise.all([
+					invalidateChampionshipEventQueries(queryClient),
+					invalidateChampionshipQueries(queryClient),
+				]);
+			})
+			.catch(() => {
+				/* perfil ainda mostra rebuild local */
+			});
+
+		return () => {
+			cancelled = true;
+		};
+	}, [championshipId, playerId, queryClient]);
 
 	const championship = championshipQuery.data;
 	const currentPlayer = championship?.players.find(
@@ -79,14 +110,23 @@ export function ChampionshipPlayerDetailPage() {
 		() => playerProfileHistory(eventsQuery.data ?? [], playerId),
 		[eventsQuery.data, playerId],
 	);
-	const partners = useMemo(
+	const projectionHistory = useMemo(
 		() =>
-			playerSynergyPartners(
-				eventsQuery.data ?? [],
-				championshipQuery.data?.players ?? [],
-				playerId,
-			),
-		[eventsQuery.data, championshipQuery.data?.players, playerId],
+			playerProjectionHistory(eventsQuery.data ?? [], playerId, {
+				nextProjected: player?.rating_projected_next,
+				currentRating: player?.is_goalkeeper
+					? player.goalkeeper_rating
+					: player?.rating,
+				isGoalkeeper: player?.is_goalkeeper === true,
+			}),
+		[
+			eventsQuery.data,
+			playerId,
+			player?.rating_projected_next,
+			player?.rating,
+			player?.goalkeeper_rating,
+			player?.is_goalkeeper,
+		],
 	);
 	const headToHead = useMemo(
 		() =>
@@ -189,12 +229,14 @@ export function ChampionshipPlayerDetailPage() {
 				isOwnerViewer={isOwnerViewer}
 				career={toRosterRow(player)}
 				history={history}
+				projectionHistory={projectionHistory}
 				historyPending={eventsQuery.isPending}
 				historyError={prefixedErrorMessage(
 					eventsQuery,
 					PLAYER_PROFILE_LABEL.eventsError,
 				)}
-				partners={partners}
+				events={eventsQuery.data ?? []}
+				rosterPlayers={championship.players}
 				headToHead={headToHead}
 				plusMinus={plusMinus}
 				firstGoalOutcome={firstGoalOutcome}
@@ -267,7 +309,7 @@ function ChampionshipPlayerDetailPageSkeleton({
 							))}
 						</div>
 					</SectionCard>
-					<SectionCard title={SYNERGY_LABEL.partners}>
+					<SectionCard title={SYNERGY_LABEL.network}>
 						<DataTableSkeleton
 							headers={SYNERGY_PARTNER_LEGEND.map((item) => item.abbr)}
 							legendItems={SYNERGY_PARTNER_LEGEND}

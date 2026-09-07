@@ -8,7 +8,7 @@ import {
 	Shuffle,
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useEffect } from "react";
+import { type ReactNode, useEffect } from "react";
 import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
 import {
@@ -75,6 +75,7 @@ type EventDrawRevealProps = {
 	title?: string;
 	showPosition?: boolean;
 	canAdvance?: boolean;
+	footer?: ReactNode;
 };
 
 function revealEnterInitial(reduceMotion: boolean | null) {
@@ -105,6 +106,7 @@ export function EventDrawReveal({
 	title,
 	showPosition,
 	canAdvance,
+	footer,
 }: EventDrawRevealProps) {
 	useEffect(() => {
 		if (phase === EVENT_DRAW_REVEAL_PHASE.playing && visibleCount > 0) {
@@ -118,6 +120,7 @@ export function EventDrawReveal({
 	const visibleCards = eventDrawRevealVisibleCards(cards, visibleCount);
 	const showStart = phase === EVENT_DRAW_REVEAL_PHASE.poster;
 	const showReplay = phase === EVENT_DRAW_REVEAL_PHASE.done;
+	const showFooter = showReplay && Boolean(footer);
 	const showShare = eventDrawRevealShowShare(phase);
 	const shareVariant = drawShareButtonVariant(
 		eventDrawRevealShareIsPrimary(phase),
@@ -144,7 +147,9 @@ export function EventDrawReveal({
 	);
 
 	return (
-		<div className="mx-auto flex min-h-0 w-full flex-1 flex-col gap-3 overflow-hidden sm:gap-4">
+		<div
+			className={`mx-auto flex min-h-0 w-full flex-1 flex-col gap-3 sm:gap-4 ${showFooter ? "overflow-y-auto overscroll-contain" : "overflow-hidden"}`}
+		>
 			<header className="shrink-0 px-1 text-center">
 				<p className="text-sm font-medium text-fg-muted">{championshipName}</p>
 				<p className="text-xs text-fg-muted">
@@ -155,7 +160,7 @@ export function EventDrawReveal({
 				</h1>
 			</header>
 			<ul
-				className={`scrollbar-thin grid min-h-0 flex-1 content-start gap-2 overflow-y-auto overscroll-contain ${eventDrawRevealGridClass(cards.length)}`}
+				className={`scrollbar-thin grid content-start gap-2 ${showFooter ? "shrink-0" : "min-h-0 flex-1 overflow-y-auto overscroll-contain"} ${eventDrawRevealGridClass(cards.length)}`}
 			>
 				<AnimatePresence initial={false}>
 					{visibleCards.map((card) => {
@@ -320,6 +325,7 @@ export function EventDrawReveal({
 					</div>
 				</div>
 			)}
+			{showFooter && <div className="shrink-0 pb-2">{footer}</div>}
 		</div>
 	);
 }

@@ -1,4 +1,7 @@
-import { Handshake, X } from "lucide-react";
+import { ChevronDown, Handshake, Star, X } from "lucide-react";
+import { useState } from "react";
+import { Button } from "@/components/button";
+import { MatchupAnalysisPanel } from "@/components/event-matchup-analysis";
 import { EventTeamChip } from "@/components/event-team-player";
 import { GoalIcon } from "@/components/goal-icon";
 import { GoalkeeperGlovesIcon } from "@/components/goalkeeper-gloves-icon";
@@ -23,10 +26,22 @@ import {
 	openEventMatch,
 } from "@/const/championship-event-match";
 import { resolveRosterPlayer } from "@/const/championship-event-roster";
+import {
+	analyzeMatchHistoryMatchup,
+	eventMatchupFavoriteStats,
+	formatMatchupFavoriteHitRate,
+	MATCHUP_LABEL,
+	type MatchupMatchReview,
+	matchFavoriteTeamId,
+	matchupFavoriteTeamId,
+} from "@/const/event-matchup-analysis";
+import { eventTeamName } from "@/const/event-team-color";
 import { PLAYER_LABEL, playerVisibleName } from "@/const/player-name";
-import { CARD_CLASS, CHIP_CLASS } from "@/const/ui";
+import { BUTTON_VARIANT, CARD_CLASS, CHIP_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type {
+	ChampionshipEvent,
+	ChampionshipEventAttendance,
 	ChampionshipEventMatch,
 	ChampionshipEventMatchPlayer,
 	ChampionshipEventTeam,
@@ -36,11 +51,40 @@ type ChampionshipEventMatchHistoryProps = {
 	matches: readonly ChampionshipEventMatch[];
 	teams: readonly ChampionshipEventTeam[];
 	rosterById: ReadonlyMap<number, ChampionshipPlayer>;
+	roster: readonly ChampionshipPlayer[];
+	attendance: readonly ChampionshipEventAttendance[];
+	historyEvents: readonly ChampionshipEvent[];
 	showMatchDelete: boolean;
 	eventEnded: boolean;
 	onOpenMatch: (match: ChampionshipEventMatch) => void;
 	onRemoveMatch: (match: ChampionshipEventMatch) => void;
 };
+
+function MatchHistoryMatchupReview({
+	review,
+	teamA,
+	teamB,
+}: {
+	review: MatchupMatchReview;
+	teamA: ChampionshipEventTeam;
+	teamB: ChampionshipEventTeam;
+}) {
+	return (
+		<div className="mt-3 space-y-3 border-t border-line pt-2">
+			<MatchupAnalysisPanel
+				analysis={review.analysis}
+				home={{
+					title: eventTeamName(teamA.color, teamA.sort_order),
+					color: teamA.color,
+				}}
+				away={{
+					title: eventTeamName(teamB.color, teamB.sort_order),
+					color: teamB.color,
+				}}
+			/>
+		</div>
+	);
+}
 
 function MatchLineupPlayer({
 	row,
@@ -113,6 +157,9 @@ function MatchHistoryCard({
 	match,
 	teamById,
 	rosterById,
+	roster,
+	attendance,
+	historyEvents,
 	showMatchDelete,
 	canOpenMatch,
 	onOpenMatch,
@@ -121,16 +168,46 @@ function MatchHistoryCard({
 	match: ChampionshipEventMatch;
 	teamById: ReadonlyMap<number, ChampionshipEventTeam>;
 	rosterById: ReadonlyMap<number, ChampionshipPlayer>;
+	roster: readonly ChampionshipPlayer[];
+	attendance: readonly ChampionshipEventAttendance[];
+	historyEvents: readonly ChampionshipEvent[];
 	showMatchDelete: boolean;
 	canOpenMatch: boolean;
 	onOpenMatch: (match: ChampionshipEventMatch) => void;
 	onRemoveMatch: (match: ChampionshipEventMatch) => void;
 }) {
-	const teamA = teamById.get(match.team_a_id);
-	const teamB = teamById.get(match.team_b_id);
+	const [analysisOpen, setAnalysisOpen] = useState(false);
+	const teamA = teamById.get(match.team_a_id) ?? null;
+	const teamB = teamById.get(match.team_b_id) ?? null;
+	const review =
+		teamA && teamB
+			? analyzeMatchHistoryMatchup({
+					match,
+					teamA,
+					teamB,
+					attendance,
+					historyEvents,
+					roster,
+				})
+			: null;
+
 	if (!teamA || !teamB) {
 		return null;
 	}
+
+	const frozenFavoriteId = matchFavoriteTeamId(match);
+	const liveFavoriteId =
+		review === null
+			? null
+			: matchupFavoriteTeamId(
+					review.analysis.favoriteSide,
+					match.team_a_id,
+					match.team_b_id,
+				);
+	const favoriteTeamId =
+		frozenFavoriteId === undefined ? liveFavoriteId : frozenFavoriteId;
+	const teamAFavorite = favoriteTeamId === match.team_a_id;
+	const teamBFavorite = favoriteTeamId === match.team_b_id;
 
 	const playedA = matchTeamPlayers(match.players, match.team_a_id);
 	const playedB = matchTeamPlayers(match.players, match.team_b_id);
@@ -152,14 +229,26 @@ function MatchHistoryCard({
 	const body = (
 		<>
 			<div className={MATCH_GOAL_TIMELINE_GRID_CLASS}>
-				<div className="flex min-w-0 justify-end">
+				<div className="flex min-w-0 items-center justify-end gap-1">
+					{teamAFavorite && (
+						<Star
+							aria-label={MATCHUP_LABEL.favoriteByFields}
+							className="size-3.5 shrink-0 fill-amber-400 text-amber-400"
+						/>
+					)}
 					<EventTeamChip color={teamA.color} sortOrder={teamA.sort_order} />
 				</div>
 				<p className="text-2xl font-semibold tabular-nums text-fg">
 					{formatMatchScore(score.teamA, score.teamB)}
 				</p>
-				<div className="flex min-w-0 justify-start">
+				<div className="flex min-w-0 items-center justify-start gap-1">
 					<EventTeamChip color={teamB.color} sortOrder={teamB.sort_order} />
+					{teamBFavorite && (
+						<Star
+							aria-label={MATCHUP_LABEL.favoriteByFields}
+							className="size-3.5 shrink-0 fill-amber-400 text-amber-400"
+						/>
+					)}
 				</div>
 				<div className="col-span-3 flex items-center justify-center gap-2">
 					{open && <span className={CHIP_CLASS}>{EVENT_MATCH_LABEL.open}</span>}
@@ -242,6 +331,37 @@ function MatchHistoryCard({
 					</button>
 				)}
 			</div>
+			{review && (
+				<div className="mt-2 border-t border-line pt-2">
+					<Button
+						variant={BUTTON_VARIANT.ghost}
+						className="h-8 w-full justify-between gap-2 px-2 text-xs"
+						aria-expanded={analysisOpen}
+						aria-label={MATCHUP_LABEL.openAnalysis}
+						onClick={() => {
+							setAnalysisOpen((current) => !current);
+						}}
+					>
+						<span>
+							{analysisOpen
+								? MATCHUP_LABEL.hideAnalysis
+								: MATCHUP_LABEL.openAnalysis}
+						</span>
+						<ChevronDown
+							className={`size-4 shrink-0 transition-transform ${
+								analysisOpen ? "rotate-180" : ""
+							}`}
+						/>
+					</Button>
+					{analysisOpen && (
+						<MatchHistoryMatchupReview
+							review={review}
+							teamA={teamA}
+							teamB={teamB}
+						/>
+					)}
+				</div>
+			)}
 		</li>
 	);
 }
@@ -250,6 +370,9 @@ export function ChampionshipEventMatchHistory({
 	matches,
 	teams,
 	rosterById,
+	roster,
+	attendance,
+	historyEvents,
 	showMatchDelete,
 	eventEnded,
 	onOpenMatch,
@@ -257,12 +380,22 @@ export function ChampionshipEventMatchHistory({
 }: ChampionshipEventMatchHistoryProps) {
 	const teamById = new Map(teams.map((team) => [team.id, team]));
 	const hasOpenMatch = openEventMatch(matches) !== null;
+	const favoriteStats = eventMatchupFavoriteStats(matches);
+	const favoriteHitCaption =
+		favoriteStats.decreed > 0
+			? formatMatchupFavoriteHitRate(favoriteStats)
+			: null;
 
 	return (
 		<div>
 			<p className="mb-1 text-xs font-medium uppercase tracking-wide text-fg-muted">
 				{EVENT_SECTION_LABEL.matches}
 			</p>
+			{favoriteHitCaption && (
+				<p className="mb-2 text-sm font-medium tabular-nums text-fg">
+					{MATCHUP_LABEL.favoriteHitRate}: {favoriteHitCaption}
+				</p>
+			)}
 			{matches.length === 0 && (
 				<p className="text-sm text-fg-muted">{EVENT_MATCH_LABEL.none}</p>
 			)}
@@ -276,6 +409,9 @@ export function ChampionshipEventMatchHistory({
 								match={match}
 								teamById={teamById}
 								rosterById={rosterById}
+								roster={roster}
+								attendance={attendance}
+								historyEvents={historyEvents}
 								showMatchDelete={showMatchDelete}
 								canOpenMatch={canOpenEventHistoryMatch(match, {
 									eventEnded,

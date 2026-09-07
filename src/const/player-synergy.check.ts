@@ -11,20 +11,34 @@ import {
 	championshipSynergyRanking,
 	championshipSynergyWorst,
 	countsForSynergy,
+	formatSynergyDeltaPp,
 	formatSynergyStat,
+	playerIndividualWinRate,
+	playerSynergy,
 	playerSynergyPartners,
 	rankSynergyPairRows,
 	rankSynergyPairRowsWorst,
 	SYNERGY_COLUMN,
+	SYNERGY_DELTA_BAND,
+	SYNERGY_FOCUS,
 	SYNERGY_LABEL,
 	SYNERGY_MIN_MATCHES,
 	SYNERGY_PARTNER_LIMIT,
 	SYNERGY_RANKING_LIMIT,
+	SYNERGY_VOLUME,
+	SYNERGY_WINDOW,
+	SYNERGY_WR_BAND,
+	synergyDeltaBand,
+	synergyEmptyMessage,
 	synergyMeetsMinMatches,
 	synergyPairKey,
 	synergyPartnerColumnAbbr,
+	synergyPartnersForFocus,
 	synergyPartnersOf,
 	synergyPodiumStandings,
+	synergyVolumeLevel,
+	synergyWindowEvents,
+	synergyWrBand,
 	topSynergyRows,
 } from "./player-synergy.ts";
 import { PODIUM_PLACE } from "./podium.ts";
@@ -279,6 +293,8 @@ const drawPairs = aggregateSynergyPairs(
 );
 check(drawPairs[0]?.matches === 3, "draw counts match");
 check(drawPairs[0]?.wins === 0, "draw is not a win");
+check(drawPairs[0]?.draws === 3, "draw counts draws");
+check(drawPairs[0]?.losses === 0, "draw not loss");
 
 const openMatch = match({
 	ended_at: null,
@@ -309,6 +325,10 @@ const twoWins = aggregateSynergyPairs(
 );
 check(twoWins[0]?.matches === 3, "pairs accumulate matches");
 check(twoWins[0]?.wins === 3, "pairs accumulate wins");
+check(anaBruno?.draws === 0, "ana bruno draws");
+check(anaBruno?.losses === 0, "ana bruno losses");
+check(caioDavi?.draws === 0, "caio davi draws");
+check(caioDavi?.losses === 3, "caio davi losses");
 
 const ranked = rankSynergyPairRows([
 	{
@@ -316,6 +336,8 @@ const ranked = rankSynergyPairRows([
 		right: caio,
 		matches: 20,
 		wins: 15,
+		draws: 0,
+		losses: 5,
 		winRate: 0.75,
 	},
 	{
@@ -323,6 +345,8 @@ const ranked = rankSynergyPairRows([
 		right: bruno,
 		matches: 1,
 		wins: 1,
+		draws: 0,
+		losses: 0,
 		winRate: 1,
 	},
 	{
@@ -330,6 +354,8 @@ const ranked = rankSynergyPairRows([
 		right: caio,
 		matches: 2,
 		wins: 2,
+		draws: 0,
+		losses: 0,
 		winRate: 1,
 	},
 ]);
@@ -342,6 +368,8 @@ const many = Array.from({ length: 25 }, (_, index) => ({
 	right: player(index + 10, `P${index}`),
 	matches: 1,
 	wins: 1,
+	draws: 0,
+	losses: 0,
 	winRate: 1,
 }));
 check(topSynergyRows(many, SYNERGY_RANKING_LIMIT).length === 20, "top 20");
@@ -416,6 +444,8 @@ const anaPartners = playerSynergyPartners(
 );
 check(anaPartners.length === 1, "ana partners from helper");
 check(anaPartners[0]?.partner.display_name === "Bruno", "resolves roster name");
+check(anaPartners[0]?.volumeLevel === SYNERGY_VOLUME.small, "ana volume small");
+check(anaPartners[0]?.synergyDelta === 0, "ana delta vs self wr 100%");
 
 const missing = aggregateSynergyPairs(
 	repeatEvent(
@@ -466,5 +496,110 @@ const podiumPairs = synergyPodiumStandings(ranked);
 check(podiumPairs[0]?.place === PODIUM_PLACE.first, "synergy first place");
 check(podiumPairs[0]?.rows[0]?.right.id === 3, "synergy first is 2/2");
 check(podiumPairs.length === 2, "synergy two distinct wr");
+
+check(synergyVolumeLevel(3) === SYNERGY_VOLUME.small, "volume 3 small");
+check(synergyVolumeLevel(4) === SYNERGY_VOLUME.small, "volume 4 small");
+check(synergyVolumeLevel(5) === SYNERGY_VOLUME.medium, "volume 5 medium");
+check(synergyVolumeLevel(9) === SYNERGY_VOLUME.medium, "volume 9 medium");
+check(synergyVolumeLevel(10) === SYNERGY_VOLUME.large, "volume 10 large");
+check(synergyWrBand(0.4) === SYNERGY_WR_BAND.low, "wr low");
+check(synergyWrBand(0.5) === SYNERGY_WR_BAND.neutral, "wr neutral");
+check(synergyWrBand(0.6) === SYNERGY_WR_BAND.high, "wr high");
+check(synergyDeltaBand(0.12) === SYNERGY_DELTA_BAND.veryPositive, "delta ++");
+check(synergyDeltaBand(0.07) === SYNERGY_DELTA_BAND.positive, "delta +");
+check(synergyDeltaBand(0) === SYNERGY_DELTA_BAND.neutral, "delta 0");
+check(synergyDeltaBand(-0.07) === SYNERGY_DELTA_BAND.negative, "delta -");
+check(synergyDeltaBand(-0.12) === SYNERGY_DELTA_BAND.veryNegative, "delta --");
+check(formatSynergyDeltaPp(0.18) === "+18 pp", "format +delta");
+check(formatSynergyDeltaPp(-0.043) === "-4.3 pp", "format -delta");
+
+const mixedEvents = [
+	{
+		...eventWithMatch(winMatch),
+		id: 1,
+		starts_at: "2026-01-01T22:00:00.000Z",
+		ended_at: "2026-01-01T23:00:00.000Z",
+	},
+	{
+		...eventWithMatch(match({ id: 2, players: winMatch.players })),
+		id: 2,
+		starts_at: "2026-02-01T22:00:00.000Z",
+		ended_at: "2026-02-01T23:00:00.000Z",
+	},
+	{
+		...eventWithMatch(match({ id: 3, players: winMatch.players })),
+		id: 3,
+		starts_at: "2026-03-01T22:00:00.000Z",
+		ended_at: "2026-03-01T23:00:00.000Z",
+	},
+	{
+		...eventWithMatch(match({ id: 4, players: winMatch.players })),
+		id: 4,
+		starts_at: "2026-04-01T22:00:00.000Z",
+		ended_at: "2026-04-01T23:00:00.000Z",
+	},
+	{
+		...eventWithMatch(match({ id: 5, players: winMatch.players })),
+		id: 5,
+		starts_at: "2026-05-01T22:00:00.000Z",
+		ended_at: "2026-05-01T23:00:00.000Z",
+	},
+];
+check(
+	synergyWindowEvents(mixedEvents, SYNERGY_WINDOW.last3).length === 3,
+	"window last3",
+);
+check(
+	synergyWindowEvents(mixedEvents, SYNERGY_WINDOW.all).length === 5,
+	"window all",
+);
+
+const network = playerSynergy(mixedEvents, [ana, bruno, caio, davi], 1, {
+	window: SYNERGY_WINDOW.all,
+});
+check(network.partners.length === 1, "playerSynergy partners");
+check(network.bestPartners[0]?.partner.id === 2, "best partner bruno");
+check(network.worstPartners[0]?.partner.id === 2, "worst same when one");
+check(network.playerWinRate === 1, "player wr");
+check(network.playerMatches === 5, "player matches");
+
+const individual = playerIndividualWinRate(mixedEvents, 1);
+check(individual.wins === 5, "individual wins");
+check(individual.matches === 5, "individual matches");
+
+const last3Network = playerSynergy(mixedEvents, [ana, bruno, caio, davi], 1, {
+	window: SYNERGY_WINDOW.last3,
+});
+check(last3Network.partners.length === 1, "last3 still qualifies");
+
+const shortWindow = playerSynergy(
+	mixedEvents.slice(0, 2),
+	[ana, bruno, caio, davi],
+	1,
+	{ window: SYNERGY_WINDOW.last3 },
+);
+check(shortWindow.partners.length === 0, "below floor in short window");
+check(
+	synergyEmptyMessage([], SYNERGY_WINDOW.last3) === SYNERGY_LABEL.emptyWindow,
+	"empty window message",
+);
+check(
+	synergyEmptyMessage([], SYNERGY_WINDOW.all) ===
+		SYNERGY_LABEL.emptyInsufficient,
+	"empty all message",
+);
+
+const focusBest = synergyPartnersForFocus(
+	network.partners,
+	SYNERGY_FOCUS.best,
+	10,
+);
+check(focusBest[0]?.partner.id === 2, "focus best");
+const focusWorst = synergyPartnersForFocus(
+	network.partners,
+	SYNERGY_FOCUS.worst,
+	10,
+);
+check(focusWorst[0]?.partner.id === 2, "focus worst");
 
 console.log("player-synergy ok");

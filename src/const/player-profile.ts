@@ -111,6 +111,10 @@ export type PlayerProfileEventInput = {
 		matches: number;
 		rating: number;
 		rating_delta: number;
+		rating_projected?: number | null;
+		goalkeeper_rating?: number;
+		goalkeeper_rating_delta?: number;
+		is_goalkeeper?: boolean;
 		is_mvp?: boolean;
 	}[];
 };

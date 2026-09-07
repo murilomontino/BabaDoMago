@@ -1,5 +1,5 @@
 import { createColumnHelper } from "@tanstack/react-table";
-import { CalendarDays, Handshake, LoaderCircle, Share2 } from "lucide-react";
+import { CalendarDays, LoaderCircle, Share2 } from "lucide-react";
 import { lazy, Suspense, useMemo, useState } from "react";
 import { AppDialog } from "@/components/atoms/app-dialog";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
@@ -7,6 +7,7 @@ import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
 import { DataTableSkeleton } from "@/components/molecules/data-table-skeleton";
 import { PlayerNameLink } from "@/components/molecules/player-name-link";
+import { PlayerSynergyNetwork } from "@/components/molecules/player-synergy-network";
 import {
 	DataTable,
 	type DataTableFeatures,
@@ -69,6 +70,22 @@ import {
 	playerRatingHistoryChartSeries,
 } from "@/const/player-profile";
 import {
+	formatPlayerProjectionHistoryGap,
+	formatPlayerProjectionHistoryMiss,
+	formatPlayerProjectionHistoryProjected,
+	formatPlayerProjectionHistoryRating,
+	formatPlayerProjectionHistoryRatingTo,
+	formatPlayerProjectionHistoryStable,
+	PLAYER_PROJECTION_HISTORY_CHART,
+	PLAYER_PROJECTION_HISTORY_COLUMN,
+	PLAYER_PROJECTION_HISTORY_COLUMN_LABEL,
+	PLAYER_PROJECTION_HISTORY_COLUMNS,
+	PLAYER_PROJECTION_HISTORY_LABEL,
+	type PlayerProjectionHistoryRow,
+	playerProjectionHistoryChartSeries,
+	playerProjectionHistoryEmptyLabel,
+} from "@/const/player-projection-history";
+import {
 	PLAYER_PROFILE_SHARE_LABEL,
 	playerProfileShareCard,
 } from "@/const/player-profile-share";
@@ -78,14 +95,11 @@ import {
 } from "@/const/player-profile-tab";
 import { PLAYER_RATING_SIM_LABEL } from "@/const/player-rating-sim";
 import {
-	formatSynergyStat,
-	SYNERGY_COLUMN,
-	SYNERGY_COLUMN_ABBR,
+	playerSynergy,
 	SYNERGY_LABEL,
-	SYNERGY_PARTNER_COLUMN_LABEL,
 	SYNERGY_PARTNER_LEGEND,
-	SYNERGY_STAT_COLUMN_OPTIONS,
-	type SynergyPartnerRow,
+	SYNERGY_WINDOW_DEFAULT,
+	type SynergyWindow,
 } from "@/const/player-synergy";
 import {
 	formatRosterStat,
@@ -108,11 +122,20 @@ import { usePlayerProfileTab } from "@/hooks/use-player-profile-tab";
 import { sharePlayerProfileImage } from "@/lib/share-player-profile-image";
 import { enlargeAvatarUrl } from "@/lib/user-profile";
 import type { ChampionshipPlayer } from "@/types/championship";
+import type { ChampionshipEvent } from "@/types/championship-event";
 
 const PlayerRatingHistoryChart = lazy(() =>
 	import("@/components/molecules/player-rating-history-chart").then((m) => ({
 		default: m.PlayerRatingHistoryChart,
 	})),
+);
+
+const PlayerProjectionHistoryChart = lazy(() =>
+	import("@/components/molecules/player-projection-history-chart").then(
+		(m) => ({
+			default: m.PlayerProjectionHistoryChart,
+		}),
+	),
 );
 
 const ChampionshipFirstGoalOutcomeChart = lazy(() =>
@@ -126,6 +149,11 @@ const historyColumnHelper = createColumnHelper<
 	PlayerProfileHistoryRow
 >();
 
+const projectionColumnHelper = createColumnHelper<
+	DataTableFeatures,
+	PlayerProjectionHistoryRow
+>();
+
 const ROLE_TAG_CLASS =
 	"mt-1 inline-flex rounded-full bg-pitch-soft px-2 py-0.5 text-xs font-medium text-pitch-fg";
 
@@ -137,9 +165,11 @@ type ChampionshipPlayerDetailProps = {
 	isOwnerViewer: boolean;
 	career: RosterRow;
 	history: readonly PlayerProfileHistoryRow[];
+	projectionHistory: readonly PlayerProjectionHistoryRow[];
 	historyPending: boolean;
 	historyError: string | null;
-	partners: readonly SynergyPartnerRow[];
+	events: readonly ChampionshipEvent[];
+	rosterPlayers: readonly ChampionshipPlayer[];
 	headToHead: readonly HeadToHeadRow[];
 	plusMinus: PlayerPlusMinus | null;
 	firstGoalOutcome: PlayerFirstGoalOutcomeSummary;
@@ -521,78 +551,134 @@ function PlayerHistoryTable({
 	);
 }
 
-const partnerColumnHelper = createColumnHelper<
-	DataTableFeatures,
-	SynergyPartnerRow
->();
-
-function PlayerPartnersTable({
-	partners,
+function PlayerProjectionHistoryTable({
+	rows,
+	onOpenEvent,
 }: {
-	partners: readonly SynergyPartnerRow[];
+	rows: readonly PlayerProjectionHistoryRow[];
+	onOpenEvent: (eventId: number) => void;
 }) {
 	const columns = useMemo(
 		() =>
-			partnerColumnHelper.columns([
-				partnerColumnHelper.accessor((row) => playerVisibleName(row.partner), {
-					id: SYNERGY_COLUMN.player,
-					header: SYNERGY_PARTNER_COLUMN_LABEL.player,
+			projectionColumnHelper.columns([
+				projectionColumnHelper.accessor("startsAt", {
+					id: PLAYER_PROJECTION_HISTORY_COLUMN.date,
+					header: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.date,
 					enableHiding: false,
-					meta: { title: SYNERGY_PARTNER_COLUMN_LABEL.player },
-					cell: ({ row }) => <PlayerNameLink player={row.original.partner} />,
+					meta: { title: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.date },
+					cell: ({ row }) => {
+						const when = formatEventStartsAt(row.original.startsAt);
+						return `${when.date} · ${when.time}`;
+					},
 				}),
-				partnerColumnHelper.accessor("wins", {
-					id: SYNERGY_COLUMN.wins,
-					header: SYNERGY_COLUMN_ABBR.wins,
+				projectionColumnHelper.accessor("ratingFrom", {
+					id: PLAYER_PROJECTION_HISTORY_COLUMN.ratingFrom,
+					header: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.ratingFrom,
+					enableHiding: false,
 					meta: {
 						align: "right" as const,
-						title: SYNERGY_PARTNER_COLUMN_LABEL.wins,
+						title: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.ratingFrom,
 					},
 					cell: ({ getValue }) => (
 						<span className="tabular-nums">
-							{formatSynergyStat(SYNERGY_COLUMN.wins, getValue())}
+							{formatPlayerProjectionHistoryRating(getValue())}
 						</span>
 					),
 				}),
-				partnerColumnHelper.accessor("matches", {
-					id: SYNERGY_COLUMN.matches,
-					header: SYNERGY_COLUMN_ABBR.matches,
+				projectionColumnHelper.accessor("projectedNext", {
+					id: PLAYER_PROJECTION_HISTORY_COLUMN.projectedNext,
+					header: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.projectedNext,
+					enableHiding: false,
 					meta: {
 						align: "right" as const,
-						title: SYNERGY_PARTNER_COLUMN_LABEL.matches,
+						title: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.projectedNext,
 					},
-					cell: ({ getValue }) => (
+					cell: ({ row }) => (
 						<span className="tabular-nums">
-							{formatSynergyStat(SYNERGY_COLUMN.matches, getValue())}
+							{formatPlayerProjectionHistoryProjected(row.original)}
 						</span>
 					),
 				}),
-				partnerColumnHelper.accessor("winRate", {
-					id: SYNERGY_COLUMN.winRate,
-					header: SYNERGY_COLUMN_ABBR.winRate,
+				projectionColumnHelper.accessor("projectedStable", {
+					id: PLAYER_PROJECTION_HISTORY_COLUMN.projectedStable,
+					header: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.projectedStable,
+					enableHiding: false,
 					meta: {
 						align: "right" as const,
-						title: SYNERGY_PARTNER_COLUMN_LABEL.winRate,
+						title: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.projectedStable,
+					},
+					cell: ({ row }) => (
+						<span className="tabular-nums">
+							{formatPlayerProjectionHistoryStable(row.original)}
+						</span>
+					),
+				}),
+				projectionColumnHelper.accessor("ratingTo", {
+					id: PLAYER_PROJECTION_HISTORY_COLUMN.ratingTo,
+					header: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.ratingTo,
+					enableHiding: false,
+					meta: {
+						align: "right" as const,
+						title: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.ratingTo,
+					},
+					cell: ({ row }) => (
+						<span className="tabular-nums">
+							{formatPlayerProjectionHistoryRatingTo(row.original)}
+						</span>
+					),
+				}),
+				projectionColumnHelper.accessor("miss", {
+					id: PLAYER_PROJECTION_HISTORY_COLUMN.miss,
+					header: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.miss,
+					enableHiding: false,
+					meta: {
+						align: "right" as const,
+						title: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.miss,
 					},
 					cell: ({ getValue }) => (
 						<span className="tabular-nums">
-							{formatSynergyStat(SYNERGY_COLUMN.winRate, getValue())}
+							{formatPlayerProjectionHistoryMiss(getValue())}
 						</span>
 					),
+				}),
+				projectionColumnHelper.accessor("gap", {
+					id: PLAYER_PROJECTION_HISTORY_COLUMN.gap,
+					header: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.gap,
+					enableHiding: false,
+					meta: {
+						align: "right" as const,
+						title: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.gap,
+					},
+					cell: ({ row }) => {
+						if (!row.original.hasProjection) {
+							return <span className="tabular-nums">—</span>;
+						}
+
+						return (
+							<span className="tabular-nums">
+								{formatPlayerProjectionHistoryGap(row.original.gap)}
+							</span>
+						);
+					},
 				}),
 			]),
 		[],
 	);
 
-	const rows = useMemo(() => [...partners], [partners]);
+	const data = useMemo(() => [...rows], [rows]);
 
 	return (
 		<DataTable
-			data={rows}
+			data={data}
 			columns={columns}
-			getRowId={(row) => String(row.partner.id)}
-			hideableColumns={SYNERGY_STAT_COLUMN_OPTIONS}
-			legendItems={SYNERGY_PARTNER_LEGEND}
+			getRowId={(row) => String(row.eventId)}
+			onRowClick={(row) => {
+				if (row.eventId < 0) {
+					return;
+				}
+
+				onOpenEvent(row.eventId);
+			}}
 		/>
 	);
 }
@@ -660,9 +746,11 @@ export function ChampionshipPlayerDetail({
 	isOwnerViewer,
 	career,
 	history,
+	projectionHistory,
 	historyPending,
 	historyError,
-	partners,
+	events,
+	rosterPlayers,
 	headToHead,
 	plusMinus,
 	firstGoalOutcome,
@@ -674,6 +762,16 @@ export function ChampionshipPlayerDetail({
 	const [tab, setTab] = usePlayerProfileTab();
 	const selectedTab = tab ?? PLAYER_PROFILE_TAB.profile;
 	const form = playerRecentForm(history);
+	const [synergyWindow, setSynergyWindow] = useState<SynergyWindow>(
+		SYNERGY_WINDOW_DEFAULT,
+	);
+	const synergy = useMemo(
+		() =>
+			playerSynergy(events, rosterPlayers, player.id, {
+				window: synergyWindow,
+			}),
+		[events, rosterPlayers, player.id, synergyWindow],
+	);
 
 	return (
 		<div className="space-y-4">
@@ -864,7 +962,7 @@ export function ChampionshipPlayerDetail({
 							</Suspense>
 						)}
 					</SectionCard>
-					<SectionCard title={SYNERGY_LABEL.partners}>
+					<SectionCard title={SYNERGY_LABEL.network}>
 						{historyPending && (
 							<DataTableSkeleton
 								headers={SYNERGY_PARTNER_LEGEND.map((item) => item.abbr)}
@@ -873,14 +971,13 @@ export function ChampionshipPlayerDetail({
 							/>
 						)}
 						{historyError && <p className={ERROR_CLASS}>{historyError}</p>}
-						{!historyPending && !historyError && partners.length === 0 && (
-							<EmptyState
-								icon={<Handshake className="size-10" />}
-								title={SYNERGY_LABEL.emptyPartners}
+						{!historyPending && !historyError && (
+							<PlayerSynergyNetwork
+								player={player}
+								result={synergy}
+								window={synergyWindow}
+								onWindowChange={setSynergyWindow}
 							/>
-						)}
-						{!historyPending && !historyError && partners.length > 0 && (
-							<PlayerPartnersTable partners={partners} />
 						)}
 					</SectionCard>
 					<SectionCard title={HEAD_TO_HEAD_LABEL.title}>
@@ -938,6 +1035,42 @@ export function ChampionshipPlayerDetail({
 							</div>
 						)}
 					</SectionCard>
+					<SectionCard
+						title={PLAYER_PROJECTION_HISTORY_LABEL.title}
+						queryKey={CHAMPIONSHIP_EVENTS_QUERY_KEY}
+					>
+						<p className="mb-3 text-sm text-fg-muted">
+							{PLAYER_PROJECTION_HISTORY_LABEL.hint}
+						</p>
+						{historyPending && <PlayerProjectionHistorySkeleton />}
+						{historyError && <p className={ERROR_CLASS}>{historyError}</p>}
+						{!historyPending &&
+							!historyError &&
+							playerProjectionHistoryEmptyLabel(projectionHistory) && (
+								<EmptyState
+									icon={<CalendarDays className="size-10" />}
+									title={PLAYER_PROJECTION_HISTORY_LABEL.empty}
+								/>
+							)}
+						{!historyPending &&
+							!historyError &&
+							projectionHistory.length > 0 && (
+								<div className="space-y-4">
+									<Suspense fallback={<PlayerProjectionHistoryChartSkeleton />}>
+										<PlayerProjectionHistoryChart
+											points={playerProjectionHistoryChartSeries(
+												projectionHistory,
+											)}
+											ceiling={ceiling}
+										/>
+									</Suspense>
+									<PlayerProjectionHistoryTable
+										rows={projectionHistory}
+										onOpenEvent={onOpenEvent}
+									/>
+								</div>
+							)}
+					</SectionCard>
 				</>
 			)}
 		</div>
@@ -949,6 +1082,38 @@ function PlayerHistoryChartRect() {
 		<div style={{ height: PLAYER_RATING_HISTORY_CHART.height }}>
 			<Skeleton className="h-full w-full" />
 		</div>
+	);
+}
+
+function PlayerProjectionHistoryChartRect() {
+	return (
+		<div style={{ height: PLAYER_PROJECTION_HISTORY_CHART.height }}>
+			<Skeleton className="h-full w-full" />
+		</div>
+	);
+}
+
+function PlayerProjectionHistoryChartSkeleton() {
+	return (
+		<SkeletonRegion label={SKELETON_LABEL.chart}>
+			<PlayerProjectionHistoryChartRect />
+		</SkeletonRegion>
+	);
+}
+
+function PlayerProjectionHistorySkeleton() {
+	return (
+		<SkeletonRegion label={SKELETON_LABEL.events}>
+			<div className="space-y-4">
+				<PlayerProjectionHistoryChartRect />
+				<DataTableSkeleton
+					headers={PLAYER_PROJECTION_HISTORY_COLUMNS.map(
+						(id) => PLAYER_PROJECTION_HISTORY_COLUMN_LABEL[id],
+					)}
+					withPlayerColumn={false}
+				/>
+			</div>
+		</SkeletonRegion>
 	);
 }
 

@@ -98,6 +98,8 @@ const startOp = {
 	teamAId: 10,
 	teamBId: 20,
 	durationSeconds: 420,
+	matchupSnapshot: null,
+	favoriteTeamId: null,
 	id: "2",
 	localId: -2,
 	createdAt: "2026-08-20T12:00:00.000Z",

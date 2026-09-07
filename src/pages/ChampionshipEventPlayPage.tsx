@@ -15,6 +15,7 @@ import {
 	openEventMatch,
 } from "@/const/championship-event-match";
 import { applyPlayOps, MATCH_OP } from "@/const/championship-event-match-ops";
+import { matchupHistoryEvents } from "@/const/event-matchup-analysis";
 import { matchOpDisplayName } from "@/const/player-name";
 import { ROUTES } from "@/const/routes";
 import { SKELETON_LABEL } from "@/const/skeleton";
@@ -22,6 +23,7 @@ import { BUTTON_VARIANT, ERROR_CLASS } from "@/const/ui";
 import {
 	useChampionshipEvent,
 	useChampionshipEventRealtime,
+	useChampionshipEvents,
 } from "@/hooks/championships/use-championship-events";
 import { useChampionship } from "@/hooks/championships/use-championships";
 import { useWakeLock } from "@/hooks/use-wake-lock";
@@ -52,6 +54,7 @@ export function ChampionshipEventPlayPage() {
 	const navigate = useNavigate();
 	const championshipQuery = useChampionship(championshipId);
 	const eventQuery = useChampionshipEvent(championshipId, eventId);
+	const eventsQuery = useChampionshipEvents(championshipId);
 	const dispatch = useAppDispatch();
 	const clockError = useAppSelector(selectMatchClockUiError);
 	const matchOps = useAppSelector((state) => selectMatchOps(state, eventId));
@@ -95,6 +98,7 @@ export function ChampionshipEventPlayPage() {
 	}
 
 	const event = playEvent;
+	const historyEvents = matchupHistoryEvents(eventsQuery.data ?? [], event);
 	const canStart = canStartEventMatch({
 		ended: event.ended_at !== null,
 		teamCount: eventMatchTeamCount(event.teams),
@@ -126,10 +130,11 @@ export function ChampionshipEventPlayPage() {
 						event={event}
 						match={openMatch}
 						players={activePlayers}
+						historyEvents={historyEvents}
 						opsError={opsError}
 						pendingOps={matchOps.length}
 						clockError={clockError}
-						onStart={(teamAId, teamBId, durationMinutes) => {
+						onStart={(teamAId, teamBId, durationMinutes, matchup) => {
 							dispatch(
 								requestMatchOp(event.id, {
 									kind: MATCH_OP.startMatch,
@@ -137,6 +142,8 @@ export function ChampionshipEventPlayPage() {
 									teamAId,
 									teamBId,
 									durationSeconds: matchDurationSeconds(durationMinutes),
+									matchupSnapshot: matchup.snapshot,
+									favoriteTeamId: matchup.favoriteTeamId,
 								}),
 							);
 						}}
