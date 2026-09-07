@@ -19,10 +19,13 @@ import {
 	matchupAdvantage,
 	matchupBalanceLevel,
 	matchupDecisiveFactor,
+	matchupFavoriteSideFromFields,
+	matchupFavoriteTeamId,
 	matchupHistoryEvents,
 	matchupMarkedGoalkeeperId,
 	matchupRelativeGap,
 	matchupReviewOutcome,
+	matchupTeamFromMatchLineup,
 	matchupTeamsFromBuilderTeams,
 	matchupTeamsFromShareCards,
 	matchupWarningFactor,
@@ -30,7 +33,7 @@ import {
 	teamCleanSheetRate,
 	teamGoalsConcededPerGame,
 	teamGoalsPerGame,
-	teamMatchupRatingSum,
+	teamMatchupRatingAverage,
 } from "./event-matchup-analysis.ts";
 
 function check(condition: boolean, message: string): void {
@@ -103,7 +106,7 @@ function attendance(
 		event_id: partial.event_id,
 		player_id: partial.player_id,
 		display_name: "x",
-		is_goalkeeper: false,
+		is_goalkeeper: partial.is_goalkeeper === true,
 		event_date: "2026-01-01",
 		goals: partial.goals ?? 0,
 		assists: partial.assists ?? 0,
@@ -235,15 +238,15 @@ function teamInput(
 	};
 }
 
-// --- balance / advantage ---
-check(matchupBalanceLevel(0.2) === MATCHUP_BALANCE.extreme, "balance extreme");
+// --- balance / advantage (average scale) ---
+check(matchupBalanceLevel(0.05) === MATCHUP_BALANCE.extreme, "balance extreme");
 check(
-	matchupBalanceLevel(0.7) === MATCHUP_BALANCE.balanced,
+	matchupBalanceLevel(0.2) === MATCHUP_BALANCE.balanced,
 	"balance balanced",
 );
-check(matchupBalanceLevel(1.5) === MATCHUP_BALANCE.slight, "balance slight");
-check(matchupBalanceLevel(2.5) === MATCHUP_BALANCE.clear, "balance clear");
-check(matchupBalanceLevel(4) === MATCHUP_BALANCE.large, "balance large");
+check(matchupBalanceLevel(0.4) === MATCHUP_BALANCE.slight, "balance slight");
+check(matchupBalanceLevel(0.6) === MATCHUP_BALANCE.clear, "balance clear");
+check(matchupBalanceLevel(1) === MATCHUP_BALANCE.large, "balance large");
 
 check(
 	matchupAdvantage(1.2, 0.8, true, 0.08) === MATCHUP_SIDE.home,
@@ -318,21 +321,27 @@ check(
 
 // --- rating snapshot (draw ratings, not post-event) ---
 const ratingsHome = new Map([
-	[1, 5.8],
+	[1, 6.9],
 	[2, 4.9],
 	[3, 4.7],
 	[4, 4.5],
 ]);
 const ratingsAway = new Map([
-	[5, 5.5],
+	[5, 5.7],
 	[6, 5.1],
 	[7, 4.6],
 	[8, 4.3],
 ]);
 const home = teamInput("h", "Azul", [1, 2, 3, 4], ratingsHome, 1);
 const away = teamInput("a", "Vermelho", [5, 6, 7, 8], ratingsAway, 5);
-check(nearly(teamMatchupRatingSum(home), 19.9), "home rating sum");
-check(nearly(teamMatchupRatingSum(away), 19.5), "away rating sum");
+check(
+	nearly(teamMatchupRatingAverage(home), 5.25),
+	"home rating average with GK track",
+);
+check(
+	nearly(teamMatchupRatingAverage(away), 4.925),
+	"away rating average with GK track",
+);
 
 const roster = [
 	player(1, "Goleiro A", { rating: 5.8, goalkeeper_rating: 6.9 }),
@@ -574,11 +583,40 @@ const analysis = analyzeEventMatchup({
 	roster,
 });
 
-check(analysis.favoriteSide === MATCHUP_SIDE.home, "favorite by rating home");
-check(nearly(analysis.ratingDifference, 0.4), "rating difference +0.4");
+check(analysis.favoriteSide === MATCHUP_SIDE.home, "favorite by field wins");
+check(nearly(analysis.ratingDifference, 0.325), "rating average difference");
+check(
+	analysis.fieldWins.home > analysis.fieldWins.away,
+	"home leads more fields",
+);
+
+check(
+	matchupFavoriteSideFromFields({ home: 4, away: 2 }) === MATCHUP_SIDE.home,
+	"more fields → home favorite",
+);
+check(
+	matchupFavoriteSideFromFields({ home: 1, away: 3 }) === MATCHUP_SIDE.away,
+	"more fields → away favorite",
+);
+check(
+	matchupFavoriteSideFromFields({ home: 2, away: 2 }) === MATCHUP_SIDE.neutral,
+	"tied fields → neutral favorite",
+);
+check(
+	matchupFavoriteTeamId(MATCHUP_SIDE.home, 10, 20) === 10,
+	"favorite team id home",
+);
+check(
+	matchupFavoriteTeamId(MATCHUP_SIDE.away, 10, 20) === 20,
+	"favorite team id away",
+);
+check(
+	matchupFavoriteTeamId(MATCHUP_SIDE.neutral, 10, 20) === null,
+	"favorite team id neutral",
+);
 check(
 	analysis.home.goalkeeperRating === 6.9,
-	"goalkeeper rating from roster snapshot track",
+	"goalkeeper rating from marked snapshot",
 );
 check(analysis.away.goalkeeperRating === 5.7, "away goalkeeper rating");
 
@@ -642,7 +680,10 @@ check(
 );
 
 const pair = defaultMatchupPairKeys([home, away]);
-check(pair?.homeKey === "h" && pair?.awayKey === "a", "default pair by sum");
+check(
+	pair?.homeKey === "h" && pair?.awayKey === "a",
+	"default pair by average",
+);
 
 check(MATCHUP_MIN_SAMPLE === 3, "min sample 3");
 
@@ -773,6 +814,75 @@ check(
 	matchupReviewOutcome(MATCHUP_SIDE.home, 100, 100, 200, false) ===
 		MATCHUP_REVIEW_OUTCOME.open,
 	"review open while match running",
+);
+
+// GK advantage only from attendance.is_goalkeeper — not match slot alone
+const attByPlayer = new Map([
+	[
+		1,
+		attendance({
+			player_id: 1,
+			event_id: 1,
+			matches: 3,
+			is_goalkeeper: false,
+			goalkeeper_rating: 9,
+			rating: 4,
+		}),
+	],
+	[
+		2,
+		attendance({
+			player_id: 2,
+			event_id: 1,
+			matches: 3,
+			is_goalkeeper: true,
+			goalkeeper_rating: 6.5,
+			rating: 3,
+		}),
+	],
+]);
+const lineupOnlySlotGk = [
+	matchPlayer(1, 1, 1, 10, 1, { is_goalkeeper: true }),
+	matchPlayer(2, 1, 1, 10, 2, { is_goalkeeper: false }),
+];
+const fromLineup = matchupTeamFromMatchLineup({
+	team: team(10, 1, [1, 2]),
+	lineup: lineupOnlySlotGk,
+	attendanceByPlayer: attByPlayer,
+});
+check(
+	fromLineup.goalkeeperId === 2,
+	"match lineup uses attendance mark, not match is_goalkeeper slot",
+);
+check(
+	fromLineup.ratings.get(2) === 6.5,
+	"marked attendance GK uses goalkeeper_rating snapshot",
+);
+check(
+	fromLineup.ratings.get(1) === 4,
+	"unmarked presence keeps line rating even if match slot is GK",
+);
+
+const noPresenceMark = matchupTeamFromMatchLineup({
+	team: team(11, 1, [1]),
+	lineup: [matchPlayer(3, 1, 1, 11, 1, { is_goalkeeper: true })],
+	attendanceByPlayer: new Map([
+		[
+			1,
+			attendance({
+				player_id: 1,
+				event_id: 1,
+				matches: 3,
+				is_goalkeeper: false,
+				goalkeeper_rating: 9,
+				rating: 5,
+			}),
+		],
+	]),
+});
+check(
+	noPresenceMark.goalkeeperId === null,
+	"no attendance GK mark → no GK advantage",
 );
 
 console.log("event-matchup-analysis.check.ts ok");

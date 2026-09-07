@@ -273,18 +273,17 @@ function FactorBlock({
 	);
 }
 
-function FavoriteDelta({
-	favoriteSide,
-	ratingDifference,
+function FavoriteFieldWins({
+	fieldWins,
 }: {
-	favoriteSide: MatchupSide;
-	ratingDifference: number;
+	fieldWins: { home: number; away: number };
 }) {
-	if (favoriteSide === MATCHUP_SIDE.neutral) {
-		return null;
-	}
-
-	return <> (Δ {formatMatchupRating(Math.abs(ratingDifference))})</>;
+	return (
+		<>
+			{" "}
+			({fieldWins.home}×{fieldWins.away} campos)
+		</>
+	);
 }
 
 export function EventMatchupAnalysis({
@@ -416,18 +415,16 @@ export function EventMatchupAnalysis({
 				<>
 					<div className="rounded-lg border border-pitch/30 bg-pitch/5 p-3 text-center">
 						<p className="text-xs font-medium uppercase tracking-wide text-fg-muted">
-							{MATCHUP_LABEL.favoriteByRating}
+							{MATCHUP_LABEL.favoriteByFields}
 						</p>
 						<p className="mt-1 text-base font-semibold text-fg">
 							{sideTitle(analysis.favoriteSide, home, away)}
 						</p>
 						<p className="mt-1 text-sm tabular-nums text-fg-muted">
-							{formatMatchupRating(analysis.home.ratingSum)} ×{" "}
-							{formatMatchupRating(analysis.away.ratingSum)}
-							<FavoriteDelta
-								favoriteSide={analysis.favoriteSide}
-								ratingDifference={analysis.ratingDifference}
-							/>
+							{MATCHUP_LABEL.rating}:{" "}
+							{formatMatchupRating(analysis.home.ratingAverage)} ×{" "}
+							{formatMatchupRating(analysis.away.ratingAverage)}
+							<FavoriteFieldWins fieldWins={analysis.fieldWins} />
 						</p>
 					</div>
 

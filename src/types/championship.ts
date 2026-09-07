@@ -28,6 +28,7 @@ export type ChampionshipPlayer = {
 	goalkeeper_rating: number;
 	hidden_strength?: number;
 	hidden_goalkeeper_strength?: number;
+	rating_projected_next?: number | null;
 	role: string;
 	is_goalkeeper: boolean;
 	is_monthly: boolean;

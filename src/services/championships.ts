@@ -28,7 +28,7 @@ import type {
 } from "@/types/championship";
 
 const PLAYER_COLUMNS =
-	"id, championship_id, user_id, display_name, nickname, nickname_tags, avatar_url, rating, goalkeeper_rating, hidden_strength, hidden_goalkeeper_strength, role, is_goalkeeper, is_monthly, deleted_at, goals, assists, assisted_goals, own_goals, wins, losses, draws, matches, mvps" as const;
+	"id, championship_id, user_id, display_name, nickname, nickname_tags, avatar_url, rating, goalkeeper_rating, hidden_strength, hidden_goalkeeper_strength, rating_projected_next, role, is_goalkeeper, is_monthly, deleted_at, goals, assists, assisted_goals, own_goals, wins, losses, draws, matches, mvps" as const;
 
 const CHAMPIONSHIP_COLUMNS =
 	"id, name, invite_code, created_by, logo_path, event_time, event_weekday, location, players_per_team, skip_guest_goalkeeper_matches, rating_drop_goal_share, rating_drop_share_exclude_top, player_vote_quorum, player_vote_allow_self, is_visible" as const;
@@ -130,6 +130,21 @@ function asPlayer(value: unknown): ChampionshipPlayer {
 		goalkeeper_rating: goalkeeperRating,
 		hidden_strength: hiddenStrength,
 		hidden_goalkeeper_strength: hiddenGoalkeeperStrength,
+		rating_projected_next: (() => {
+			if (
+				row.rating_projected_next === null ||
+				row.rating_projected_next === undefined
+			) {
+				return null;
+			}
+
+			const next = Number(row.rating_projected_next);
+			if (!Number.isFinite(next)) {
+				return null;
+			}
+
+			return next;
+		})(),
 		role: optionalString(row.role) ?? CHAMPIONSHIP_ROLE.member,
 		is_goalkeeper: row.is_goalkeeper === true,
 		is_monthly: row.is_monthly === true,

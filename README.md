@@ -490,7 +490,7 @@ nova nota = apply(rating, −old_delta + eventRatingDelta(V, E, D, J, snapshot, 
 | Elenco | coluna `Evol.` (variação) |
 | Pódio | métrica **Evolução da nota** + gráfico da métrica escolhida |
 | Tendências | `Δ nota` na Forma recente, Evolução da nota do recorte, Inflação |
-| Ficha do jogador | histórico com `Δ`, gráfico pessoal, aba Simulação |
+| Ficha do jogador | histórico com `Δ`, gráfico pessoal, Projeção × realizado, aba Simulação |
 | Rodada | prévia da nota antes de encerrar (`eventRatingPreview`) |
 
 #### Pegadinhas
@@ -841,6 +841,7 @@ Aba `projections`. Valida se a nota **prevê** resultado.
 ### Ficha do jogador
 
 - **Evolução da nota** pessoal por rodada.
+- **Projeção × realizado**: `rating_projected` na presença + `rating_projected_next` no jogador. Abrir o perfil chama `ensure_championship_player_next_rating_projected` e congela a próxima. Fonte: `player-projection-history.ts`.
 - **Abertura × virada** do ponto de vista do time dele: abriu e ganhou, virou o jogo, sofreu virada, empate, não virou.
 - **Rede de sinergia**: parceiros com 3+ jogos no mesmo time; WinRate da dupla, volume, Δ vs WinRate individual; filtros de janela e melhores/piores. Só associação observada — não muda o sorteio.
 - **Simulação**: informa V/E/D e vê de → para com o teto real da liga. Não grava nada.

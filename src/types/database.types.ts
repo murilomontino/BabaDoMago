@@ -24,6 +24,7 @@ type ChampionshipPlayersRow = {
 	goalkeeper_rating: number;
 	hidden_strength: number;
 	hidden_goalkeeper_strength: number;
+	rating_projected_next: number | null;
 	removed_at: string | null;
 	role: string;
 	is_goalkeeper: boolean;
@@ -100,6 +101,7 @@ export type Database = {
 					player_id: number;
 					rating: number;
 					rating_delta: number;
+					rating_projected: number | null;
 					goalkeeper_rating: number;
 					goalkeeper_rating_delta: number;
 					vote_rating_delta: number;
@@ -130,6 +132,7 @@ export type Database = {
 					player_id: number;
 					rating?: number;
 					rating_delta?: number;
+					rating_projected?: number | null;
 					goalkeeper_rating?: number;
 					goalkeeper_rating_delta?: number;
 					vote_rating_delta?: number;
@@ -160,6 +163,7 @@ export type Database = {
 					player_id?: number;
 					rating?: number;
 					rating_delta?: number;
+					rating_projected?: number | null;
 					goalkeeper_rating?: number;
 					goalkeeper_rating_delta?: number;
 					vote_rating_delta?: number;
@@ -565,6 +569,7 @@ export type Database = {
 					goalkeeper_rating?: number;
 					hidden_strength?: number;
 					hidden_goalkeeper_strength?: number;
+					rating_projected_next?: number | null;
 					removed_at?: string | null;
 					role?: string;
 					is_goalkeeper?: boolean;
@@ -593,6 +598,7 @@ export type Database = {
 					goalkeeper_rating?: number;
 					hidden_strength?: number;
 					hidden_goalkeeper_strength?: number;
+					rating_projected_next?: number | null;
 					removed_at?: string | null;
 					role?: string;
 					is_goalkeeper?: boolean;
@@ -999,6 +1005,13 @@ export type Database = {
 				Args: {
 					event_id: number;
 					player_id: number;
+				};
+				Returns: Json;
+			};
+			ensure_championship_player_next_rating_projected: {
+				Args: {
+					p_championship_id: number;
+					p_player_id: number;
 				};
 				Returns: Json;
 			};

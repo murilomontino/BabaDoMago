@@ -25,6 +25,7 @@ import {
 import { resolveRosterPlayer } from "@/const/championship-event-roster";
 import {
 	analyzeMatchHistoryMatchup,
+	formatMatchupMetricValue,
 	formatMatchupRating,
 	MATCHUP_LABEL,
 	MATCHUP_REVIEW_OUTCOME,
@@ -78,15 +79,56 @@ function MatchHistoryMatchupReview({ review }: { review: MatchupMatchReview }) {
 		analysis.warningFactor === "neutral"
 			? null
 			: matchupMetricLabel(analysis.warningFactor);
+	const metricRows = analysis.metrics.filter(
+		(metric) => metric.key !== "rating",
+	);
 
 	return (
 		<div className="mt-3 space-y-1.5 border-t border-line pt-2 text-xs text-fg-muted">
 			<p className="font-medium text-fg">{MATCHUP_LABEL.reviewTitle}</p>
 			<p className="text-fg">{analysis.summary.favoriteLine}</p>
 			<p className="tabular-nums">
-				{MATCHUP_LABEL.rating}: {formatMatchupRating(analysis.home.ratingSum)} ×{" "}
-				{formatMatchupRating(analysis.away.ratingSum)}
+				{MATCHUP_LABEL.rating}:{" "}
+				{formatMatchupRating(analysis.home.ratingAverage)} ×{" "}
+				{formatMatchupRating(analysis.away.ratingAverage)}
 			</p>
+			<ul className="space-y-0.5">
+				{metricRows.map((metric) => (
+					<li
+						key={metric.key}
+						className="grid grid-cols-[6.5rem_1fr_1fr] gap-1 tabular-nums"
+					>
+						<span className="text-fg-muted">
+							{matchupMetricLabel(metric.key)}
+						</span>
+						<span className="text-fg">
+							{formatMatchupMetricValue(metric.key, metric.homeValue)}
+						</span>
+						<span className="text-fg">
+							{formatMatchupMetricValue(metric.key, metric.awayValue)}
+						</span>
+					</li>
+				))}
+			</ul>
+			{analysis.home.goalkeeperName && analysis.away.goalkeeperName && (
+				<p>
+					{MATCHUP_LABEL.goalkeeper}: {analysis.home.goalkeeperName} ×{" "}
+					{analysis.away.goalkeeperName}
+				</p>
+			)}
+			{analysis.home.goalkeeperName && !analysis.away.goalkeeperName && (
+				<p>
+					{MATCHUP_LABEL.goalkeeper}: {analysis.home.goalkeeperName}
+				</p>
+			)}
+			{!analysis.home.goalkeeperName && analysis.away.goalkeeperName && (
+				<p>
+					{MATCHUP_LABEL.goalkeeper}: {analysis.away.goalkeeperName}
+				</p>
+			)}
+			{!analysis.home.goalkeeperName && !analysis.away.goalkeeperName && (
+				<p>{MATCHUP_LABEL.noGoalkeeper}</p>
+			)}
 			{decisive && (
 				<p>
 					{MATCHUP_LABEL.decisive}: {decisive}

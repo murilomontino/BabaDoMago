@@ -18,6 +18,11 @@ import { SectionCard } from "@/components/section-card";
 import { Tabs } from "@/components/tabs";
 import { formatEventStartsAt } from "@/const/championship-event";
 import {
+	PERFORMANCE_MAP_LABEL,
+	PERFORMANCE_MAP_PATH_CHART,
+	type PerformanceMapProjectPath,
+} from "@/const/championship-performance-map";
+import {
 	GOAL_TIMELINE_LABEL,
 	type PlayerFirstGoalOutcomeSummary,
 } from "@/const/championship-goal-timeline";
@@ -70,6 +75,23 @@ import {
 	playerRatingHistoryChartSeries,
 } from "@/const/player-profile";
 import {
+	formatPlayerProjectionHistoryGap,
+	formatPlayerProjectionHistoryMiss,
+	formatPlayerProjectionHistoryProjected,
+	formatPlayerProjectionHistoryRating,
+	formatPlayerProjectionHistoryRatingTo,
+	PLAYER_PROJECTION_HISTORY_CHART,
+	PLAYER_PROJECTION_HISTORY_COLUMN,
+	PLAYER_PROJECTION_HISTORY_COLUMN_LABEL,
+	PLAYER_PROJECTION_HISTORY_COLUMNS,
+	PLAYER_PROJECTION_HISTORY_LABEL,
+	type PlayerProjectionHistoryRow,
+	playerProjectionHistoryChartSeries,
+	playerProjectionHistoryEmptyLabel,
+	playerProjectionHistoryFutureRow,
+	playerProjectionHistoryStablePath,
+} from "@/const/player-projection-history";
+import {
 	PLAYER_PROFILE_SHARE_LABEL,
 	playerProfileShareCard,
 } from "@/const/player-profile-share";
@@ -114,6 +136,22 @@ const PlayerRatingHistoryChart = lazy(() =>
 	})),
 );
 
+const PlayerProjectionHistoryChart = lazy(() =>
+	import("@/components/molecules/player-projection-history-chart").then(
+		(m) => ({
+			default: m.PlayerProjectionHistoryChart,
+		}),
+	),
+);
+
+const PlayerProjectionStablePathChart = lazy(() =>
+	import("@/components/molecules/player-projection-stable-path-chart").then(
+		(m) => ({
+			default: m.PlayerProjectionStablePathChart,
+		}),
+	),
+);
+
 const ChampionshipFirstGoalOutcomeChart = lazy(() =>
 	import("@/components/molecules/championship-first-goal-outcome-chart").then(
 		(m) => ({ default: m.ChampionshipFirstGoalOutcomeChart }),
@@ -123,6 +161,11 @@ const ChampionshipFirstGoalOutcomeChart = lazy(() =>
 const historyColumnHelper = createColumnHelper<
 	DataTableFeatures,
 	PlayerProfileHistoryRow
+>();
+
+const projectionColumnHelper = createColumnHelper<
+	DataTableFeatures,
+	PlayerProjectionHistoryRow
 >();
 
 const ROLE_TAG_CLASS =
@@ -136,6 +179,7 @@ type ChampionshipPlayerDetailProps = {
 	isOwnerViewer: boolean;
 	career: RosterRow;
 	history: readonly PlayerProfileHistoryRow[];
+	projectionHistory: readonly PlayerProjectionHistoryRow[];
 	historyPending: boolean;
 	historyError: string | null;
 	events: readonly ChampionshipEvent[];
@@ -521,6 +565,124 @@ function PlayerHistoryTable({
 	);
 }
 
+function PlayerProjectionHistoryTable({
+	rows,
+	onOpenEvent,
+}: {
+	rows: readonly PlayerProjectionHistoryRow[];
+	onOpenEvent: (eventId: number) => void;
+}) {
+	const columns = useMemo(
+		() =>
+			projectionColumnHelper.columns([
+				projectionColumnHelper.accessor("startsAt", {
+					id: PLAYER_PROJECTION_HISTORY_COLUMN.date,
+					header: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.date,
+					enableHiding: false,
+					meta: { title: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.date },
+					cell: ({ row }) => {
+						const when = formatEventStartsAt(row.original.startsAt);
+						return `${when.date} · ${when.time}`;
+					},
+				}),
+				projectionColumnHelper.accessor("ratingFrom", {
+					id: PLAYER_PROJECTION_HISTORY_COLUMN.ratingFrom,
+					header: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.ratingFrom,
+					enableHiding: false,
+					meta: {
+						align: "right" as const,
+						title: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.ratingFrom,
+					},
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatPlayerProjectionHistoryRating(getValue())}
+						</span>
+					),
+				}),
+				projectionColumnHelper.accessor("projectedNext", {
+					id: PLAYER_PROJECTION_HISTORY_COLUMN.projectedNext,
+					header: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.projectedNext,
+					enableHiding: false,
+					meta: {
+						align: "right" as const,
+						title: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.projectedNext,
+					},
+					cell: ({ row }) => (
+						<span className="tabular-nums">
+							{formatPlayerProjectionHistoryProjected(row.original)}
+						</span>
+					),
+				}),
+				projectionColumnHelper.accessor("ratingTo", {
+					id: PLAYER_PROJECTION_HISTORY_COLUMN.ratingTo,
+					header: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.ratingTo,
+					enableHiding: false,
+					meta: {
+						align: "right" as const,
+						title: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.ratingTo,
+					},
+					cell: ({ row }) => (
+						<span className="tabular-nums">
+							{formatPlayerProjectionHistoryRatingTo(row.original)}
+						</span>
+					),
+				}),
+				projectionColumnHelper.accessor("miss", {
+					id: PLAYER_PROJECTION_HISTORY_COLUMN.miss,
+					header: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.miss,
+					enableHiding: false,
+					meta: {
+						align: "right" as const,
+						title: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.miss,
+					},
+					cell: ({ getValue }) => (
+						<span className="tabular-nums">
+							{formatPlayerProjectionHistoryMiss(getValue())}
+						</span>
+					),
+				}),
+				projectionColumnHelper.accessor("gap", {
+					id: PLAYER_PROJECTION_HISTORY_COLUMN.gap,
+					header: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.gap,
+					enableHiding: false,
+					meta: {
+						align: "right" as const,
+						title: PLAYER_PROJECTION_HISTORY_COLUMN_LABEL.gap,
+					},
+					cell: ({ row }) => {
+						if (!row.original.hasProjection) {
+							return <span className="tabular-nums">—</span>;
+						}
+
+						return (
+							<span className="tabular-nums">
+								{formatPlayerProjectionHistoryGap(row.original.gap)}
+							</span>
+						);
+					},
+				}),
+			]),
+		[],
+	);
+
+	const data = useMemo(() => [...rows], [rows]);
+
+	return (
+		<DataTable
+			data={data}
+			columns={columns}
+			getRowId={(row) => String(row.eventId)}
+			onRowClick={(row) => {
+				if (row.eventId < 0) {
+					return;
+				}
+
+				onOpenEvent(row.eventId);
+			}}
+		/>
+	);
+}
+
 const headToHeadHelper = createColumnHelper<DataTableFeatures, HeadToHeadRow>();
 
 function HeadToHeadTable({ rows }: { rows: readonly HeadToHeadRow[] }) {
@@ -584,6 +746,7 @@ export function ChampionshipPlayerDetail({
 	isOwnerViewer,
 	career,
 	history,
+	projectionHistory,
 	historyPending,
 	historyError,
 	events,
@@ -609,6 +772,17 @@ export function ChampionshipPlayerDetail({
 			}),
 		[events, rosterPlayers, player.id, synergyWindow],
 	);
+	const futureProjection = useMemo(
+		() => playerProjectionHistoryFutureRow(projectionHistory),
+		[projectionHistory],
+	);
+	const stablePath = useMemo(() => {
+		if (!futureProjection) {
+			return null;
+		}
+
+		return playerProjectionHistoryStablePath(futureProjection, ceiling);
+	}, [futureProjection, ceiling]);
 
 	return (
 		<div className="space-y-4">
@@ -872,6 +1046,119 @@ export function ChampionshipPlayerDetail({
 							</div>
 						)}
 					</SectionCard>
+					<SectionCard
+						title={PLAYER_PROJECTION_HISTORY_LABEL.title}
+						queryKey={CHAMPIONSHIP_EVENTS_QUERY_KEY}
+					>
+						<p className="mb-3 text-sm text-fg-muted">
+							{PLAYER_PROJECTION_HISTORY_LABEL.hint}
+						</p>
+						{historyPending && <PlayerProjectionHistorySkeleton />}
+						{historyError && <p className={ERROR_CLASS}>{historyError}</p>}
+						{!historyPending &&
+							!historyError &&
+							playerProjectionHistoryEmptyLabel(projectionHistory) && (
+								<EmptyState
+									icon={<CalendarDays className="size-10" />}
+									title={PLAYER_PROJECTION_HISTORY_LABEL.empty}
+								/>
+							)}
+						{!historyPending &&
+							!historyError &&
+							projectionHistory.length > 0 && (
+								<div className="space-y-4">
+									<Suspense fallback={<PlayerProjectionHistoryChartSkeleton />}>
+										<PlayerProjectionHistoryChart
+											points={playerProjectionHistoryChartSeries(
+												projectionHistory,
+											)}
+											ceiling={ceiling}
+										/>
+									</Suspense>
+									<PlayerProjectionHistoryTable
+										rows={projectionHistory}
+										onOpenEvent={onOpenEvent}
+									/>
+									{futureProjection && stablePath && (
+										<PlayerProjectionStablePathBlock
+											path={stablePath}
+											ceiling={ceiling}
+											projectedRounds={futureProjection.projectedRounds}
+										/>
+									)}
+								</div>
+							)}
+					</SectionCard>
+				</>
+			)}
+		</div>
+	);
+}
+
+function PlayerProjectionStablePathBlock({
+	path,
+	ceiling,
+	projectedRounds,
+}: {
+	path: PerformanceMapProjectPath;
+	ceiling: number;
+	projectedRounds: number;
+}) {
+	return (
+		<div className="space-y-3 border-t border-pitch-soft pt-4">
+			<div>
+				<h3 className="text-sm font-semibold text-pitch-fg">
+					{PERFORMANCE_MAP_LABEL.pathTitle}
+				</h3>
+				<p className="mt-1 text-sm text-fg-muted">
+					{PERFORMANCE_MAP_LABEL.pathHint}
+				</p>
+			</div>
+			{projectedRounds === 0 && (
+				<p className="text-sm text-fg-muted">
+					{PERFORMANCE_MAP_LABEL.pathAligned}
+				</p>
+			)}
+			{projectedRounds > 0 && (
+				<>
+					<Suspense
+						fallback={
+							<SkeletonRegion label={SKELETON_LABEL.chart}>
+								<div style={{ height: PERFORMANCE_MAP_PATH_CHART.height }}>
+									<Skeleton className="h-full w-full" />
+								</div>
+							</SkeletonRegion>
+						}
+					>
+						<PlayerProjectionStablePathChart
+							steps={path.steps}
+							ceiling={ceiling}
+						/>
+					</Suspense>
+					<div className="overflow-x-auto">
+						<table className="w-full min-w-[12rem] text-sm">
+							<thead>
+								<tr className="text-left text-fg-muted">
+									<th className="py-1 pr-4 font-medium">
+										{PERFORMANCE_MAP_LABEL.pathRound}
+									</th>
+									<th className="py-1 text-right font-medium">
+										{PERFORMANCE_MAP_LABEL.pathRating}
+									</th>
+								</tr>
+							</thead>
+							<tbody>
+								{path.steps.map((step) => (
+									<tr key={step.round} className="border-t border-pitch-soft">
+										<td className="py-1.5 pr-4 tabular-nums">{step.round}</td>
+										<td className="py-1.5 text-right tabular-nums">
+											{formatPlayerProjectionHistoryRating(step.rating)}
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</div>
 				</>
 			)}
 		</div>
@@ -883,6 +1170,38 @@ function PlayerHistoryChartRect() {
 		<div style={{ height: PLAYER_RATING_HISTORY_CHART.height }}>
 			<Skeleton className="h-full w-full" />
 		</div>
+	);
+}
+
+function PlayerProjectionHistoryChartRect() {
+	return (
+		<div style={{ height: PLAYER_PROJECTION_HISTORY_CHART.height }}>
+			<Skeleton className="h-full w-full" />
+		</div>
+	);
+}
+
+function PlayerProjectionHistoryChartSkeleton() {
+	return (
+		<SkeletonRegion label={SKELETON_LABEL.chart}>
+			<PlayerProjectionHistoryChartRect />
+		</SkeletonRegion>
+	);
+}
+
+function PlayerProjectionHistorySkeleton() {
+	return (
+		<SkeletonRegion label={SKELETON_LABEL.events}>
+			<div className="space-y-4">
+				<PlayerProjectionHistoryChartRect />
+				<DataTableSkeleton
+					headers={PLAYER_PROJECTION_HISTORY_COLUMNS.map(
+						(id) => PLAYER_PROJECTION_HISTORY_COLUMN_LABEL[id],
+					)}
+					withPlayerColumn={false}
+				/>
+			</div>
+		</SkeletonRegion>
 	);
 }
 

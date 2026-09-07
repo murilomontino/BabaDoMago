@@ -631,6 +631,7 @@ function overlayAttendanceRow(
 		matches: 0,
 		rating: 0,
 		rating_delta: 0,
+		rating_projected: null,
 		goalkeeper_rating: 0,
 		goalkeeper_rating_delta: 0,
 		vote_rating_delta: 0,

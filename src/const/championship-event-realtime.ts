@@ -302,6 +302,7 @@ function asAttendanceFromRow(
 		matches: rowNumber(row, "matches") ?? 0,
 		rating: rowNumber(row, "rating") ?? 0,
 		rating_delta: rowNumber(row, "rating_delta") ?? 0,
+		rating_projected: rowNumber(row, "rating_projected"),
 		goalkeeper_rating: rowNumber(row, "goalkeeper_rating") ?? 0,
 		goalkeeper_rating_delta: rowNumber(row, "goalkeeper_rating_delta") ?? 0,
 		vote_rating_delta: rowNumber(row, "vote_rating_delta") ?? 0,

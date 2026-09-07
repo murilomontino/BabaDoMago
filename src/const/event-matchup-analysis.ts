@@ -9,8 +9,8 @@ import type {
 } from "../types/championship-event.ts";
 import {
 	type EventTeamBuilderTeam,
-	eventTeamRatingSum,
-	formatEventTeamRatingSum,
+	eventTeamRatingAverage,
+	formatEventTeamRatingAverage,
 	teamSlotsToPlayerIds,
 } from "./championship-event.ts";
 import { endedChampionshipHistoryEvents } from "./championship-rating-history.ts";
@@ -67,15 +67,15 @@ export type MatchupBalanceLevel =
 	(typeof MATCHUP_BALANCE)[keyof typeof MATCHUP_BALANCE];
 
 export const MATCHUP_BALANCE_SPREAD = {
-	extreme: 0.5,
-	balanced: 1,
-	slight: 2,
-	clear: 3,
+	extreme: 0.15,
+	balanced: 0.3,
+	slight: 0.5,
+	clear: 0.8,
 } as const;
 
 /** Absolute gap below this → neutral for that metric. */
 export const MATCHUP_NEUTRAL_THRESHOLD = {
-	[MATCHUP_METRIC.rating]: 0.3,
+	[MATCHUP_METRIC.rating]: 0.1,
 	[MATCHUP_METRIC.attack]: 0.08,
 	[MATCHUP_METRIC.creation]: 0.08,
 	[MATCHUP_METRIC.defense]: 0.08,
@@ -85,7 +85,7 @@ export const MATCHUP_NEUTRAL_THRESHOLD = {
 
 /** Reference for relative gap (decisive / warning). */
 export const MATCHUP_METRIC_REF = {
-	[MATCHUP_METRIC.rating]: 2,
+	[MATCHUP_METRIC.rating]: 0.5,
 	[MATCHUP_METRIC.attack]: 0.5,
 	[MATCHUP_METRIC.creation]: 0.4,
 	[MATCHUP_METRIC.defense]: 0.5,
@@ -95,8 +95,9 @@ export const MATCHUP_METRIC_REF = {
 
 export const MATCHUP_LABEL = {
 	title: "Análise do Confronto",
-	favoriteByRating: "Favorito pelo rating",
-	rating: "Rating",
+	favoriteByRating: "Favorito",
+	favoriteByFields: "Favorito pelos campos",
+	rating: "Média",
 	attack: "Ataque",
 	creation: "Criação",
 	defense: "Defesa",
@@ -187,7 +188,7 @@ export type MatchupPlayerHighlight = {
 };
 
 export type MatchupTeamDetail = {
-	ratingSum: number;
+	ratingAverage: number;
 	goalsPerGame: number | null;
 	assistsPerGame: number | null;
 	goalShare: number | null;
@@ -206,6 +207,8 @@ export type MatchupSummary = {
 
 export type MatchupAnalysis = {
 	favoriteSide: MatchupSide;
+	/** How many metric fields each side leads (non-neutral). */
+	fieldWins: { home: number; away: number };
 	ratingDifference: number;
 	balanceLevel: MatchupBalanceLevel;
 	home: MatchupTeamDetail;
@@ -314,7 +317,7 @@ export function matchupRelativeGap(
 	return Math.abs(homeValue - awayValue) / ref;
 }
 
-export function teamMatchupRatingSum(team: MatchupTeamInput): number {
+export function teamMatchupRatingAverage(team: MatchupTeamInput): number {
 	const ratings = team.playerIds.flatMap((playerId) => {
 		const rating = team.ratings.get(playerId);
 		if (rating === undefined) {
@@ -324,7 +327,7 @@ export function teamMatchupRatingSum(team: MatchupTeamInput): number {
 		return [rating];
 	});
 
-	return eventTeamRatingSum(ratings);
+	return eventTeamRatingAverage(ratings);
 }
 
 export function teamGoalsPerGame(
@@ -418,6 +421,22 @@ export function teamGoalkeeperRating(
 	return player.goalkeeper_rating;
 }
 
+/** Snapshot rating of the marked GK only — never invent from lineup/history. */
+export function teamGoalkeeperSnapshotRating(
+	team: MatchupTeamInput,
+): number | null {
+	if (team.goalkeeperId === null) {
+		return null;
+	}
+
+	const value = team.ratings.get(team.goalkeeperId);
+	if (value === undefined) {
+		return null;
+	}
+
+	return value;
+}
+
 export function teamRecentForm(
 	events: readonly ChampionshipEvent[],
 	roster: readonly ChampionshipPlayer[],
@@ -453,10 +472,9 @@ export function analyzeEventMatchup(input: {
 	roster: readonly ChampionshipPlayer[];
 }): MatchupAnalysis {
 	const { home, away, historyEvents, roster } = input;
-	const homeRating = teamMatchupRatingSum(home);
-	const awayRating = teamMatchupRatingSum(away);
+	const homeRating = teamMatchupRatingAverage(home);
+	const awayRating = teamMatchupRatingAverage(away);
 	const ratingDifference = homeRating - awayRating;
-	const favoriteSide = matchupFavoriteSide(ratingDifference);
 	const balanceLevel = matchupBalanceLevel(ratingDifference);
 
 	const homeDetail = buildTeamDetail(home, historyEvents, roster);
@@ -513,6 +531,8 @@ export function analyzeEventMatchup(input: {
 		),
 	];
 
+	const fieldWins = matchupFieldWins(metrics);
+	const favoriteSide = matchupFavoriteSideFromFields(fieldWins);
 	const decisiveFactor = matchupDecisiveFactor(metrics);
 	const warningFactor = matchupWarningFactor(metrics, favoriteSide);
 	const keyPlayers = buildKeyPlayers(home, away, historyEvents, roster);
@@ -520,7 +540,7 @@ export function analyzeEventMatchup(input: {
 		home,
 		away,
 		favoriteSide,
-		ratingDifference,
+		fieldWins,
 		metrics,
 		decisiveFactor,
 		warningFactor,
@@ -528,6 +548,7 @@ export function analyzeEventMatchup(input: {
 
 	return {
 		favoriteSide,
+		fieldWins,
 		ratingDifference,
 		balanceLevel,
 		home: homeDetail,
@@ -609,7 +630,8 @@ export function defaultMatchupPairKeys(
 	}
 
 	const ranked = [...withPlayers].sort((left, right) => {
-		const diff = teamMatchupRatingSum(right) - teamMatchupRatingSum(left);
+		const diff =
+			teamMatchupRatingAverage(right) - teamMatchupRatingAverage(left);
 		if (diff !== 0) {
 			return diff;
 		}
@@ -716,7 +738,8 @@ export function matchupTeamFromMatchLineup(input: {
 	const { team, lineup, attendanceByPlayer } = input;
 	const playerIds = lineup.map((row) => row.player_id);
 	const markedGkIds = lineup.flatMap((row) => {
-		if (!row.is_goalkeeper) {
+		const attendance = attendanceByPlayer.get(row.player_id);
+		if (attendance?.is_goalkeeper !== true) {
 			return [];
 		}
 
@@ -725,8 +748,9 @@ export function matchupTeamFromMatchLineup(input: {
 	const ratings = new Map(
 		lineup.map((row) => {
 			const attendance = attendanceByPlayer.get(row.player_id);
+			const isMarkedGk = attendance?.is_goalkeeper === true;
 			const rating = eventActivePlayerRating(
-				row.is_goalkeeper,
+				isMarkedGk,
 				attendance?.rating ?? 0,
 				attendance?.goalkeeper_rating ?? 0,
 			);
@@ -763,14 +787,33 @@ export function matchupReviewOutcome(
 		return MATCHUP_REVIEW_OUTCOME.draw;
 	}
 
-	const favoriteTeamId =
-		favoriteSide === MATCHUP_SIDE.home ? homeTeamId : awayTeamId;
+	const favoriteTeamId = matchupFavoriteTeamId(
+		favoriteSide,
+		homeTeamId,
+		awayTeamId,
+	);
 
-	if (winnerTeamId === favoriteTeamId) {
+	if (favoriteTeamId !== null && winnerTeamId === favoriteTeamId) {
 		return MATCHUP_REVIEW_OUTCOME.hit;
 	}
 
 	return MATCHUP_REVIEW_OUTCOME.miss;
+}
+
+export function matchupFavoriteTeamId(
+	favoriteSide: MatchupSide,
+	homeTeamId: number,
+	awayTeamId: number,
+): number | null {
+	if (favoriteSide === MATCHUP_SIDE.neutral) {
+		return null;
+	}
+
+	if (favoriteSide === MATCHUP_SIDE.home) {
+		return homeTeamId;
+	}
+
+	return awayTeamId;
 }
 
 export function matchupReviewOutcomeLabel(
@@ -848,7 +891,7 @@ export function analyzeMatchHistoryMatchup(input: {
 }
 
 export function formatMatchupRating(value: number): string {
-	return formatEventTeamRatingSum(value);
+	return formatEventTeamRatingAverage(value);
 }
 
 export function formatMatchupPerGame(value: number): string {
@@ -919,12 +962,35 @@ export function matchupBalanceLabel(level: MatchupBalanceLevel): string {
 	return MATCHUP_LABEL[level];
 }
 
-function matchupFavoriteSide(ratingDifference: number): MatchupSide {
-	if (Math.abs(ratingDifference) < MATCHUP_NEUTRAL_THRESHOLD.rating) {
+export function matchupFieldWins(metrics: readonly MatchupMetric[]): {
+	home: number;
+	away: number;
+} {
+	return metrics.reduce(
+		(acc, metric) => {
+			if (metric.advantage === MATCHUP_SIDE.home) {
+				return { home: acc.home + 1, away: acc.away };
+			}
+
+			if (metric.advantage === MATCHUP_SIDE.away) {
+				return { home: acc.home, away: acc.away + 1 };
+			}
+
+			return acc;
+		},
+		{ home: 0, away: 0 },
+	);
+}
+
+export function matchupFavoriteSideFromFields(fieldWins: {
+	home: number;
+	away: number;
+}): MatchupSide {
+	if (fieldWins.home === fieldWins.away) {
 		return MATCHUP_SIDE.neutral;
 	}
 
-	if (ratingDifference > 0) {
+	if (fieldWins.home > fieldWins.away) {
 		return MATCHUP_SIDE.home;
 	}
 
@@ -969,13 +1035,13 @@ function buildTeamDetail(
 		gkId === null ? null : (roster.find((row) => row.id === gkId) ?? null);
 
 	return {
-		ratingSum: teamMatchupRatingSum(team),
+		ratingAverage: teamMatchupRatingAverage(team),
 		goalsPerGame: teamGoalsPerGame(events, team.playerIds),
 		assistsPerGame: teamAssistsPerGame(events, team.playerIds),
 		goalShare: teamGoalParticipation(events, team.playerIds),
 		goalsConcededPerGame: teamGoalsConcededPerGame(events, team.playerIds),
 		cleanSheetRate: teamCleanSheetRate(events, team.playerIds),
-		goalkeeperRating: teamGoalkeeperRating(roster, gkId),
+		goalkeeperRating: teamGoalkeeperSnapshotRating(team),
 		goalkeeperName: gkPlayer ? playerVisibleName(gkPlayer) : null,
 		formRate: teamRecentForm(events, roster, team.playerIds),
 	};
@@ -1044,33 +1110,32 @@ function buildKeyPlayers(
 		];
 	});
 
-	const goalkeepers = [home.goalkeeperId, away.goalkeeperId].flatMap(
-		(goalkeeperId) => {
-			if (goalkeeperId === null) {
-				return [];
-			}
+	const goalkeepers = [home, away].flatMap((team) => {
+		const goalkeeperId = team.goalkeeperId;
+		if (goalkeeperId === null) {
+			return [];
+		}
 
-			const rating = teamGoalkeeperRating(roster, goalkeeperId);
-			if (rating === null) {
-				return [];
-			}
+		const rating = teamGoalkeeperSnapshotRating(team);
+		if (rating === null) {
+			return [];
+		}
 
-			const player = roster.find((row) => row.id === goalkeeperId);
-			if (!player) {
-				return [];
-			}
+		const player = roster.find((row) => row.id === goalkeeperId);
+		if (!player) {
+			return [];
+		}
 
-			return [
-				{
-					playerId: goalkeeperId,
-					name: playerVisibleName(player),
-					value: rating,
-					label: MATCHUP_LABEL.bestGoalkeeper,
-					side: sideOf(goalkeeperId),
-				},
-			];
-		},
-	);
+		return [
+			{
+				playerId: goalkeeperId,
+				name: playerVisibleName(player),
+				value: rating,
+				label: MATCHUP_LABEL.bestGoalkeeper,
+				side: sideOf(goalkeeperId),
+			},
+		];
+	});
 
 	const formWindow = championshipTrendsEvents(events, MATCHUP_FORM_WINDOW);
 	const formRows = championshipRecentForm(
@@ -1121,7 +1186,7 @@ function buildSummary(input: {
 	home: MatchupTeamInput;
 	away: MatchupTeamInput;
 	favoriteSide: MatchupSide;
-	ratingDifference: number;
+	fieldWins: { home: number; away: number };
 	metrics: readonly MatchupMetric[];
 	decisiveFactor: MatchupMetricKey | typeof MATCHUP_SIDE.neutral;
 	warningFactor: MatchupMetricKey | typeof MATCHUP_SIDE.neutral;
@@ -1134,7 +1199,7 @@ function buildSummary(input: {
 	const favoriteLine = favoriteSummaryLine(
 		favoriteName,
 		input.favoriteSide,
-		input.ratingDifference,
+		input.fieldWins,
 	);
 
 	const decisiveLine = factorSummaryLine(
@@ -1158,14 +1223,13 @@ function buildSummary(input: {
 function favoriteSummaryLine(
 	favoriteName: string | null,
 	favoriteSide: MatchupSide,
-	ratingDifference: number,
+	fieldWins: { home: number; away: number },
 ): string {
 	if (favoriteSide === MATCHUP_SIDE.neutral || favoriteName === null) {
-		return `${MATCHUP_LABEL.favoriteByRating}: ${MATCHUP_LABEL.neutral}`;
+		return `${MATCHUP_LABEL.favoriteByFields}: ${MATCHUP_LABEL.neutral} (${fieldWins.home}×${fieldWins.away})`;
 	}
 
-	const delta = formatMatchupRating(Math.abs(ratingDifference));
-	return `${favoriteName} é favorito pelo rating (+${delta}).`;
+	return `${favoriteName} é favorito pelos campos (${fieldWins.home}×${fieldWins.away}).`;
 }
 
 function factorSummaryLine(

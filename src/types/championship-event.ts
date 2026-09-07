@@ -17,6 +17,7 @@ export type ChampionshipEventAttendance = {
 	matches: number;
 	rating: number;
 	rating_delta: number;
+	rating_projected?: number | null;
 	goalkeeper_rating: number;
 	goalkeeper_rating_delta: number;
 	vote_rating_delta: number;

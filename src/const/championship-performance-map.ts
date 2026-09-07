@@ -67,7 +67,7 @@ export const PERFORMANCE_MAP_LABEL = {
 	gapExplain:
 		"Gap = forma − (rating ÷ teto), em pp. Positivo: forma acima do nível → nota sobe até o Gap neutro. Negativo: forma abaixo → nota cai até o Gap neutro.",
 	projectExplain:
-		"Próxima = 1 passo (0,3) rumo ao Gap neutro. Estável = nota em que Gap zera (aproveitamento × teto). Não usa o Δ oficial da forma.",
+		"Próxima = nota em que o Gap zera (forma × teto): sobe ou cai o quanto o pp pedir. Estável = o mesmo alvo. Sem passo fixo; não usa o Δ oficial da forma.",
 	empty: "Ninguém com jogos suficientes na janela",
 	filter: "Janela",
 	showFewMatches: "Mostrar poucos jogos",
@@ -84,10 +84,15 @@ export const PERFORMANCE_MAP_LABEL = {
 	gap: "Gap",
 	gapHint: "Forma vs nível da nota",
 	projectedNext: "Próxima",
-	projectedNextHint: "Um passo rumo ao Gap neutro",
+	projectedNextHint: "Quanto o Gap pede até neutro",
 	projectedStable: "Estável",
-	projectedStableHint: "Se mantiver até o Gap neutro",
+	projectedStableHint: "Mesmo alvo da próxima (Gap neutro)",
 	projectedRounds: "Rodadas",
+	pathTitle: "Até estabilizar",
+	pathHint: "Simulação no app; não grava. Assume a mesma forma. O salto é o quanto falta para o Gap neutro.",
+	pathRound: "Rodada",
+	pathRating: "Nota",
+	pathAligned: "Já alinhado",
 	reading: "Leitura",
 	state: "Estado",
 	player: "Jogador",
@@ -122,10 +127,6 @@ export const PERFORMANCE_MAP_PROJECTED_STOP_LABEL = {
 	[PERFORMANCE_MAP_PROJECTED_STOP.cap]: "limite de rodadas da projeção",
 } as const;
 
-/** Cap de rodadas no caminho até o Gap neutro. */
-// ponytail: passo 0,3 e teto 100 cabem em 40. Subir o cap se o passo diminuir.
-export const PERFORMANCE_MAP_PROJECT_MAX_ROUNDS = 40 as const;
-
 export const PERFORMANCE_MAP_GAP_READING = {
 	drasticRise: "A nota tende a subir drasticamente.",
 	strongRise: "A nota tende a subir muito.",
@@ -157,8 +158,6 @@ export const PERFORMANCE_MAP_STATE_READING = {
 		"Nota sentinela — ainda sem previsão de nível.",
 } as const;
 
-/** Passo da projeção rumo ao Gap neutro (0,3). */
-export const PERFORMANCE_MAP_DELTA_MILD = 0.3 as const;
 /** |gap| abaixo disso: alinhado / neutro (8 pp). */
 export const PERFORMANCE_MAP_GAP_ALIGNED = 0.08 as const;
 /** |gap| a partir disso: muito (18 pp). */
@@ -455,6 +454,23 @@ export type PerformanceMapProjection = {
 	projectedStop: PerformanceMapProjectedStop;
 };
 
+export type PerformanceMapProjectPathStep = {
+	round: number;
+	rating: number;
+};
+
+export type PerformanceMapProjectPath = {
+	steps: PerformanceMapProjectPathStep[];
+	stop: PerformanceMapProjectedStop;
+};
+
+export const PERFORMANCE_MAP_PATH_CHART = {
+	height: 180,
+	indexKey: "round",
+	ratingKey: "rating",
+	stroke: "#7c3aed",
+} as const;
+
 export function performanceMapProjectRating(input: {
 	rating: number;
 	rate: number;
@@ -475,6 +491,7 @@ export function performanceMapProjectRating(input: {
 
 	const safeCeiling = Math.max(ceiling, PLAYER_RATING.floor);
 	const gap = rate - rating / safeCeiling;
+	// Distância em nota até Gap neutro ≈ gap × teto (pp convertidos).
 	const target = clampProjectedRating(rate * safeCeiling);
 
 	if (Math.abs(gap) <= PERFORMANCE_MAP_GAP_ALIGNED) {
@@ -487,32 +504,46 @@ export function performanceMapProjectRating(input: {
 		};
 	}
 
-	const distance = target - rating;
-	const step = PERFORMANCE_MAP_DELTA_MILD;
-	const direction = Math.sign(distance);
-	const nextStep = Math.min(step, Math.abs(distance));
-	const projectedNext = clampProjectedRating(rating + direction * nextStep);
+	const projectedStable = target;
+	const projectedNext = projectedStable;
 	const projectedNextDelta = roundProjectedDelta(projectedNext - rating);
-	const rawRounds = Math.ceil(Math.abs(distance) / step);
-	const projectedRounds = Math.min(
-		PERFORMANCE_MAP_PROJECT_MAX_ROUNDS,
-		Math.max(1, rawRounds),
-	);
-	const hitCap = rawRounds > PERFORMANCE_MAP_PROJECT_MAX_ROUNDS;
-	const projectedStable = hitCap
-		? clampProjectedRating(
-				rating + direction * step * PERFORMANCE_MAP_PROJECT_MAX_ROUNDS,
-			)
-		: target;
 
 	return {
 		projectedNext,
 		projectedNextDelta,
 		projectedStable,
-		projectedRounds,
-		projectedStop: hitCap
-			? PERFORMANCE_MAP_PROJECTED_STOP.cap
-			: PERFORMANCE_MAP_PROJECTED_STOP.gapNeutral,
+		projectedRounds: 1,
+		projectedStop: PERFORMANCE_MAP_PROJECTED_STOP.gapNeutral,
+	};
+}
+
+export function performanceMapProjectPath(input: {
+	rating: number;
+	rate: number;
+	matches: number;
+	ceiling: number;
+}): PerformanceMapProjectPath {
+	const projection = performanceMapProjectRating(input);
+	const start = clampProjectedRating(input.rating);
+	const steps: PerformanceMapProjectPathStep[] = [
+		{ round: 0, rating: start },
+	];
+
+	if (projection.projectedRounds === 0) {
+		return {
+			steps,
+			stop: projection.projectedStop,
+		};
+	}
+
+	steps.push({
+		round: 1,
+		rating: projection.projectedStable,
+	});
+
+	return {
+		steps,
+		stop: projection.projectedStop,
 	};
 }
 
