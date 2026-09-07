@@ -1,4 +1,7 @@
-import { Handshake, Star, X } from "lucide-react";
+import { ChevronDown, Handshake, Star, X } from "lucide-react";
+import { useState } from "react";
+import { Button } from "@/components/button";
+import { MatchupAnalysisPanel } from "@/components/event-matchup-analysis";
 import { EventTeamChip } from "@/components/event-team-player";
 import { GoalIcon } from "@/components/goal-icon";
 import { GoalkeeperGlovesIcon } from "@/components/goalkeeper-gloves-icon";
@@ -27,18 +30,14 @@ import {
 	analyzeMatchHistoryMatchup,
 	eventMatchupFavoriteStats,
 	formatMatchupFavoriteHitRate,
-	formatMatchupMetricValue,
-	formatMatchupRating,
 	MATCHUP_LABEL,
-	MATCHUP_REVIEW_OUTCOME,
 	type MatchupMatchReview,
-	type MatchupReviewOutcome,
 	matchFavoriteTeamId,
 	matchupFavoriteTeamId,
-	matchupMetricLabel,
 } from "@/const/event-matchup-analysis";
+import { eventTeamName } from "@/const/event-team-color";
 import { PLAYER_LABEL, playerVisibleName } from "@/const/player-name";
-import { CARD_CLASS, CHIP_CLASS } from "@/const/ui";
+import { BUTTON_VARIANT, CARD_CLASS, CHIP_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type {
 	ChampionshipEvent,
@@ -61,100 +60,28 @@ type ChampionshipEventMatchHistoryProps = {
 	onRemoveMatch: (match: ChampionshipEventMatch) => void;
 };
 
-function reviewOutcomeChipClass(outcome: MatchupReviewOutcome): string {
-	if (outcome === MATCHUP_REVIEW_OUTCOME.hit) {
-		return `${CHIP_CLASS} bg-pitch/15 text-pitch`;
-	}
-
-	if (outcome === MATCHUP_REVIEW_OUTCOME.miss) {
-		return `${CHIP_CLASS} bg-danger-soft text-danger-fg`;
-	}
-
-	return CHIP_CLASS;
-}
-
-function MatchHistoryMatchupReview({ review }: { review: MatchupMatchReview }) {
-	const { analysis, outcome, outcomeLabel } = review;
-	const decisive =
-		analysis.decisiveFactor === "neutral"
-			? null
-			: matchupMetricLabel(analysis.decisiveFactor);
-	const warning =
-		analysis.warningFactor === "neutral"
-			? null
-			: matchupMetricLabel(analysis.warningFactor);
-	const metricRows = analysis.metrics.filter(
-		(metric) => metric.key !== "rating",
-	);
-
+function MatchHistoryMatchupReview({
+	review,
+	teamA,
+	teamB,
+}: {
+	review: MatchupMatchReview;
+	teamA: ChampionshipEventTeam;
+	teamB: ChampionshipEventTeam;
+}) {
 	return (
-		<div className="mt-3 space-y-1.5 border-t border-line pt-2 text-xs text-fg-muted">
-			<p className="font-medium text-fg">{MATCHUP_LABEL.reviewTitle}</p>
-			<p className="text-fg">{analysis.summary.favoriteLine}</p>
-			<p className="tabular-nums">
-				{MATCHUP_LABEL.rating}:{" "}
-				{formatMatchupRating(analysis.home.ratingAverage)} ×{" "}
-				{formatMatchupRating(analysis.away.ratingAverage)}
-			</p>
-			<ul className="space-y-0.5">
-				{metricRows.map((metric) => (
-					<li
-						key={metric.key}
-						className="grid grid-cols-[6.5rem_1fr_1fr] gap-1 tabular-nums"
-					>
-						<span className="text-fg-muted">
-							{matchupMetricLabel(metric.key)}
-						</span>
-						<span className="text-fg">
-							{formatMatchupMetricValue(metric.key, metric.homeValue)}
-						</span>
-						<span className="text-fg">
-							{formatMatchupMetricValue(metric.key, metric.awayValue)}
-						</span>
-					</li>
-				))}
-			</ul>
-			{analysis.home.goalkeeperName && analysis.away.goalkeeperName && (
-				<p>
-					{MATCHUP_LABEL.goalkeeper}: {analysis.home.goalkeeperName} ×{" "}
-					{analysis.away.goalkeeperName}
-				</p>
-			)}
-			{analysis.home.goalkeeperName && !analysis.away.goalkeeperName && (
-				<p>
-					{MATCHUP_LABEL.goalkeeper}: {analysis.home.goalkeeperName}
-				</p>
-			)}
-			{!analysis.home.goalkeeperName && analysis.away.goalkeeperName && (
-				<p>
-					{MATCHUP_LABEL.goalkeeper}: {analysis.away.goalkeeperName}
-				</p>
-			)}
-			{!analysis.home.goalkeeperName && !analysis.away.goalkeeperName && (
-				<p>{MATCHUP_LABEL.noGoalkeeper}</p>
-			)}
-			{decisive && (
-				<p>
-					{MATCHUP_LABEL.decisive}: {decisive}
-				</p>
-			)}
-			{warning && (
-				<p>
-					{MATCHUP_LABEL.warning}: {warning}
-				</p>
-			)}
-			{analysis.summary.decisiveLine && (
-				<p className="text-fg-muted">{analysis.summary.decisiveLine}</p>
-			)}
-			{analysis.summary.warningLine && (
-				<p className="text-fg-muted">{analysis.summary.warningLine}</p>
-			)}
-			<div className="flex flex-wrap items-center gap-2 pt-0.5">
-				<span className="font-medium text-fg">
-					{MATCHUP_LABEL.reviewOutcome}
-				</span>
-				<span className={reviewOutcomeChipClass(outcome)}>{outcomeLabel}</span>
-			</div>
+		<div className="mt-3 space-y-3 border-t border-line pt-2">
+			<MatchupAnalysisPanel
+				analysis={review.analysis}
+				home={{
+					title: eventTeamName(teamA.color, teamA.sort_order),
+					color: teamA.color,
+				}}
+				away={{
+					title: eventTeamName(teamB.color, teamB.sort_order),
+					color: teamB.color,
+				}}
+			/>
 		</div>
 	);
 }
@@ -249,6 +176,7 @@ function MatchHistoryCard({
 	onOpenMatch: (match: ChampionshipEventMatch) => void;
 	onRemoveMatch: (match: ChampionshipEventMatch) => void;
 }) {
+	const [analysisOpen, setAnalysisOpen] = useState(false);
 	const teamA = teamById.get(match.team_a_id) ?? null;
 	const teamB = teamById.get(match.team_b_id) ?? null;
 	const review =
@@ -370,7 +298,6 @@ function MatchHistoryCard({
 					</ul>
 				</div>
 			)}
-			{review && <MatchHistoryMatchupReview review={review} />}
 		</>
 	);
 
@@ -404,6 +331,37 @@ function MatchHistoryCard({
 					</button>
 				)}
 			</div>
+			{review && (
+				<div className="mt-2 border-t border-line pt-2">
+					<Button
+						variant={BUTTON_VARIANT.ghost}
+						className="h-8 w-full justify-between gap-2 px-2 text-xs"
+						aria-expanded={analysisOpen}
+						aria-label={MATCHUP_LABEL.openAnalysis}
+						onClick={() => {
+							setAnalysisOpen((current) => !current);
+						}}
+					>
+						<span>
+							{analysisOpen
+								? MATCHUP_LABEL.hideAnalysis
+								: MATCHUP_LABEL.openAnalysis}
+						</span>
+						<ChevronDown
+							className={`size-4 shrink-0 transition-transform ${
+								analysisOpen ? "rotate-180" : ""
+							}`}
+						/>
+					</Button>
+					{analysisOpen && (
+						<MatchHistoryMatchupReview
+							review={review}
+							teamA={teamA}
+							teamB={teamB}
+						/>
+					)}
+				</div>
+			)}
 		</li>
 	);
 }

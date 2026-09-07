@@ -629,14 +629,22 @@ const gkMetric = analysis.metrics.find(
 check(gkMetric?.advantage === MATCHUP_SIDE.home, "gk advantage home");
 
 check(
-	analysis.keyPlayers.goalkeeper?.playerId === 1,
-	"key goalkeeper is best rating",
+	analysis.keyPlayers.home.goalkeeper?.playerId === 1,
+	"home key goalkeeper is marked gk",
 );
-check(analysis.keyPlayers.scorer !== null, "scorer highlight exists");
-check(analysis.keyPlayers.cleanSheet !== null, "clean sheet highlight exists");
 check(
-	analysis.keyPlayers.goalsConceded !== null,
-	"goals conceded highlight exists",
+	analysis.keyPlayers.away.goalkeeper?.playerId === 5,
+	"away key goalkeeper is marked gk",
+);
+check(analysis.keyPlayers.home.scorer !== null, "home scorer highlight exists");
+check(analysis.keyPlayers.away.scorer !== null, "away scorer highlight exists");
+check(
+	analysis.keyPlayers.home.cleanSheet !== null,
+	"home clean sheet highlight exists",
+);
+check(
+	analysis.keyPlayers.home.goalsConceded !== null,
+	"home goals conceded highlight exists",
 );
 
 check(

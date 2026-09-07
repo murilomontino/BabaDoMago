@@ -1,22 +1,25 @@
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { Star } from "lucide-react";
 import {
 	analyzeEventMatchup,
 	defaultMatchupPairKeys,
 	formatMatchupMetricValue,
 	formatMatchupPercent,
 	formatMatchupPerGame,
-	formatMatchupRating,
 	MATCHUP_LABEL,
+	MATCHUP_METRIC,
 	MATCHUP_SIDE,
 	type MatchupAnalysis,
 	type MatchupMetric,
 	type MatchupMetricKey,
+	type MatchupPlayerHighlight,
 	type MatchupSide,
 	type MatchupTeamInput,
+	type MatchupTeamKeyPlayers,
 	matchupBalanceLabel,
+	matchupHasKeyPlayers,
 	matchupMetricLabel,
 } from "@/const/event-matchup-analysis";
-import { eventTeamColorStyle } from "@/const/event-team-color";
 import { FIELD_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type { ChampionshipEvent } from "@/types/championship-event";
@@ -27,10 +30,15 @@ type EventMatchupAnalysisProps = {
 	roster: readonly ChampionshipPlayer[];
 };
 
+export type MatchupAnalysisTeamView = {
+	title: string;
+	color: string | null;
+};
+
 function sideTitle(
 	side: MatchupSide,
-	home: MatchupTeamInput,
-	away: MatchupTeamInput,
+	home: MatchupAnalysisTeamView,
+	away: MatchupAnalysisTeamView,
 ): string {
 	if (side === MATCHUP_SIDE.home) {
 		return home.title;
@@ -103,6 +111,261 @@ function matchupAdvantageTitle(
 	return MATCHUP_LABEL.neutral;
 }
 
+function FavoriteStar() {
+	return (
+		<Star
+			aria-hidden
+			className="size-3.5 shrink-0 fill-amber-400 text-amber-400"
+		/>
+	);
+}
+
+function eventTeamBorderStyle(hex: string | null): { borderColor?: string } {
+	if (hex === null) {
+		return {};
+	}
+
+	return { borderColor: hex };
+}
+
+function keyPlayerHighlightWins(
+	home: MatchupPlayerHighlight | null,
+	away: MatchupPlayerHighlight | null,
+	higherIsBetter: boolean,
+): MatchupSide {
+	if (home === null && away === null) {
+		return MATCHUP_SIDE.neutral;
+	}
+
+	if (home === null) {
+		return MATCHUP_SIDE.away;
+	}
+
+	if (away === null) {
+		return MATCHUP_SIDE.home;
+	}
+
+	if (home.value === away.value) {
+		return MATCHUP_SIDE.neutral;
+	}
+
+	if (higherIsBetter) {
+		if (home.value > away.value) {
+			return MATCHUP_SIDE.home;
+		}
+
+		return MATCHUP_SIDE.away;
+	}
+
+	if (home.value < away.value) {
+		return MATCHUP_SIDE.home;
+	}
+
+	return MATCHUP_SIDE.away;
+}
+
+const KEY_PLAYER_ROWS = [
+	{
+		key: "scorer",
+		label: MATCHUP_LABEL.scorer,
+		formatValue: formatMatchupPerGame,
+		higherIsBetter: true,
+	},
+	{
+		key: "creator",
+		label: MATCHUP_LABEL.creator,
+		formatValue: formatMatchupPerGame,
+		higherIsBetter: true,
+	},
+	{
+		key: "goalkeeper",
+		label: MATCHUP_LABEL.bestGoalkeeper,
+		formatValue: formatMatchupPerGame,
+		higherIsBetter: true,
+	},
+	{
+		key: "cleanSheet",
+		label: MATCHUP_LABEL.cleanSheetPlayer,
+		formatValue: formatMatchupPercent,
+		higherIsBetter: true,
+	},
+	{
+		key: "goalsConceded",
+		label: MATCHUP_LABEL.defensePlayer,
+		formatValue: formatMatchupPerGame,
+		higherIsBetter: false,
+	},
+	{
+		key: "form",
+		label: MATCHUP_LABEL.formPlayer,
+		formatValue: formatMatchupPercent,
+		higherIsBetter: true,
+	},
+] as const;
+
+function KeyPlayerRow({
+	label,
+	player,
+	isBest,
+	formatValue,
+}: {
+	label: string;
+	player: MatchupPlayerHighlight | null;
+	isBest: boolean;
+	formatValue: (value: number) => string;
+}) {
+	if (!player) {
+		return (
+			<li className="flex items-baseline justify-between gap-2 text-sm text-fg-subtle">
+				<span>{label}</span>
+				<span>—</span>
+			</li>
+		);
+	}
+
+	return (
+		<li className="flex items-baseline justify-between gap-2 text-sm">
+			<span className="text-fg-muted">{label}</span>
+			<span className="flex min-w-0 items-center justify-end gap-1 text-right text-fg">
+				{isBest && <FavoriteStar />}
+				<span className="min-w-0 truncate">
+					{player.name}{" "}
+					<span className="tabular-nums text-fg-muted">
+						({formatValue(player.value)})
+					</span>
+				</span>
+			</span>
+		</li>
+	);
+}
+
+function KeyPlayersCard({
+	title,
+	color,
+	players,
+	wins,
+	rows,
+}: {
+	title: string;
+	color: string | null;
+	players: MatchupTeamKeyPlayers;
+	wins: Readonly<Record<(typeof KEY_PLAYER_ROWS)[number]["key"], boolean>>;
+	rows: readonly (typeof KEY_PLAYER_ROWS)[number][];
+}) {
+	const style = eventTeamBorderStyle(color);
+	const titleStyle = color === null ? undefined : { color };
+
+	return (
+		<div
+			className="rounded-lg border-2 border-line bg-transparent p-3 text-sm"
+			style={style}
+		>
+			<p className="mb-2 font-semibold text-fg" style={titleStyle}>
+				{title}
+			</p>
+			<ul className="space-y-1">
+				{rows.map((row) => (
+					<KeyPlayerRow
+						key={row.key}
+						label={row.label}
+						player={players[row.key]}
+						isBest={wins[row.key]}
+						formatValue={row.formatValue}
+					/>
+				))}
+			</ul>
+		</div>
+	);
+}
+
+function KeyPlayersSection({
+	home,
+	away,
+	keyPlayers,
+}: {
+	home: MatchupAnalysisTeamView;
+	away: MatchupAnalysisTeamView;
+	keyPlayers: MatchupAnalysis["keyPlayers"];
+}) {
+	const rows = KEY_PLAYER_ROWS.filter(
+		(row) => keyPlayers.home[row.key] || keyPlayers.away[row.key],
+	);
+
+	const compared = rows.map((row) => {
+		const winner = keyPlayerHighlightWins(
+			keyPlayers.home[row.key],
+			keyPlayers.away[row.key],
+			row.higherIsBetter,
+		);
+
+		return {
+			key: row.key,
+			homeWins: winner === MATCHUP_SIDE.home,
+			awayWins: winner === MATCHUP_SIDE.away,
+		};
+	});
+
+	const homeWins = Object.fromEntries(
+		compared.map((row) => [row.key, row.homeWins]),
+	) as Record<(typeof KEY_PLAYER_ROWS)[number]["key"], boolean>;
+
+	const awayWins = Object.fromEntries(
+		compared.map((row) => [row.key, row.awayWins]),
+	) as Record<(typeof KEY_PLAYER_ROWS)[number]["key"], boolean>;
+
+	return (
+		<div>
+			<p className="mb-1 text-xs font-semibold uppercase tracking-wide text-fg-muted">
+				{MATCHUP_LABEL.keyPlayers}
+			</p>
+			<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+				<KeyPlayersCard
+					title={home.title}
+					color={home.color}
+					players={keyPlayers.home}
+					wins={homeWins}
+					rows={rows}
+				/>
+				<KeyPlayersCard
+					title={away.title}
+					color={away.color}
+					players={keyPlayers.away}
+					wins={awayWins}
+					rows={rows}
+				/>
+			</div>
+		</div>
+	);
+}
+
+function formatNullablePerGame(value: number | null): string {
+	if (value === null) {
+		return MATCHUP_LABEL.insufficient;
+	}
+
+	return formatMatchupPerGame(value);
+}
+
+function formatNullablePercent(value: number | null): string {
+	if (value === null) {
+		return MATCHUP_LABEL.insufficient;
+	}
+
+	return formatMatchupPercent(value);
+}
+
+function goalkeeperLine(name: string | null, rating: number | null): string {
+	if (name === null) {
+		return MATCHUP_LABEL.noGoalkeeper;
+	}
+
+	if (rating === null) {
+		return `${name} · ${MATCHUP_LABEL.insufficient}`;
+	}
+
+	return `${name} · ${formatMatchupPerGame(rating)}`;
+}
+
 function AttackCard({
 	title,
 	color,
@@ -112,14 +375,17 @@ function AttackCard({
 	color: string | null;
 	detail: MatchupAnalysis["home"];
 }) {
-	const style = eventTeamColorStyle(color);
+	const borderStyle = eventTeamBorderStyle(color);
+	const titleStyle = color === null ? undefined : { color };
 
 	return (
 		<div
-			className="rounded-lg border border-line bg-surface p-3 text-sm"
-			style={style}
+			className="rounded-lg border-2 border-line bg-transparent p-3 text-sm"
+			style={borderStyle}
 		>
-			<p className="mb-2 font-semibold text-fg">{title}</p>
+			<p className="mb-2 font-semibold text-fg" style={titleStyle}>
+				{title}
+			</p>
 			<ul className="space-y-1 text-xs text-fg-muted sm:text-sm">
 				<li>
 					{MATCHUP_LABEL.goalsPerGame}:{" "}
@@ -153,14 +419,17 @@ function DefenseCard({
 	color: string | null;
 	detail: MatchupAnalysis["home"];
 }) {
-	const style = eventTeamColorStyle(color);
+	const borderStyle = eventTeamBorderStyle(color);
+	const titleStyle = color === null ? undefined : { color };
 
 	return (
 		<div
-			className="rounded-lg border border-line bg-surface p-3 text-sm"
-			style={style}
+			className="rounded-lg border-2 border-line bg-transparent p-3 text-sm"
+			style={borderStyle}
 		>
-			<p className="mb-2 font-semibold text-fg">{title}</p>
+			<p className="mb-2 font-semibold text-fg" style={titleStyle}>
+				{title}
+			</p>
 			<ul className="space-y-1 text-xs text-fg-muted sm:text-sm">
 				<li>
 					{MATCHUP_LABEL.goalsConcededPerGame}:{" "}
@@ -185,58 +454,6 @@ function DefenseCard({
 	);
 }
 
-function formatNullablePerGame(value: number | null): string {
-	if (value === null) {
-		return MATCHUP_LABEL.insufficient;
-	}
-
-	return formatMatchupPerGame(value);
-}
-
-function formatNullablePercent(value: number | null): string {
-	if (value === null) {
-		return MATCHUP_LABEL.insufficient;
-	}
-
-	return formatMatchupPercent(value);
-}
-
-function goalkeeperLine(name: string | null, rating: number | null): string {
-	if (name === null) {
-		return MATCHUP_LABEL.noGoalkeeper;
-	}
-
-	if (rating === null) {
-		return `${name} · ${MATCHUP_LABEL.insufficient}`;
-	}
-
-	return `${name} · ${formatMatchupPerGame(rating)}`;
-}
-
-function KeyPlayerRow({
-	label,
-	name,
-	value,
-	formatValue,
-}: {
-	label: string;
-	name: string;
-	value: number;
-	formatValue: (value: number) => string;
-}) {
-	return (
-		<li className="flex items-baseline justify-between gap-2 text-sm">
-			<span className="text-fg-muted">{label}</span>
-			<span className="min-w-0 truncate text-right text-fg">
-				{name}{" "}
-				<span className="tabular-nums text-fg-muted">
-					({formatValue(value)})
-				</span>
-			</span>
-		</li>
-	);
-}
-
 function FactorBlock({
 	title,
 	factor,
@@ -247,8 +464,8 @@ function FactorBlock({
 	title: string;
 	factor: MatchupMetricKey | typeof MATCHUP_SIDE.neutral;
 	analysis: MatchupAnalysis;
-	home: MatchupTeamInput;
-	away: MatchupTeamInput;
+	home: MatchupAnalysisTeamView;
+	away: MatchupAnalysisTeamView;
 }) {
 	if (factor === MATCHUP_SIDE.neutral) {
 		return null;
@@ -273,16 +490,143 @@ function FactorBlock({
 	);
 }
 
-function FavoriteFieldWins({
-	fieldWins,
+function favoriteTeamView(
+	favoriteSide: MatchupSide,
+	home: MatchupAnalysisTeamView,
+	away: MatchupAnalysisTeamView,
+): MatchupAnalysisTeamView | null {
+	if (favoriteSide === MATCHUP_SIDE.home) {
+		return home;
+	}
+
+	if (favoriteSide === MATCHUP_SIDE.away) {
+		return away;
+	}
+
+	return null;
+}
+
+export function MatchupAnalysisPanel({
+	analysis,
+	home,
+	away,
+	footer = null,
 }: {
-	fieldWins: { home: number; away: number };
+	analysis: MatchupAnalysis;
+	home: MatchupAnalysisTeamView;
+	away: MatchupAnalysisTeamView;
+	footer?: ReactNode;
 }) {
+	const favoriteTeam = favoriteTeamView(analysis.favoriteSide, home, away);
+	const favoriteColor = favoriteTeam?.color ?? null;
+	const favoriteBorder = eventTeamBorderStyle(favoriteColor);
+	const favoriteNameStyle =
+		favoriteColor === null ? undefined : { color: favoriteColor };
+
 	return (
-		<>
-			{" "}
-			({fieldWins.home}×{fieldWins.away} campos)
-		</>
+		<div className="space-y-3">
+			<div
+				className="rounded-lg border-2 border-pitch/30 bg-transparent p-3 text-center"
+				style={favoriteBorder}
+			>
+				<p className="text-xs font-medium uppercase tracking-wide text-fg-muted">
+					{MATCHUP_LABEL.favoriteByRating}
+				</p>
+				<p
+					className="mt-1 text-base font-semibold text-pitch"
+					style={favoriteNameStyle}
+				>
+					{sideTitle(analysis.favoriteSide, home, away)}
+				</p>
+				<p className="mt-1 text-xs text-fg-muted">
+					{matchupBalanceLabel(analysis.balanceLevel)}
+				</p>
+			</div>
+
+			<div>
+				<div className="mb-1 grid grid-cols-[7rem_1fr_1fr_2rem] gap-2 text-[0.65rem] font-medium uppercase tracking-wide text-fg-subtle sm:grid-cols-[8rem_1fr_1fr_2.5rem] sm:text-xs">
+					<span />
+					<span className="truncate">{home.title}</span>
+					<span className="truncate">{away.title}</span>
+					<span className="text-center">±</span>
+				</div>
+				<ul className="space-y-1.5">
+					{analysis.metrics
+						.filter((metric) => metric.key !== MATCHUP_METRIC.rating)
+						.map((metric) => (
+							<MetricRow
+								key={metric.key}
+								metric={metric}
+								homeTitle={home.title}
+								awayTitle={away.title}
+							/>
+						))}
+				</ul>
+			</div>
+
+			<div>
+				<p className="mb-1 text-xs font-semibold uppercase tracking-wide text-fg-muted">
+					{MATCHUP_LABEL.attackFactor}
+				</p>
+				<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+					<AttackCard
+						title={home.title}
+						color={home.color}
+						detail={analysis.home}
+					/>
+					<AttackCard
+						title={away.title}
+						color={away.color}
+						detail={analysis.away}
+					/>
+				</div>
+			</div>
+
+			<div>
+				<p className="mb-1 text-xs font-semibold uppercase tracking-wide text-fg-muted">
+					{MATCHUP_LABEL.defenseFactor}
+				</p>
+				<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+					<DefenseCard
+						title={home.title}
+						color={home.color}
+						detail={analysis.home}
+					/>
+					<DefenseCard
+						title={away.title}
+						color={away.color}
+						detail={analysis.away}
+					/>
+				</div>
+			</div>
+
+			{matchupHasKeyPlayers(analysis.keyPlayers) && (
+				<KeyPlayersSection
+					home={home}
+					away={away}
+					keyPlayers={analysis.keyPlayers}
+				/>
+			)}
+
+			<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+				<FactorBlock
+					title={MATCHUP_LABEL.decisive}
+					factor={analysis.decisiveFactor}
+					analysis={analysis}
+					home={home}
+					away={away}
+				/>
+				<FactorBlock
+					title={MATCHUP_LABEL.warning}
+					factor={analysis.warningFactor}
+					analysis={analysis}
+					home={home}
+					away={away}
+				/>
+			</div>
+
+			{footer}
+		</div>
 	);
 }
 
@@ -343,11 +687,6 @@ export function EventMatchupAnalysis({
 				<h2 className="text-base font-semibold text-fg sm:text-lg">
 					{MATCHUP_LABEL.title}
 				</h2>
-				{analysis && (
-					<p className="text-xs text-fg-muted sm:text-sm">
-						{matchupBalanceLabel(analysis.balanceLevel)}
-					</p>
-				)}
 			</header>
 
 			{showPicker && (
@@ -412,172 +751,7 @@ export function EventMatchupAnalysis({
 			)}
 
 			{analysis && (
-				<>
-					<div className="rounded-lg border border-pitch/30 bg-pitch/5 p-3 text-center">
-						<p className="text-xs font-medium uppercase tracking-wide text-fg-muted">
-							{MATCHUP_LABEL.favoriteByFields}
-						</p>
-						<p className="mt-1 text-base font-semibold text-fg">
-							{sideTitle(analysis.favoriteSide, home, away)}
-						</p>
-						<p className="mt-1 text-sm tabular-nums text-fg-muted">
-							{MATCHUP_LABEL.rating}:{" "}
-							{formatMatchupRating(analysis.home.ratingAverage)} ×{" "}
-							{formatMatchupRating(analysis.away.ratingAverage)}
-							<FavoriteFieldWins fieldWins={analysis.fieldWins} />
-						</p>
-					</div>
-
-					<div>
-						<div className="mb-1 grid grid-cols-[7rem_1fr_1fr_2rem] gap-2 text-[0.65rem] font-medium uppercase tracking-wide text-fg-subtle sm:grid-cols-[8rem_1fr_1fr_2.5rem] sm:text-xs">
-							<span />
-							<span className="truncate">{home.title}</span>
-							<span className="truncate">{away.title}</span>
-							<span className="text-center">±</span>
-						</div>
-						<ul className="space-y-1.5">
-							{analysis.metrics.map((metric) => (
-								<MetricRow
-									key={metric.key}
-									metric={metric}
-									homeTitle={home.title}
-									awayTitle={away.title}
-								/>
-							))}
-						</ul>
-					</div>
-
-					<div>
-						<p className="mb-1 text-xs font-semibold uppercase tracking-wide text-fg-muted">
-							{MATCHUP_LABEL.attackFactor}
-						</p>
-						<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-							<AttackCard
-								title={home.title}
-								color={home.color}
-								detail={analysis.home}
-							/>
-							<AttackCard
-								title={away.title}
-								color={away.color}
-								detail={analysis.away}
-							/>
-						</div>
-					</div>
-
-					<div>
-						<p className="mb-1 text-xs font-semibold uppercase tracking-wide text-fg-muted">
-							{MATCHUP_LABEL.defenseFactor}
-						</p>
-						<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-							<DefenseCard
-								title={home.title}
-								color={home.color}
-								detail={analysis.home}
-							/>
-							<DefenseCard
-								title={away.title}
-								color={away.color}
-								detail={analysis.away}
-							/>
-						</div>
-					</div>
-
-					{(analysis.keyPlayers.scorer ||
-						analysis.keyPlayers.creator ||
-						analysis.keyPlayers.goalkeeper ||
-						analysis.keyPlayers.form ||
-						analysis.keyPlayers.cleanSheet ||
-						analysis.keyPlayers.goalsConceded) && (
-						<div className="rounded-lg border border-line p-3">
-							<p className="mb-2 text-sm font-semibold text-fg">
-								{MATCHUP_LABEL.keyPlayers}
-							</p>
-							<ul className="space-y-1">
-								{analysis.keyPlayers.scorer && (
-									<KeyPlayerRow
-										label={MATCHUP_LABEL.scorer}
-										name={analysis.keyPlayers.scorer.name}
-										value={analysis.keyPlayers.scorer.value}
-										formatValue={formatMatchupPerGame}
-									/>
-								)}
-								{analysis.keyPlayers.creator && (
-									<KeyPlayerRow
-										label={MATCHUP_LABEL.creator}
-										name={analysis.keyPlayers.creator.name}
-										value={analysis.keyPlayers.creator.value}
-										formatValue={formatMatchupPerGame}
-									/>
-								)}
-								{analysis.keyPlayers.goalkeeper && (
-									<KeyPlayerRow
-										label={MATCHUP_LABEL.bestGoalkeeper}
-										name={analysis.keyPlayers.goalkeeper.name}
-										value={analysis.keyPlayers.goalkeeper.value}
-										formatValue={formatMatchupPerGame}
-									/>
-								)}
-								{analysis.keyPlayers.cleanSheet && (
-									<KeyPlayerRow
-										label={MATCHUP_LABEL.cleanSheetPlayer}
-										name={analysis.keyPlayers.cleanSheet.name}
-										value={analysis.keyPlayers.cleanSheet.value}
-										formatValue={formatMatchupPercent}
-									/>
-								)}
-								{analysis.keyPlayers.goalsConceded && (
-									<KeyPlayerRow
-										label={MATCHUP_LABEL.defensePlayer}
-										name={analysis.keyPlayers.goalsConceded.name}
-										value={analysis.keyPlayers.goalsConceded.value}
-										formatValue={formatMatchupPerGame}
-									/>
-								)}
-								{analysis.keyPlayers.form && (
-									<KeyPlayerRow
-										label={MATCHUP_LABEL.formPlayer}
-										name={analysis.keyPlayers.form.name}
-										value={analysis.keyPlayers.form.value}
-										formatValue={formatMatchupPercent}
-									/>
-								)}
-							</ul>
-						</div>
-					)}
-
-					<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-						<FactorBlock
-							title={MATCHUP_LABEL.decisive}
-							factor={analysis.decisiveFactor}
-							analysis={analysis}
-							home={home}
-							away={away}
-						/>
-						<FactorBlock
-							title={MATCHUP_LABEL.warning}
-							factor={analysis.warningFactor}
-							analysis={analysis}
-							home={home}
-							away={away}
-						/>
-					</div>
-
-					<div className="rounded-lg border border-line p-3 text-sm">
-						<p className="font-semibold text-fg">{MATCHUP_LABEL.summary}</p>
-						<p className="mt-1 text-fg">{analysis.summary.favoriteLine}</p>
-						{analysis.summary.decisiveLine && (
-							<p className="mt-1 text-fg-muted">
-								{analysis.summary.decisiveLine}
-							</p>
-						)}
-						{analysis.summary.warningLine && (
-							<p className="mt-1 text-fg-muted">
-								{analysis.summary.warningLine}
-							</p>
-						)}
-					</div>
-				</>
+				<MatchupAnalysisPanel analysis={analysis} home={home} away={away} />
 			)}
 		</section>
 	);

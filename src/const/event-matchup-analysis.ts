@@ -136,6 +136,8 @@ export const MATCHUP_LABEL = {
 	defenseFactor: "Fator defensivo",
 	summary: "Resumo",
 	reviewTitle: "Análise pré-partida",
+	openAnalysis: "Análise do confronto",
+	hideAnalysis: "Ocultar análise",
 	reviewOutcome: "Favorito × resultado",
 	reviewHit: "Coincidiu",
 	reviewMiss: "Não coincidiu",
@@ -151,7 +153,7 @@ export const MATCHUP_LABEL = {
 	[MATCHUP_BALANCE.large]: "Grande vantagem",
 } as const;
 
-export const MATCHUP_SNAPSHOT_VERSION = 1 as const;
+export const MATCHUP_SNAPSHOT_VERSION = 2 as const;
 
 export const MATCHUP_REVIEW_OUTCOME = {
 	hit: "hit",
@@ -210,6 +212,15 @@ export type MatchupPlayerHighlight = {
 	side: MatchupSide;
 };
 
+export type MatchupTeamKeyPlayers = {
+	scorer: MatchupPlayerHighlight | null;
+	creator: MatchupPlayerHighlight | null;
+	goalkeeper: MatchupPlayerHighlight | null;
+	form: MatchupPlayerHighlight | null;
+	cleanSheet: MatchupPlayerHighlight | null;
+	goalsConceded: MatchupPlayerHighlight | null;
+};
+
 export type MatchupTeamDetail = {
 	ratingAverage: number;
 	goalsPerGame: number | null;
@@ -238,12 +249,8 @@ export type MatchupAnalysis = {
 	away: MatchupTeamDetail;
 	metrics: MatchupMetric[];
 	keyPlayers: {
-		scorer: MatchupPlayerHighlight | null;
-		creator: MatchupPlayerHighlight | null;
-		goalkeeper: MatchupPlayerHighlight | null;
-		form: MatchupPlayerHighlight | null;
-		cleanSheet: MatchupPlayerHighlight | null;
-		goalsConceded: MatchupPlayerHighlight | null;
+		home: MatchupTeamKeyPlayers;
+		away: MatchupTeamKeyPlayers;
 	};
 	decisiveFactor: MatchupMetricKey | typeof MATCHUP_SIDE.neutral;
 	warningFactor: MatchupMetricKey | typeof MATCHUP_SIDE.neutral;
@@ -1329,26 +1336,34 @@ function buildTeamDetail(
 	};
 }
 
-function buildKeyPlayers(
-	home: MatchupTeamInput,
-	away: MatchupTeamInput,
+function teamHasKeyPlayers(row: MatchupTeamKeyPlayers): boolean {
+	return (
+		row.scorer !== null ||
+		row.creator !== null ||
+		row.goalkeeper !== null ||
+		row.form !== null ||
+		row.cleanSheet !== null ||
+		row.goalsConceded !== null
+	);
+}
+
+export function matchupHasKeyPlayers(
+	keyPlayers: MatchupAnalysis["keyPlayers"],
+): boolean {
+	return (
+		teamHasKeyPlayers(keyPlayers.home) || teamHasKeyPlayers(keyPlayers.away)
+	);
+}
+
+function buildTeamKeyPlayers(
+	team: MatchupTeamInput,
+	side: MatchupSide,
 	events: readonly ChampionshipEvent[],
 	roster: readonly ChampionshipPlayer[],
-): MatchupAnalysis["keyPlayers"] {
-	const allIds = [...home.playerIds, ...away.playerIds];
-	const sideOf = (playerId: number): MatchupSide => {
-		if (home.playerIds.includes(playerId)) {
-			return MATCHUP_SIDE.home;
-		}
+): MatchupTeamKeyPlayers {
+	const playerIds = team.playerIds;
 
-		if (away.playerIds.includes(playerId)) {
-			return MATCHUP_SIDE.away;
-		}
-
-		return MATCHUP_SIDE.neutral;
-	};
-
-	const scorers = allIds.flatMap((playerId) => {
+	const scorers = playerIds.flatMap((playerId) => {
 		const agg = playerOffenseAggForAverage(events, playerId);
 		if (!agg) {
 			return [];
@@ -1365,12 +1380,12 @@ function buildKeyPlayers(
 				name: playerVisibleName(player),
 				value: rosterAverage(agg.goals, agg.matches),
 				label: MATCHUP_LABEL.scorer,
-				side: sideOf(playerId),
+				side,
 			},
 		];
 	});
 
-	const creators = allIds.flatMap((playerId) => {
+	const creators = playerIds.flatMap((playerId) => {
 		const agg = playerOffenseAggForAverage(events, playerId);
 		if (!agg) {
 			return [];
@@ -1387,12 +1402,12 @@ function buildKeyPlayers(
 				name: playerVisibleName(player),
 				value: rosterAverage(agg.assists, agg.matches),
 				label: MATCHUP_LABEL.creator,
-				side: sideOf(playerId),
+				side,
 			},
 		];
 	});
 
-	const goalkeepers = [home, away].flatMap((team) => {
+	const goalkeepers = (() => {
 		const goalkeeperId = team.goalkeeperId;
 		if (goalkeeperId === null) {
 			return [];
@@ -1414,14 +1429,14 @@ function buildKeyPlayers(
 				name: playerVisibleName(player),
 				value: rating,
 				label: MATCHUP_LABEL.bestGoalkeeper,
-				side: sideOf(goalkeeperId),
+				side,
 			},
 		];
-	});
+	})();
 
 	const formWindow = championshipTrendsEvents(events, MATCHUP_FORM_WINDOW);
 	const formRows = championshipRecentForm(
-		roster.filter((player) => allIds.includes(player.id)),
+		roster.filter((player) => playerIds.includes(player.id)),
 		formWindow,
 	);
 	const formHighlights = formRows.flatMap((row) => {
@@ -1435,12 +1450,12 @@ function buildKeyPlayers(
 				name: playerVisibleName(row.player),
 				value: row.rate,
 				label: MATCHUP_LABEL.formPlayer,
-				side: sideOf(row.player.id),
+				side,
 			},
 		];
 	});
 
-	const cleanSheets = allIds.flatMap((playerId) => {
+	const cleanSheets = playerIds.flatMap((playerId) => {
 		const agg = playerDefenseAgg(events, playerId);
 		if (!agg || agg.matches < MATCHUP_MIN_SAMPLE) {
 			return [];
@@ -1457,12 +1472,12 @@ function buildKeyPlayers(
 				name: playerVisibleName(player),
 				value: rosterAverage(agg.cleanSheets, agg.matches),
 				label: MATCHUP_LABEL.cleanSheetPlayer,
-				side: sideOf(playerId),
+				side,
 			},
 		];
 	});
 
-	const goalsConceded = allIds.flatMap((playerId) => {
+	const goalsConceded = playerIds.flatMap((playerId) => {
 		const agg = playerDefenseAgg(events, playerId);
 		if (!agg || agg.matches < MATCHUP_MIN_SAMPLE) {
 			return [];
@@ -1479,7 +1494,7 @@ function buildKeyPlayers(
 				name: playerVisibleName(player),
 				value: rosterAverage(agg.goalsAgainst, agg.matches),
 				label: MATCHUP_LABEL.defensePlayer,
-				side: sideOf(playerId),
+				side,
 			},
 		];
 	});
@@ -1491,6 +1506,18 @@ function buildKeyPlayers(
 		form: maxHighlight(formHighlights),
 		cleanSheet: maxHighlight(cleanSheets),
 		goalsConceded: minHighlight(goalsConceded),
+	};
+}
+
+function buildKeyPlayers(
+	home: MatchupTeamInput,
+	away: MatchupTeamInput,
+	events: readonly ChampionshipEvent[],
+	roster: readonly ChampionshipPlayer[],
+): MatchupAnalysis["keyPlayers"] {
+	return {
+		home: buildTeamKeyPlayers(home, MATCHUP_SIDE.home, events, roster),
+		away: buildTeamKeyPlayers(away, MATCHUP_SIDE.away, events, roster),
 	};
 }
 
