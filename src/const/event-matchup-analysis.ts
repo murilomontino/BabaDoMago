@@ -29,6 +29,7 @@ import {
 	formatRosterWinRate,
 	rosterAverage,
 	rosterSafeCount,
+	rosterWinRate,
 } from "./roster-stats.ts";
 
 export const MATCHUP_MIN_SAMPLE = SYNERGY_MIN_MATCHES;
@@ -134,12 +135,16 @@ export const MATCHUP_LABEL = {
 	reviewDraw: "Empate",
 	reviewNeutral: "Sem favorito claro",
 	reviewOpen: "Partida em andamento",
+	favoriteHitRate: "Favorito",
+	favoriteHitRateEmpty: "Sem favorito decretado",
 	[MATCHUP_BALANCE.extreme]: "Extremamente equilibrado",
 	[MATCHUP_BALANCE.balanced]: "Equilibrado",
 	[MATCHUP_BALANCE.slight]: "Leve vantagem",
 	[MATCHUP_BALANCE.clear]: "Vantagem clara",
 	[MATCHUP_BALANCE.large]: "Grande vantagem",
 } as const;
+
+export const MATCHUP_SNAPSHOT_VERSION = 1 as const;
 
 export const MATCHUP_REVIEW_OUTCOME = {
 	hit: "hit",
@@ -156,6 +161,17 @@ export type MatchupMatchReview = {
 	analysis: MatchupAnalysis;
 	outcome: MatchupReviewOutcome;
 	outcomeLabel: string;
+};
+
+export type MatchupSnapshot = {
+	version: typeof MATCHUP_SNAPSHOT_VERSION;
+	analysis: MatchupAnalysis;
+};
+
+export type MatchupFavoriteStats = {
+	decreed: number;
+	hits: number;
+	rate: number | null;
 };
 
 export type MatchupTeamInput = {
@@ -816,6 +832,169 @@ export function matchupFavoriteTeamId(
 	return awayTeamId;
 }
 
+export function buildMatchupSnapshot(
+	analysis: MatchupAnalysis,
+): MatchupSnapshot {
+	return {
+		version: MATCHUP_SNAPSHOT_VERSION,
+		analysis,
+	};
+}
+
+export function readMatchupSnapshot(raw: unknown): MatchupSnapshot | null {
+	if (!raw || typeof raw !== "object") {
+		return null;
+	}
+
+	const row = raw as Record<string, unknown>;
+	if (row.version !== MATCHUP_SNAPSHOT_VERSION) {
+		return null;
+	}
+
+	if (!row.analysis || typeof row.analysis !== "object") {
+		return null;
+	}
+
+	return {
+		version: MATCHUP_SNAPSHOT_VERSION,
+		analysis: row.analysis as MatchupAnalysis,
+	};
+}
+
+export function hasMatchupSnapshot(
+	match: Pick<ChampionshipEventMatch, "matchup_snapshot">,
+): boolean {
+	return match.matchup_snapshot != null;
+}
+
+export function matchFavoriteTeamId(
+	match: Pick<ChampionshipEventMatch, "favorite_team_id" | "matchup_snapshot">,
+): number | null | undefined {
+	if (!hasMatchupSnapshot(match)) {
+		return undefined;
+	}
+
+	return match.favorite_team_id ?? null;
+}
+
+export function eventMatchupFavoriteStats(
+	matches: readonly Pick<
+		ChampionshipEventMatch,
+		"favorite_team_id" | "favorite_won"
+	>[],
+): MatchupFavoriteStats {
+	const decreed = matches.filter((match) => match.favorite_team_id != null);
+	const hits = decreed.filter((match) => match.favorite_won === true).length;
+	const decreedCount = decreed.length;
+	if (decreedCount === 0) {
+		return { decreed: 0, hits: 0, rate: null };
+	}
+
+	return {
+		decreed: decreedCount,
+		hits,
+		rate: rosterWinRate(hits, decreedCount),
+	};
+}
+
+export function formatMatchupFavoriteHitRate(
+	stats: MatchupFavoriteStats,
+): string {
+	if (stats.rate === null) {
+		return MATCHUP_LABEL.favoriteHitRateEmpty;
+	}
+
+	return `${stats.hits}/${stats.decreed} · ${formatRosterWinRate(stats.rate)}`;
+}
+
+export function matchupFavoriteWonValue(
+	favoriteTeamId: number | null | undefined,
+	winnerTeamId: number | null,
+): boolean | null {
+	if (favoriteTeamId == null || winnerTeamId == null) {
+		return null;
+	}
+
+	return winnerTeamId === favoriteTeamId;
+}
+
+export function matchupTeamFromEventTeam(input: {
+	team: ChampionshipEventTeam;
+	attendanceByPlayer: ReadonlyMap<number, ChampionshipEventAttendance>;
+}): MatchupTeamInput {
+	const { team, attendanceByPlayer } = input;
+	const playerIds = team.players.map((row) => row.player_id);
+	const markedGkIds = team.players.flatMap((row) => {
+		const attendance = attendanceByPlayer.get(row.player_id);
+		if (attendance?.is_goalkeeper !== true) {
+			return [];
+		}
+
+		return [row.player_id];
+	});
+	const ratings = new Map(
+		team.players.map((row) => {
+			const attendance = attendanceByPlayer.get(row.player_id);
+			const isMarkedGk = attendance?.is_goalkeeper === true;
+			const rating = eventActivePlayerRating(
+				isMarkedGk,
+				attendance?.rating ?? 0,
+				attendance?.goalkeeper_rating ?? 0,
+			);
+			return [row.player_id, rating] as const;
+		}),
+	);
+
+	return {
+		teamKey: `event-team-${team.id}`,
+		title: eventTeamName(team.color, team.sort_order),
+		color: team.color,
+		playerIds,
+		goalkeeperId: matchupMarkedGoalkeeperId(playerIds, markedGkIds),
+		ratings,
+	};
+}
+
+export function buildStartMatchMatchup(input: {
+	teamA: ChampionshipEventTeam;
+	teamB: ChampionshipEventTeam;
+	attendance: readonly ChampionshipEventAttendance[];
+	historyEvents: readonly ChampionshipEvent[];
+	roster: readonly ChampionshipPlayer[];
+}): {
+	snapshot: MatchupSnapshot;
+	favoriteTeamId: number | null;
+	analysis: MatchupAnalysis;
+} {
+	const attendanceByPlayer = new Map(
+		input.attendance.map((row) => [row.player_id, row] as const),
+	);
+	const home = matchupTeamFromEventTeam({
+		team: input.teamA,
+		attendanceByPlayer,
+	});
+	const away = matchupTeamFromEventTeam({
+		team: input.teamB,
+		attendanceByPlayer,
+	});
+	const analysis = analyzeEventMatchup({
+		home,
+		away,
+		historyEvents: input.historyEvents,
+		roster: input.roster,
+	});
+
+	return {
+		analysis,
+		snapshot: buildMatchupSnapshot(analysis),
+		favoriteTeamId: matchupFavoriteTeamId(
+			analysis.favoriteSide,
+			input.teamA.id,
+			input.teamB.id,
+		),
+	};
+}
+
 export function matchupReviewOutcomeLabel(
 	outcome: MatchupReviewOutcome,
 ): string {
@@ -845,6 +1024,24 @@ export function analyzeMatchHistoryMatchup(input: {
 	historyEvents: readonly ChampionshipEvent[];
 	roster: readonly ChampionshipPlayer[];
 }): MatchupMatchReview | null {
+	const frozen = readMatchupSnapshot(input.match.matchup_snapshot);
+	if (frozen) {
+		const matchEnded = input.match.ended_at !== null;
+		const outcome = matchupReviewOutcome(
+			frozen.analysis.favoriteSide,
+			input.match.winner_team_id,
+			input.match.team_a_id,
+			input.match.team_b_id,
+			matchEnded,
+		);
+
+		return {
+			analysis: frozen.analysis,
+			outcome,
+			outcomeLabel: matchupReviewOutcomeLabel(outcome),
+		};
+	}
+
 	const lineupA = input.match.players.filter(
 		(row) => row.team_id === input.match.team_a_id,
 	);

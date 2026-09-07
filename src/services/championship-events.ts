@@ -22,7 +22,9 @@ import {
 import { supabase } from "@/lib/supabase";
 import {
 	mapUnknownRows,
+	optionalBoolean,
 	optionalNumber,
+	optionalRecord,
 	optionalString,
 } from "@/lib/unknown-value";
 import type {
@@ -114,6 +116,9 @@ const EVENT_DETAIL_COLUMNS = `${EVENT_LIST_COLUMNS},
 		started_at,
 		paused_at,
 		pause_accumulated_seconds,
+		matchup_snapshot,
+		favorite_team_id,
+		favorite_won,
 		championship_event_match_players (
 			id,
 			match_id,
@@ -354,6 +359,9 @@ function asMatch(value: unknown): ChampionshipEventMatch {
 		started_at: optionalString(row.started_at),
 		paused_at: optionalString(row.paused_at),
 		pause_accumulated_seconds: Number(row.pause_accumulated_seconds ?? 0),
+		matchup_snapshot: optionalRecord(row.matchup_snapshot),
+		favorite_team_id: optionalNumber(row.favorite_team_id),
+		favorite_won: optionalBoolean(row.favorite_won),
 		players: [...players].sort((left, right) => {
 			if (left.team_id !== right.team_id) {
 				return left.team_id - right.team_id;
@@ -577,9 +585,7 @@ export async function ensureChampionshipPlayerNextRatingProjected(
 	}
 
 	const row =
-		data && typeof data === "object"
-			? (data as Record<string, unknown>)
-			: {};
+		data && typeof data === "object" ? (data as Record<string, unknown>) : {};
 	const projectedRaw = row.projected;
 	const projected =
 		projectedRaw === null || projectedRaw === undefined
@@ -588,9 +594,7 @@ export async function ensureChampionshipPlayerNextRatingProjected(
 	const source = row.source === "attendance" ? "attendance" : "player";
 	const eventIdRaw = row.event_id;
 	const eventId =
-		eventIdRaw === null || eventIdRaw === undefined
-			? null
-			: Number(eventIdRaw);
+		eventIdRaw === null || eventIdRaw === undefined ? null : Number(eventIdRaw);
 
 	return {
 		projected: Number.isFinite(projected) ? projected : null,
@@ -724,12 +728,16 @@ export async function startChampionshipEventMatch(
 	teamAId: number,
 	teamBId: number,
 	durationSeconds: number,
+	matchupSnapshot: Json | null = null,
+	favoriteTeamId: number | null = null,
 ): Promise<number> {
 	const { data, error } = await supabase.rpc("start_championship_event_match", {
 		event_id: eventId,
 		team_a_id: teamAId,
 		team_b_id: teamBId,
 		duration_seconds: durationSeconds,
+		p_matchup_snapshot: matchupSnapshot,
+		p_favorite_team_id: favoriteTeamId,
 	});
 
 	if (error) {

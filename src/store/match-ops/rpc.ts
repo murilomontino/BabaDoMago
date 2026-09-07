@@ -22,6 +22,7 @@ import {
 	undoChampionshipEventGoal,
 	updateChampionshipEventTeam,
 } from "@/services/championship-events";
+import type { Json } from "@/types/database.types";
 
 export async function runBoundMatchOpRpc(
 	_eventId: number,
@@ -64,6 +65,8 @@ export async function runBoundMatchOpRpc(
 				op.teamAId,
 				op.teamBId,
 				op.durationSeconds,
+				op.matchupSnapshot as Json | null,
+				op.favoriteTeamId,
 			);
 		case MATCH_OP.updateTeam:
 			await updateChampionshipEventTeam(op.teamId, {

@@ -14,6 +14,14 @@ export function optionalNumber(value: unknown): number | null {
 	return value;
 }
 
+export function optionalBoolean(value: unknown): boolean | null {
+	if (typeof value !== "boolean") {
+		return null;
+	}
+
+	return value;
+}
+
 export function optionalRecord(value: unknown): Record<string, unknown> | null {
 	if (value === null || typeof value !== "object") {
 		return null;

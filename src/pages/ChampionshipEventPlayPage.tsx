@@ -134,7 +134,7 @@ export function ChampionshipEventPlayPage() {
 						opsError={opsError}
 						pendingOps={matchOps.length}
 						clockError={clockError}
-						onStart={(teamAId, teamBId, durationMinutes) => {
+						onStart={(teamAId, teamBId, durationMinutes, matchup) => {
 							dispatch(
 								requestMatchOp(event.id, {
 									kind: MATCH_OP.startMatch,
@@ -142,6 +142,8 @@ export function ChampionshipEventPlayPage() {
 									teamAId,
 									teamBId,
 									durationSeconds: matchDurationSeconds(durationMinutes),
+									matchupSnapshot: matchup.snapshot,
+									favoriteTeamId: matchup.favoriteTeamId,
 								}),
 							);
 						}}

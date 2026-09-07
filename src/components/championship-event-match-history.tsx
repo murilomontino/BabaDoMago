@@ -1,4 +1,4 @@
-import { Handshake, X } from "lucide-react";
+import { Handshake, Star, X } from "lucide-react";
 import { EventTeamChip } from "@/components/event-team-player";
 import { GoalIcon } from "@/components/goal-icon";
 import { GoalkeeperGlovesIcon } from "@/components/goalkeeper-gloves-icon";
@@ -25,12 +25,16 @@ import {
 import { resolveRosterPlayer } from "@/const/championship-event-roster";
 import {
 	analyzeMatchHistoryMatchup,
+	eventMatchupFavoriteStats,
+	formatMatchupFavoriteHitRate,
 	formatMatchupMetricValue,
 	formatMatchupRating,
 	MATCHUP_LABEL,
 	MATCHUP_REVIEW_OUTCOME,
 	type MatchupMatchReview,
 	type MatchupReviewOutcome,
+	matchFavoriteTeamId,
+	matchupFavoriteTeamId,
 	matchupMetricLabel,
 } from "@/const/event-matchup-analysis";
 import { PLAYER_LABEL, playerVisibleName } from "@/const/player-name";
@@ -263,6 +267,20 @@ function MatchHistoryCard({
 		return null;
 	}
 
+	const frozenFavoriteId = matchFavoriteTeamId(match);
+	const liveFavoriteId =
+		review === null
+			? null
+			: matchupFavoriteTeamId(
+					review.analysis.favoriteSide,
+					match.team_a_id,
+					match.team_b_id,
+				);
+	const favoriteTeamId =
+		frozenFavoriteId === undefined ? liveFavoriteId : frozenFavoriteId;
+	const teamAFavorite = favoriteTeamId === match.team_a_id;
+	const teamBFavorite = favoriteTeamId === match.team_b_id;
+
 	const playedA = matchTeamPlayers(match.players, match.team_a_id);
 	const playedB = matchTeamPlayers(match.players, match.team_b_id);
 	const teamAIds = new Set(playedA.map((player) => player.player_id));
@@ -283,14 +301,26 @@ function MatchHistoryCard({
 	const body = (
 		<>
 			<div className={MATCH_GOAL_TIMELINE_GRID_CLASS}>
-				<div className="flex min-w-0 justify-end">
+				<div className="flex min-w-0 items-center justify-end gap-1">
+					{teamAFavorite && (
+						<Star
+							aria-label={MATCHUP_LABEL.favoriteByFields}
+							className="size-3.5 shrink-0 fill-amber-400 text-amber-400"
+						/>
+					)}
 					<EventTeamChip color={teamA.color} sortOrder={teamA.sort_order} />
 				</div>
 				<p className="text-2xl font-semibold tabular-nums text-fg">
 					{formatMatchScore(score.teamA, score.teamB)}
 				</p>
-				<div className="flex min-w-0 justify-start">
+				<div className="flex min-w-0 items-center justify-start gap-1">
 					<EventTeamChip color={teamB.color} sortOrder={teamB.sort_order} />
+					{teamBFavorite && (
+						<Star
+							aria-label={MATCHUP_LABEL.favoriteByFields}
+							className="size-3.5 shrink-0 fill-amber-400 text-amber-400"
+						/>
+					)}
 				</div>
 				<div className="col-span-3 flex items-center justify-center gap-2">
 					{open && <span className={CHIP_CLASS}>{EVENT_MATCH_LABEL.open}</span>}
@@ -392,12 +422,22 @@ export function ChampionshipEventMatchHistory({
 }: ChampionshipEventMatchHistoryProps) {
 	const teamById = new Map(teams.map((team) => [team.id, team]));
 	const hasOpenMatch = openEventMatch(matches) !== null;
+	const favoriteStats = eventMatchupFavoriteStats(matches);
+	const favoriteHitCaption =
+		favoriteStats.decreed > 0
+			? formatMatchupFavoriteHitRate(favoriteStats)
+			: null;
 
 	return (
 		<div>
 			<p className="mb-1 text-xs font-medium uppercase tracking-wide text-fg-muted">
 				{EVENT_SECTION_LABEL.matches}
 			</p>
+			{favoriteHitCaption && (
+				<p className="mb-2 text-sm font-medium tabular-nums text-fg">
+					{MATCHUP_LABEL.favoriteHitRate}: {favoriteHitCaption}
+				</p>
+			)}
 			{matches.length === 0 && (
 				<p className="text-sm text-fg-muted">{EVENT_MATCH_LABEL.none}</p>
 			)}

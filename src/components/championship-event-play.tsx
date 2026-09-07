@@ -99,7 +99,12 @@ import { resolveEventPlayers } from "@/const/championship-event-roster";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
 import {
 	analyzeMatchHistoryMatchup,
+	buildStartMatchMatchup,
+	eventMatchupFavoriteStats,
+	formatMatchupFavoriteHitRate,
 	MATCHUP_LABEL,
+	type MatchupSnapshot,
+	matchFavoriteTeamId,
 	matchupFavoriteTeamId,
 } from "@/const/event-matchup-analysis";
 import {
@@ -277,7 +282,15 @@ type ChampionshipEventPlayProps = {
 	opsError: string | null;
 	pendingOps: number;
 	clockError: string | null;
-	onStart: (teamAId: number, teamBId: number, durationMinutes: number) => void;
+	onStart: (
+		teamAId: number,
+		teamBId: number,
+		durationMinutes: number,
+		matchup: {
+			snapshot: MatchupSnapshot;
+			favoriteTeamId: number | null;
+		},
+	) => void;
 	onSetPlayer: (
 		teamId: number,
 		slot: number,
@@ -1130,7 +1143,23 @@ export function ChampionshipEventPlay({
 									return;
 								}
 
-								void onStart(teamAId, teamBId, durationMinutes);
+								const teamA = teamById.get(teamAId);
+								const teamB = teamById.get(teamBId);
+								if (!teamA || !teamB) {
+									return;
+								}
+
+								const matchup = buildStartMatchMatchup({
+									teamA,
+									teamB,
+									attendance: event.attendance,
+									historyEvents,
+									roster: players,
+								});
+								void onStart(teamAId, teamBId, durationMinutes, {
+									snapshot: matchup.snapshot,
+									favoriteTeamId: matchup.favoriteTeamId,
+								});
 							}}
 						>
 							{EVENT_ACTION.startMatch}
@@ -1189,7 +1218,8 @@ export function ChampionshipEventPlay({
 		historyEvents,
 		roster: players,
 	});
-	const favoriteTeamId =
+	const frozenFavoriteId = matchFavoriteTeamId(match);
+	const liveFavoriteId =
 		matchupReview === null
 			? null
 			: matchupFavoriteTeamId(
@@ -1197,8 +1227,15 @@ export function ChampionshipEventPlay({
 					match.team_a_id,
 					match.team_b_id,
 				);
+	const favoriteTeamId =
+		frozenFavoriteId === undefined ? liveFavoriteId : frozenFavoriteId;
 	const teamAFavorite = favoriteTeamId === match.team_a_id;
 	const teamBFavorite = favoriteTeamId === match.team_b_id;
+	const favoriteStats = eventMatchupFavoriteStats(event.matches);
+	const favoriteHitCaption =
+		favoriteStats.decreed > 0
+			? formatMatchupFavoriteHitRate(favoriteStats)
+			: null;
 
 	const teamAIds = new Set(
 		match.players
@@ -1288,6 +1325,11 @@ export function ChampionshipEventPlay({
 	return (
 		<div className="relative flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden">
 			{showQueueBanner && <MatchOpsQueueBanner online={online} />}
+			{favoriteHitCaption && (
+				<p className="shrink-0 text-center text-xs font-medium tabular-nums text-fg-muted">
+					{MATCHUP_LABEL.favoriteHitRate}: {favoriteHitCaption}
+				</p>
+			)}
 			<MatchTeamBlock
 				color={teamA.color}
 				sortOrder={teamA.sort_order}

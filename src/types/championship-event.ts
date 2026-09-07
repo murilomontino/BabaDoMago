@@ -94,6 +94,9 @@ export type ChampionshipEventMatch = {
 	started_at: string | null;
 	paused_at: string | null;
 	pause_accumulated_seconds: number;
+	matchup_snapshot?: unknown;
+	favorite_team_id?: number | null;
+	favorite_won?: boolean | null;
 	players: ChampionshipEventMatchPlayer[];
 	goals: ChampionshipEventGoal[];
 };

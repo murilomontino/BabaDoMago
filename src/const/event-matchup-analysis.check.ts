@@ -8,7 +8,10 @@ import type {
 } from "../types/championship-event.ts";
 import {
 	analyzeEventMatchup,
+	buildMatchupSnapshot,
 	defaultMatchupPairKeys,
+	eventMatchupFavoriteStats,
+	formatMatchupFavoriteHitRate,
 	MATCHUP_BALANCE,
 	MATCHUP_METRIC,
 	MATCHUP_MIN_SAMPLE,
@@ -16,11 +19,13 @@ import {
 	MATCHUP_SIDE,
 	type MatchupMetric,
 	type MatchupTeamInput,
+	matchFavoriteTeamId,
 	matchupAdvantage,
 	matchupBalanceLevel,
 	matchupDecisiveFactor,
 	matchupFavoriteSideFromFields,
 	matchupFavoriteTeamId,
+	matchupFavoriteWonValue,
 	matchupHistoryEvents,
 	matchupMarkedGoalkeeperId,
 	matchupRelativeGap,
@@ -29,6 +34,7 @@ import {
 	matchupTeamsFromBuilderTeams,
 	matchupTeamsFromShareCards,
 	matchupWarningFactor,
+	readMatchupSnapshot,
 	teamAssistsPerGame,
 	teamCleanSheetRate,
 	teamGoalsConcededPerGame,
@@ -884,5 +890,52 @@ check(
 	noPresenceMark.goalkeeperId === null,
 	"no attendance GK mark → no GK advantage",
 );
+
+const hitStats = eventMatchupFavoriteStats([
+	{ favorite_team_id: 10, favorite_won: true },
+	{ favorite_team_id: 20, favorite_won: true },
+	{ favorite_team_id: 10, favorite_won: true },
+	{ favorite_team_id: 20, favorite_won: true },
+	{ favorite_team_id: 10, favorite_won: true },
+	{ favorite_team_id: 20, favorite_won: false },
+	{ favorite_team_id: null, favorite_won: null },
+]);
+check(hitStats.decreed === 6, "decreed counts favorites");
+check(hitStats.hits === 5, "hits count favorite wins");
+check(nearly(hitStats.rate ?? 0, 5 / 6), "hit rate 5/6");
+check(
+	formatMatchupFavoriteHitRate(hitStats) === "5/6 · 83%",
+	"favorite hit caption",
+);
+check(
+	eventMatchupFavoriteStats([{ favorite_team_id: null, favorite_won: null }])
+		.rate === null,
+	"no decreed → empty rate",
+);
+
+const snap = buildMatchupSnapshot(analysis);
+const roundTrip = readMatchupSnapshot(snap);
+check(
+	roundTrip?.analysis.favoriteSide === analysis.favoriteSide,
+	"snapshot round-trip",
+);
+check(
+	matchFavoriteTeamId({
+		matchup_snapshot: snap,
+		favorite_team_id: 10,
+	}) === 10,
+	"frozen favorite id",
+);
+check(
+	matchFavoriteTeamId({
+		matchup_snapshot: null,
+		favorite_team_id: 10,
+	}) === undefined,
+	"no snapshot → undefined favorite",
+);
+check(matchupFavoriteWonValue(10, 10) === true, "favorite won");
+check(matchupFavoriteWonValue(10, 20) === false, "favorite lost");
+check(matchupFavoriteWonValue(null, 10) === null, "no favorite → null won");
+check(matchupFavoriteWonValue(10, null) === null, "draw → null won");
 
 console.log("event-matchup-analysis.check.ts ok");

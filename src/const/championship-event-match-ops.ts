@@ -17,6 +17,8 @@ import {
 	matchWinnerTeamId,
 	openEventMatch,
 } from "./championship-event-match.ts";
+import type { MatchupSnapshot } from "./event-matchup-analysis.ts";
+import { matchupFavoriteWonValue } from "./event-matchup-analysis.ts";
 import type { EventTeamColor } from "./event-team-color.ts";
 
 export const MATCH_OP = {
@@ -76,6 +78,8 @@ export type MatchOpDraft =
 			teamAId: number;
 			teamBId: number;
 			durationSeconds: number;
+			matchupSnapshot: MatchupSnapshot | null;
+			favoriteTeamId: number | null;
 	  }
 	| {
 			kind: typeof MATCH_OP.updateTeam;
@@ -450,6 +454,9 @@ function applyStartMatch(
 		started_at: null,
 		paused_at: null,
 		pause_accumulated_seconds: 0,
+		matchup_snapshot: op.matchupSnapshot,
+		favorite_team_id: op.favoriteTeamId,
+		favorite_won: null,
 		players: [...teamAPlayers, ...teamBPlayers],
 		goals: [],
 	};
@@ -563,15 +570,17 @@ function applyEndMatch(
 			.map((player) => player.player_id),
 	);
 	const score = matchScore(match.goals, teamAIds);
+	const winnerTeamId = matchWinnerTeamId(
+		match.team_a_id,
+		match.team_b_id,
+		score.teamA,
+		score.teamB,
+	);
 	const next: ChampionshipEventMatch = {
 		...match,
 		ended_at: op.createdAt,
-		winner_team_id: matchWinnerTeamId(
-			match.team_a_id,
-			match.team_b_id,
-			score.teamA,
-			score.teamB,
-		),
+		winner_team_id: winnerTeamId,
+		favorite_won: matchupFavoriteWonValue(match.favorite_team_id, winnerTeamId),
 	};
 
 	return {
