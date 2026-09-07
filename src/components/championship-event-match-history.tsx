@@ -23,10 +23,21 @@ import {
 	openEventMatch,
 } from "@/const/championship-event-match";
 import { resolveRosterPlayer } from "@/const/championship-event-roster";
+import {
+	analyzeMatchHistoryMatchup,
+	formatMatchupRating,
+	MATCHUP_LABEL,
+	MATCHUP_REVIEW_OUTCOME,
+	type MatchupMatchReview,
+	type MatchupReviewOutcome,
+	matchupMetricLabel,
+} from "@/const/event-matchup-analysis";
 import { PLAYER_LABEL, playerVisibleName } from "@/const/player-name";
 import { CARD_CLASS, CHIP_CLASS } from "@/const/ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type {
+	ChampionshipEvent,
+	ChampionshipEventAttendance,
 	ChampionshipEventMatch,
 	ChampionshipEventMatchPlayer,
 	ChampionshipEventTeam,
@@ -36,11 +47,71 @@ type ChampionshipEventMatchHistoryProps = {
 	matches: readonly ChampionshipEventMatch[];
 	teams: readonly ChampionshipEventTeam[];
 	rosterById: ReadonlyMap<number, ChampionshipPlayer>;
+	roster: readonly ChampionshipPlayer[];
+	attendance: readonly ChampionshipEventAttendance[];
+	historyEvents: readonly ChampionshipEvent[];
 	showMatchDelete: boolean;
 	eventEnded: boolean;
 	onOpenMatch: (match: ChampionshipEventMatch) => void;
 	onRemoveMatch: (match: ChampionshipEventMatch) => void;
 };
+
+function reviewOutcomeChipClass(outcome: MatchupReviewOutcome): string {
+	if (outcome === MATCHUP_REVIEW_OUTCOME.hit) {
+		return `${CHIP_CLASS} bg-pitch/15 text-pitch`;
+	}
+
+	if (outcome === MATCHUP_REVIEW_OUTCOME.miss) {
+		return `${CHIP_CLASS} bg-danger-soft text-danger-fg`;
+	}
+
+	return CHIP_CLASS;
+}
+
+function MatchHistoryMatchupReview({ review }: { review: MatchupMatchReview }) {
+	const { analysis, outcome, outcomeLabel } = review;
+	const decisive =
+		analysis.decisiveFactor === "neutral"
+			? null
+			: matchupMetricLabel(analysis.decisiveFactor);
+	const warning =
+		analysis.warningFactor === "neutral"
+			? null
+			: matchupMetricLabel(analysis.warningFactor);
+
+	return (
+		<div className="mt-3 space-y-1.5 border-t border-line pt-2 text-xs text-fg-muted">
+			<p className="font-medium text-fg">{MATCHUP_LABEL.reviewTitle}</p>
+			<p className="text-fg">{analysis.summary.favoriteLine}</p>
+			<p className="tabular-nums">
+				{MATCHUP_LABEL.rating}: {formatMatchupRating(analysis.home.ratingSum)} ×{" "}
+				{formatMatchupRating(analysis.away.ratingSum)}
+			</p>
+			{decisive && (
+				<p>
+					{MATCHUP_LABEL.decisive}: {decisive}
+				</p>
+			)}
+			{warning && (
+				<p>
+					{MATCHUP_LABEL.warning}: {warning}
+				</p>
+			)}
+			{analysis.summary.decisiveLine && (
+				<p className="text-fg-muted">{analysis.summary.decisiveLine}</p>
+			)}
+			{analysis.summary.warningLine && (
+				<p className="text-fg-muted">{analysis.summary.warningLine}</p>
+			)}
+			<div className="flex flex-wrap items-center gap-2 pt-0.5">
+				<span className="font-medium text-fg">
+					{MATCHUP_LABEL.reviewOutcome}
+				</span>
+				<span className={reviewOutcomeChipClass(outcome)}>{outcomeLabel}</span>
+			</div>
+		</div>
+	);
+}
 
 function MatchLineupPlayer({
 	row,
@@ -113,6 +184,9 @@ function MatchHistoryCard({
 	match,
 	teamById,
 	rosterById,
+	roster,
+	attendance,
+	historyEvents,
 	showMatchDelete,
 	canOpenMatch,
 	onOpenMatch,
@@ -121,13 +195,28 @@ function MatchHistoryCard({
 	match: ChampionshipEventMatch;
 	teamById: ReadonlyMap<number, ChampionshipEventTeam>;
 	rosterById: ReadonlyMap<number, ChampionshipPlayer>;
+	roster: readonly ChampionshipPlayer[];
+	attendance: readonly ChampionshipEventAttendance[];
+	historyEvents: readonly ChampionshipEvent[];
 	showMatchDelete: boolean;
 	canOpenMatch: boolean;
 	onOpenMatch: (match: ChampionshipEventMatch) => void;
 	onRemoveMatch: (match: ChampionshipEventMatch) => void;
 }) {
-	const teamA = teamById.get(match.team_a_id);
-	const teamB = teamById.get(match.team_b_id);
+	const teamA = teamById.get(match.team_a_id) ?? null;
+	const teamB = teamById.get(match.team_b_id) ?? null;
+	const review =
+		teamA && teamB
+			? analyzeMatchHistoryMatchup({
+					match,
+					teamA,
+					teamB,
+					attendance,
+					historyEvents,
+					roster,
+				})
+			: null;
+
 	if (!teamA || !teamB) {
 		return null;
 	}
@@ -209,6 +298,7 @@ function MatchHistoryCard({
 					</ul>
 				</div>
 			)}
+			{review && <MatchHistoryMatchupReview review={review} />}
 		</>
 	);
 
@@ -250,6 +340,9 @@ export function ChampionshipEventMatchHistory({
 	matches,
 	teams,
 	rosterById,
+	roster,
+	attendance,
+	historyEvents,
 	showMatchDelete,
 	eventEnded,
 	onOpenMatch,
@@ -276,6 +369,9 @@ export function ChampionshipEventMatchHistory({
 								match={match}
 								teamById={teamById}
 								rosterById={rosterById}
+								roster={roster}
+								attendance={attendance}
+								historyEvents={historyEvents}
 								showMatchDelete={showMatchDelete}
 								canOpenMatch={canOpenEventHistoryMatch(match, {
 									eventEnded,

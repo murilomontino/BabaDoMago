@@ -1,7 +1,8 @@
 import { LoaderCircle, Share2, Shuffle } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/button";
 import { EventAttendanceTable } from "@/components/event-attendance-table";
+import { EventMatchupAnalysis } from "@/components/event-matchup-analysis";
 import {
 	EVENT_TEAM_PLAYER_SLOT_CLASS,
 	EVENT_TEAM_POSITION_CHIP_CLASS,
@@ -36,12 +37,14 @@ import {
 	formatProjectedWinRate,
 	projectedFieldWinRates,
 } from "@/const/championship-match-projection";
+import { endedChampionshipHistoryEvents } from "@/const/championship-rating-history";
 import {
 	drawSimSeedWeekday,
 	EVENT_DRAW_SIM_LABEL,
 	EVENT_DRAW_SIM_MODE,
 	type EventDrawSimMode,
 } from "@/const/event-draw-sim";
+import { matchupTeamsFromBuilderTeams } from "@/const/event-matchup-analysis";
 import { eventTeamColorStyle, eventTeamName } from "@/const/event-team-color";
 import {
 	EVENT_TEAM_SHARE_LABEL,
@@ -196,6 +199,20 @@ export function ChampionshipEventDrawSim({
 	);
 	const hasTeams = builderTeamsHavePlayers(teams);
 	const busy = isDrawing || isSharing;
+	const matchupTeams = useMemo(
+		() =>
+			matchupTeamsFromBuilderTeams(
+				teams,
+				presentPlayers,
+				presentGoalkeeperIds,
+				eventDrawInputRating,
+			),
+		[teams, presentPlayers, presentGoalkeeperIds],
+	);
+	const matchupHistory = useMemo(
+		() => endedChampionshipHistoryEvents(seedEvents),
+		[seedEvents],
+	);
 
 	useEffect(() => {
 		return () => {
@@ -429,6 +446,14 @@ export function ChampionshipEventDrawSim({
 						));
 					})()}
 				</div>
+			)}
+
+			{hasTeams && (
+				<EventMatchupAnalysis
+					teams={matchupTeams}
+					historyEvents={matchupHistory}
+					roster={presentPlayers}
+				/>
 			)}
 
 			{isDrawing && (

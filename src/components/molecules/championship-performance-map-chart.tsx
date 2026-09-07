@@ -14,6 +14,8 @@ import {
 	formatPerformanceMapCount,
 	formatPerformanceMapDelta,
 	formatPerformanceMapGap,
+	formatPerformanceMapProjectedNext,
+	formatPerformanceMapProjectedStable,
 	formatPerformanceMapRate,
 	formatPerformanceMapRating,
 	PERFORMANCE_MAP_CHART,
@@ -60,6 +62,14 @@ function PerformanceMapTooltip({
 				{PERFORMANCE_MAP_LABEL.gap}: {formatPerformanceMapGap(point.gap)}
 			</p>
 			<p className="text-fg">{performanceMapGapReading(point)}</p>
+			<p className="mt-1 text-fg">
+				{PERFORMANCE_MAP_LABEL.projectedNext}:{" "}
+				{formatPerformanceMapProjectedNext(point)}
+			</p>
+			<p className="text-fg">
+				{PERFORMANCE_MAP_LABEL.projectedStable}:{" "}
+				{formatPerformanceMapProjectedStable(point)}
+			</p>
 			<p className="mt-1 text-fg-muted">
 				{PERFORMANCE_MAP_LABEL.state}: {performanceMapStateLabel(point.state)}
 			</p>

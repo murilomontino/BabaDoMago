@@ -8,11 +8,13 @@ import {
 	championshipPerformanceMapVisible,
 	formatPerformanceMapGap,
 	PERFORMANCE_MAP_GAP_READING,
+	PERFORMANCE_MAP_PROJECTED_STOP,
 	PERFORMANCE_MAP_STATE,
 	PERFORMANCE_MAP_WINDOW,
 	performanceMapEliteCutoff,
 	performanceMapEvents,
 	performanceMapGapReading,
+	performanceMapProjectRating,
 	performanceMapRatingMedian,
 	performanceMapStateReading,
 } from "./championship-performance-map.ts";
@@ -465,17 +467,31 @@ check(
 
 check(
 	performanceMapGapReading({
+		gap: 0.35,
+		state: PERFORMANCE_MAP_STATE.rising,
+	}) === PERFORMANCE_MAP_GAP_READING.drasticRise,
+	"gap drastic rise reading",
+);
+check(
+	performanceMapGapReading({
 		gap: 0.2,
 		state: PERFORMANCE_MAP_STATE.rising,
-	}) === PERFORMANCE_MAP_GAP_READING.strongAbove,
-	"gap strong above reading",
+	}) === PERFORMANCE_MAP_GAP_READING.strongRise,
+	"gap strong rise reading",
 );
 check(
 	performanceMapGapReading({
 		gap: -0.2,
 		state: PERFORMANCE_MAP_STATE.falling,
-	}) === PERFORMANCE_MAP_GAP_READING.strongBelow,
-	"gap strong below reading",
+	}) === PERFORMANCE_MAP_GAP_READING.strongDrop,
+	"gap strong drop reading",
+);
+check(
+	performanceMapGapReading({
+		gap: -0.35,
+		state: PERFORMANCE_MAP_STATE.falling,
+	}) === PERFORMANCE_MAP_GAP_READING.drasticDrop,
+	"gap drastic drop reading",
 );
 check(
 	performanceMapGapReading({
@@ -485,8 +501,99 @@ check(
 	"gap aligned reading",
 );
 check(
-	performanceMapStateReading(PERFORMANCE_MAP_STATE.falling).includes("abaixo"),
+	performanceMapStateReading(PERFORMANCE_MAP_STATE.falling).includes("queda"),
 	"state falling reading",
 );
+
+const dropProjection = performanceMapProjectRating({
+	rating: 7.4,
+	rate: 0.5,
+	matches: 6,
+	ceiling: 8,
+});
+check(dropProjection.projectedNext < 7.4, "negative gap next drops");
+check(
+	Math.abs(dropProjection.projectedStable - 4) < 1e-9,
+	"stable = rate × ceiling",
+);
+check(dropProjection.projectedRounds > 0, "drop needs rounds");
+check(
+	dropProjection.projectedStop === PERFORMANCE_MAP_PROJECTED_STOP.gapNeutral,
+	"drop stops at gap neutral",
+);
+check(
+	performanceMapGapReading({
+		gap: 0.5 - 7.4 / 8,
+		state: PERFORMANCE_MAP_STATE.falling,
+	}) === PERFORMANCE_MAP_GAP_READING.drasticDrop,
+	"reading matches drop direction",
+);
+
+const riseProjection = performanceMapProjectRating({
+	rating: 4.2,
+	rate: 0.7,
+	matches: 6,
+	ceiling: 8,
+});
+check(riseProjection.projectedNext > 4.2, "positive gap next rises");
+check(
+	Math.abs(riseProjection.projectedStable - 5.6) < 1e-9,
+	"rise stable = rate × ceiling",
+);
+check(
+	riseProjection.projectedStop === PERFORMANCE_MAP_PROJECTED_STOP.gapNeutral,
+	"rise stops at gap neutral",
+);
+
+const alignedProjection = performanceMapProjectRating({
+	rating: 4,
+	rate: 0.5,
+	matches: 4,
+	ceiling: 8,
+});
+check(alignedProjection.projectedNext === 4, "aligned next unchanged");
+check(alignedProjection.projectedStable === 4, "aligned stable unchanged");
+check(alignedProjection.projectedRounds === 0, "aligned rounds 0");
+check(
+	alignedProjection.projectedStop === PERFORMANCE_MAP_PROJECTED_STOP.gapNeutral,
+	"aligned stop gap neutral",
+);
+
+const fewProjection = performanceMapProjectRating({
+	rating: 6,
+	rate: 1,
+	matches: 2,
+	ceiling: 8,
+});
+check(fewProjection.projectedNextDelta === 0, "few matches delta 0");
+check(fewProjection.projectedNext === 6, "few matches next = rating");
+check(
+	fewProjection.projectedStop === PERFORMANCE_MAP_PROJECTED_STOP.unchanged,
+	"few matches unchanged",
+);
+
+const fallingPoint = risingMap.points.find((point) => point.playerId === 2);
+check(fallingPoint !== undefined, "falling point exists");
+if (fallingPoint) {
+	check(fallingPoint.gap < 0, "map falling gap negative");
+	check(
+		fallingPoint.projectedNext < fallingPoint.rating,
+		"map point next drops with gap",
+	);
+	check(
+		fallingPoint.projectedStable < fallingPoint.rating,
+		"map point stable below rating",
+	);
+}
+
+const risingPoint = risingMap.points.find((point) => point.playerId === 1);
+check(risingPoint !== undefined, "rising point exists");
+if (risingPoint) {
+	check(risingPoint.gap > 0, "map rising gap positive");
+	check(
+		risingPoint.projectedNext > risingPoint.rating,
+		"map point next rises with gap",
+	);
+}
 
 console.log("championship-performance-map ok");

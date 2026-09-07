@@ -85,6 +85,7 @@ import {
 	resolveRosterPlayer,
 } from "@/const/championship-event-roster";
 import { copyDrawLinkLabel, eventDrawUrl } from "@/const/event-draw-reveal";
+import { matchupHistoryEvents } from "@/const/event-matchup-analysis";
 import {
 	attendanceMvpPlayerIds,
 	EVENT_MVP_LABEL,
@@ -736,6 +737,9 @@ export function ChampionshipEventRoundTab({
 					matches={event.matches}
 					teams={event.teams}
 					rosterById={rosterById}
+					roster={players}
+					attendance={event.attendance}
+					historyEvents={matchupHistoryEvents(seedEvents, event)}
 					showMatchDelete={showMatchDelete}
 					eventEnded={ended}
 					onOpenMatch={(match) => {

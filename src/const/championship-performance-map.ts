@@ -65,12 +65,15 @@ export const PERFORMANCE_MAP_LABEL = {
 	subtitle: "Rating atual × aproveitamento recente",
 	hint: "Compara o nível atual do jogador com o aproveitamento da fórmula da nota. Elite = top 25% de nota + forma boa; No nível = ≥ mediana + forma boa. Linha vertical = mediana do rating no recorte.",
 	gapExplain:
-		"Gap = forma recente − nível relativo da nota (rating ÷ teto). Em pp (pontos percentuais): diferença entre as duas taxas. Positivo = forma acima da nota. Negativo = a nota sugere que ainda dá para render mais.",
+		"Gap = forma − (rating ÷ teto), em pp. Positivo: forma acima do nível → nota sobe até o Gap neutro. Negativo: forma abaixo → nota cai até o Gap neutro.",
+	projectExplain:
+		"Próxima = 1 passo (0,3) rumo ao Gap neutro. Estável = nota em que Gap zera (aproveitamento × teto). Não usa o Δ oficial da forma.",
 	empty: "Ninguém com jogos suficientes na janela",
 	filter: "Janela",
 	showFewMatches: "Mostrar poucos jogos",
 	showNames: "Mostrar nomes",
 	medianLegend: "Linha vertical = mediana do rating no recorte",
+	colorLegend: "Cores = estado",
 	rating: "Rating",
 	rate: "Aproveitamento",
 	matches: "Jogos",
@@ -79,7 +82,12 @@ export const PERFORMANCE_MAP_LABEL = {
 	losses: "D",
 	deltaRating: "Δ nota",
 	gap: "Gap",
-	gapHint: "Gap vs nível da nota",
+	gapHint: "Forma vs nível da nota",
+	projectedNext: "Próxima",
+	projectedNextHint: "Um passo rumo ao Gap neutro",
+	projectedStable: "Estável",
+	projectedStableHint: "Se mantiver até o Gap neutro",
+	projectedRounds: "Rodadas",
 	reading: "Leitura",
 	state: "Estado",
 	player: "Jogador",
@@ -98,40 +106,65 @@ export const PERFORMANCE_MAP_LABEL = {
 	[PERFORMANCE_MAP_WINDOW.month2]: "2 meses",
 } as const;
 
+export const PERFORMANCE_MAP_PROJECTED_STOP = {
+	gapNeutral: "gap_neutral",
+	unchanged: "unchanged",
+	cap: "cap",
+} as const;
+
+export type PerformanceMapProjectedStop =
+	(typeof PERFORMANCE_MAP_PROJECTED_STOP)[keyof typeof PERFORMANCE_MAP_PROJECTED_STOP];
+
+export const PERFORMANCE_MAP_PROJECTED_STOP_LABEL = {
+	[PERFORMANCE_MAP_PROJECTED_STOP.gapNeutral]:
+		"Gap neutro — forma alinhada ao nível da nota",
+	[PERFORMANCE_MAP_PROJECTED_STOP.unchanged]: "já estável",
+	[PERFORMANCE_MAP_PROJECTED_STOP.cap]: "limite de rodadas da projeção",
+} as const;
+
+/** Cap de rodadas no caminho até o Gap neutro. */
+// ponytail: passo 0,3 e teto 100 cabem em 40. Subir o cap se o passo diminuir.
+export const PERFORMANCE_MAP_PROJECT_MAX_ROUNDS = 40 as const;
+
 export const PERFORMANCE_MAP_GAP_READING = {
-	strongAbove:
-		"Forma bem acima da nota — está rendendo mais do que o nível sugere.",
-	above: "Forma um pouco acima da nota — fase melhor que o histórico.",
-	aligned: "Forma alinhada com a nota — desempenho no esperado.",
-	below: "Forma um pouco abaixo da nota — ainda dá para render mais.",
-	strongBelow:
-		"Forma bem abaixo da nota — este jogador pode desempenhar mais do que mostra agora.",
-	fewMatches: "Poucos jogos — Gap ainda é barulho.",
+	drasticRise: "A nota tende a subir drasticamente.",
+	strongRise: "A nota tende a subir muito.",
+	mildRise: "A nota tende a subir pouco.",
+	aligned: "A nota tende a se manter.",
+	mildDrop: "A nota tende a diminuir pouco.",
+	strongDrop: "A nota tende a diminuir muito.",
+	drasticDrop: "A nota tende a diminuir drasticamente.",
+	fewMatches: "Poucos jogos — ainda sem previsão firme.",
 	unrated: "Sem nota — Gap não se aplica.",
 } as const;
 
 export const PERFORMANCE_MAP_STATE_READING = {
 	[PERFORMANCE_MAP_STATE.rising]:
-		"Nota ainda abaixo da mediana, mas forma boa — candidato a subir.",
+		"Nota abaixo da mediana com forma boa — Gap aponta alta até alinhar.",
 	[PERFORMANCE_MAP_STATE.onLevel]:
-		"Nota na metade de cima e forma boa — está no próprio nível.",
+		"Nota na metade de cima com forma boa — Gap aponta alta até alinhar.",
 	[PERFORMANCE_MAP_STATE.elite]:
-		"Topo da liga (top 25% de nota) e forma boa — referência do recorte.",
+		"Topo da liga com forma boa — Gap aponta alta até alinhar.",
 	[PERFORMANCE_MAP_STATE.falling]:
-		"Nota alta com forma fraca — rende abaixo do que a nota promete.",
-	[PERFORMANCE_MAP_STATE.low]: "Nota e forma baixas — fase fraca no recorte.",
+		"Nota alta com forma fraca — Gap aponta queda até alinhar.",
+	[PERFORMANCE_MAP_STATE.low]:
+		"Nota e forma baixas — Gap aponta queda até alinhar.",
 	[PERFORMANCE_MAP_STATE.neutral]:
-		"Na zona morta — resultado estável, sem sinal forte.",
+		"Forma na zona morta do mapa — olhar Gap e projeção para o alinhamento.",
 	[PERFORMANCE_MAP_STATE.few_matches]:
-		"Menos de 3 jogos — cedo demais para classificar.",
+		"Menos de 3 jogos — cedo demais para prever.",
 	[PERFORMANCE_MAP_STATE.unrated]:
-		"Nota sentinela — ainda não entrou no mapa de nível.",
+		"Nota sentinela — ainda sem previsão de nível.",
 } as const;
 
-/** |gap| abaixo disso conta como alinhado (8 pp). */
+/** Passo da projeção rumo ao Gap neutro (0,3). */
+export const PERFORMANCE_MAP_DELTA_MILD = 0.3 as const;
+/** |gap| abaixo disso: alinhado / neutro (8 pp). */
 export const PERFORMANCE_MAP_GAP_ALIGNED = 0.08 as const;
-/** |gap| a partir disso conta como bem acima/abaixo (18 pp). */
+/** |gap| a partir disso: muito (18 pp). */
 export const PERFORMANCE_MAP_GAP_STRONG = 0.18 as const;
+/** |gap| a partir disso: drasticamente (30 pp). */
+export const PERFORMANCE_MAP_GAP_DRASTIC = 0.3 as const;
 /** Fração do elenco ranqueado que pode ser Elite (top 25%). */
 export const PERFORMANCE_MAP_ELITE_TOP_FRACTION = 0.25 as const;
 
@@ -145,6 +178,15 @@ export const PERFORMANCE_MAP_COLOR = {
 	[PERFORMANCE_MAP_STATE.few_matches]: "#cbd5e1",
 	[PERFORMANCE_MAP_STATE.unrated]: "#e2e8f0",
 } as const;
+
+export const PERFORMANCE_MAP_LEGEND_STATES = [
+	PERFORMANCE_MAP_STATE.rising,
+	PERFORMANCE_MAP_STATE.onLevel,
+	PERFORMANCE_MAP_STATE.elite,
+	PERFORMANCE_MAP_STATE.falling,
+	PERFORMANCE_MAP_STATE.low,
+	PERFORMANCE_MAP_STATE.neutral,
+] as const;
 
 export const PERFORMANCE_MAP_CHART = {
 	height: 320,
@@ -168,6 +210,8 @@ export const PERFORMANCE_MAP_CHART = {
 export const PERFORMANCE_MAP_COLUMN = {
 	player: "player",
 	rating: "rating",
+	projectedNext: "projectedNext",
+	projectedStable: "projectedStable",
 	rate: "rate",
 	matches: "matches",
 	gap: "gap",
@@ -189,6 +233,11 @@ export type PerformanceMapPoint = {
 	rate: number;
 	deltaRating: number;
 	gap: number;
+	projectedNext: number;
+	projectedNextDelta: number;
+	projectedStable: number;
+	projectedRounds: number;
+	projectedStop: PerformanceMapProjectedStop;
 	state: PerformanceMapState;
 	color: string;
 };
@@ -293,6 +342,12 @@ export function championshipPerformanceMap(
 				median,
 				eliteCutoff,
 			);
+			const projection = performanceMapProjectRating({
+				rating,
+				rate: row.rate,
+				matches: row.matches,
+				ceiling,
+			});
 
 			return {
 				playerId: row.player.id,
@@ -306,6 +361,11 @@ export function championshipPerformanceMap(
 				rate: row.rate,
 				deltaRating: row.ratingDeltaSum,
 				gap,
+				projectedNext: projection.projectedNext,
+				projectedNextDelta: projection.projectedNextDelta,
+				projectedStable: projection.projectedStable,
+				projectedRounds: projection.projectedRounds,
+				projectedStop: projection.projectedStop,
 				state,
 				color: PERFORMANCE_MAP_COLOR[state],
 			};
@@ -350,20 +410,28 @@ export function performanceMapGapReading(point: {
 		return PERFORMANCE_MAP_GAP_READING.unrated;
 	}
 
+	if (point.gap >= PERFORMANCE_MAP_GAP_DRASTIC) {
+		return PERFORMANCE_MAP_GAP_READING.drasticRise;
+	}
+
 	if (point.gap >= PERFORMANCE_MAP_GAP_STRONG) {
-		return PERFORMANCE_MAP_GAP_READING.strongAbove;
+		return PERFORMANCE_MAP_GAP_READING.strongRise;
 	}
 
 	if (point.gap >= PERFORMANCE_MAP_GAP_ALIGNED) {
-		return PERFORMANCE_MAP_GAP_READING.above;
+		return PERFORMANCE_MAP_GAP_READING.mildRise;
+	}
+
+	if (point.gap <= -PERFORMANCE_MAP_GAP_DRASTIC) {
+		return PERFORMANCE_MAP_GAP_READING.drasticDrop;
 	}
 
 	if (point.gap <= -PERFORMANCE_MAP_GAP_STRONG) {
-		return PERFORMANCE_MAP_GAP_READING.strongBelow;
+		return PERFORMANCE_MAP_GAP_READING.strongDrop;
 	}
 
 	if (point.gap <= -PERFORMANCE_MAP_GAP_ALIGNED) {
-		return PERFORMANCE_MAP_GAP_READING.below;
+		return PERFORMANCE_MAP_GAP_READING.mildDrop;
 	}
 
 	return PERFORMANCE_MAP_GAP_READING.aligned;
@@ -371,6 +439,81 @@ export function performanceMapGapReading(point: {
 
 export function performanceMapStateReading(state: PerformanceMapState): string {
 	return PERFORMANCE_MAP_STATE_READING[state];
+}
+
+export function performanceMapProjectedStopLabel(
+	stop: PerformanceMapProjectedStop,
+): string {
+	return PERFORMANCE_MAP_PROJECTED_STOP_LABEL[stop];
+}
+
+export type PerformanceMapProjection = {
+	projectedNext: number;
+	projectedNextDelta: number;
+	projectedStable: number;
+	projectedRounds: number;
+	projectedStop: PerformanceMapProjectedStop;
+};
+
+export function performanceMapProjectRating(input: {
+	rating: number;
+	rate: number;
+	matches: number;
+	ceiling: number;
+}): PerformanceMapProjection {
+	const { rating, rate, matches, ceiling } = input;
+
+	if (matches < EVENT_RATING_ADJUSTMENT.minMatches) {
+		return {
+			projectedNext: rating,
+			projectedNextDelta: 0,
+			projectedStable: rating,
+			projectedRounds: 0,
+			projectedStop: PERFORMANCE_MAP_PROJECTED_STOP.unchanged,
+		};
+	}
+
+	const safeCeiling = Math.max(ceiling, PLAYER_RATING.floor);
+	const gap = rate - rating / safeCeiling;
+	const target = clampProjectedRating(rate * safeCeiling);
+
+	if (Math.abs(gap) <= PERFORMANCE_MAP_GAP_ALIGNED) {
+		return {
+			projectedNext: rating,
+			projectedNextDelta: 0,
+			projectedStable: rating,
+			projectedRounds: 0,
+			projectedStop: PERFORMANCE_MAP_PROJECTED_STOP.gapNeutral,
+		};
+	}
+
+	const distance = target - rating;
+	const step = PERFORMANCE_MAP_DELTA_MILD;
+	const direction = Math.sign(distance);
+	const nextStep = Math.min(step, Math.abs(distance));
+	const projectedNext = clampProjectedRating(rating + direction * nextStep);
+	const projectedNextDelta = roundProjectedDelta(projectedNext - rating);
+	const rawRounds = Math.ceil(Math.abs(distance) / step);
+	const projectedRounds = Math.min(
+		PERFORMANCE_MAP_PROJECT_MAX_ROUNDS,
+		Math.max(1, rawRounds),
+	);
+	const hitCap = rawRounds > PERFORMANCE_MAP_PROJECT_MAX_ROUNDS;
+	const projectedStable = hitCap
+		? clampProjectedRating(
+				rating + direction * step * PERFORMANCE_MAP_PROJECT_MAX_ROUNDS,
+			)
+		: target;
+
+	return {
+		projectedNext,
+		projectedNextDelta,
+		projectedStable,
+		projectedRounds,
+		projectedStop: hitCap
+			? PERFORMANCE_MAP_PROJECTED_STOP.cap
+			: PERFORMANCE_MAP_PROJECTED_STOP.gapNeutral,
+	};
 }
 
 export function formatPerformanceMapGap(gap: number): string {
@@ -396,6 +539,51 @@ export function formatPerformanceMapDelta(value: number): string {
 
 export function formatPerformanceMapCount(value: number): string {
 	return formatRosterCount(value);
+}
+
+export function formatPerformanceMapProjectionArrow(
+	from: number,
+	to: number,
+): string {
+	return `${formatPerformanceMapRating(from)} → ${formatPerformanceMapRating(to)}`;
+}
+
+export function formatPerformanceMapProjectedNext(point: {
+	rating: number;
+	projectedNext: number;
+	projectedNextDelta: number;
+}): string {
+	return `${formatPerformanceMapProjectionArrow(point.rating, point.projectedNext)} (${formatPerformanceMapDelta(point.projectedNextDelta)})`;
+}
+
+export function formatPerformanceMapProjectedStable(point: {
+	rating: number;
+	projectedStable: number;
+	projectedRounds: number;
+	projectedStop: PerformanceMapProjectedStop;
+}): string {
+	if (point.projectedRounds === 0) {
+		return `${formatPerformanceMapRating(point.projectedStable)} · ${performanceMapProjectedStopLabel(point.projectedStop)}`;
+	}
+
+	return `${formatPerformanceMapProjectionArrow(point.rating, point.projectedStable)} · ${formatPerformanceMapCount(point.projectedRounds)} rod. · ${performanceMapProjectedStopLabel(point.projectedStop)}`;
+}
+
+function clampProjectedRating(value: number): number {
+	const rounded = roundProjectedDelta(value);
+	return Math.min(PLAYER_RATING.max, Math.max(PLAYER_RATING.floor, rounded));
+}
+
+function roundProjectedDelta(value: number): number {
+	if (!Number.isFinite(value)) {
+		return 0;
+	}
+
+	if (value < 0) {
+		return -Math.round(Math.abs(value) * 10) / 10;
+	}
+
+	return Math.round(Math.abs(value) * 10) / 10;
 }
 
 export function performanceMapDotRadius(matches: number): number {

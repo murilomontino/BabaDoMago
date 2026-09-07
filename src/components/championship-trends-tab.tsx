@@ -91,14 +91,6 @@ import {
 	FORM_HEATMAP_LABEL,
 } from "@/const/championship-form-heatmap";
 import {
-	EVENT_BALANCE_INDEX_CSV_HEADERS,
-	EVENT_BALANCE_INDEX_SHARE_LABEL,
-	eventBalanceIndexCsvFileName,
-	eventBalanceIndexCsvRows,
-	eventBalanceIndexShareCard,
-	eventBalanceIndexShareContext,
-} from "@/const/event-balance-index-share";
-import {
 	championshipFirstGoalOutcome,
 	championshipGoalMinuteHistogram,
 	championshipGoalScoreStateScatter,
@@ -123,11 +115,15 @@ import {
 	championshipPerformanceMapVisible,
 	formatPerformanceMapCount,
 	formatPerformanceMapGap,
+	formatPerformanceMapProjectedNext,
+	formatPerformanceMapProjectedStable,
 	formatPerformanceMapRate,
 	formatPerformanceMapRating,
 	PERFORMANCE_MAP_CHART,
+	PERFORMANCE_MAP_COLOR,
 	PERFORMANCE_MAP_COLUMN,
 	PERFORMANCE_MAP_LABEL,
+	PERFORMANCE_MAP_LEGEND_STATES,
 	PERFORMANCE_MAP_STATE,
 	PERFORMANCE_MAP_WINDOW_DEFAULT,
 	PERFORMANCE_MAP_WINDOW_OPTIONS,
@@ -189,6 +185,14 @@ import {
 	trendsSectionEmptyLabel,
 	trendsWindowCaption,
 } from "@/const/championship-trends-window";
+import {
+	EVENT_BALANCE_INDEX_CSV_HEADERS,
+	EVENT_BALANCE_INDEX_SHARE_LABEL,
+	eventBalanceIndexCsvFileName,
+	eventBalanceIndexCsvRows,
+	eventBalanceIndexShareCard,
+	eventBalanceIndexShareContext,
+} from "@/const/event-balance-index-share";
 import {
 	FORM_HEATMAP_SHARE_LABEL,
 	formHeatmapShareCard,
@@ -303,9 +307,9 @@ const ChampionshipBalancePredictedVsRealized = lazy(() =>
 );
 
 const ChampionshipPredictedVsRealized = lazy(() =>
-	import(
-		"@/components/championship/championship-predicted-vs-realized"
-	).then((m) => ({ default: m.ChampionshipPredictedVsRealized })),
+	import("@/components/championship/championship-predicted-vs-realized").then(
+		(m) => ({ default: m.ChampionshipPredictedVsRealized }),
+	),
 );
 
 const FILTER_CHIP =
@@ -555,6 +559,44 @@ function PerformanceMapTable({
 					cell: ({ row }) => (
 						<span className="tabular-nums">
 							{formatPerformanceMapRating(row.original.rating)}
+						</span>
+					),
+				}),
+				performanceMapColumnHelper.accessor("projectedNext", {
+					id: PERFORMANCE_MAP_COLUMN.projectedNext,
+					header: PERFORMANCE_MAP_LABEL.projectedNext,
+					meta: {
+						align: "right" as const,
+						title: PERFORMANCE_MAP_LABEL.projectedNextHint,
+					},
+					cell: ({ row }) => (
+						<span
+							className="tabular-nums"
+							title={formatPerformanceMapProjectedNext(row.original)}
+						>
+							{formatPerformanceMapRating(row.original.projectedNext)}
+						</span>
+					),
+				}),
+				performanceMapColumnHelper.accessor("projectedStable", {
+					id: PERFORMANCE_MAP_COLUMN.projectedStable,
+					header: PERFORMANCE_MAP_LABEL.projectedStable,
+					meta: {
+						align: "right" as const,
+						title: PERFORMANCE_MAP_LABEL.projectedStableHint,
+					},
+					cell: ({ row }) => (
+						<span
+							className="tabular-nums"
+							title={formatPerformanceMapProjectedStable(row.original)}
+						>
+							{formatPerformanceMapRating(row.original.projectedStable)}
+							{row.original.projectedRounds > 0 && (
+								<span className="text-fg-muted">
+									{" "}
+									({formatPerformanceMapCount(row.original.projectedRounds)})
+								</span>
+							)}
 						</span>
 					),
 				}),
@@ -1465,6 +1507,31 @@ export function ChampionshipTrendsTab({
 								<p className="text-xs text-fg-muted">
 									{PERFORMANCE_MAP_LABEL.gapExplain}
 								</p>
+								<p className="text-xs text-fg-muted">
+									{PERFORMANCE_MAP_LABEL.projectExplain}
+								</p>
+								<div className="space-y-1">
+									<p className="text-xs font-medium text-fg-muted">
+										{PERFORMANCE_MAP_LABEL.colorLegend}
+									</p>
+									<ul className="flex flex-wrap gap-x-3 gap-y-1.5">
+										{PERFORMANCE_MAP_LEGEND_STATES.map((state) => (
+											<li
+												key={state}
+												className="inline-flex items-center gap-1.5 text-xs text-fg-muted"
+											>
+												<span
+													className="inline-block size-2.5 shrink-0 rounded-full"
+													style={{
+														backgroundColor: PERFORMANCE_MAP_COLOR[state],
+													}}
+													aria-hidden
+												/>
+												{performanceMapStateLabel(state)}
+											</li>
+										))}
+									</ul>
+								</div>
 								<PerformanceMapTable
 									points={performancePoints}
 									players={scopedPlayers}
@@ -1744,7 +1811,9 @@ export function ChampionshipTrendsTab({
 										{BALANCE_INDEX_LABEL.title}
 									</h3>
 								</div>
-								<p className="text-sm text-fg-muted">{BALANCE_INDEX_LABEL.hint}</p>
+								<p className="text-sm text-fg-muted">
+									{BALANCE_INDEX_LABEL.hint}
+								</p>
 							</div>
 							{balanceIndex.history.length > 0 && (
 								<div className="flex flex-col gap-2 sm:flex-row">
@@ -1763,7 +1832,8 @@ export function ChampionshipTrendsTab({
 											/>
 										)}
 										{!isSharingBalance && <Share2 className="size-4" />}
-										{isSharingBalance && EVENT_BALANCE_INDEX_SHARE_LABEL.sharing}
+										{isSharingBalance &&
+											EVENT_BALANCE_INDEX_SHARE_LABEL.sharing}
 										{!isSharingBalance && EVENT_BALANCE_INDEX_SHARE_LABEL.share}
 									</Button>
 									<Button
@@ -1804,7 +1874,9 @@ export function ChampionshipTrendsTab({
 											{BALANCE_INDEX_LABEL.overall}
 										</p>
 										<p className="text-lg font-semibold tabular-nums text-fg">
-											{formatBalanceIndexScore(balanceIndex.overall.balanceIndex)}
+											{formatBalanceIndexScore(
+												balanceIndex.overall.balanceIndex,
+											)}
 											/100
 										</p>
 									</div>

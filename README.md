@@ -686,9 +686,12 @@ Aba `trends`. Componente `championship-trends-tab.tsx`. Diagnóstico da liga: qu
 | Sem nota | sentinela `rating === 0` (sempre oculto) |
 
 - **Cortes:** faixas horizontais em 45% / 55%; linha vertical = **mediana do rating** no recorte (só notas `> 0`).
-- **Gap:** `aproveitamento − (rating ÷ teto)` — em **pp**. Positivo = forma acima da nota; negativo = a nota sugere que ainda dá para render mais. Tooltip e legenda sob o gráfico explicam a leitura.
-- **Como usar:** achar quem está acima ou abaixo do próprio nível; separar fase de nota acumulada.
-- **Limite:** janela própria do card (não a janela global da aba). Não altera a nota. Amostra < 3 jogos não classifica.
+- **Gap:** `aproveitamento − (rating ÷ teto)` — em **pp**. Positivo = forma acima do nível (nota tende a subir); negativo = forma abaixo (nota tende a cair). A frase de previsão segue o **sinal do Gap**.
+- **Projeções de nota** (fecham o Gap; não usam o Δ oficial da forma):
+  - **Próxima:** 1 passo de 0,3 rumo ao Gap neutro.
+  - **Estável:** nota em que Gap zera = `aproveitamento × teto` (com N rodadas). Se `|Gap| ≤ 8 pp`, já está neutro.
+- **Como usar:** achar quem está acima ou abaixo do próprio nível; ver “cai pra quanto” até alinhar forma e nota.
+- **Limite:** janela própria do card (não a janela global da aba). Não altera a nota. Amostra < 3 jogos não classifica. Projeção é interpretativa (Gap), não a rodada SQL.
 - **Fonte:** `championship-performance-map.ts`.
 
 #### 6. Contribuição × Resultado

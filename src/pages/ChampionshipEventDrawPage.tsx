@@ -10,6 +10,7 @@ import {
 	EventDrawWaiting,
 } from "@/components/event-draw-reveal";
 import { EventDrawViewers } from "@/components/event-draw-viewers";
+import { EventMatchupAnalysis } from "@/components/event-matchup-analysis";
 import { EventTeamDrawLog } from "@/components/event-team-draw-log";
 import { TeamCardSkeleton } from "@/components/molecules/team-card-skeleton";
 import {
@@ -48,6 +49,10 @@ import {
 	eventDrawUrl,
 } from "@/const/event-draw-reveal";
 import {
+	matchupHistoryEvents,
+	matchupTeamsFromShareCards,
+} from "@/const/event-matchup-analysis";
+import {
 	EVENT_TEAM_SHARE_LABEL,
 	type EventTeamShareCard,
 	eventTeamsShareCards,
@@ -59,6 +64,7 @@ import { BUTTON_VARIANT, ERROR_CLASS, MODAL_CLASS } from "@/const/ui";
 import { useAuth } from "@/contexts/auth";
 import {
 	useChampionshipEvent,
+	useChampionshipEvents,
 	useSaveChampionshipEventTeams,
 } from "@/hooks/championships/use-championship-events";
 import { useChampionship } from "@/hooks/championships/use-championships";
@@ -88,6 +94,7 @@ export function ChampionshipEventDrawPage() {
 	const { user } = useAuth();
 	const championshipQuery = useChampionship(championshipId);
 	const eventQuery = useChampionshipEvent(championshipId, eventId);
+	const eventsQuery = useChampionshipEvents(championshipId);
 	const saveTeams = useSaveChampionshipEventTeams(championshipId);
 	const reduceMotion = useReducedMotion();
 	const [frozenCards, setFrozenCards] = useState<EventTeamShareCard[] | null>(
@@ -159,6 +166,18 @@ export function ChampionshipEventDrawPage() {
 	const phase = eventDrawRevealPhase(visibleCount, total);
 	const playing = phase === EVENT_DRAW_REVEAL_PHASE.playing;
 	useWakeLock(playing);
+
+	const matchupTeams = useMemo(
+		() => matchupTeamsFromShareCards(cards),
+		[cards],
+	);
+	const matchupHistory = useMemo(() => {
+		if (!event) {
+			return [];
+		}
+
+		return matchupHistoryEvents(eventsQuery.data ?? [], event);
+	}, [event, eventsQuery.data]);
 
 	const pageStatus = eventDrawRevealPageStatus({
 		championshipPending: championshipQuery.isPending,
@@ -596,6 +615,13 @@ export function ChampionshipEventDrawPage() {
 					}}
 					isSharing={isSharing}
 					shareError={shareError}
+					footer={
+						<EventMatchupAnalysis
+							teams={matchupTeams}
+							historyEvents={matchupHistory}
+							roster={activePlayers}
+						/>
+					}
 				/>
 			)}
 			{videoStatus === "generating" && (
