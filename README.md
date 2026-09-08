@@ -309,6 +309,7 @@ Pontos: V=3, E=1 (ou **1,5** se E>D), D=0.
 
 - `matches < 3`
 - Já ranqueado com aproveitamento na **zona morta** 45%–55% (MVP ainda pode somar)
+- Se **qualquer** time da rodada tem aproveitamento de classificação ≥ **80%** (≥ 3 jogos), a zona morta vira **35%–55%** para todos. Abaixo de 35% o delta continua normal. Empate do time = 1 pt (como na classificação).
 
 ### Fórmula (já ranqueado)
 

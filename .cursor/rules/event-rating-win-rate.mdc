@@ -15,6 +15,9 @@ Fonte única no app: `src/const/event-rating-adjustment.ts` (`EVENT_RATING_ADJUS
 
 - `matches < 3`
 - jogador já ranqueado (`rating !== 0`) com aproveitamento na zona morta: 45% a 55% inclusive (`upThreshold` 0.55, `downThreshold` 0.45)
+- se **qualquer** time da rodada tem aproveitamento de classificação ≥ 80% (`dominantTeamRate`) com ≥ 3 jogos, a zona morta baixa para 35%–55% (`dominantDownThreshold`) para **todos**; abaixo de 35% o delta segue a fórmula normal (como hoje abaixo de 45%)
+- empate na classificação do time vale 1 pt (`standingPointsRate`), não o bônus 1,5 do jogador
+- heatmap / forma recente / hidden strength continuam com 45%–55% fixo
 
 ## Nota inicial (sentinela `rating === 0`)
 
