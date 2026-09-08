@@ -56,6 +56,7 @@ import {
 	eventTeamsSharePlayers,
 } from "@/const/championship-event";
 import {
+	canConfirmMatchGoalkeepers,
 	canConfirmMatchTeams,
 	clampMatchDurationMinutes,
 	EVENT_GOAL_LABEL,
@@ -72,6 +73,8 @@ import {
 	isMatchTimeUp,
 	MATCH_CLOCK_ACTION,
 	type MatchClockAction,
+	MATCH_PLAY_STEP,
+	type MatchPlayStep,
 	matchActiveTeamPlayers,
 	matchAssistCandidates,
 	matchBenchPlayerIds,
@@ -79,8 +82,10 @@ import {
 	matchClockIsPaused,
 	matchClockIsStarted,
 	matchEndWinnerLabel,
+	matchGoalkeeperDraftFromTeams,
 	matchGoalPayload,
 	matchScore,
+	matchTeamNeedsGoalkeeperUpdate,
 	matchTeamSlots,
 	matchTeamStarName,
 	matchTeamSwapCandidates,
@@ -100,8 +105,6 @@ import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
 import {
 	analyzeMatchHistoryMatchup,
 	buildStartMatchMatchup,
-	eventMatchupFavoriteStats,
-	formatMatchupFavoriteHitRate,
 	MATCHUP_LABEL,
 	type MatchupSnapshot,
 	matchFavoriteTeamId,
@@ -324,6 +327,86 @@ const TEAM_CARD_LONG_PRESS_MS = 500;
 const TEAM_CARD_LONG_PRESS_MOVE_PX = 8;
 const TEAM_PICK_EXPAND_TRANSITION =
 	"duration-300 ease-out motion-reduce:transition-none";
+
+function MatchGoalkeeperTeamPick({
+	team,
+	pickOrder,
+	selectedGoalkeeperId,
+	rosterById,
+	ceiling,
+	goalkeeperIds,
+	onSelectGoalkeeper,
+}: {
+	team: ChampionshipEventTeam;
+	pickOrder: number;
+	selectedGoalkeeperId: number | undefined;
+	rosterById: Map<number, ChampionshipPlayer>;
+	ceiling: number;
+	goalkeeperIds: readonly number[];
+	onSelectGoalkeeper: (playerId: number) => void;
+}) {
+	const style = eventTeamColorStyle(team.color);
+
+	return (
+		<section
+			className="rounded-lg border border-line bg-surface p-2"
+			style={style}
+		>
+			<header className="mb-2 flex items-center gap-2">
+				<EventTeamColorDot color={team.color} />
+				<span className="text-sm font-medium text-fg">
+					{eventTeamName(team.color, pickOrder)}
+				</span>
+				<span className="ml-auto text-xs font-medium text-fg-muted">
+					{`${EVENT_MATCH_LABEL.picked} ${pickOrder}`}
+				</span>
+			</header>
+			<ul className="space-y-1">
+				{team.players.map((row) => {
+					const player = resolvePlayer(
+						row.player_id,
+						row.display_name,
+						rosterById,
+					);
+					const selected = selectedGoalkeeperId === player.id;
+
+					return (
+						<li key={row.id}>
+							<button
+								type="button"
+								aria-pressed={selected}
+								className={`flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left ${
+									selected
+										? "bg-primary/15 ring-1 ring-primary"
+										: "bg-surface-muted"
+								}`}
+								onClick={() => {
+									onSelectGoalkeeper(player.id);
+								}}
+							>
+								<span className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}>
+									{
+										EVENT_TEAM_POSITION_LABEL[
+											eventTeamPlayerPosition(selected)
+										]
+									}
+								</span>
+								<EventTeamPlayerRow
+									player={player}
+									ceiling={ceiling}
+									isGoalkeeperVolunteer={goalkeeperIds.includes(player.id)}
+								/>
+								{selected && (
+									<GoalkeeperGlovesIcon className="ml-auto size-4 shrink-0 text-primary" />
+								)}
+							</button>
+						</li>
+					);
+				})}
+			</ul>
+		</section>
+	);
+}
 
 function TeamPick({
 	team,
@@ -966,6 +1049,10 @@ export function ChampionshipEventPlay({
 		eventDrawInputRating(player, volunteerSet.has(player.id)),
 	);
 	const [selected, setSelected] = useState<number[]>([]);
+	const [playStep, setPlayStep] = useState<MatchPlayStep>(MATCH_PLAY_STEP.teams);
+	const [goalkeeperByTeamId, setGoalkeeperByTeamId] = useState<
+		Record<number, number>
+	>({});
 	const [durationMinutes, setDurationMinutes] = useState<number>(
 		EVENT_MATCH_DURATION.defaultMinutes,
 	);
@@ -1030,6 +1117,142 @@ export function ChampionshipEventPlay({
 	);
 
 	if (!match) {
+		const teamAId = selected[0];
+		const teamBId = selected[1];
+		const canConfirmGoalkeepers = canConfirmMatchGoalkeepers(
+			teamAId === undefined ? null : goalkeeperByTeamId[teamAId],
+			teamBId === undefined ? null : goalkeeperByTeamId[teamBId],
+		);
+
+		if (playStep === MATCH_PLAY_STEP.goalkeepers) {
+			return (
+				<div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden relative">
+					{showQueueBanner && <MatchOpsQueueBanner online={online} />}
+					<p className="mb-2 shrink-0 text-sm font-medium text-fg">
+						{EVENT_MATCH_LABEL.selectGoalkeepers}
+					</p>
+					<div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
+						{selectedTeamA && teamAId !== undefined && (
+							<MatchGoalkeeperTeamPick
+								team={selectedTeamA}
+								pickOrder={1}
+								selectedGoalkeeperId={goalkeeperByTeamId[teamAId]}
+								rosterById={rosterById}
+								ceiling={ceiling}
+								goalkeeperIds={volunteerGoalkeeperIds}
+								onSelectGoalkeeper={(playerId) => {
+									setGoalkeeperByTeamId((current) => ({
+										...current,
+										[teamAId]: playerId,
+									}));
+								}}
+							/>
+						)}
+						{selectedTeamB && teamBId !== undefined && (
+							<MatchGoalkeeperTeamPick
+								team={selectedTeamB}
+								pickOrder={2}
+								selectedGoalkeeperId={goalkeeperByTeamId[teamBId]}
+								rosterById={rosterById}
+								ceiling={ceiling}
+								goalkeeperIds={volunteerGoalkeeperIds}
+								onSelectGoalkeeper={(playerId) => {
+									setGoalkeeperByTeamId((current) => ({
+										...current,
+										[teamBId]: playerId,
+									}));
+								}}
+							/>
+						)}
+					</div>
+					<div className="shrink-0 space-y-2 pt-2">
+						{opsError && <p className={ERROR_CLASS}>{opsError}</p>}
+						<div className="grid gap-2 md:flex md:justify-end">
+							<Button
+								variant={BUTTON_VARIANT.ghost}
+								className="w-full md:w-auto"
+								onClick={() => {
+									setPlayStep(MATCH_PLAY_STEP.teams);
+								}}
+							>
+								{EVENT_MATCH_LABEL.backToTeams}
+							</Button>
+							<Button
+								className="w-full md:w-auto"
+								disabled={!canConfirmGoalkeepers}
+								onClick={() => {
+									if (
+										teamAId === undefined ||
+										teamBId === undefined ||
+										!selectedTeamA ||
+										!selectedTeamB
+									) {
+										return;
+									}
+
+									const goalkeeperA = goalkeeperByTeamId[teamAId];
+									const goalkeeperB = goalkeeperByTeamId[teamBId];
+									if (
+										!canConfirmMatchGoalkeepers(goalkeeperA, goalkeeperB) ||
+										goalkeeperA === undefined ||
+										goalkeeperB === undefined
+									) {
+										return;
+									}
+
+									const teamsToUpdate = [
+										{
+											team: selectedTeamA,
+											goalkeeperId: goalkeeperA,
+										},
+										{
+											team: selectedTeamB,
+											goalkeeperId: goalkeeperB,
+										},
+									];
+
+									for (const { team, goalkeeperId } of teamsToUpdate) {
+										if (
+											!matchTeamNeedsGoalkeeperUpdate(
+												team.players,
+												goalkeeperId,
+											)
+										) {
+											continue;
+										}
+
+										onUpdateTeam({
+											teamId: team.id,
+											color: team.color,
+											playerIds: team.players.map(
+												(player) => player.player_id,
+											),
+											goalkeeperId,
+										});
+									}
+
+									const matchup = buildStartMatchMatchup({
+										teamA: selectedTeamA,
+										teamB: selectedTeamB,
+										attendance: event.attendance,
+										historyEvents,
+										roster: players,
+									});
+									setPlayStep(MATCH_PLAY_STEP.teams);
+									void onStart(teamAId, teamBId, durationMinutes, {
+										snapshot: matchup.snapshot,
+										favoriteTeamId: matchup.favoriteTeamId,
+									});
+								}}
+							>
+								{EVENT_MATCH_LABEL.confirmGoalkeepers}
+							</Button>
+						</div>
+					</div>
+				</div>
+			);
+		}
+
 		return (
 			<div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden relative">
 				{showQueueBanner && <MatchOpsQueueBanner online={online} />}
@@ -1137,8 +1360,6 @@ export function ChampionshipEventPlay({
 							className="w-full md:w-auto"
 							disabled={!canStartSelected || Boolean(sharedPlayersError)}
 							onClick={() => {
-								const teamAId = selected[0];
-								const teamBId = selected[1];
 								if (teamAId === undefined || teamBId === undefined) {
 									return;
 								}
@@ -1149,17 +1370,10 @@ export function ChampionshipEventPlay({
 									return;
 								}
 
-								const matchup = buildStartMatchMatchup({
-									teamA,
-									teamB,
-									attendance: event.attendance,
-									historyEvents,
-									roster: players,
-								});
-								void onStart(teamAId, teamBId, durationMinutes, {
-									snapshot: matchup.snapshot,
-									favoriteTeamId: matchup.favoriteTeamId,
-								});
+								setGoalkeeperByTeamId(
+									matchGoalkeeperDraftFromTeams(teamA, teamB),
+								);
+								setPlayStep(MATCH_PLAY_STEP.goalkeepers);
 							}}
 						>
 							{EVENT_ACTION.startMatch}
@@ -1231,11 +1445,6 @@ export function ChampionshipEventPlay({
 		frozenFavoriteId === undefined ? liveFavoriteId : frozenFavoriteId;
 	const teamAFavorite = favoriteTeamId === match.team_a_id;
 	const teamBFavorite = favoriteTeamId === match.team_b_id;
-	const favoriteStats = eventMatchupFavoriteStats(event.matches);
-	const favoriteHitCaption =
-		favoriteStats.decreed > 0
-			? formatMatchupFavoriteHitRate(favoriteStats)
-			: null;
 
 	const teamAIds = new Set(
 		match.players
@@ -1325,11 +1534,6 @@ export function ChampionshipEventPlay({
 	return (
 		<div className="relative flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden">
 			{showQueueBanner && <MatchOpsQueueBanner online={online} />}
-			{favoriteHitCaption && (
-				<p className="shrink-0 text-center text-xs font-medium tabular-nums text-fg-muted">
-					{MATCHUP_LABEL.favoriteHitRate}: {favoriteHitCaption}
-				</p>
-			)}
 			<MatchTeamBlock
 				color={teamA.color}
 				sortOrder={teamA.sort_order}

@@ -6,6 +6,7 @@ import { CHAMPIONSHIP_EVENT, EVENT_ACTION } from "./championship-event.ts";
 import {
 	applyMatchClockAction,
 	canClearMatchClock,
+	canConfirmMatchGoalkeepers,
 	canConfirmMatchTeams,
 	canOpenEventHistoryMatch,
 	clampMatchDurationMinutes,
@@ -27,6 +28,7 @@ import {
 	EVENT_MATCH_SUBSTITUTION_LABEL,
 	EVENT_MATCH_SWAP_TEAM_LABEL,
 	EVENT_MATCH_TEAM_PREVIEW,
+	MATCH_PLAY_STEP,
 	eventGoalScorerHint,
 	eventMatchEndConfirmLabel,
 	eventMatchEndTitle,
@@ -64,8 +66,11 @@ import {
 	matchDurationSeconds,
 	matchEndWinnerLabel,
 	matchGoalForTeamA,
+	matchGoalkeeperDraftFromTeams,
 	matchGoalPayload,
 	matchGoalTimeline,
+	matchTeamNeedsGoalkeeperUpdate,
+	matchTeamTemplateGoalkeeperId,
 	matchPlayUrl,
 	matchScore,
 	matchSlotCount,
@@ -355,6 +360,62 @@ check(String(toggleMatchTeamSelection([1, 2], 1)), "2", "deselect");
 check(String(toggleMatchTeamSelection([1, 2], 3)), "2,3", "replace oldest");
 check(canConfirmMatchTeams([1]), false, "one team");
 check(canConfirmMatchTeams([1, 2]), true, "two teams");
+check(canConfirmMatchGoalkeepers(null, 2), false, "gk missing a");
+check(canConfirmMatchGoalkeepers(1, null), false, "gk missing b");
+check(canConfirmMatchGoalkeepers(1, 2), true, "gk both set");
+check(MATCH_PLAY_STEP.goalkeepers, "goalkeepers", "play step gk");
+check(
+	matchTeamTemplateGoalkeeperId([
+		{ player_id: 1, is_goalkeeper: false },
+		{ player_id: 2, is_goalkeeper: true },
+	]),
+	2,
+	"template gk id",
+);
+check(
+	matchTeamNeedsGoalkeeperUpdate(
+		[
+			{ player_id: 1, is_goalkeeper: false },
+			{ player_id: 2, is_goalkeeper: true },
+		],
+		2,
+	),
+	false,
+	"gk update not needed",
+);
+check(
+	matchTeamNeedsGoalkeeperUpdate(
+		[
+			{ player_id: 1, is_goalkeeper: false },
+			{ player_id: 2, is_goalkeeper: true },
+		],
+		1,
+	),
+	true,
+	"gk update needed",
+);
+check(
+	JSON.stringify(
+		matchGoalkeeperDraftFromTeams(
+			{
+				id: 10,
+				players: [
+					{ player_id: 1, is_goalkeeper: true },
+					{ player_id: 2, is_goalkeeper: false },
+				],
+			},
+			{
+				id: 20,
+				players: [
+					{ player_id: 3, is_goalkeeper: false },
+					{ player_id: 4, is_goalkeeper: true },
+				],
+			},
+		),
+	),
+	JSON.stringify({ 10: 1, 20: 4 }),
+	"gk draft from teams",
+);
 
 check(
 	matchGoalPayload({
@@ -663,6 +724,17 @@ check(
 	EVENT_MATCH_LABEL.selectTeams,
 	"Selecione dois times para o confronto",
 	"select teams",
+);
+check(
+	EVENT_MATCH_LABEL.selectGoalkeepers,
+	"Escolha o goleiro de cada time",
+	"select goalkeepers",
+);
+check(EVENT_MATCH_LABEL.backToTeams, "Voltar", "back to teams");
+check(
+	EVENT_MATCH_LABEL.confirmGoalkeepers,
+	"Ir para o cronômetro",
+	"confirm goalkeepers",
 );
 
 const clockBase = {

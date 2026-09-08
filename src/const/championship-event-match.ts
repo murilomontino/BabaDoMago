@@ -30,6 +30,9 @@ export const EVENT_MATCH_LABEL = {
 	draw: "Empate",
 	open: "Em andamento",
 	selectTeams: "Selecione dois times para o confronto",
+	selectGoalkeepers: "Escolha o goleiro de cada time",
+	backToTeams: "Voltar",
+	confirmGoalkeepers: "Ir para o cronômetro",
 	emptySlot: "Vago",
 	emptyTeam: "Ninguém no time.",
 	copied: "Link copiado.",
@@ -39,6 +42,14 @@ export const EVENT_MATCH_LABEL = {
 	showMore: "Ver mais",
 	showLess: "Ver menos",
 } as const;
+
+export const MATCH_PLAY_STEP = {
+	teams: "teams",
+	goalkeepers: "goalkeepers",
+} as const;
+
+export type MatchPlayStep =
+	(typeof MATCH_PLAY_STEP)[keyof typeof MATCH_PLAY_STEP];
 
 export function copyMatchLinkLabel(copied: boolean): string {
 	if (copied) {
@@ -697,6 +708,60 @@ export function toggleMatchTeamSelection(
 
 export function canConfirmMatchTeams(selected: readonly number[]): boolean {
 	return selected.length === CHAMPIONSHIP_EVENT.minTeams;
+}
+
+export function canConfirmMatchGoalkeepers(
+	teamAGoalkeeperId: number | null | undefined,
+	teamBGoalkeeperId: number | null | undefined,
+): boolean {
+	if (teamAGoalkeeperId == null || teamBGoalkeeperId == null) {
+		return false;
+	}
+
+	return teamAGoalkeeperId > 0 && teamBGoalkeeperId > 0;
+}
+
+export function matchTeamTemplateGoalkeeperId(
+	players: readonly { player_id: number; is_goalkeeper: boolean }[],
+): number | null {
+	const goalkeeper = players.find((player) => player.is_goalkeeper);
+	if (!goalkeeper) {
+		return null;
+	}
+
+	return goalkeeper.player_id;
+}
+
+export function matchGoalkeeperDraftFromTeams(
+	teamA: {
+		id: number;
+		players: readonly { player_id: number; is_goalkeeper: boolean }[];
+	},
+	teamB: {
+		id: number;
+		players: readonly { player_id: number; is_goalkeeper: boolean }[];
+	},
+): Record<number, number> {
+	const draft: Record<number, number> = {};
+	const goalkeeperA = matchTeamTemplateGoalkeeperId(teamA.players);
+	const goalkeeperB = matchTeamTemplateGoalkeeperId(teamB.players);
+
+	if (goalkeeperA !== null) {
+		draft[teamA.id] = goalkeeperA;
+	}
+
+	if (goalkeeperB !== null) {
+		draft[teamB.id] = goalkeeperB;
+	}
+
+	return draft;
+}
+
+export function matchTeamNeedsGoalkeeperUpdate(
+	players: readonly { player_id: number; is_goalkeeper: boolean }[],
+	goalkeeperId: number,
+): boolean {
+	return matchTeamTemplateGoalkeeperId(players) !== goalkeeperId;
 }
 
 export type MatchGoalDraft = {
