@@ -113,6 +113,7 @@ export function ChampionshipEventDetailActions({
 		ratingDropGoalShare,
 		ratingDropShareExcludeTop,
 		teams: event.teams,
+		matches: event.matches,
 	});
 	const previewCeiling = championshipRatingCeiling([
 		...players.map((player) => player.rating),

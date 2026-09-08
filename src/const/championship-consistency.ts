@@ -125,7 +125,7 @@ export function championshipConsistencyPoints(
 				avatarUrl: player.avatar_url,
 				color: championshipRatingChartColor(player.id),
 				volume,
-				deviation: sampleStdDev(samples),
+				deviation: consistencySampleStdDev(samples),
 				mean: rosterAverage(
 					samples.reduce((sum, value) => sum + value, 0),
 					samples.length,
@@ -200,7 +200,8 @@ function perMatch(value: number, matches: number): number {
 	return value / safe;
 }
 
-function sampleStdDev(values: readonly number[]): number {
+/** Desvio-padrão amostral (n-1). Reuso: adequação do rating. */
+export function consistencySampleStdDev(values: readonly number[]): number {
 	if (values.length < 2) {
 		return 0;
 	}

@@ -24,7 +24,8 @@ export const PLAYER_RATING_SIM_LABEL = {
 	mvp: "MVP (+2%)",
 	drawPoints: "Pontos por empate",
 	belowMinMatches: "Menos de 3 jogos: a nota não muda.",
-	deadZone: "Zona morta (45%–55%): delta 0.",
+	deadZone:
+		"Zona morta (45%–55%): delta 0. Com time ≥80% na rodada, vira 35%–55%.",
 	seed: "Nota inicial (sentinela): a semente vira a nota.",
 	drawBonus: "Empates > derrotas: empate vale 1,5.",
 } as const;

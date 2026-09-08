@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppDialog } from "@/components/atoms/app-dialog";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
+import { ChampionshipDrawRatingAlignmentWarning } from "@/components/championship-draw-rating-alignment-warning";
 import {
 	EventDrawReveal,
 	EventDrawWaiting,
@@ -72,6 +73,10 @@ import {
 	eventTeamsShareCards,
 } from "@/const/event-team-share";
 import { championshipRatingCeiling } from "@/const/player-rating";
+import {
+	calculatePlayersRatingAlignment,
+	ratingAlignmentDrawWarnings,
+} from "@/const/player-rating-alignment";
 import { ROUTES } from "@/const/routes";
 import { SKELETON_LABEL } from "@/const/skeleton";
 import { BUTTON_VARIANT, ERROR_CLASS, MODAL_CLASS } from "@/const/ui";
@@ -249,6 +254,12 @@ export function ChampionshipEventPotDrawPage() {
 
 		return matchupHistoryEvents(eventsQuery.data ?? [], event);
 	}, [event, eventsQuery.data]);
+
+	const drawAlignmentWarnings = useMemo(() => {
+		const playerIds = matchupTeams.flatMap((team) => team.playerIds);
+		const rows = calculatePlayersRatingAlignment(activePlayers, matchupHistory);
+		return ratingAlignmentDrawWarnings(rows, playerIds);
+	}, [activePlayers, matchupHistory, matchupTeams]);
 
 	const pageStatus = eventDrawRevealPageStatus({
 		championshipPending: championshipQuery.isPending,
@@ -776,11 +787,17 @@ export function ChampionshipEventPotDrawPage() {
 					showPosition={eventPotDrawShowsPosition(ceremonyStage)}
 					canAdvance={eventPotDrawAdvanceOverride(ceremonyStage)}
 					footer={
-						<EventMatchupAnalysis
-							teams={matchupTeams}
-							historyEvents={matchupHistory}
-							roster={activePlayers}
-						/>
+						<div className="space-y-4">
+							<ChampionshipDrawRatingAlignmentWarning
+								warnings={drawAlignmentWarnings}
+								players={activePlayers}
+							/>
+							<EventMatchupAnalysis
+								teams={matchupTeams}
+								historyEvents={matchupHistory}
+								roster={activePlayers}
+							/>
+						</div>
 					}
 				/>
 			)}

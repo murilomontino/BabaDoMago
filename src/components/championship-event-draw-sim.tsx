@@ -1,6 +1,7 @@
 import { LoaderCircle, Share2, Shuffle } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/button";
+import { ChampionshipDrawRatingAlignmentWarning } from "@/components/championship-draw-rating-alignment-warning";
 import { EventAttendanceTable } from "@/components/event-attendance-table";
 import { EventMatchupAnalysis } from "@/components/event-matchup-analysis";
 import {
@@ -55,6 +56,10 @@ import {
 } from "@/const/event-team-share";
 import { hiddenStrengthChampionshipCeiling } from "@/const/hidden-strength";
 import { championshipRatingCeiling } from "@/const/player-rating";
+import {
+	calculatePlayersRatingAlignment,
+	ratingAlignmentDrawWarnings,
+} from "@/const/player-rating-alignment";
 import { BUTTON_VARIANT, CARD_CLASS, ERROR_CLASS } from "@/const/ui";
 import { runEventTeamDraw } from "@/lib/event-team-draw";
 import { runEventTeamPotDraw } from "@/lib/event-team-pot-draw";
@@ -223,6 +228,14 @@ export function ChampionshipEventDrawSim({
 		() => endedChampionshipHistoryEvents(seedEvents),
 		[seedEvents],
 	);
+	const drawAlignmentWarnings = useMemo(() => {
+		const playerIds = matchupTeams.flatMap((team) => team.playerIds);
+		const rows = calculatePlayersRatingAlignment(
+			presentPlayers,
+			matchupHistory,
+		);
+		return ratingAlignmentDrawWarnings(rows, playerIds);
+	}, [matchupHistory, matchupTeams, presentPlayers]);
 
 	useEffect(() => {
 		return () => {
@@ -459,11 +472,17 @@ export function ChampionshipEventDrawSim({
 			)}
 
 			{hasTeams && (
-				<EventMatchupAnalysis
-					teams={matchupTeams}
-					historyEvents={matchupHistory}
-					roster={presentPlayers}
-				/>
+				<div className="space-y-4">
+					<ChampionshipDrawRatingAlignmentWarning
+						warnings={drawAlignmentWarnings}
+						players={presentPlayers}
+					/>
+					<EventMatchupAnalysis
+						teams={matchupTeams}
+						historyEvents={matchupHistory}
+						roster={presentPlayers}
+					/>
+				</div>
 			)}
 
 			{isDrawing && (

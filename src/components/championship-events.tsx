@@ -194,6 +194,7 @@ export function ChampionshipEvents({
 			ratingDropGoalShare,
 			ratingDropShareExcludeTop,
 			teams: flowEvent.teams,
+			matches: flowEvent.matches,
 		});
 	const previewCeiling = championshipRatingCeiling([
 		...players.map((player) => player.rating),

@@ -84,6 +84,7 @@ function eventRatingPreviewWhenQueued(
 	attendance: readonly ChampionshipEventAttendance[],
 	players: readonly ChampionshipPlayer[],
 	teams: ChampionshipEvent["teams"],
+	matches: ChampionshipEvent["matches"],
 	ratingDropGoalShare: boolean,
 	ratingDropShareExcludeTop: boolean,
 ) {
@@ -99,6 +100,7 @@ function eventRatingPreviewWhenQueued(
 		ratingDropGoalShare,
 		ratingDropShareExcludeTop,
 		teams,
+		matches,
 	});
 }
 
@@ -197,6 +199,7 @@ export function ChampionshipEventDetailPage() {
 		event.attendance,
 		activePlayers,
 		event.teams,
+		event.matches,
 		championshipQuery.data?.rating_drop_goal_share === true,
 		championshipQuery.data?.rating_drop_share_exclude_top === true,
 	);

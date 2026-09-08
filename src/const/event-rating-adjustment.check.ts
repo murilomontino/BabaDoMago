@@ -4,7 +4,10 @@ import {
 	EVENT_RATING_DROP_SHARE,
 	EVENT_RATING_INITIAL,
 	eventActivePlayerRating,
+	eventHasDominantTeam,
+	eventHasDominantTeamFromMatchups,
 	eventRatingApplyDropShare,
+	eventRatingDeadZoneDownThreshold,
 	eventRatingDelta,
 	eventRatingDrawPoints,
 	eventRatingDropShareExcludedPlayerIds,
@@ -35,6 +38,94 @@ check(EVENT_RATING_ADJUSTMENT.minMatches, 3, "min matches");
 check(EVENT_RATING_ADJUSTMENT.winPoints, 3, "win points");
 check(EVENT_RATING_ADJUSTMENT.drawPoints, 1, "draw points");
 check(EVENT_RATING_ADJUSTMENT.drawPointsBonus, 1.5, "draw points bonus");
+check(EVENT_RATING_ADJUSTMENT.dominantTeamRate, 0.8, "dominant team rate");
+check(
+	EVENT_RATING_ADJUSTMENT.dominantDownThreshold,
+	0.35,
+	"dominant down threshold",
+);
+check(
+	eventRatingDeadZoneDownThreshold(false),
+	EVENT_RATING_ADJUSTMENT.downThreshold,
+	"down threshold default",
+);
+check(
+	eventRatingDeadZoneDownThreshold(true),
+	EVENT_RATING_ADJUSTMENT.dominantDownThreshold,
+	"down threshold dominant",
+);
+check(
+	eventHasDominantTeam([
+		{ matches: 5, pointsRate: 0.8 },
+		{ matches: 5, pointsRate: 0.2 },
+	]),
+	true,
+	"dominant team 80%",
+);
+check(
+	eventHasDominantTeam([
+		{ matches: 2, pointsRate: 1 },
+		{ matches: 5, pointsRate: 0.4 },
+	]),
+	false,
+	"dominant needs min matches",
+);
+check(
+	eventHasDominantTeam([
+		{ matches: 5, pointsRate: 0.79 },
+		{ matches: 5, pointsRate: 0.4 },
+	]),
+	false,
+	"below 80% not dominant",
+);
+check(
+	eventHasDominantTeamFromMatchups([
+		{
+			ended_at: "x",
+			team_a_id: 1,
+			team_b_id: 2,
+			winner_team_id: 1,
+		},
+		{
+			ended_at: "x",
+			team_a_id: 1,
+			team_b_id: 2,
+			winner_team_id: 1,
+		},
+		{
+			ended_at: "x",
+			team_a_id: 1,
+			team_b_id: 2,
+			winner_team_id: 1,
+		},
+		{
+			ended_at: "x",
+			team_a_id: 1,
+			team_b_id: 2,
+			winner_team_id: 1,
+		},
+	]),
+	true,
+	"4V/4J team dominant from matches",
+);
+check(
+	eventHasDominantTeamFromMatchups([
+		{
+			ended_at: "x",
+			team_a_id: 1,
+			team_b_id: 2,
+			winner_team_id: 1,
+		},
+		{
+			ended_at: "x",
+			team_a_id: 1,
+			team_b_id: 2,
+			winner_team_id: 2,
+		},
+	]),
+	false,
+	"2 jogos nao ativa dominante",
+);
 check(eventRatingDrawPoints(3, 0), 1.5, "E > D usa 1.5");
 check(eventRatingDrawPoints(2, 2), 1, "E = D usa 1");
 check(eventRatingDrawPoints(1, 2), 1, "E < D usa 1");
@@ -50,6 +141,28 @@ check(eventRatingRate(4, 0, 2, 6), 12 / 18, "rate 4V/2D");
 check(eventRatingInDeadZone(2, 0, 2, 4), true, "dead zone 50%");
 check(eventRatingInDeadZone(4, 0, 2, 6), false, "not dead zone 66%");
 check(eventRatingInDeadZone(1, 0, 0, 1), false, "below min matches");
+check(
+	eventRatingInDeadZone(
+		2,
+		0,
+		3,
+		5,
+		EVENT_RATING_ADJUSTMENT.dominantDownThreshold,
+	),
+	true,
+	"40% dead zone with dominant",
+);
+check(
+	eventRatingInDeadZone(
+		1,
+		0,
+		2,
+		3,
+		EVENT_RATING_ADJUSTMENT.dominantDownThreshold,
+	),
+	false,
+	"33% below expanded dead zone",
+);
 
 check(eventRatingDelta(4, 0, 0, 6, 4, 5), 0.4, "teto 5 4V/6J");
 check(eventRatingDelta(1, 0, 2, 3, 3.5, 5), -0.4, "teto 5 1V/3J");
@@ -76,6 +189,83 @@ check(eventRatingDelta(2, 0, 2, 4, 4, 5), 0, "zona morta 50%");
 check(eventRatingDelta(3, 0, 3, 6, 4, 5), 0, "zona morta 50% 6 jogos");
 check(eventRatingDelta(1, 0, 1, 2, 4, 5), 0, "abaixo do piso 2 jogos");
 check(eventRatingDelta(1, 0, 0, 1, 4, 5), 0, "abaixo do piso 1 jogo");
+check(eventRatingDelta(2, 0, 3, 5, 4, 5), -0.3, "40% teto 5");
+check(
+	eventRatingDelta(
+		2,
+		0,
+		3,
+		5,
+		4,
+		5,
+		EVENT_RATING_ADJUSTMENT.dominantDownThreshold,
+	),
+	0,
+	"40% preserva com dominante",
+);
+check(
+	eventRatingDelta(
+		1,
+		0,
+		2,
+		3,
+		4,
+		5,
+		EVENT_RATING_ADJUSTMENT.dominantDownThreshold,
+	),
+	-0.4,
+	"33% delta normal com dominante",
+);
+check(
+	eventRatingDelta(
+		2,
+		0,
+		2,
+		4,
+		PLAYER_RATING.default,
+		5,
+		EVENT_RATING_ADJUSTMENT.dominantDownThreshold,
+	),
+	EVENT_RATING_INITIAL.mid,
+	"sentinela 50% mid com dominante",
+);
+check(
+	eventRatingDelta(
+		2,
+		0,
+		3,
+		5,
+		PLAYER_RATING.default,
+		5,
+		EVENT_RATING_ADJUSTMENT.dominantDownThreshold,
+	),
+	EVENT_RATING_INITIAL.mid,
+	"sentinela 40% mid com dominante",
+);
+check(
+	eventRatingDelta(
+		1,
+		0,
+		2,
+		3,
+		PLAYER_RATING.default,
+		5,
+		EVENT_RATING_ADJUSTMENT.dominantDownThreshold,
+	),
+	applyEventRatingDelta(
+		EVENT_RATING_INITIAL.low,
+		eventRatingDelta(
+			1,
+			0,
+			2,
+			3,
+			EVENT_RATING_INITIAL.low,
+			5,
+			EVENT_RATING_ADJUSTMENT.dominantDownThreshold,
+		),
+	),
+	"sentinela 33% semente depois delta com dominante",
+);
 check(
 	eventRatingDelta(4, 0, 0, 6, PLAYER_RATING.default, 5),
 	applyEventRatingDelta(
@@ -121,7 +311,6 @@ check(
 	"sentinela aplica 3.5",
 );
 check(eventRatingDelta(3, 0, 2, 5, 4, 5), 0.3, "60% teto 5");
-check(eventRatingDelta(2, 0, 3, 5, 4, 5), -0.3, "40% teto 5");
 check(eventRatingDelta(2, 2, 0, 4, 4, 5), 0.6, "2V 2E 0D sobe com 1.5");
 check(eventRatingDelta(0, 3, 0, 3, 4, 5), 0, "3E 0D zona morta");
 check(eventRatingDelta(0, 2, 2, 4, 4, 5), -0.8, "2E 2D ainda 1 ponto");

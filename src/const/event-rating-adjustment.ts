@@ -1,5 +1,9 @@
 import { eventTeamByPlayerId } from "./championship-event.ts";
 import { eventMvpBonus } from "./event-mvp.ts";
+import {
+	EVENT_TEAM_STANDINGS_POINTS,
+	standingPointsRate,
+} from "./event-team-standings.ts";
 import { playerVisibleName } from "./player-name.ts";
 import { championshipRatingCeiling, PLAYER_RATING } from "./player-rating.ts";
 import { rosterGoalInvolvement } from "./roster-stats.ts";
@@ -7,6 +11,8 @@ import { rosterGoalInvolvement } from "./roster-stats.ts";
 export const EVENT_RATING_ADJUSTMENT = {
 	upThreshold: 0.55,
 	downThreshold: 0.45,
+	dominantDownThreshold: 0.35,
+	dominantTeamRate: 0.8,
 	expectedRate: 0.5,
 	minMatches: 3,
 	scaleDivisor: 2,
@@ -147,11 +153,109 @@ export function eventRatingRate(
 
 const EVENT_RATING_WR_SCALE = 20 as const;
 
+export function eventRatingDeadZoneDownThreshold(
+	hasDominantTeam: boolean,
+): number {
+	if (hasDominantTeam) {
+		return EVENT_RATING_ADJUSTMENT.dominantDownThreshold;
+	}
+
+	return EVENT_RATING_ADJUSTMENT.downThreshold;
+}
+
+export function eventHasDominantTeam(
+	rows: readonly { matches: number; pointsRate: number }[],
+): boolean {
+	return rows.some(
+		(row) =>
+			row.matches >= EVENT_RATING_ADJUSTMENT.minMatches &&
+			row.pointsRate >= EVENT_RATING_ADJUSTMENT.dominantTeamRate,
+	);
+}
+
+type EventDominantMatch = {
+	ended_at: string | null;
+	team_a_id: number;
+	team_b_id: number;
+	winner_team_id: number | null;
+};
+
+type TeamResultAcc = {
+	matches: number;
+	wins: number;
+	draws: number;
+};
+
+function applyDominantTeamResult(
+	acc: TeamResultAcc | undefined,
+	winnerTeamId: number | null,
+	teamId: number,
+): TeamResultAcc {
+	const next: TeamResultAcc = {
+		matches: (acc?.matches ?? 0) + 1,
+		wins: acc?.wins ?? 0,
+		draws: acc?.draws ?? 0,
+	};
+
+	if (winnerTeamId === null) {
+		next.draws += 1;
+		return next;
+	}
+
+	if (winnerTeamId === teamId) {
+		next.wins += 1;
+		return next;
+	}
+
+	return next;
+}
+
+export function eventHasDominantTeamFromMatchups(
+	matches: readonly EventDominantMatch[],
+): boolean {
+	const byTeam = matches.reduce((acc, match) => {
+		if (match.ended_at === null) {
+			return acc;
+		}
+
+		acc.set(
+			match.team_a_id,
+			applyDominantTeamResult(
+				acc.get(match.team_a_id),
+				match.winner_team_id,
+				match.team_a_id,
+			),
+		);
+		acc.set(
+			match.team_b_id,
+			applyDominantTeamResult(
+				acc.get(match.team_b_id),
+				match.winner_team_id,
+				match.team_b_id,
+			),
+		);
+		return acc;
+	}, new Map<number, TeamResultAcc>());
+
+	return eventHasDominantTeam(
+		[...byTeam.values()].map((acc) => {
+			const points =
+				acc.wins * EVENT_TEAM_STANDINGS_POINTS.win +
+				acc.draws * EVENT_TEAM_STANDINGS_POINTS.draw;
+			return {
+				matches: acc.matches,
+				pointsRate: standingPointsRate(points, acc.matches),
+			};
+		}),
+	);
+}
+
 function eventRatingPointUnits(
 	wins: number,
 	draws: number,
 	losses: number,
 	matches: number,
+	downThreshold: number = EVENT_RATING_ADJUSTMENT.downThreshold,
 ): {
 	pointUnits: number;
 	upUnits: number;
@@ -164,9 +268,7 @@ function eventRatingPointUnits(
 		upUnits:
 			maxPoints *
 			Math.round(EVENT_RATING_ADJUSTMENT.upThreshold * EVENT_RATING_WR_SCALE),
-		downUnits:
-			maxPoints *
-			Math.round(EVENT_RATING_ADJUSTMENT.downThreshold * EVENT_RATING_WR_SCALE),
+		downUnits: maxPoints * Math.round(downThreshold * EVENT_RATING_WR_SCALE),
 	};
 }
 
@@ -175,6 +277,7 @@ export function eventRatingInDeadZone(
 	draws: number,
 	losses: number,
 	matches: number,
+	downThreshold: number = EVENT_RATING_ADJUSTMENT.downThreshold,
 ): boolean {
 	if (matches < EVENT_RATING_ADJUSTMENT.minMatches) {
 		return false;
@@ -185,6 +288,7 @@ export function eventRatingInDeadZone(
 		draws,
 		losses,
 		matches,
+		downThreshold,
 	);
 	return pointUnits <= upUnits && pointUnits >= downUnits;
 }
@@ -194,6 +298,7 @@ export function eventRatingInitial(
 	draws: number,
 	losses: number,
 	matches: number,
+	downThreshold: number = EVENT_RATING_ADJUSTMENT.downThreshold,
 ): number {
 	if (matches < EVENT_RATING_ADJUSTMENT.minMatches) {
 		return PLAYER_RATING.default;
@@ -204,9 +309,10 @@ export function eventRatingInitial(
 		draws,
 		losses,
 		matches,
+		downThreshold,
 	);
 
-	if (eventRatingInDeadZone(wins, draws, losses, matches)) {
+	if (eventRatingInDeadZone(wins, draws, losses, matches, downThreshold)) {
 		return EVENT_RATING_INITIAL.mid;
 	}
 
@@ -223,12 +329,13 @@ function eventRatingRankedDelta(
 	losses: number,
 	matches: number,
 	ceiling: number,
+	downThreshold: number = EVENT_RATING_ADJUSTMENT.downThreshold,
 ): number {
 	if (matches < EVENT_RATING_ADJUSTMENT.minMatches) {
 		return 0;
 	}
 
-	if (eventRatingInDeadZone(wins, draws, losses, matches)) {
+	if (eventRatingInDeadZone(wins, draws, losses, matches, downThreshold)) {
 		return 0;
 	}
 
@@ -251,20 +358,41 @@ export function eventRatingDelta(
 	matches: number,
 	rating: number,
 	ceiling: number,
+	downThreshold: number = EVENT_RATING_ADJUSTMENT.downThreshold,
 ): number {
 	if (matches < EVENT_RATING_ADJUSTMENT.minMatches) {
 		return 0;
 	}
 
 	if (rating === PLAYER_RATING.default) {
-		const seed = eventRatingInitial(wins, draws, losses, matches);
+		const seed = eventRatingInitial(
+			wins,
+			draws,
+			losses,
+			matches,
+			downThreshold,
+		);
 		return applyEventRatingDelta(
 			seed,
-			eventRatingRankedDelta(wins, draws, losses, matches, ceiling),
+			eventRatingRankedDelta(
+				wins,
+				draws,
+				losses,
+				matches,
+				ceiling,
+				downThreshold,
+			),
 		);
 	}
 
-	return eventRatingRankedDelta(wins, draws, losses, matches, ceiling);
+	return eventRatingRankedDelta(
+		wins,
+		draws,
+		losses,
+		matches,
+		ceiling,
+		downThreshold,
+	);
 }
 
 export function applyEventRatingDelta(rating: number, delta: number): number {
@@ -285,11 +413,20 @@ export function recomputePlayerEventRating(
 	matches: number,
 	ceiling: number,
 	snapshotRating = rating,
+	downThreshold: number = EVENT_RATING_ADJUSTMENT.downThreshold,
 ): number {
 	return applyEventRatingDelta(
 		rating,
 		-oldDelta +
-			eventRatingDelta(wins, draws, losses, matches, snapshotRating, ceiling),
+			eventRatingDelta(
+				wins,
+				draws,
+				losses,
+				matches,
+				snapshotRating,
+				ceiling,
+				downThreshold,
+			),
 	);
 }
 
@@ -306,6 +443,7 @@ export function playerEventRatingAfterSave({
 	matches,
 	ceiling,
 	snapshotRating,
+	downThreshold = EVENT_RATING_ADJUSTMENT.downThreshold,
 }: {
 	rating: number;
 	storedDelta: number;
@@ -319,6 +457,7 @@ export function playerEventRatingAfterSave({
 	matches: number;
 	ceiling: number;
 	snapshotRating?: number;
+	downThreshold?: number;
 }): number {
 	if (
 		rating !== PLAYER_RATING.default &&
@@ -330,6 +469,7 @@ export function playerEventRatingAfterSave({
 			oldMatches,
 			rating,
 			ceiling,
+			downThreshold,
 		) !== 0
 	) {
 		return rating;
@@ -344,6 +484,7 @@ export function playerEventRatingAfterSave({
 		matches,
 		ceiling,
 		snapshotRating ?? rating,
+		downThreshold,
 	);
 }
 
@@ -452,6 +593,8 @@ export function eventRatingPreview({
 	ratingDropGoalShare = false,
 	ratingDropShareExcludeTop = false,
 	teams = [],
+	matches = [],
+	hasDominantTeam,
 }: {
 	attendance: readonly {
 		player_id: number;
@@ -483,6 +626,8 @@ export function eventRatingPreview({
 		sort_order: number;
 		players: readonly { player_id: number }[];
 	}[];
+	matches?: readonly EventDominantMatch[];
+	hasDominantTeam?: boolean;
 }): EventRatingPreviewRow[] {
 	const playerById = new Map(players.map((player) => [player.id, player]));
 	const statsById = new Map(attendance.map((row) => [row.player_id, row]));
@@ -512,6 +657,9 @@ export function eventRatingPreview({
 					})),
 				)
 			: new Set<number>();
+	const dominant =
+		hasDominantTeam ?? eventHasDominantTeamFromMatchups(matches);
+	const downThreshold = eventRatingDeadZoneDownThreshold(dominant);
 
 	return ids.map((playerId) => {
 		const player = playerById.get(playerId);
@@ -535,6 +683,7 @@ export function eventRatingPreview({
 				stats?.matches ?? 0,
 				from,
 				ceiling,
+				downThreshold,
 			) + eventMvpBonus(isMvp, from);
 		const share = eventRatingDropShareForPlayer({
 			enabled: ratingDropGoalShare,

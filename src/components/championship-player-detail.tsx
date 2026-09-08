@@ -4,6 +4,7 @@ import { lazy, Suspense, useMemo, useState } from "react";
 import { AppDialog } from "@/components/atoms/app-dialog";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
+import { ChampionshipPlayerRatingAlignmentCard } from "@/components/championship-player-rating-alignment-card";
 import { EmptyState } from "@/components/empty-state";
 import { DataTableSkeleton } from "@/components/molecules/data-table-skeleton";
 import { PlayerNameLink } from "@/components/molecules/player-name-link";
@@ -70,6 +71,14 @@ import {
 	playerRatingHistoryChartSeries,
 } from "@/const/player-profile";
 import {
+	PLAYER_PROFILE_SHARE_LABEL,
+	playerProfileShareCard,
+} from "@/const/player-profile-share";
+import {
+	PLAYER_PROFILE_TAB,
+	PLAYER_PROFILE_TABS,
+} from "@/const/player-profile-tab";
+import {
 	formatPlayerProjectionHistoryGap,
 	formatPlayerProjectionHistoryMiss,
 	formatPlayerProjectionHistoryProjected,
@@ -85,14 +94,6 @@ import {
 	playerProjectionHistoryChartSeries,
 	playerProjectionHistoryEmptyLabel,
 } from "@/const/player-projection-history";
-import {
-	PLAYER_PROFILE_SHARE_LABEL,
-	playerProfileShareCard,
-} from "@/const/player-profile-share";
-import {
-	PLAYER_PROFILE_TAB,
-	PLAYER_PROFILE_TABS,
-} from "@/const/player-profile-tab";
 import { PLAYER_RATING_SIM_LABEL } from "@/const/player-rating-sim";
 import {
 	playerSynergy,
@@ -854,6 +855,11 @@ export function ChampionshipPlayerDetail({
 							/>
 						)}
 					</SectionCard>
+					<ChampionshipPlayerRatingAlignmentCard
+						player={player}
+						players={rosterPlayers}
+						events={events}
+					/>
 					<SectionCard title={GOALKEEPER_STATS_LABEL.title}>
 						{!goalkeeper && (
 							<EmptyState

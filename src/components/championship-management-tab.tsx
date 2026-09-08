@@ -1,6 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { createColumnHelper } from "@tanstack/react-table";
-import { AlertTriangle, ClipboardList, UserCheck, Users } from "lucide-react";
+import {
+	AlertTriangle,
+	ClipboardList,
+	Crosshair,
+	UserCheck,
+	Users,
+} from "lucide-react";
 import { useMemo } from "react";
 import { ChampionshipAuditLog } from "@/components/championship-audit-log";
 import { ChampionshipVotesHistory } from "@/components/championship-votes-history";
@@ -40,6 +46,14 @@ import {
 	rankManagementFrequencyRows,
 } from "@/const/championship-management";
 import { playerVisibleName } from "@/const/player-name";
+import {
+	calculatePlayersRatingAlignment,
+	formatRatingAlignmentGap,
+	PLAYER_RATING_ALIGNMENT_LABEL,
+	type PlayerRatingAlignment,
+	ratingAlignmentOverrated,
+	ratingAlignmentUnderrated,
+} from "@/const/player-rating-alignment";
 import { ROUTES } from "@/const/routes";
 import { ERROR_CLASS } from "@/const/ui";
 import { CHAMPIONSHIP_EVENTS_QUERY_KEY } from "@/hooks/championships/championships-query-keys";
@@ -248,6 +262,51 @@ function ReliabilityTable({ rows }: { rows: AttendanceReliabilityRow[] }) {
 	);
 }
 
+function AlignmentGapList({
+	rows,
+	players,
+}: {
+	rows: readonly PlayerRatingAlignment[];
+	players: readonly ChampionshipPlayer[];
+}) {
+	const byId = useMemo(
+		() => new Map(players.map((player) => [player.id, player] as const)),
+		[players],
+	);
+
+	if (rows.length === 0) {
+		return (
+			<p className="text-sm text-fg-muted">
+				{PLAYER_RATING_ALIGNMENT_LABEL.emptyList}
+			</p>
+		);
+	}
+
+	return (
+		<ol className="space-y-2">
+			{rows.map((row, index) => {
+				const player = byId.get(row.playerId);
+				if (!player) {
+					return null;
+				}
+				return (
+					<li
+						key={row.playerId}
+						className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3 text-sm"
+					>
+						<span className="min-w-0 truncate font-medium text-fg">
+							{index + 1}. <PlayerNameLink player={player} />
+						</span>
+						<span className="shrink-0 tabular-nums text-fg">
+							{formatRatingAlignmentGap(row.ratingGap)}
+						</span>
+					</li>
+				);
+			})}
+		</ol>
+	);
+}
+
 export function ChampionshipManagementTab({
 	championshipId,
 	players,
@@ -266,6 +325,18 @@ export function ChampionshipManagementTab({
 		[players, events],
 	);
 	const alerts = managementAlerts(events);
+	const alignmentRows = useMemo(
+		() => calculatePlayersRatingAlignment(players, events),
+		[players, events],
+	);
+	const underrated = useMemo(
+		() => ratingAlignmentUnderrated(alignmentRows),
+		[alignmentRows],
+	);
+	const overrated = useMemo(
+		() => ratingAlignmentOverrated(alignmentRows),
+		[alignmentRows],
+	);
 
 	return (
 		<div className="space-y-6">
@@ -321,6 +392,23 @@ export function ChampionshipManagementTab({
 						))}
 					</ul>
 				)}
+			</SectionCard>
+			<SectionCard
+				title={PLAYER_RATING_ALIGNMENT_LABEL.underratedList}
+				icon={<Crosshair className="size-4 text-pitch-fg" />}
+				queryKey={CHAMPIONSHIP_EVENTS_QUERY_KEY}
+			>
+				<p className="mb-3 text-sm text-fg-muted">
+					{PLAYER_RATING_ALIGNMENT_LABEL.hint}
+				</p>
+				<AlignmentGapList rows={underrated} players={players} />
+			</SectionCard>
+			<SectionCard
+				title={PLAYER_RATING_ALIGNMENT_LABEL.overratedList}
+				icon={<Crosshair className="size-4 text-pitch-fg" />}
+				queryKey={CHAMPIONSHIP_EVENTS_QUERY_KEY}
+			>
+				<AlignmentGapList rows={overrated} players={players} />
 			</SectionCard>
 			<SectionCard
 				title={MANAGEMENT_LABEL.frequency}
