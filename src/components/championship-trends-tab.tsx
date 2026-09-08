@@ -15,7 +15,7 @@ import {
 	TrendingUp,
 	Users,
 } from "lucide-react";
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useMemo } from "react";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
@@ -29,31 +29,24 @@ import {
 	ATTENDANCE_TREND_LABEL,
 	ATTENDANCE_TREND_METRIC_DEFAULT,
 	ATTENDANCE_TREND_METRIC_OPTIONS,
-	type AttendanceTrendMetric,
 	attendanceTrendMetricCaption,
 	championshipAttendanceTrend,
 	championshipAttendanceTrendChart,
 	formatAttendanceTrendChartValue,
 	formatAttendanceTrendKpi,
-	parseAttendanceTrendMetric,
 } from "@/const/championship-attendance-trend";
 import {
 	CONSISTENCY_CHART,
 	CONSISTENCY_LABEL,
-	CONSISTENCY_METRIC_DEFAULT,
 	CONSISTENCY_METRIC_OPTIONS,
-	type ConsistencyMetric,
 	championshipConsistencyEmptyLabel,
 	championshipConsistencyPoints,
 	consistencyMetricCaption,
-	parseConsistencyMetric,
 } from "@/const/championship-consistency";
 import {
 	CONTRIBUTION_CHART,
 	CONTRIBUTION_LABEL,
-	CONTRIBUTION_METRIC_DEFAULT,
 	CONTRIBUTION_METRIC_OPTIONS,
-	type ContributionMetric,
 	championshipContribution,
 	championshipContributionEmptyLabel,
 	contributionInsights,
@@ -62,8 +55,8 @@ import {
 	formatContributionCount,
 	formatContributionMetricValue,
 	formatContributionWinRate,
+	type ContributionMetric,
 	type PlayerContributionPoint,
-	parseContributionMetric,
 } from "@/const/championship-contribution";
 import {
 	BALANCE_INDEX_CHART,
@@ -78,13 +71,10 @@ import {
 	championshipEventHealthChart,
 	EVENT_HEALTH_CHART,
 	EVENT_HEALTH_LABEL,
-	EVENT_HEALTH_METRIC_DEFAULT,
 	EVENT_HEALTH_METRIC_OPTIONS,
-	type EventHealthMetric,
 	eventHealthMetricCaption,
 	eventHealthMetricHint,
 	formatEventHealthKpi,
-	parseEventHealthMetric,
 } from "@/const/championship-event-health";
 import {
 	championshipFormHeatmap,
@@ -125,11 +115,8 @@ import {
 	PERFORMANCE_MAP_LABEL,
 	PERFORMANCE_MAP_LEGEND_STATES,
 	PERFORMANCE_MAP_STATE,
-	PERFORMANCE_MAP_WINDOW_DEFAULT,
 	PERFORMANCE_MAP_WINDOW_OPTIONS,
 	type PerformanceMapPoint,
-	type PerformanceMapWindow,
-	parsePerformanceMapWindow,
 	performanceMapGapReading,
 	performanceMapStateLabel,
 	performanceMapWindowCaption,
@@ -168,17 +155,12 @@ import { trendsAudiencePlayerScope } from "@/const/championship-trends-player-sc
 import {
 	championshipTrendsEvents,
 	championshipTrendsHasEnoughEnded,
-	parseTrendsAudience,
-	parseTrendsWindow,
 	TRENDS_AUDIENCE_DEFAULT,
 	TRENDS_AUDIENCE_LABEL,
 	TRENDS_AUDIENCE_OPTIONS,
 	TRENDS_RATING_HISTORY_LABEL,
-	TRENDS_WINDOW_DEFAULT,
 	TRENDS_WINDOW_LABEL,
 	TRENDS_WINDOW_OPTIONS,
-	type TrendsAudience,
-	type TrendsWindow,
 	trendsAudienceCaption,
 	trendsAudiencePlayers,
 	trendsHasMonthlyPlayers,
@@ -213,6 +195,9 @@ import { ROSTER_COLUMN } from "@/const/roster-stats";
 import { SKELETON_LABEL } from "@/const/skeleton";
 import { BUTTON_VARIANT, ERROR_CLASS, FIELD_CLASS } from "@/const/ui";
 import { CHAMPIONSHIP_EVENTS_QUERY_KEY } from "@/hooks/championships/championships-query-keys";
+import { useBalanceShare } from "@/hooks/use-balance-share";
+import { useChampionshipTrendsFilters } from "@/hooks/use-championship-trends-filters";
+import { useShareAction } from "@/hooks/use-share-action";
 import { buildCsv, shareCsvText } from "@/lib/share-csv";
 import { shareEventBalanceIndexImage } from "@/lib/share-event-balance-index-image";
 import { shareFormHeatmapImage } from "@/lib/share-form-heatmap-image";
@@ -929,39 +914,36 @@ export function ChampionshipTrendsTab({
 	players,
 	events,
 }: ChampionshipTrendsTabProps) {
-	const [window, setWindow] = useState<TrendsWindow>(TRENDS_WINDOW_DEFAULT);
-	const [audience, setAudience] = useState<TrendsAudience>(
-		TRENDS_AUDIENCE_DEFAULT,
+	const {
+		window,
+		audience,
+		attendanceMetric,
+		consistencyMetric,
+		performanceWindow,
+		showFewMatches,
+		showPerformanceNames,
+		contributionMetric,
+		showContributionBelowMin,
+		showContributionTable,
+		healthMetric,
+		setWindow,
+		setAudience,
+		setAttendanceMetric,
+		setConsistencyMetric,
+		setPerformanceWindow,
+		setShowFewMatches,
+		setShowPerformanceNames,
+		setContributionMetric,
+		setShowContributionBelowMin,
+		setShowContributionTable,
+		setHealthMetric,
+	} = useChampionshipTrendsFilters();
+	const heatmapShare = useShareAction(FORM_HEATMAP_SHARE_LABEL.shareFailed);
+	const inflationShare = useShareAction(
+		RATING_INFLATION_SHARE_LABEL.shareFailed,
 	);
-	const [attendanceMetric, setAttendanceMetric] =
-		useState<AttendanceTrendMetric>(ATTENDANCE_TREND_METRIC_DEFAULT);
-	const [consistencyMetric, setConsistencyMetric] = useState<ConsistencyMetric>(
-		CONSISTENCY_METRIC_DEFAULT,
-	);
-	const [performanceWindow, setPerformanceWindow] =
-		useState<PerformanceMapWindow>(PERFORMANCE_MAP_WINDOW_DEFAULT);
-	const [showFewMatches, setShowFewMatches] = useState(false);
-	const [showPerformanceNames, setShowPerformanceNames] = useState(false);
-	const [contributionMetric, setContributionMetric] =
-		useState<ContributionMetric>(CONTRIBUTION_METRIC_DEFAULT);
-	const [showContributionBelowMin, setShowContributionBelowMin] =
-		useState(false);
-	const [showContributionTable, setShowContributionTable] = useState(true);
-	const [healthMetric, setHealthMetric] = useState<EventHealthMetric>(
-		EVENT_HEALTH_METRIC_DEFAULT,
-	);
-	const [isSharingHeatmap, setIsSharingHeatmap] = useState(false);
-	const [heatmapShareError, setHeatmapShareError] = useState<string | null>(
-		null,
-	);
-	const [isSharingInflation, setIsSharingInflation] = useState(false);
-	const [inflationShareError, setInflationShareError] = useState<string | null>(
-		null,
-	);
-	const [isSharingBalance, setIsSharingBalance] = useState(false);
-	const [isSharingBalanceCsv, setIsSharingBalanceCsv] = useState(false);
-	const [balanceShareError, setBalanceShareError] = useState<string | null>(
-		null,
+	const balanceShare = useBalanceShare(
+		EVENT_BALANCE_INDEX_SHARE_LABEL.shareFailed,
 	);
 
 	const hasEnough = championshipTrendsHasEnoughEnded(events);
@@ -1106,77 +1088,57 @@ export function ChampionshipTrendsTab({
 		[windowEvents],
 	);
 
-	async function handleShareHeatmap() {
-		setIsSharingHeatmap(true);
-		setHeatmapShareError(null);
+	function handleShareHeatmap() {
 		const context = formHeatmapShareContext([
 			trendsWindowCaption(window),
 			audience === TRENDS_AUDIENCE_DEFAULT
 				? null
 				: trendsAudienceCaption(audience),
 		]);
-		try {
-			await shareFormHeatmapImage(
+		void heatmapShare.run(() =>
+			shareFormHeatmapImage(
 				formHeatmapShareCard(formHeatmap, championshipName, context),
-			);
-		} catch {
-			setHeatmapShareError(FORM_HEATMAP_SHARE_LABEL.shareFailed);
-		} finally {
-			setIsSharingHeatmap(false);
-		}
+			),
+		);
 	}
 
-	async function handleShareInflation() {
-		setIsSharingInflation(true);
-		setInflationShareError(null);
+	function handleShareInflation() {
 		const context = ratingInflationShareContext([
 			TRENDS_WINDOW_LABEL.allEndedCaption,
 			audience === TRENDS_AUDIENCE_DEFAULT
 				? null
 				: trendsAudienceCaption(audience),
 		]);
-		try {
-			await shareRatingInflationImage(
+		void inflationShare.run(() =>
+			shareRatingInflationImage(
 				ratingInflationShareCard(inflation, championshipName, context),
-			);
-		} catch {
-			setInflationShareError(RATING_INFLATION_SHARE_LABEL.shareFailed);
-		} finally {
-			setIsSharingInflation(false);
-		}
+			),
+		);
 	}
 
-	async function handleShareBalance() {
+	function handleShareBalance() {
 		const current = balanceIndex.current;
 		if (!current) {
 			return;
 		}
 
-		setIsSharingBalance(true);
-		setBalanceShareError(null);
 		const context = eventBalanceIndexShareContext([
 			trendsWindowCaption(window),
 		]);
-		try {
-			await shareEventBalanceIndexImage(
+		void balanceShare.shareBalanceImage(() =>
+			shareEventBalanceIndexImage(
 				eventBalanceIndexShareCard(current, championshipName, context),
-			);
-		} catch {
-			setBalanceShareError(EVENT_BALANCE_INDEX_SHARE_LABEL.shareFailed);
-		} finally {
-			setIsSharingBalance(false);
-		}
+			),
+		);
 	}
 
-	async function handleShareBalanceCsv() {
+	function handleShareBalanceCsv() {
 		if (balanceIndex.history.length === 0) {
 			return;
 		}
 
-		setIsSharingBalanceCsv(true);
-		setBalanceShareError(null);
-		try {
-			await shareCsvText(
+		void balanceShare.shareBalanceCsv(() =>
+			shareCsvText(
 				eventBalanceIndexCsvFileName({
 					championshipName,
 					generatedAt: new Date().toISOString(),
@@ -1186,12 +1148,8 @@ export function ChampionshipTrendsTab({
 					eventBalanceIndexCsvRows(balanceIndex),
 				),
 				EVENT_BALANCE_INDEX_SHARE_LABEL.shareCsv,
-			);
-		} catch {
-			setBalanceShareError(EVENT_BALANCE_INDEX_SHARE_LABEL.shareFailed);
-		} finally {
-			setIsSharingBalanceCsv(false);
-		}
+			),
+		);
 	}
 
 	return (
@@ -1211,7 +1169,7 @@ export function ChampionshipTrendsTab({
 							type="button"
 							className={filterChipClass(option === window)}
 							onClick={() => {
-								setWindow(parseTrendsWindow(option));
+								setWindow(option);
 							}}
 						>
 							{trendsWindowCaption(option)}
@@ -1233,7 +1191,7 @@ export function ChampionshipTrendsTab({
 									type="button"
 									className={filterChipClass(option === audience)}
 									onClick={() => {
-										setAudience(parseTrendsAudience(option));
+										setAudience(option);
 									}}
 								>
 									{trendsAudienceCaption(option)}
@@ -1275,9 +1233,7 @@ export function ChampionshipTrendsTab({
 									value={attendanceMetric}
 									className={`mt-1 ${FIELD_CLASS}`}
 									onChange={(event) => {
-										setAttendanceMetric(
-											parseAttendanceTrendMetric(event.target.value),
-										);
+										setAttendanceMetric(event.target.value);
 									}}
 								>
 									{ATTENDANCE_TREND_METRIC_OPTIONS.map((option) => (
@@ -1349,22 +1305,24 @@ export function ChampionshipTrendsTab({
 								<Button
 									variant={BUTTON_VARIANT.secondary}
 									className="w-full sm:w-auto"
-									disabled={isSharingInflation}
+									disabled={inflationShare.isSharing}
 									onClick={() => {
 										void handleShareInflation();
 									}}
 								>
-									{isSharingInflation && (
+									{inflationShare.isSharing && (
 										<LoaderCircle className="size-4 animate-spin" aria-hidden />
 									)}
-									{!isSharingInflation && <Share2 className="size-4" />}
-									{isSharingInflation && RATING_INFLATION_SHARE_LABEL.sharing}
-									{!isSharingInflation && RATING_INFLATION_SHARE_LABEL.share}
+									{!inflationShare.isSharing && <Share2 className="size-4" />}
+									{inflationShare.isSharing &&
+										RATING_INFLATION_SHARE_LABEL.sharing}
+									{!inflationShare.isSharing &&
+										RATING_INFLATION_SHARE_LABEL.share}
 								</Button>
 							)}
 						</div>
-						{inflationShareError && (
-							<p className={ERROR_CLASS}>{inflationShareError}</p>
+						{inflationShare.error && (
+							<p className={ERROR_CLASS}>{inflationShare.error}</p>
 						)}
 						{inflation.events === 0 && (
 							<p className="text-sm text-fg-muted">
@@ -1488,9 +1446,7 @@ export function ChampionshipTrendsTab({
 										value={performanceWindow}
 										className={`mt-1 ${FIELD_CLASS}`}
 										onChange={(event) => {
-											setPerformanceWindow(
-												parsePerformanceMapWindow(event.target.value),
-											);
+											setPerformanceWindow(event.target.value);
 										}}
 									>
 										{PERFORMANCE_MAP_WINDOW_OPTIONS.map((option) => (
@@ -1606,9 +1562,7 @@ export function ChampionshipTrendsTab({
 										value={contributionMetric}
 										className={`mt-1 ${FIELD_CLASS}`}
 										onChange={(event) => {
-											setContributionMetric(
-												parseContributionMetric(event.target.value),
-											);
+											setContributionMetric(event.target.value);
 										}}
 									>
 										{CONTRIBUTION_METRIC_OPTIONS.map((option) => (
@@ -1733,9 +1687,7 @@ export function ChampionshipTrendsTab({
 									value={consistencyMetric}
 									className={`mt-1 ${FIELD_CLASS}`}
 									onChange={(event) => {
-										setConsistencyMetric(
-											parseConsistencyMetric(event.target.value),
-										);
+										setConsistencyMetric(event.target.value);
 									}}
 								>
 									{CONSISTENCY_METRIC_OPTIONS.map((option) => (
@@ -1791,7 +1743,7 @@ export function ChampionshipTrendsTab({
 									value={healthMetric}
 									className={`mt-1 ${FIELD_CLASS}`}
 									onChange={(event) => {
-										setHealthMetric(parseEventHealthMetric(event.target.value));
+										setHealthMetric(event.target.value);
 									}}
 								>
 									{EVENT_HEALTH_METRIC_OPTIONS.map((option) => (
@@ -1863,46 +1815,51 @@ export function ChampionshipTrendsTab({
 									<Button
 										variant={BUTTON_VARIANT.secondary}
 										className="w-full sm:w-auto"
-										disabled={isSharingBalance || !balanceIndex.current}
+										disabled={
+											balanceShare.isSharingBalance || !balanceIndex.current
+										}
 										onClick={() => {
 											void handleShareBalance();
 										}}
 									>
-										{isSharingBalance && (
+										{balanceShare.isSharingBalance && (
 											<LoaderCircle
 												className="size-4 animate-spin"
 												aria-hidden
 											/>
 										)}
-										{!isSharingBalance && <Share2 className="size-4" />}
-										{isSharingBalance &&
+										{!balanceShare.isSharingBalance && (
+											<Share2 className="size-4" />
+										)}
+										{balanceShare.isSharingBalance &&
 											EVENT_BALANCE_INDEX_SHARE_LABEL.sharing}
-										{!isSharingBalance && EVENT_BALANCE_INDEX_SHARE_LABEL.share}
+										{!balanceShare.isSharingBalance &&
+											EVENT_BALANCE_INDEX_SHARE_LABEL.share}
 									</Button>
 									<Button
 										variant={BUTTON_VARIANT.secondary}
 										className="w-full sm:w-auto"
-										disabled={isSharingBalanceCsv}
+										disabled={balanceShare.isSharingBalanceCsv}
 										onClick={() => {
 											void handleShareBalanceCsv();
 										}}
 									>
-										{isSharingBalanceCsv && (
+										{balanceShare.isSharingBalanceCsv && (
 											<LoaderCircle
 												className="size-4 animate-spin"
 												aria-hidden
 											/>
 										)}
-										{!isSharingBalanceCsv &&
+										{!balanceShare.isSharingBalanceCsv &&
 											EVENT_BALANCE_INDEX_SHARE_LABEL.shareCsv}
-										{isSharingBalanceCsv &&
+										{balanceShare.isSharingBalanceCsv &&
 											EVENT_BALANCE_INDEX_SHARE_LABEL.sharing}
 									</Button>
 								</div>
 							)}
 						</div>
-						{balanceShareError && (
-							<p className={ERROR_CLASS}>{balanceShareError}</p>
+						{balanceShare.balanceShareError && (
+							<p className={ERROR_CLASS}>{balanceShare.balanceShareError}</p>
 						)}
 						{balanceIndex.history.length === 0 && (
 							<p className="text-sm text-fg-muted">
@@ -2195,22 +2152,22 @@ export function ChampionshipTrendsTab({
 								<Button
 									variant={BUTTON_VARIANT.secondary}
 									className="w-full sm:w-auto"
-									disabled={isSharingHeatmap}
+									disabled={heatmapShare.isSharing}
 									onClick={() => {
 										void handleShareHeatmap();
 									}}
 								>
-									{isSharingHeatmap && (
+									{heatmapShare.isSharing && (
 										<LoaderCircle className="size-4 animate-spin" aria-hidden />
 									)}
-									{!isSharingHeatmap && <Share2 className="size-4" />}
-									{isSharingHeatmap && FORM_HEATMAP_SHARE_LABEL.sharing}
-									{!isSharingHeatmap && FORM_HEATMAP_SHARE_LABEL.share}
+									{!heatmapShare.isSharing && <Share2 className="size-4" />}
+									{heatmapShare.isSharing && FORM_HEATMAP_SHARE_LABEL.sharing}
+									{!heatmapShare.isSharing && FORM_HEATMAP_SHARE_LABEL.share}
 								</Button>
 							)}
 						</div>
-						{heatmapShareError && (
-							<p className={ERROR_CLASS}>{heatmapShareError}</p>
+						{heatmapShare.error && (
+							<p className={ERROR_CLASS}>{heatmapShare.error}</p>
 						)}
 						{formHeatmap.rows.length === 0 && (
 							<p className="text-sm text-fg-muted">
