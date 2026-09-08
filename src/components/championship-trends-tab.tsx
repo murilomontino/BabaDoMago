@@ -199,6 +199,12 @@ import {
 	formHeatmapShareContext,
 } from "@/const/form-heatmap-share";
 import {
+	calculatePlayersRatingAlignment,
+	PLAYER_RATING_ALIGNMENT_LABEL,
+	RATING_ALIGNMENT_CHART,
+	ratingAlignmentChartPoints,
+} from "@/const/player-rating-alignment";
+import {
 	RATING_INFLATION_SHARE_LABEL,
 	ratingInflationShareCard,
 	ratingInflationShareContext,
@@ -232,6 +238,12 @@ const ChampionshipRatingInflationChart = lazy(() =>
 	import("@/components/molecules/championship-rating-inflation-chart").then(
 		(m) => ({ default: m.ChampionshipRatingInflationChart }),
 	),
+);
+
+const ChampionshipPlayerRatingAlignmentChart = lazy(() =>
+	import(
+		"@/components/molecules/championship-player-rating-alignment-chart"
+	).then((m) => ({ default: m.ChampionshipPlayerRatingAlignmentChart })),
 );
 
 const ChampionshipTrendLineChart = lazy(() =>
@@ -1041,6 +1053,10 @@ export function ChampionshipTrendsTab({
 		[scopedPlayers, events, consistencyMetric],
 	);
 	const consistencyEmpty = championshipConsistencyEmptyLabel(consistencyPoints);
+	const alignmentChartPoints = useMemo(() => {
+		const rows = calculatePlayersRatingAlignment(scopedPlayers, allEndedEvents);
+		return ratingAlignmentChartPoints(rows, scopedPlayers);
+	}, [scopedPlayers, allEndedEvents]);
 	const formHeatmap = useMemo(
 		() => championshipFormHeatmap(scopedPlayers, windowEvents),
 		[scopedPlayers, windowEvents],
@@ -1371,6 +1387,33 @@ export function ChampionshipTrendsTab({
 								<ChampionshipRatingInflationChart points={inflationChart} />
 							</Suspense>
 						)}
+					</section>
+
+					<section className="space-y-3">
+						<div className="space-y-1">
+							<div className="flex items-center gap-2">
+								<ChartScatter className="size-4 text-pitch-fg" />
+								<h3 className="text-sm font-semibold text-fg">
+									{PLAYER_RATING_ALIGNMENT_LABEL.chartTitle}
+								</h3>
+							</div>
+							<p className="text-sm text-fg-muted">
+								{PLAYER_RATING_ALIGNMENT_LABEL.hint}
+							</p>
+						</div>
+						<Suspense
+							fallback={
+								<SkeletonRegion label={SKELETON_LABEL.chart}>
+									<div style={{ height: RATING_ALIGNMENT_CHART.height }}>
+										<Skeleton className="h-full w-full" />
+									</div>
+								</SkeletonRegion>
+							}
+						>
+							<ChampionshipPlayerRatingAlignmentChart
+								points={alignmentChartPoints}
+							/>
+						</Suspense>
 					</section>
 
 					<section className="space-y-3">
