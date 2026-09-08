@@ -1,15 +1,6 @@
-import {
-	ArrowLeftRight,
-	ChevronDown,
-	LoaderCircle,
-	Pause,
-	Play,
-	Star,
-	X,
-} from "lucide-react";
-import { useEffect, useRef, useState } from "react";
 import { AddEventTeamModal } from "@/components/add-event-team-modal";
 import { Button } from "@/components/button";
+import { ChampionshipEventAddPrestartPlayerModal } from "@/components/championship-event-add-prestart-player-modal";
 import { ChampionshipEventBenchModal } from "@/components/championship-event-bench-modal";
 import { ChampionshipEventGoalModal } from "@/components/championship-event-goal-modal";
 import { ChampionshipEventRemovePlayerModal } from "@/components/championship-event-remove-player-modal";
@@ -30,8 +21,8 @@ import {
 import { GoalIcon } from "@/components/goal-icon";
 import { GoalkeeperGlovesIcon } from "@/components/goalkeeper-gloves-icon";
 import {
-	isMatchClockDebugVisible,
 	MatchClockDebug,
+	isMatchClockDebugVisible,
 } from "@/components/match-clock-debug";
 import {
 	MATCH_GOAL_TIMELINE_GRID_CLASS,
@@ -43,22 +34,21 @@ import {
 	type OwnGoalLabelPosition,
 } from "@/components/soccer-ball-icon";
 import {
-	attendanceGoalkeeperIds,
 	EVENT_ACTION,
 	EVENT_CARD_LONG_PRESS,
 	EVENT_TEAM_MESSAGE,
+	EVENT_TEAM_POSITION,
 	EVENT_TEAM_POSITION_LABEL,
+	attendanceGoalkeeperIds,
 	eventDrawInputRating,
 	eventTeamHighestSumFlags,
 	eventTeamPlayerPosition,
 	eventTeamSlotPosition,
 	eventTeamSourcePlayers,
 	eventTeamsSharePlayers,
+	type EventTeamPosition,
 } from "@/const/championship-event";
 import {
-	canConfirmMatchGoalkeepers,
-	canConfirmMatchTeams,
-	clampMatchDurationMinutes,
 	EVENT_GOAL_LABEL,
 	EVENT_MATCH_CLOCK_LABEL,
 	EVENT_MATCH_DISCARD_LABEL,
@@ -66,15 +56,15 @@ import {
 	EVENT_MATCH_END_INTENT,
 	EVENT_MATCH_LABEL,
 	EVENT_MATCH_TEAM_PREVIEW,
-	type EventMatchEndIntent,
+	MATCH_CLOCK_ACTION,
+	MATCH_PLAY_STEP,
+	canConfirmMatchGoalkeepers,
+	canConfirmMatchTeams,
+	clampMatchDurationMinutes,
 	formatMatchClock,
 	formatMatchScore,
 	isMatchDurationPreset,
 	isMatchTimeUp,
-	MATCH_CLOCK_ACTION,
-	type MatchClockAction,
-	MATCH_PLAY_STEP,
-	type MatchPlayStep,
 	matchActiveTeamPlayers,
 	matchAssistCandidates,
 	matchBenchPlayerIds,
@@ -82,19 +72,25 @@ import {
 	matchClockIsPaused,
 	matchClockIsStarted,
 	matchEndWinnerLabel,
-	matchGoalkeeperDraftFromTeams,
 	matchGoalPayload,
+	matchGoalkeeperDraftFromTeams,
+	matchPrestartAddCandidateIds,
+	matchPrestartAddGoalkeeperId,
 	matchScore,
 	matchTeamNeedsGoalkeeperUpdate,
 	matchTeamSlots,
 	matchTeamStarName,
 	matchTeamSwapCandidates,
+	matchTeamTemplateGoalkeeperId,
 	matchWinnerTeamId,
 	mergeMatchClock,
 	parseMatchDurationMinutesInput,
 	shouldSignalMatchTimeUp,
 	sortBenchForSlot,
 	toggleMatchTeamSelection,
+	type EventMatchEndIntent,
+	type MatchClockAction,
+	type MatchPlayStep,
 } from "@/const/championship-event-match";
 import {
 	MATCH_OPS_SYNCING_CLASS,
@@ -103,18 +99,18 @@ import {
 import { resolveEventPlayers } from "@/const/championship-event-roster";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
 import {
+	MATCHUP_LABEL,
 	analyzeMatchHistoryMatchup,
 	buildStartMatchMatchup,
-	MATCHUP_LABEL,
-	type MatchupSnapshot,
 	matchFavoriteTeamId,
 	matchupFavoriteTeamId,
+	type MatchupSnapshot,
 } from "@/const/event-matchup-analysis";
 import {
-	type EventTeamColor,
 	eventTeamColorStyle,
 	eventTeamName,
 	usedEventTeamColors,
+	type EventTeamColor,
 } from "@/const/event-team-color";
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
@@ -138,6 +134,16 @@ import type {
 	ChampionshipEventMatchPlayer,
 	ChampionshipEventTeam,
 } from "@/types/championship-event";
+import {
+	ArrowLeftRight,
+	ChevronDown,
+	LoaderCircle,
+	Pause,
+	Play,
+	Star,
+	X,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 type SlotTarget = {
 	teamId: number;
@@ -335,7 +341,9 @@ function MatchGoalkeeperTeamPick({
 	rosterById,
 	ceiling,
 	goalkeeperIds,
+	canAddPlayer,
 	onSelectGoalkeeper,
+	onAddPlayer,
 }: {
 	team: ChampionshipEventTeam;
 	pickOrder: number;
@@ -343,7 +351,9 @@ function MatchGoalkeeperTeamPick({
 	rosterById: Map<number, ChampionshipPlayer>;
 	ceiling: number;
 	goalkeeperIds: readonly number[];
+	canAddPlayer: boolean;
 	onSelectGoalkeeper: (playerId: number) => void;
+	onAddPlayer: () => void;
 }) {
 	const style = eventTeamColorStyle(team.color);
 
@@ -385,11 +395,7 @@ function MatchGoalkeeperTeamPick({
 								}}
 							>
 								<span className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}>
-									{
-										EVENT_TEAM_POSITION_LABEL[
-											eventTeamPlayerPosition(selected)
-										]
-									}
+									{EVENT_TEAM_POSITION_LABEL[eventTeamPlayerPosition(selected)]}
 								</span>
 								<EventTeamPlayerRow
 									player={player}
@@ -404,6 +410,15 @@ function MatchGoalkeeperTeamPick({
 					);
 				})}
 			</ul>
+			{canAddPlayer && (
+				<Button
+					variant={BUTTON_VARIANT.secondary}
+					className="mt-2 w-full"
+					onClick={onAddPlayer}
+				>
+					{EVENT_MATCH_LABEL.addPlayer}
+				</Button>
+			)}
 		</section>
 	);
 }
@@ -467,9 +482,8 @@ function TeamPick({
 
 	return (
 		<div
-			className={`relative w-full overflow-hidden rounded-lg border bg-surface text-sm ${
-				selected ? "border-pitch ring-2 ring-pitch" : "border-line"
-			}`}
+			className={`relative w-full overflow-hidden rounded-lg border bg-surface text-sm ${selected ? "border-pitch ring-2 ring-pitch" : "border-line"
+				}`}
 			style={style}
 		>
 			<EventTeamColorDot color={team.color} />
@@ -526,11 +540,10 @@ function TeamPick({
 						{eventTeamName(team.color, team.sort_order)}
 					</p>
 					<span
-						className={`inline-flex h-7 shrink-0 items-center rounded-lg px-2 text-xs font-medium ${
-							selected
+						className={`inline-flex h-7 shrink-0 items-center rounded-lg px-2 text-xs font-medium ${selected
 								? "bg-pitch text-white"
 								: "border border-line bg-surface text-fg"
-						}`}
+							}`}
 					>
 						{pickOrder !== null
 							? `${EVENT_MATCH_LABEL.picked} ${pickOrder}`
@@ -557,9 +570,8 @@ function TeamPick({
 				</ul>
 				{canExpand && (
 					<div
-						className={`grid transition-[grid-template-rows] ${TEAM_PICK_EXPAND_TRANSITION} ${
-							expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-						}`}
+						className={`grid transition-[grid-template-rows] ${TEAM_PICK_EXPAND_TRANSITION} ${expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+							}`}
 					>
 						<ul className="min-h-0 space-y-1 overflow-hidden pt-1">
 							{extraRoster.map(({ row, player }) => {
@@ -597,9 +609,8 @@ function TeamPick({
 						{expanded && EVENT_MATCH_LABEL.showLess}
 						{!expanded && EVENT_MATCH_LABEL.showMore}
 						<ChevronDown
-							className={`size-3.5 shrink-0 transition-transform ${TEAM_PICK_EXPAND_TRANSITION} ${
-								expanded ? "rotate-180" : ""
-							}`}
+							className={`size-3.5 shrink-0 transition-transform ${TEAM_PICK_EXPAND_TRANSITION} ${expanded ? "rotate-180" : ""
+								}`}
 						/>
 					</button>
 				)}
@@ -1049,10 +1060,15 @@ export function ChampionshipEventPlay({
 		eventDrawInputRating(player, volunteerSet.has(player.id)),
 	);
 	const [selected, setSelected] = useState<number[]>([]);
-	const [playStep, setPlayStep] = useState<MatchPlayStep>(MATCH_PLAY_STEP.teams);
+	const [playStep, setPlayStep] = useState<MatchPlayStep>(
+		MATCH_PLAY_STEP.teams,
+	);
 	const [goalkeeperByTeamId, setGoalkeeperByTeamId] = useState<
 		Record<number, number>
 	>({});
+	const [addPrestartTeamId, setAddPrestartTeamId] = useState<number | null>(
+		null,
+	);
 	const [durationMinutes, setDurationMinutes] = useState<number>(
 		EVENT_MATCH_DURATION.defaultMinutes,
 	);
@@ -1096,8 +1112,8 @@ export function ChampionshipEventPlay({
 	const selectedTeamB = event.teams.find((team) => team.id === selected[1]);
 	const sharedPlayersError =
 		selectedTeamA &&
-		selectedTeamB &&
-		eventTeamsSharePlayers(selectedTeamA.players, selectedTeamB.players)
+			selectedTeamB &&
+			eventTeamsSharePlayers(selectedTeamA.players, selectedTeamB.players)
 			? EVENT_TEAM_MESSAGE.sharedPlayers
 			: null;
 
@@ -1125,6 +1141,62 @@ export function ChampionshipEventPlay({
 		);
 
 		if (playStep === MATCH_PLAY_STEP.goalkeepers) {
+			const prestartAddTeam =
+				addPrestartTeamId === null
+					? null
+					: (teamById.get(addPrestartTeamId) ?? null);
+			const prestartCandidateIds = matchPrestartAddCandidateIds(
+				presentPlayers.map((player) => player.id),
+				selectedTeamA?.players.map((player) => player.player_id) ?? [],
+				selectedTeamB?.players.map((player) => player.player_id) ?? [],
+			);
+			const prestartCandidates = presentPlayers.filter((player) =>
+				prestartCandidateIds.includes(player.id),
+			);
+
+			function addPrestartPlayer(
+				team: ChampionshipEventTeam,
+				playerId: number,
+				role: EventTeamPosition,
+			) {
+				if (team.players.length >= event.players_per_team) {
+					return;
+				}
+
+				if (team.players.some((player) => player.player_id === playerId)) {
+					return;
+				}
+
+				const playerIds = [
+					...team.players.map((player) => player.player_id),
+					playerId,
+				];
+				const asGoalkeeper = role === EVENT_TEAM_POSITION.goalkeeper;
+				const goalkeeperId = matchPrestartAddGoalkeeperId(
+					asGoalkeeper,
+					playerId,
+					goalkeeperByTeamId[team.id] ??
+						matchTeamTemplateGoalkeeperId(team.players),
+					team.players.map((player) => player.player_id),
+				);
+
+				onUpdateTeam({
+					teamId: team.id,
+					color: team.color,
+					playerIds,
+					goalkeeperId,
+				});
+
+				if (asGoalkeeper) {
+					setGoalkeeperByTeamId((current) => ({
+						...current,
+						[team.id]: playerId,
+					}));
+				}
+
+				setAddPrestartTeamId(null);
+			}
+
 			return (
 				<div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden relative">
 					{showQueueBanner && <MatchOpsQueueBanner online={online} />}
@@ -1140,11 +1212,17 @@ export function ChampionshipEventPlay({
 								rosterById={rosterById}
 								ceiling={ceiling}
 								goalkeeperIds={volunteerGoalkeeperIds}
+								canAddPlayer={
+									selectedTeamA.players.length < event.players_per_team
+								}
 								onSelectGoalkeeper={(playerId) => {
 									setGoalkeeperByTeamId((current) => ({
 										...current,
 										[teamAId]: playerId,
 									}));
+								}}
+								onAddPlayer={() => {
+									setAddPrestartTeamId(teamAId);
 								}}
 							/>
 						)}
@@ -1156,11 +1234,17 @@ export function ChampionshipEventPlay({
 								rosterById={rosterById}
 								ceiling={ceiling}
 								goalkeeperIds={volunteerGoalkeeperIds}
+								canAddPlayer={
+									selectedTeamB.players.length < event.players_per_team
+								}
 								onSelectGoalkeeper={(playerId) => {
 									setGoalkeeperByTeamId((current) => ({
 										...current,
 										[teamBId]: playerId,
 									}));
+								}}
+								onAddPlayer={() => {
+									setAddPrestartTeamId(teamBId);
 								}}
 							/>
 						)}
@@ -1172,6 +1256,7 @@ export function ChampionshipEventPlay({
 								variant={BUTTON_VARIANT.ghost}
 								className="w-full md:w-auto"
 								onClick={() => {
+									setAddPrestartTeamId(null);
 									setPlayStep(MATCH_PLAY_STEP.teams);
 								}}
 							>
@@ -1238,6 +1323,7 @@ export function ChampionshipEventPlay({
 										historyEvents,
 										roster: players,
 									});
+									setAddPrestartTeamId(null);
 									setPlayStep(MATCH_PLAY_STEP.teams);
 									void onStart(teamAId, teamBId, durationMinutes, {
 										snapshot: matchup.snapshot,
@@ -1249,6 +1335,19 @@ export function ChampionshipEventPlay({
 							</Button>
 						</div>
 					</div>
+					{prestartAddTeam && (
+						<ChampionshipEventAddPrestartPlayerModal
+							players={prestartCandidates}
+							ceiling={ceiling}
+							errorMessage={opsError}
+							onCancel={() => {
+								setAddPrestartTeamId(null);
+							}}
+							onSelect={(playerId, role) => {
+								addPrestartPlayer(prestartAddTeam, playerId, role);
+							}}
+						/>
+					)}
 				</div>
 			);
 		}
@@ -1437,10 +1536,10 @@ export function ChampionshipEventPlay({
 		matchupReview === null
 			? null
 			: matchupFavoriteTeamId(
-					matchupReview.analysis.favoriteSide,
-					match.team_a_id,
-					match.team_b_id,
-				);
+				matchupReview.analysis.favoriteSide,
+				match.team_a_id,
+				match.team_b_id,
+			);
 	const favoriteTeamId =
 		frozenFavoriteId === undefined ? liveFavoriteId : frozenFavoriteId;
 	const teamAFavorite = favoriteTeamId === match.team_a_id;

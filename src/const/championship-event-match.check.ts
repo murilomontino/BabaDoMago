@@ -72,6 +72,8 @@ import {
 	matchTeamNeedsGoalkeeperUpdate,
 	matchTeamTemplateGoalkeeperId,
 	matchPlayUrl,
+	matchPrestartAddCandidateIds,
+	matchPrestartAddGoalkeeperId,
 	matchScore,
 	matchSlotCount,
 	matchSubstitutedTeamPlayers,
@@ -217,6 +219,26 @@ check(
 	),
 	"2,4",
 	"bench",
+);
+check(
+	String(matchPrestartAddCandidateIds([1, 2, 3, 4, 5], [1, 2], [3, 4])),
+	"5",
+	"prestart add candidates",
+);
+check(
+	matchPrestartAddGoalkeeperId(true, 9, 2, [1, 2]),
+	9,
+	"prestart add as gk",
+);
+check(
+	matchPrestartAddGoalkeeperId(false, 9, 2, [1, 2]),
+	2,
+	"prestart add as player keeps gk",
+);
+check(
+	matchPrestartAddGoalkeeperId(false, 9, null, [1, 2]),
+	1,
+	"prestart add as player fallback first",
 );
 
 const assists = matchAssistCandidates(
@@ -735,6 +757,17 @@ check(
 	EVENT_MATCH_LABEL.confirmGoalkeepers,
 	"Ir para o cronômetro",
 	"confirm goalkeepers",
+);
+check(EVENT_MATCH_LABEL.addPlayer, "Adicionar", "add player");
+check(
+	EVENT_MATCH_LABEL.addPlayerTitle,
+	"Adicionar jogador",
+	"add player title",
+);
+check(
+	EVENT_MATCH_LABEL.addPlayerEmpty,
+	"Ninguém disponível fora do confronto.",
+	"add player empty",
 );
 
 const clockBase = {
