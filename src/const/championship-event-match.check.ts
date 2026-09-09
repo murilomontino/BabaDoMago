@@ -67,6 +67,7 @@ import {
 	matchEndWinnerLabel,
 	matchGoalForTeamA,
 	matchGoalkeeperDraftFromTeams,
+	matchIncompleteTeamNeedsClearGoalkeeper,
 	matchGoalPayload,
 	matchGoalTimeline,
 	matchTeamNeedsGoalkeeperUpdate,
@@ -382,9 +383,10 @@ check(String(toggleMatchTeamSelection([1, 2], 1)), "2", "deselect");
 check(String(toggleMatchTeamSelection([1, 2], 3)), "2,3", "replace oldest");
 check(canConfirmMatchTeams([1]), false, "one team");
 check(canConfirmMatchTeams([1, 2]), true, "two teams");
-check(canConfirmMatchGoalkeepers(null, 2), false, "gk missing a");
-check(canConfirmMatchGoalkeepers(1, null), false, "gk missing b");
-check(canConfirmMatchGoalkeepers(1, 2), true, "gk both set");
+check(canConfirmMatchGoalkeepers(null, 2), true, "gk optional missing a");
+check(canConfirmMatchGoalkeepers(1, null), true, "gk optional missing b");
+check(canConfirmMatchGoalkeepers(1, 2), true, "gk optional both set");
+check(canConfirmMatchGoalkeepers(), true, "gk optional none");
 check(MATCH_PLAY_STEP.goalkeepers, "goalkeepers", "play step gk");
 check(
 	matchTeamTemplateGoalkeeperId([
@@ -433,10 +435,63 @@ check(
 					{ player_id: 4, is_goalkeeper: true },
 				],
 			},
+			2,
 		),
 	),
 	JSON.stringify({ 10: 1, 20: 4 }),
-	"gk draft from teams",
+	"gk draft from full teams",
+);
+check(
+	JSON.stringify(
+		matchGoalkeeperDraftFromTeams(
+			{
+				id: 10,
+				players: [
+					{ player_id: 1, is_goalkeeper: true },
+					{ player_id: 2, is_goalkeeper: false },
+					{ player_id: 3, is_goalkeeper: false },
+					{ player_id: 4, is_goalkeeper: false },
+				],
+			},
+			{
+				id: 20,
+				players: [
+					{ player_id: 5, is_goalkeeper: true },
+					{ player_id: 6, is_goalkeeper: false },
+					{ player_id: 7, is_goalkeeper: false },
+					{ player_id: 8, is_goalkeeper: false },
+					{ player_id: 9, is_goalkeeper: false },
+				],
+			},
+			5,
+		),
+	),
+	JSON.stringify({ 20: 5 }),
+	"gk draft skips incomplete team",
+);
+check(
+	matchIncompleteTeamNeedsClearGoalkeeper(
+		[
+			{ player_id: 1, is_goalkeeper: true },
+			{ player_id: 2, is_goalkeeper: false },
+		],
+		5,
+		undefined,
+	),
+	true,
+	"incomplete clears template gk",
+);
+check(
+	matchIncompleteTeamNeedsClearGoalkeeper(
+		[
+			{ player_id: 1, is_goalkeeper: true },
+			{ player_id: 2, is_goalkeeper: false },
+		],
+		5,
+		1,
+	),
+	false,
+	"incomplete keeps drafted gk",
 );
 
 check(

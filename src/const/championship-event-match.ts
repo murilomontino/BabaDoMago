@@ -723,14 +723,10 @@ export function canConfirmMatchTeams(selected: readonly number[]): boolean {
 }
 
 export function canConfirmMatchGoalkeepers(
-	teamAGoalkeeperId: number | null | undefined,
-	teamBGoalkeeperId: number | null | undefined,
+	_teamAGoalkeeperId?: number | null,
+	_teamBGoalkeeperId?: number | null,
 ): boolean {
-	if (teamAGoalkeeperId == null || teamBGoalkeeperId == null) {
-		return false;
-	}
-
-	return teamAGoalkeeperId > 0 && teamBGoalkeeperId > 0;
+	return true;
 }
 
 export function matchTeamTemplateGoalkeeperId(
@@ -753,20 +749,41 @@ export function matchGoalkeeperDraftFromTeams(
 		id: number;
 		players: readonly { player_id: number; is_goalkeeper: boolean }[];
 	},
+	playersPerTeam: number,
 ): Record<number, number> {
 	const draft: Record<number, number> = {};
-	const goalkeeperA = matchTeamTemplateGoalkeeperId(teamA.players);
-	const goalkeeperB = matchTeamTemplateGoalkeeperId(teamB.players);
 
-	if (goalkeeperA !== null) {
-		draft[teamA.id] = goalkeeperA;
+	if (teamA.players.length >= playersPerTeam) {
+		const goalkeeperA = matchTeamTemplateGoalkeeperId(teamA.players);
+		if (goalkeeperA !== null) {
+			draft[teamA.id] = goalkeeperA;
+		}
 	}
 
-	if (goalkeeperB !== null) {
-		draft[teamB.id] = goalkeeperB;
+	if (teamB.players.length >= playersPerTeam) {
+		const goalkeeperB = matchTeamTemplateGoalkeeperId(teamB.players);
+		if (goalkeeperB !== null) {
+			draft[teamB.id] = goalkeeperB;
+		}
 	}
 
 	return draft;
+}
+
+export function matchIncompleteTeamNeedsClearGoalkeeper(
+	players: readonly { player_id: number; is_goalkeeper: boolean }[],
+	playersPerTeam: number,
+	draftGoalkeeperId: number | undefined,
+): boolean {
+	if (draftGoalkeeperId !== undefined) {
+		return false;
+	}
+
+	if (players.length >= playersPerTeam) {
+		return false;
+	}
+
+	return matchTeamTemplateGoalkeeperId(players) !== null;
 }
 
 export function matchTeamNeedsGoalkeeperUpdate(

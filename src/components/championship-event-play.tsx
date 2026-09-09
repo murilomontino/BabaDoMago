@@ -58,7 +58,6 @@ import {
 	EVENT_MATCH_TEAM_PREVIEW,
 	MATCH_CLOCK_ACTION,
 	MATCH_PLAY_STEP,
-	canConfirmMatchGoalkeepers,
 	canConfirmMatchTeams,
 	clampMatchDurationMinutes,
 	formatMatchClock,
@@ -74,6 +73,7 @@ import {
 	matchEndWinnerLabel,
 	matchGoalPayload,
 	matchGoalkeeperDraftFromTeams,
+	matchIncompleteTeamNeedsClearGoalkeeper,
 	matchPrestartAddCandidateIds,
 	matchPrestartAddGoalkeeperId,
 	matchScore,
@@ -1135,10 +1135,6 @@ export function ChampionshipEventPlay({
 	if (!match) {
 		const teamAId = selected[0];
 		const teamBId = selected[1];
-		const canConfirmGoalkeepers = canConfirmMatchGoalkeepers(
-			teamAId === undefined ? null : goalkeeperByTeamId[teamAId],
-			teamBId === undefined ? null : goalkeeperByTeamId[teamBId],
-		);
 
 		if (playStep === MATCH_PLAY_STEP.goalkeepers) {
 			const prestartAddTeam =
@@ -1264,7 +1260,6 @@ export function ChampionshipEventPlay({
 							</Button>
 							<Button
 								className="w-full md:w-auto"
-								disabled={!canConfirmGoalkeepers}
 								onClick={() => {
 									if (
 										teamAId === undefined ||
@@ -1275,31 +1270,43 @@ export function ChampionshipEventPlay({
 										return;
 									}
 
-									const goalkeeperA = goalkeeperByTeamId[teamAId];
-									const goalkeeperB = goalkeeperByTeamId[teamBId];
-									if (
-										!canConfirmMatchGoalkeepers(goalkeeperA, goalkeeperB) ||
-										goalkeeperA === undefined ||
-										goalkeeperB === undefined
-									) {
-										return;
-									}
-
 									const teamsToUpdate = [
 										{
 											team: selectedTeamA,
-											goalkeeperId: goalkeeperA,
+											goalkeeperId: goalkeeperByTeamId[teamAId],
 										},
 										{
 											team: selectedTeamB,
-											goalkeeperId: goalkeeperB,
+											goalkeeperId: goalkeeperByTeamId[teamBId],
 										},
 									];
 
 									for (const { team, goalkeeperId } of teamsToUpdate) {
+										if (goalkeeperId !== undefined) {
+											if (
+												!matchTeamNeedsGoalkeeperUpdate(
+													team.players,
+													goalkeeperId,
+												)
+											) {
+												continue;
+											}
+
+											onUpdateTeam({
+												teamId: team.id,
+												color: team.color,
+												playerIds: team.players.map(
+													(player) => player.player_id,
+												),
+												goalkeeperId,
+											});
+											continue;
+										}
+
 										if (
-											!matchTeamNeedsGoalkeeperUpdate(
+											!matchIncompleteTeamNeedsClearGoalkeeper(
 												team.players,
+												event.players_per_team,
 												goalkeeperId,
 											)
 										) {
@@ -1312,7 +1319,7 @@ export function ChampionshipEventPlay({
 											playerIds: team.players.map(
 												(player) => player.player_id,
 											),
-											goalkeeperId,
+											goalkeeperId: 0,
 										});
 									}
 
@@ -1470,7 +1477,11 @@ export function ChampionshipEventPlay({
 								}
 
 								setGoalkeeperByTeamId(
-									matchGoalkeeperDraftFromTeams(teamA, teamB),
+									matchGoalkeeperDraftFromTeams(
+										teamA,
+										teamB,
+										event.players_per_team,
+									),
 								);
 								setPlayStep(MATCH_PLAY_STEP.goalkeepers);
 							}}
