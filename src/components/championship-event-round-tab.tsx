@@ -13,7 +13,7 @@ import {
 	Users,
 	X,
 } from "lucide-react";
-import { type RefObject, useState } from "react";
+import type { RefObject } from "react";
 import { AddEventTeamModal } from "@/components/add-event-team-modal";
 import { Button } from "@/components/button";
 import { ChampionshipEventBuilder } from "@/components/championship-event-builder";
@@ -124,12 +124,20 @@ import {
 import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
 import { shareEventRecapImage } from "@/lib/share-event-recap-image";
 import { shareEventTeamsImage } from "@/lib/share-event-teams-image";
+import {
+	isRoundTabModalType,
+	roundTabEditTeam,
+	roundTabModalPlayer,
+	roundTabRemoveMatch,
+	roundTabRemoveTeam,
+	roundTabReopenMatch,
+} from "@/const/championship-event-round-tab-ui";
+import { useChampionshipEventRoundTabUi } from "@/hooks/use-championship-event-round-tab-ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type {
 	ChampionshipEvent,
 	ChampionshipEventAttendance,
 	ChampionshipEventMatch,
-	ChampionshipEventTeam,
 } from "@/types/championship-event";
 
 function formatAttendanceEventDate(value: string): string {
@@ -390,29 +398,8 @@ export function ChampionshipEventRoundTab({
 	const showAttendanceOwnerActions = canOverrideEnded && !showTeamBuilder;
 	const showAddTeam = canOverrideEnded && !showTeamBuilder;
 	const showMatchDelete = canOverrideEnded && !showTeamBuilder;
-	const [isSharing, setIsSharing] = useState(false);
-	const [shareError, setShareError] = useState<string | null>(null);
-	const [copiedDrawLink, setCopiedDrawLink] = useState(false);
-	const [copiedVoteLink, setCopiedVoteLink] = useState(false);
+	const ui = useChampionshipEventRoundTabUi();
 	const navigate = useNavigate();
-	const [isSharingRecap, setIsSharingRecap] = useState(false);
-	const [recapError, setRecapError] = useState<string | null>(null);
-	const [isMvpOpen, setIsMvpOpen] = useState(false);
-	const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
-	const [isLateJoinOpen, setIsLateJoinOpen] = useState(false);
-	const [isAttendanceStatsOpen, setIsAttendanceStatsOpen] = useState(false);
-	const [isAddTeamOpen, setIsAddTeamOpen] = useState(false);
-	const [teamToEdit, setTeamToEdit] = useState<ChampionshipEventTeam | null>(
-		null,
-	);
-	const [teamToRemove, setTeamToRemove] =
-		useState<ChampionshipEventTeam | null>(null);
-	const [attendanceToRemove, setAttendanceToRemove] =
-		useState<ChampionshipPlayer | null>(null);
-	const [matchToRemove, setMatchToRemove] =
-		useState<ChampionshipEventMatch | null>(null);
-	const [matchToReopen, setMatchToReopen] =
-		useState<ChampionshipEventMatch | null>(null);
 
 	const attendanceIds = event.attendance.map((row) => row.player_id);
 	const selfCheckIn = canSelfCheckIn({
@@ -430,21 +417,20 @@ export function ChampionshipEventRoundTab({
 	const attendanceNameByPlayerId = new Map(
 		event.attendance.map((row) => [row.player_id, row.display_name]),
 	);
+	const teamToEdit = roundTabEditTeam(ui.modal);
+	const teamToRemove = roundTabRemoveTeam(ui.modal);
+	const attendanceToRemove = roundTabModalPlayer(ui.modal);
+	const matchToRemove = roundTabRemoveMatch(ui.modal);
+	const matchToReopen = roundTabReopenMatch(ui.modal);
 
 	async function handleShareTeams() {
-		setIsSharing(true);
-		setShareError(null);
-		try {
-			await shareEventTeamsImage(
+		await ui.handleShareTeams(() =>
+			shareEventTeamsImage(
 				eventTeamsShareCards(detailTeams, players, volunteerGoalkeeperIds),
 				ceiling,
 				{ championshipName, startsAt: event.starts_at },
-			);
-		} catch {
-			setShareError(EVENT_TEAM_SHARE_LABEL.shareFailed);
-		} finally {
-			setIsSharing(false);
-		}
+			),
+		);
 	}
 
 	async function handleCopyDrawLink() {
@@ -455,7 +441,7 @@ export function ChampionshipEventRoundTab({
 			ROUTES.championshipEventDraw,
 		);
 		await navigator.clipboard.writeText(url);
-		setCopiedDrawLink(true);
+		ui.markDrawLinkCopied();
 	}
 
 	async function handleCopyVoteLink() {
@@ -466,7 +452,7 @@ export function ChampionshipEventRoundTab({
 			ROUTES.championshipEventVote,
 		);
 		await navigator.clipboard.writeText(url);
-		setCopiedVoteLink(true);
+		ui.markVoteLinkCopied();
 	}
 
 	const recapRatingChanges = eventRecapShareRatingChangesFromAttendance(
@@ -489,22 +475,15 @@ export function ChampionshipEventRoundTab({
 	);
 
 	async function handleShareRecap() {
-		setIsSharingRecap(true);
-		setRecapError(null);
-
-		try {
-			await shareEventRecapImage({
+		await ui.handleShareRecap(() =>
+			shareEventRecapImage({
 				championshipName,
 				startsAt: event.starts_at,
 				matches: event.matches,
 				teams: event.teams,
 				ratingChanges: recapRatingChanges,
-			});
-		} catch {
-			setRecapError(EVENT_RECAP_SHARE_LABEL.shareFailed);
-		} finally {
-			setIsSharingRecap(false);
-		}
+			}),
+		);
 	}
 
 	return (
@@ -564,19 +543,19 @@ export function ChampionshipEventRoundTab({
 								<IconTooltipButton
 									showLabel
 									label={
-										isSharing
+										ui.isSharingTeams
 											? EVENT_TEAM_SHARE_LABEL.sharing
 											: EVENT_TEAM_SHARE_LABEL.shareTeams
 									}
 									icon={
 										<>
-											{isSharing && (
+											{ui.isSharingTeams && (
 												<LoaderCircle className="size-4 animate-spin" />
 											)}
-											{!isSharing && <Share2 className="size-4" />}
+											{!ui.isSharingTeams && <Share2 className="size-4" />}
 										</>
 									}
-									disabled={isSharing}
+									disabled={ui.isSharingTeams}
 									onClick={() => {
 										void handleShareTeams();
 									}}
@@ -585,7 +564,7 @@ export function ChampionshipEventRoundTab({
 							{showCopyDrawLink && (
 								<IconTooltipButton
 									showLabel
-									label={copyDrawLinkLabel(copiedDrawLink)}
+									label={copyDrawLinkLabel(ui.copiedDrawLink)}
 									icon={<Link2 className="size-4" />}
 									onClick={() => {
 										void handleCopyDrawLink();
@@ -596,19 +575,19 @@ export function ChampionshipEventRoundTab({
 								<IconTooltipButton
 									showLabel
 									label={
-										isSharingRecap
+										ui.isSharingRecap
 											? EVENT_RECAP_SHARE_LABEL.sharing
 											: EVENT_RECAP_SHARE_LABEL.share
 									}
 									icon={
 										<>
-											{isSharingRecap && (
+											{ui.isSharingRecap && (
 												<LoaderCircle className="size-4 animate-spin" />
 											)}
-											{!isSharingRecap && <Share2 className="size-4" />}
+											{!ui.isSharingRecap && <Share2 className="size-4" />}
 										</>
 									}
-									disabled={isSharingRecap}
+									disabled={ui.isSharingRecap}
 									onClick={() => {
 										void handleShareRecap();
 									}}
@@ -629,7 +608,7 @@ export function ChampionshipEventRoundTab({
 									showLabel
 									label={EVENT_ACTION.addTeam}
 									icon={<Plus className="size-4" />}
-									onClick={() => setIsAddTeamOpen(true)}
+									onClick={() => ui.openAddTeam()}
 								/>
 							)}
 						</div>
@@ -640,8 +619,10 @@ export function ChampionshipEventRoundTab({
 							eventId={event.id}
 						/>
 					)}
-					{shareError && <p className={ERROR_CLASS}>{shareError}</p>}
-					{recapError && <p className={ERROR_CLASS}>{recapError}</p>}
+					{ui.shareTeamsError && <p className={ERROR_CLASS}>{ui.shareTeamsError}</p>}
+					{ui.shareRecapError && (
+						<p className={ERROR_CLASS}>{ui.shareRecapError}</p>
+					)}
 					<ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
 						{event.teams.map((team, teamIndex) => {
 							const cardStyle = eventTeamColorStyle(team.color);
@@ -673,7 +654,7 @@ export function ChampionshipEventRoundTab({
 												type="button"
 												aria-label={EVENT_ACTION.editTeam}
 												className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-fg-muted hover:bg-black/10"
-												onClick={() => setTeamToEdit(team)}
+												onClick={() => ui.openEditTeam(team)}
 											>
 												<Pencil className="size-3.5" />
 											</button>
@@ -684,7 +665,7 @@ export function ChampionshipEventRoundTab({
 													type="button"
 													aria-label={EVENT_ACTION.removeTeam}
 													className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-fg-muted hover:bg-black/10 hover:text-danger-fg"
-													onClick={() => setTeamToRemove(team)}
+													onClick={() => ui.openRemoveTeam(team)}
 												>
 													<X className="size-3.5" />
 												</button>
@@ -748,9 +729,11 @@ export function ChampionshipEventRoundTab({
 							return;
 						}
 
-						setMatchToReopen(match);
+						ui.openReopenMatch(match);
 					}}
-					onRemoveMatch={setMatchToRemove}
+					onRemoveMatch={(match) => {
+						ui.openRemoveMatch(match);
+					}}
 				/>
 			)}
 			{!showTeamBuilder && (
@@ -833,7 +816,9 @@ export function ChampionshipEventRoundTab({
 									event.attendance.length > 0 && (
 										<IconTooltipButton
 											showLabel
-											label={copyEventPlayerVoteLinkLabel(copiedVoteLink)}
+											label={copyEventPlayerVoteLinkLabel(
+												ui.copiedVoteLink,
+											)}
 											icon={<Link2 className="size-4" />}
 											onClick={() => {
 												void handleCopyVoteLink();
@@ -845,7 +830,7 @@ export function ChampionshipEventRoundTab({
 										showLabel
 										label={EVENT_ACTION.setMvp}
 										icon={<Award className="size-4" />}
-										onClick={() => setIsMvpOpen(true)}
+										onClick={() => ui.openMvp()}
 									/>
 								)}
 								{canManage && showAddAttendance && (
@@ -853,7 +838,7 @@ export function ChampionshipEventRoundTab({
 										showLabel
 										label={EVENT_ACTION.lateJoin}
 										icon={<UserPlus className="size-4" />}
-										onClick={() => setIsLateJoinOpen(true)}
+										onClick={() => ui.openLateJoin()}
 									/>
 								)}
 								{canManage && showAddAttendance && (
@@ -861,7 +846,7 @@ export function ChampionshipEventRoundTab({
 										showLabel
 										label={EVENT_ACTION.addAttendance}
 										icon={<Plus className="size-4" />}
-										onClick={() => setIsAttendanceOpen(true)}
+										onClick={() => ui.openAttendance()}
 									/>
 								)}
 								{canManage &&
@@ -884,7 +869,7 @@ export function ChampionshipEventRoundTab({
 											showLabel
 											label={EVENT_ACTION.markAttendanceStats}
 											icon={<ChartColumn className="size-4" />}
-											onClick={() => setIsAttendanceStatsOpen(true)}
+											onClick={() => ui.openAttendanceStats()}
 										/>
 									)}
 							</div>
@@ -938,7 +923,7 @@ export function ChampionshipEventRoundTab({
 														type="button"
 														aria-label={EVENT_ACTION.removeAttendance}
 														className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-muted hover:text-danger-fg"
-														onClick={() => setAttendanceToRemove(player)}
+													onClick={() => ui.openRemoveAttendance(player)}
 													>
 														<X className="size-4" />
 													</button>
@@ -951,7 +936,7 @@ export function ChampionshipEventRoundTab({
 					</div>
 				</div>
 			)}
-			{isAttendanceOpen && (
+			{isRoundTabModalType(ui.modal, "attendance") && (
 				<EditEventAttendanceModal
 					players={players}
 					attendanceCounts={attendanceCounts}
@@ -965,18 +950,18 @@ export function ChampionshipEventRoundTab({
 							return;
 						}
 
-						setIsAttendanceOpen(false);
+						ui.closeModal();
 					}}
 					onAddPlayer={onAddPlayer}
 					isAddingPlayer={isAddingPlayer}
 					addPlayerError={addPlayerError}
 					onSave={async (presentPlayerIds, goalkeeperPlayerIds) => {
 						await onSaveAttendance(presentPlayerIds, goalkeeperPlayerIds);
-						setIsAttendanceOpen(false);
+						ui.closeModal();
 					}}
 				/>
 			)}
-			{isLateJoinOpen && (
+			{isRoundTabModalType(ui.modal, "lateJoin") && (
 				<LateJoinAttendanceModal
 					players={players}
 					presentIds={attendanceIds}
@@ -988,15 +973,15 @@ export function ChampionshipEventRoundTab({
 							return;
 						}
 
-						setIsLateJoinOpen(false);
+						ui.closeModal();
 					}}
 					onConfirm={async (playerId) => {
 						await onEnsureAttendance(playerId);
-						setIsLateJoinOpen(false);
+						ui.closeModal();
 					}}
 				/>
 			)}
-			{isAttendanceStatsOpen && (
+			{isRoundTabModalType(ui.modal, "attendanceStats") && (
 				<EditEventAttendanceStatsModal
 					attendance={event.attendance}
 					teams={event.teams}
@@ -1008,15 +993,15 @@ export function ChampionshipEventRoundTab({
 							return;
 						}
 
-						setIsAttendanceStatsOpen(false);
+						ui.closeModal();
 					}}
 					onSave={async (stats) => {
 						await onSaveAttendanceStats(stats);
-						setIsAttendanceStatsOpen(false);
+						ui.closeModal();
 					}}
 				/>
 			)}
-			{isAddTeamOpen && (
+			{isRoundTabModalType(ui.modal, "addTeam") && (
 				<AddEventTeamModal
 					playersPerTeam={event.players_per_team}
 					presentPlayers={presentPlayers}
@@ -1031,11 +1016,11 @@ export function ChampionshipEventRoundTab({
 							return;
 						}
 
-						setIsAddTeamOpen(false);
+						ui.closeModal();
 					}}
 					onAdd={async (values) => {
 						await onAddTeam(values);
-						setIsAddTeamOpen(false);
+						ui.closeModal();
 					}}
 				/>
 			)}
@@ -1058,14 +1043,14 @@ export function ChampionshipEventRoundTab({
 							return;
 						}
 
-						setTeamToEdit(null);
+						ui.closeModal();
 					}}
 					onAdd={async (values) => {
 						await onUpdateTeam({
 							teamId: teamToEdit.id,
 							...values,
 						});
-						setTeamToEdit(null);
+						ui.closeModal();
 					}}
 				/>
 			)}
@@ -1078,13 +1063,13 @@ export function ChampionshipEventRoundTab({
 							return;
 						}
 
-						setTeamToRemove(null);
+						ui.closeModal();
 					}}
 					onConfirm={() => {
 						void (async () => {
 							try {
 								await onDeleteTeam(teamToRemove.id);
-								setTeamToRemove(null);
+								ui.closeModal();
 							} catch {
 								return;
 							}
@@ -1102,7 +1087,7 @@ export function ChampionshipEventRoundTab({
 							return;
 						}
 
-						setAttendanceToRemove(null);
+						ui.closeModal();
 					}}
 					onConfirm={() => {
 						void (async () => {
@@ -1115,7 +1100,7 @@ export function ChampionshipEventRoundTab({
 									nextPresent,
 									keepGoalkeepersPresent(volunteerGoalkeeperIds, nextPresent),
 								);
-								setAttendanceToRemove(null);
+								ui.closeModal();
 							} catch {
 								return;
 							}
@@ -1136,13 +1121,13 @@ export function ChampionshipEventRoundTab({
 							return;
 						}
 
-						setMatchToRemove(null);
+						ui.closeModal();
 					}}
 					onConfirm={() => {
 						void (async () => {
 							try {
 								await onDeleteMatch(matchToRemove.id);
-								setMatchToRemove(null);
+								ui.closeModal();
 							} catch {
 								return;
 							}
@@ -1159,13 +1144,13 @@ export function ChampionshipEventRoundTab({
 							return;
 						}
 
-						setMatchToReopen(null);
+						ui.closeModal();
 					}}
 					onConfirm={() => {
 						void (async () => {
 							try {
 								await onOpenMatch(matchToReopen);
-								setMatchToReopen(null);
+								ui.closeModal();
 							} catch {
 								return;
 							}
@@ -1173,7 +1158,7 @@ export function ChampionshipEventRoundTab({
 					}}
 				/>
 			)}
-			{isMvpOpen && (
+			{isRoundTabModalType(ui.modal, "mvp") && (
 				<SetEventMvpModal
 					players={eventMvpPickCandidates(event.attendance, selectedMvpIds).map(
 						(row) => ({
@@ -1199,11 +1184,11 @@ export function ChampionshipEventRoundTab({
 							return;
 						}
 
-						setIsMvpOpen(false);
+						ui.closeModal();
 					}}
 					onSave={async (playerIds) => {
 						await onSetMvps(playerIds);
-						setIsMvpOpen(false);
+						ui.closeModal();
 					}}
 				/>
 			)}

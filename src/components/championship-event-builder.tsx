@@ -1,7 +1,5 @@
-import { useNavigate } from "@tanstack/react-router";
 import { Field, FieldArray, Form, Formik } from "formik";
 import { Link2, LoaderCircle, Plus, Share2, Shuffle } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
 import { AppDialog } from "@/components/atoms/app-dialog";
 import { Button } from "@/components/button";
 import { EventAttendanceTable } from "@/components/event-attendance-table";
@@ -19,11 +17,8 @@ import { AttendanceFloatingSave } from "@/components/molecules/attendance-floati
 import { Tabs } from "@/components/tabs";
 import {
 	type AttendanceSeedMode,
-	applyVisibleAttendance,
-	builderTeamsFromDrafts,
 	builderTeamsHavePlayers,
 	CHAMPIONSHIP_EVENT,
-	defaultGoalkeeperIds,
 	EVENT_ACTION,
 	EVENT_BUILDER_STEP,
 	EVENT_BUILDER_TABS,
@@ -32,27 +27,20 @@ import {
 	type EventBuilderStep,
 	type EventTeamBuilderTeam,
 	type EventTeamDraft,
-	type EventWeekday,
 	emptyTeamSlots,
 	eventDrawInputRating,
-	eventGoalkeeperIds,
-	eventIsoWeekday,
 	eventTeamCount,
 	eventTeamHighestSumFlags,
 	eventTeamPlayerOptionLabel,
 	eventTeamSlotPool,
 	eventTeamSlotPosition,
 	initialBuilderTeams,
-	keepGoalkeepersPresent,
-	resizeBuilderTeams,
-	seedPresentIdsFromHistory,
-	setGoalkeeperSelection,
 	teamSlotsToPlayerIds,
 	validateEventAttendance,
 	validateEventTeams,
 	validateTeamsInAttendance,
 } from "@/const/championship-event";
-import { copyDrawLinkLabel, eventDrawUrl } from "@/const/event-draw-reveal";
+import { copyDrawLinkLabel } from "@/const/event-draw-reveal";
 import {
 	EVENT_TEAM_COLOR,
 	EVENT_TEAM_COLOR_CUSTOM_LABEL,
@@ -67,7 +55,6 @@ import {
 } from "@/const/event-team-color";
 import {
 	EVENT_TEAM_SHARE_LABEL,
-	eventTeamsShareCards,
 } from "@/const/event-team-share";
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
@@ -78,10 +65,8 @@ import {
 	FIELD_CLASS,
 	MODAL_CLASS,
 } from "@/const/ui";
-import { caughtErrorMessage } from "@/lib/error-message";
-import { runEventTeamDraw } from "@/lib/event-team-draw";
 import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
-import { shareEventTeamsImage } from "@/lib/share-event-teams-image";
+import { useEventBuilderUi } from "@/hooks/use-event-builder-ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 type EventBuilderValues = {
@@ -157,39 +142,29 @@ export function ChampionshipEventBuilder({
 	onSaveAttendance,
 	onSubmit,
 }: ChampionshipEventBuilderProps) {
-	const navigate = useNavigate();
-	const [presentIds, setPresentIds] = useState<number[]>([
-		...initialPresentIds,
-	]);
-	const [goalkeeperIds, setGoalkeeperIds] = useState<number[]>(() =>
-		eventGoalkeeperIds(defaultGoalkeeperIds(players), initialGoalkeeperIds),
-	);
-	const [attendanceError, setAttendanceError] = useState<string | null>(null);
-	const [teamsError, setTeamsError] = useState<string | null>(null);
-	const [isDrawing, setIsDrawing] = useState(false);
-	const [isSharing, setIsSharing] = useState(false);
-	const [isOpeningDraw, setIsOpeningDraw] = useState(false);
-	const [copiedDrawLink, setCopiedDrawLink] = useState(false);
-	const [drawConfirmOpen, setDrawConfirmOpen] = useState(false);
-	const drawSetTeamsRef = useRef<
-		((teams: EventTeamBuilderTeam[]) => void) | null
-	>(null);
-	const drawWorkerRef = useRef<Worker | null>(null);
+	const ui = useEventBuilderUi({
+		playersPerTeam,
+		players,
+		seedEvents,
+		startsAt,
+		championshipName,
+		championshipId,
+		eventId,
+		initialPresentIds,
+		initialGoalkeeperIds,
+		isPending,
+		onStepChange,
+		onPresentIdsChange,
+		onAddPlayer,
+		onSaveAttendance,
+		onSubmit,
+	});
 	const rosterIds = players.map((player) => player.id);
-	const seedWeekday: EventWeekday = eventIsoWeekday(startsAt);
 	const ceiling = championshipRatingCeiling(
 		players.flatMap((player) => [player.rating, player.goalkeeper_rating]),
 	);
-	const presentPlayers = players.filter((player) =>
-		presentIds.includes(player.id),
-	);
-	const presentGoalkeeperIds = keepGoalkeepersPresent(
-		goalkeeperIds,
-		presentIds,
-	);
-	const busy = isPending || isDrawing || isOpeningDraw;
-	const presentRatings = presentPlayers.map((player) =>
-		eventDrawInputRating(player, goalkeeperIds.includes(player.id)),
+	const presentRatings = ui.presentPlayers.map((player) =>
+		eventDrawInputRating(player, ui.goalkeeperIds.includes(player.id)),
 	);
 	const teamsStart =
 		initialTeams ??
@@ -198,37 +173,19 @@ export function ChampionshipEventBuilder({
 			eventTeamCount(initialPresentIds.length, playersPerTeam),
 		);
 
-	useEffect(
-		() => () => {
-			drawWorkerRef.current?.terminate();
-		},
-		[],
-	);
-
 	function handleSetPresent(playerIds: readonly number[], present: boolean) {
-		const nextPresent = applyVisibleAttendance(presentIds, playerIds, present);
-		setPresentIds(nextPresent);
-		onPresentIdsChange?.(nextPresent);
-		setAttendanceError(null);
+		ui.handleSetPresent(playerIds, present);
 	}
 
 	function handleSeedAttendance(mode: AttendanceSeedMode) {
-		const nextPresent = seedPresentIdsFromHistory(mode, seedEvents, rosterIds, {
-			weekday: seedWeekday,
-		});
-		setPresentIds(nextPresent);
-		onPresentIdsChange?.(nextPresent);
-		setAttendanceError(null);
+		ui.handleSeedAttendance(mode);
 	}
 
 	function handleSetGoalkeeper(
 		playerIds: readonly number[],
 		asGoalkeeper: boolean,
 	) {
-		setGoalkeeperIds((current) =>
-			setGoalkeeperSelection(current, playerIds, asGoalkeeper),
-		);
-		setAttendanceError(null);
+		ui.handleSetGoalkeeper(playerIds, asGoalkeeper);
 	}
 
 	async function handleAddPlayer(values: {
@@ -246,9 +203,9 @@ export function ChampionshipEventBuilder({
 		}
 
 		const createdIds = created.map((player) => player.id);
-		handleSetPresent(createdIds, true);
+		ui.handleSetPresent(createdIds, true);
 		if (values.isGoalkeeper) {
-			handleSetGoalkeeper(createdIds, true);
+			ui.handleSetGoalkeeper(createdIds, true);
 		}
 		return created;
 	}
@@ -257,171 +214,32 @@ export function ChampionshipEventBuilder({
 		onStepChange(EVENT_BUILDER_STEP.attendance);
 	}
 
-	function tryGoToTeams(
-		teams: EventTeamBuilderTeam[],
-		setTeams: (teams: EventTeamBuilderTeam[]) => void,
-	): boolean {
-		const invalid = validateEventAttendance(presentIds, rosterIds);
-		if (invalid) {
-			setAttendanceError(invalid);
-			return false;
-		}
-
-		setTeams(
-			resizeBuilderTeams(
-				teams,
-				eventTeamCount(presentIds.length, playersPerTeam),
-				playersPerTeam,
-				new Set(presentIds),
-			),
-		);
-		setTeamsError(null);
-		onStepChange(EVENT_BUILDER_STEP.teams);
-		return true;
-	}
-
-	async function handleDrawTeams(
-		setTeams: (teams: EventTeamBuilderTeam[]) => void,
-	): Promise<boolean> {
-		const attendanceInvalid = validateEventAttendance(presentIds, rosterIds);
-		if (attendanceInvalid) {
-			setAttendanceError(attendanceInvalid);
-			onStepChange(EVENT_BUILDER_STEP.attendance);
-			return false;
-		}
-
-		setIsDrawing(true);
-		try {
-			const volunteerSet = new Set(presentGoalkeeperIds);
-			const { worker, done } = runEventTeamDraw({
-				players: presentPlayers.map((player) => ({
-					id: player.id,
-					rating: eventDrawInputRating(player, volunteerSet.has(player.id)),
-				})),
-				playersPerTeam,
-				volunteerIds: presentGoalkeeperIds,
-			});
-			drawWorkerRef.current = worker;
-			const { teams: drafts } = await done;
-			const teamsInvalid =
-				validateEventTeams(drafts, playersPerTeam) ??
-				validateTeamsInAttendance(drafts, presentIds);
-			if (teamsInvalid) {
-				setTeamsError(teamsInvalid);
-				return false;
-			}
-
-			await onSubmit(
-				{
-					presentPlayerIds: presentIds,
-					goalkeeperPlayerIds: presentGoalkeeperIds,
-					teams: drafts,
-					isDraw: true,
-				},
-				true,
-			);
-			setTeams(builderTeamsFromDrafts(drafts, playersPerTeam));
-			setTeamsError(null);
-			return true;
-		} catch {
-			setTeamsError(EVENT_TEAM_MESSAGE.drawFailed);
-			return false;
-		} finally {
-			drawWorkerRef.current?.terminate();
-			drawWorkerRef.current = null;
-			setIsDrawing(false);
-		}
-	}
-
-	async function openDrawCeremony(
-		to:
-			| typeof ROUTES.championshipEventDraw
-			| typeof ROUTES.championshipEventPotDraw,
-	) {
-		const invalid = validateEventAttendance(presentIds, rosterIds);
-		if (invalid) {
-			setAttendanceError(invalid);
-			return;
-		}
-
-		setIsOpeningDraw(true);
-		try {
-			await onSaveAttendance(presentIds, presentGoalkeeperIds);
-			await navigate({
-				to,
-				params: {
-					championshipId: String(championshipId),
-					eventId: String(eventId),
-				},
-			});
-		} catch (error) {
-			setAttendanceError(
-				caughtErrorMessage(error, EVENT_TEAM_MESSAGE.needAttendance),
-			);
-		} finally {
-			setIsOpeningDraw(false);
-		}
-	}
-
 	async function handleShareTeams(teams: EventTeamBuilderTeam[]) {
-		setIsSharing(true);
-		setTeamsError(null);
-		try {
-			await shareEventTeamsImage(
-				eventTeamsShareCards(teams, presentPlayers, goalkeeperIds),
-				ceiling,
-				{ championshipName, startsAt },
-			);
-		} catch {
-			setTeamsError(EVENT_TEAM_SHARE_LABEL.shareFailed);
-		} finally {
-			setIsSharing(false);
-		}
+		await ui.handleShareTeams(teams);
 	}
 
 	async function handleCopyDrawLink() {
-		const url = eventDrawUrl(
-			window.location.origin,
-			championshipId,
-			eventId,
-			ROUTES.championshipEventDraw,
-		);
-		await navigator.clipboard.writeText(url);
-		setCopiedDrawLink(true);
+		await ui.handleCopyDrawLink();
 	}
 
 	function requestDrawTeams(
 		teams: EventTeamBuilderTeam[],
 		setTeams: (teams: EventTeamBuilderTeam[]) => void,
 	) {
-		if (!builderTeamsHavePlayers(teams)) {
-			void handleDrawTeams(setTeams);
-			return;
-		}
-
-		drawSetTeamsRef.current = setTeams;
-		setDrawConfirmOpen(true);
+		ui.requestDrawTeams(teams, setTeams);
 	}
 
 	function confirmDrawTeams() {
-		const setTeams = drawSetTeamsRef.current;
-		drawSetTeamsRef.current = null;
-		setDrawConfirmOpen(false);
-		if (!setTeams) {
-			return;
-		}
-
-		void handleDrawTeams(setTeams);
+		ui.confirmDrawTeams();
 	}
 
 	function cancelDrawTeams() {
-		drawSetTeamsRef.current = null;
-		setDrawConfirmOpen(false);
+		ui.cancelDrawTeams();
 	}
 
 	return (
 		<>
-			{isDrawing && (
+			{ui.isDrawing && (
 				<AppDialog onClose={() => undefined}>
 					<div
 						className={`${MODAL_CLASS} max-w-sm text-center`}
@@ -438,7 +256,7 @@ export function ChampionshipEventBuilder({
 					</div>
 				</AppDialog>
 			)}
-			{drawConfirmOpen && (
+			{ui.drawConfirmOpen && (
 				<AppDialog onClose={cancelDrawTeams}>
 					<div className={MODAL_CLASS}>
 						<p className="mb-1 text-sm font-medium tracking-tight text-fg">
@@ -465,7 +283,7 @@ export function ChampionshipEventBuilder({
 				initialValues={{ teams: teamsStart }}
 				onSubmit={async (values, helpers) => {
 					if (step === EVENT_BUILDER_STEP.attendance) {
-						tryGoToTeams(values.teams, (teams) => {
+						ui.tryGoToTeams(values.teams, (teams) => {
 							helpers.setFieldValue("teams", teams);
 						});
 						return;
@@ -480,26 +298,26 @@ export function ChampionshipEventBuilder({
 						}))
 						.filter((team) => team.playerIds.length > 0);
 					const attendanceInvalid = validateEventAttendance(
-						presentIds,
+						ui.presentIds,
 						rosterIds,
 					);
 					if (attendanceInvalid) {
-						setAttendanceError(attendanceInvalid);
+						ui.setAttendanceError(attendanceInvalid);
 						onStepChange(EVENT_BUILDER_STEP.attendance);
 						return;
 					}
 
 					const teamsInvalid =
 						validateEventTeams(drafts, playersPerTeam) ??
-						validateTeamsInAttendance(drafts, presentIds);
+						validateTeamsInAttendance(drafts, ui.presentIds);
 					if (teamsInvalid) {
-						setTeamsError(teamsInvalid);
+						ui.setTeamsError(teamsInvalid);
 						return;
 					}
 
 					await onSubmit({
-						presentPlayerIds: presentIds,
-						goalkeeperPlayerIds: presentGoalkeeperIds,
+						presentPlayerIds: ui.presentIds,
+						goalkeeperPlayerIds: ui.presentGoalkeeperIds,
 						teams: drafts,
 					});
 				}}
@@ -510,7 +328,7 @@ export function ChampionshipEventBuilder({
 					);
 					function slotPool(teamIndex: number, slot: number) {
 						return eventTeamSlotPool(
-							presentPlayers,
+							ui.presentPlayers,
 							values.teams,
 							teamIndex,
 							slot,
@@ -520,7 +338,7 @@ export function ChampionshipEventBuilder({
 					function handleColorChange(teamIndex: number, color: string | null) {
 						if (color === null) {
 							setFieldValue(`teams.${teamIndex}.color`, null);
-							setTeamsError(null);
+							ui.clearTeamsError();
 							return;
 						}
 
@@ -535,7 +353,7 @@ export function ChampionshipEventBuilder({
 						}
 
 						setFieldValue(`teams.${teamIndex}.color`, next);
-						setTeamsError(null);
+						ui.clearTeamsError();
 					}
 
 					function handleTabChange(next: EventBuilderStep) {
@@ -548,7 +366,7 @@ export function ChampionshipEventBuilder({
 								onStepChange(next);
 								return;
 							case EVENT_BUILDER_STEP.teams:
-								tryGoToTeams(values.teams, (teams) => {
+								ui.tryGoToTeams(values.teams, (teams) => {
 									setFieldValue("teams", teams);
 								});
 								return;
@@ -560,11 +378,11 @@ export function ChampionshipEventBuilder({
 					}
 
 					function openCeremony() {
-						void openDrawCeremony(ROUTES.championshipEventDraw);
+						void ui.openDrawCeremony(ROUTES.championshipEventDraw);
 					}
 
 					function openPotCeremony() {
-						void openDrawCeremony(ROUTES.championshipEventPotDraw);
+						void ui.openDrawCeremony(ROUTES.championshipEventPotDraw);
 					}
 
 					return (
@@ -580,8 +398,8 @@ export function ChampionshipEventBuilder({
 									<EventAttendanceTable
 										players={players}
 										attendanceCounts={attendanceCounts}
-										presentIds={presentIds}
-										goalkeeperIds={goalkeeperIds}
+										presentIds={ui.presentIds}
+										goalkeeperIds={ui.goalkeeperIds}
 										onSetPresent={handleSetPresent}
 										onSetGoalkeeper={handleSetGoalkeeper}
 										onSeedAttendance={handlerWhenAllowed(
@@ -595,34 +413,34 @@ export function ChampionshipEventBuilder({
 											handleAddPlayer,
 										)}
 									/>
-									{attendanceError && (
-										<p className={ERROR_CLASS}>{attendanceError}</p>
+									{ui.attendanceError && (
+										<p className={ERROR_CLASS}>{ui.attendanceError}</p>
 									)}
-									{teamsError && <p className={ERROR_CLASS}>{teamsError}</p>}
+									{ui.teamsError && <p className={ERROR_CLASS}>{ui.teamsError}</p>}
 									<div className="flex justify-end gap-2">
 										{onCancel && (
 											<Button
 												variant={BUTTON_VARIANT.secondary}
 												onClick={onCancel}
-												disabled={busy}
+												disabled={ui.busy}
 											>
 												Cancelar
 											</Button>
 										)}
 										<span className="hidden md:inline-flex">
-											<Button type="submit" disabled={busy}>
+											<Button type="submit" disabled={ui.busy}>
 												{EVENT_ACTION.continue}
 											</Button>
 										</span>
 										<span className="hidden md:inline-flex">
-											<Button disabled={busy} onClick={openCeremony}>
+											<Button disabled={ui.busy} onClick={openCeremony}>
 												{EVENT_ACTION.openDraw}
 											</Button>
 										</span>
 										<span className="hidden md:inline-flex">
 											<Button
 												variant={BUTTON_VARIANT.secondary}
-												disabled={busy}
+												disabled={ui.busy}
 												onClick={openPotCeremony}
 											>
 												{EVENT_ACTION.openPotDraw}
@@ -630,9 +448,9 @@ export function ChampionshipEventBuilder({
 										</span>
 									</div>
 									<AttendanceFloatingSave
-										selected={presentIds.length}
+										selected={ui.presentIds.length}
 										total={players.length}
-										disabled={busy}
+										disabled={ui.busy}
 										type="button"
 										onClick={openCeremony}
 										secondary={
@@ -640,7 +458,7 @@ export function ChampionshipEventBuilder({
 												<Button
 													type="submit"
 													variant={BUTTON_VARIANT.secondary}
-													disabled={busy}
+													disabled={ui.busy}
 													className="shadow-md"
 												>
 													{EVENT_ACTION.continue}
@@ -648,7 +466,7 @@ export function ChampionshipEventBuilder({
 												<Button
 													type="button"
 													variant={BUTTON_VARIANT.secondary}
-													disabled={busy}
+												disabled={ui.busy}
 													className="shadow-md"
 													onClick={openPotCeremony}
 												>
@@ -684,7 +502,7 @@ export function ChampionshipEventBuilder({
 													const teamRatingsLists = values.teams.map((item) =>
 														teamSlotsToPlayerIds(item.slots).flatMap(
 															(playerId) => {
-																const player = presentPlayers.find(
+																const player = ui.presentPlayers.find(
 																	(entry) => entry.id === playerId,
 																);
 																if (!player) {
@@ -694,7 +512,7 @@ export function ChampionshipEventBuilder({
 																return [
 																	eventDrawInputRating(
 																		player,
-																		goalkeeperIds.includes(playerId),
+																		ui.goalkeeperIds.includes(playerId),
 																	),
 																];
 															},
@@ -782,7 +600,7 @@ export function ChampionshipEventBuilder({
 																		iconClassName="size-4"
 																		onClick={() => {
 																			remove(teamIndex);
-																			setTeamsError(null);
+																			ui.clearTeamsError();
 																		}}
 																	/>
 																)}
@@ -790,7 +608,7 @@ export function ChampionshipEventBuilder({
 															<ul className="space-y-1">
 																{slotIndexes.map((slot) => {
 																	const slotValue = team.slots[slot] ?? "";
-																	const player = presentPlayers.find(
+																	const player = ui.presentPlayers.find(
 																		(item) => String(item.id) === slotValue,
 																	);
 
@@ -814,7 +632,7 @@ export function ChampionshipEventBuilder({
 																				<EventTeamPlayerRow
 																					player={player}
 																					ceiling={ceiling}
-																					isGoalkeeperVolunteer={goalkeeperIds.includes(
+																				isGoalkeeperVolunteer={ui.goalkeeperIds.includes(
 																						player.id,
 																					)}
 																					onRemove={() => {
@@ -822,7 +640,7 @@ export function ChampionshipEventBuilder({
 																							`teams.${teamIndex}.slots.${slot}`,
 																							"",
 																						);
-																						setTeamsError(null);
+																						ui.clearTeamsError();
 																					}}
 																				/>
 																			)}
@@ -843,7 +661,7 @@ export function ChampionshipEventBuilder({
 																						>
 																							{eventTeamPlayerOptionLabel(
 																								playerVisibleName(item),
-																								goalkeeperIds.includes(item.id),
+																								ui.goalkeeperIds.includes(item.id),
 																							)}
 																						</option>
 																					))}
@@ -865,7 +683,7 @@ export function ChampionshipEventBuilder({
 												})}
 											</div>
 											<div className="flex flex-wrap gap-2">
-												{values.teams.length < presentPlayers.length && (
+												{values.teams.length < ui.presentPlayers.length && (
 													<Button
 														variant={BUTTON_VARIANT.secondary}
 														onClick={() => {
@@ -875,7 +693,7 @@ export function ChampionshipEventBuilder({
 																slots: emptyTeamSlots(playersPerTeam),
 																isActive: true,
 															});
-															setTeamsError(null);
+															ui.clearTeamsError();
 														}}
 													>
 														<Plus className="size-4" />
@@ -884,7 +702,7 @@ export function ChampionshipEventBuilder({
 												)}
 												<Button
 													variant={BUTTON_VARIANT.secondary}
-													disabled={busy || isSharing}
+													disabled={ui.busy || ui.isSharing}
 													onClick={() => {
 														requestDrawTeams(values.teams, (teams) => {
 															setFieldValue("teams", teams);
@@ -897,32 +715,32 @@ export function ChampionshipEventBuilder({
 												{builderTeamsHavePlayers(values.teams) && (
 													<Button
 														variant={BUTTON_VARIANT.secondary}
-														disabled={busy || isSharing}
+														disabled={ui.busy || ui.isSharing}
 														onClick={() => {
 															void handleShareTeams(values.teams);
 														}}
 													>
-														{isSharing && (
+														{ui.isSharing && (
 															<LoaderCircle
 																className="size-4 animate-spin"
 																aria-hidden
 															/>
 														)}
-														{!isSharing && <Share2 className="size-4" />}
-														{isSharing && EVENT_TEAM_SHARE_LABEL.sharing}
-														{!isSharing && EVENT_TEAM_SHARE_LABEL.shareTeams}
+														{!ui.isSharing && <Share2 className="size-4" />}
+														{ui.isSharing && EVENT_TEAM_SHARE_LABEL.sharing}
+														{!ui.isSharing && EVENT_TEAM_SHARE_LABEL.shareTeams}
 													</Button>
 												)}
 												{builderTeamsHavePlayers(values.teams) && (
 													<Button
 														variant={BUTTON_VARIANT.secondary}
-														disabled={busy}
+														disabled={ui.busy}
 														onClick={() => {
 															void handleCopyDrawLink();
 														}}
 													>
 														<Link2 className="size-4" />
-														{copyDrawLinkLabel(copiedDrawLink)}
+														{copyDrawLinkLabel(ui.copiedDrawLink)}
 													</Button>
 												)}
 											</div>
@@ -930,8 +748,8 @@ export function ChampionshipEventBuilder({
 												championshipId={championshipId}
 												eventId={eventId}
 											/>
-											{teamsError && (
-												<p className={ERROR_CLASS}>{teamsError}</p>
+											{ui.teamsError && (
+												<p className={ERROR_CLASS}>{ui.teamsError}</p>
 											)}
 											{errorMessage && (
 												<p className={ERROR_CLASS}>{errorMessage}</p>

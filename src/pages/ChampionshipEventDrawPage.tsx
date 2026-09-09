@@ -1,7 +1,7 @@
 import { Link, useParams } from "@tanstack/react-router";
 import { ArrowLeft, LoaderCircle, RefreshCw, Video } from "lucide-react";
 import { useReducedMotion } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import { AppDialog } from "@/components/atoms/app-dialog";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
@@ -16,48 +16,28 @@ import { EventTeamDrawLog } from "@/components/event-team-draw-log";
 import { TeamCardSkeleton } from "@/components/molecules/team-card-skeleton";
 import {
 	attendanceGoalkeeperIds,
-	builderTeamsFromDrafts,
 	builderTeamsFromEvent,
 	EVENT_TEAM_MESSAGE,
-	eventDrawInputRating,
 	eventTeamsAreReady,
 	formatEventStartsAt,
-	keepGoalkeepersPresent,
-	validateEventAttendance,
-	validateEventTeams,
-	validateTeamsInAttendance,
 } from "@/const/championship-event";
 import {
 	CHAMPIONSHIP_ROLE,
 	canManageEvent,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
+import { EVENT_DRAW_VIDEO_STATUS } from "@/const/event-draw-ceremony";
 import {
 	EVENT_DRAW_REVEAL_LABEL,
 	EVENT_DRAW_REVEAL_PAGE,
-	EVENT_DRAW_REVEAL_PHASE,
-	eventDrawRevealCanNext,
 	eventDrawRevealCards,
-	eventDrawRevealCountAfterStart,
-	eventDrawRevealDelayMs,
-	eventDrawRevealItemCount,
-	eventDrawRevealNextPlayerCount,
-	eventDrawRevealPageSettled,
 	eventDrawRevealPageStatus,
-	eventDrawRevealPhase,
-	eventDrawRevealShouldAutoStart,
-	eventDrawRevealShouldTick,
-	eventDrawUrl,
 } from "@/const/event-draw-reveal";
 import {
 	matchupHistoryEvents,
 	matchupTeamsFromShareCards,
 } from "@/const/event-matchup-analysis";
-import {
-	EVENT_TEAM_SHARE_LABEL,
-	type EventTeamShareCard,
-	eventTeamsShareCards,
-} from "@/const/event-team-share";
+import { eventTeamsShareCards } from "@/const/event-team-share";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import {
 	calculatePlayersRatingAlignment,
@@ -74,13 +54,8 @@ import {
 } from "@/hooks/championships/use-championship-events";
 import { useChampionship } from "@/hooks/championships/use-championships";
 import { useEventDrawPresence } from "@/hooks/championships/use-event-draw-presence";
+import { useEventDrawCeremony } from "@/hooks/use-event-draw-ceremony";
 import { useWakeLock } from "@/hooks/use-wake-lock";
-import { caughtErrorMessage } from "@/lib/error-message";
-import { generateEventDrawVideo } from "@/lib/event-draw-video";
-import { runEventTeamDraw } from "@/lib/event-team-draw";
-import { eventTeamDrawHash } from "@/lib/event-team-draw-hash";
-import { shareEventTeamsImage } from "@/lib/share-event-teams-image";
-import { saveEventDrawAudit } from "@/services/championship-events";
 import type { ChampionshipPlayer } from "@/types/championship";
 
 const DRAW_SHELL_CLASS =
@@ -102,25 +77,6 @@ export function ChampionshipEventDrawPage() {
 	const eventsQuery = useChampionshipEvents(championshipId);
 	const saveTeams = useSaveChampionshipEventTeams(championshipId);
 	const reduceMotion = useReducedMotion();
-	const [frozenCards, setFrozenCards] = useState<EventTeamShareCard[] | null>(
-		null,
-	);
-	const [visibleCount, setVisibleCount] = useState(0);
-	const [autoplay, setAutoplay] = useState(true);
-	const [isSharing, setIsSharing] = useState(false);
-	const [shareError, setShareError] = useState<string | null>(null);
-	const [copiedDrawLink, setCopiedDrawLink] = useState(false);
-	const [isDrawing, setIsDrawing] = useState(false);
-	const [drawError, setDrawError] = useState<string | null>(null);
-	const [videoStatus, setVideoStatus] = useState<
-		"idle" | "generating" | "ready" | "error"
-	>("idle");
-	const [videoProgress, setVideoProgress] = useState(0);
-	const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
-	const [videoHasAudio, setVideoHasAudio] = useState(true);
-	const videoAbortRef = useRef<AbortController | null>(null);
-	const drawWorkerRef = useRef<Worker | null>(null);
-	const readyRef = useRef<boolean | null>(null);
 
 	const event = eventQuery.data ?? null;
 	const championship = championshipQuery.data ?? null;
@@ -166,15 +122,35 @@ export function ChampionshipEventDrawPage() {
 			),
 		);
 	}, [activePlayers, event]);
-	const cards = frozenCards ?? liveCards;
-	const total = eventDrawRevealItemCount(cards);
-	const phase = eventDrawRevealPhase(visibleCount, total);
-	const playing = phase === EVENT_DRAW_REVEAL_PHASE.playing;
-	useWakeLock(playing);
+
+	const pageStatus = eventDrawRevealPageStatus({
+		championshipPending: championshipQuery.isPending,
+		eventPending: eventQuery.isPending,
+		championshipError: championshipQuery.isError,
+		eventError: eventQuery.isError,
+		teamsReady: event ? eventTeamsAreReady(event.teams) : false,
+	});
+	const teamsReady = pageStatus === EVENT_DRAW_REVEAL_PAGE.ready;
+
+	const ceremony = useEventDrawCeremony({
+		championshipId,
+		eventId,
+		drawRoute: ROUTES.championshipEventDraw,
+		liveCards,
+		reduceMotion: Boolean(reduceMotion),
+		pageStatus,
+		teamsReady,
+		event,
+		championship,
+		activePlayers,
+		saveTeams: saveTeams.mutateAsync,
+	});
+	useWakeLock(ceremony.playing);
 
 	const matchupTeams = useMemo(
-		() => matchupTeamsFromShareCards(cards, event?.attendance ?? []),
-		[cards, event?.attendance],
+		() =>
+			matchupTeamsFromShareCards(ceremony.cards, event?.attendance ?? []),
+		[ceremony.cards, event?.attendance],
 	);
 	const matchupHistory = useMemo(() => {
 		if (!event) {
@@ -189,282 +165,6 @@ export function ChampionshipEventDrawPage() {
 		const rows = calculatePlayersRatingAlignment(activePlayers, matchupHistory);
 		return ratingAlignmentDrawWarnings(rows, playerIds);
 	}, [activePlayers, matchupHistory, matchupTeams]);
-
-	const pageStatus = eventDrawRevealPageStatus({
-		championshipPending: championshipQuery.isPending,
-		eventPending: eventQuery.isPending,
-		championshipError: championshipQuery.isError,
-		eventError: eventQuery.isError,
-		teamsReady: event ? eventTeamsAreReady(event.teams) : false,
-	});
-	const teamsReady = pageStatus === EVENT_DRAW_REVEAL_PAGE.ready;
-
-	useEffect(() => {
-		return () => {
-			drawWorkerRef.current?.terminate();
-		};
-	}, []);
-
-	useEffect(() => {
-		if (
-			!eventDrawRevealShouldTick({
-				phase,
-				autoplay,
-				reduceMotion: Boolean(reduceMotion),
-			})
-		) {
-			return;
-		}
-
-		if (visibleCount >= total) {
-			return;
-		}
-
-		const delay = eventDrawRevealDelayMs(Boolean(reduceMotion));
-		const timer = window.setTimeout(() => {
-			setVisibleCount((count) => count + 1);
-		}, delay);
-
-		return () => {
-			window.clearTimeout(timer);
-		};
-	}, [autoplay, phase, reduceMotion, total, visibleCount]);
-
-	const startReveal = useCallback(() => {
-		const snapshot = frozenCards ?? liveCards;
-		setFrozenCards(snapshot);
-		setAutoplay(true);
-		setVisibleCount(
-			eventDrawRevealCountAfterStart(
-				eventDrawRevealItemCount(snapshot),
-				Boolean(reduceMotion),
-			),
-		);
-	}, [frozenCards, liveCards, reduceMotion]);
-
-	useEffect(() => {
-		const settled = eventDrawRevealPageSettled(pageStatus);
-		if (
-			!eventDrawRevealShouldAutoStart({
-				previousReady: readyRef.current,
-				ready: teamsReady,
-				visibleCount,
-				settled,
-			})
-		) {
-			if (settled) {
-				readyRef.current = teamsReady;
-			}
-			return;
-		}
-
-		readyRef.current = teamsReady;
-		startReveal();
-	}, [pageStatus, startReveal, teamsReady, visibleCount]);
-
-	function replayReveal() {
-		setVisibleCount(0);
-	}
-
-	function pauseReveal() {
-		setAutoplay(false);
-	}
-
-	function resumeReveal() {
-		setAutoplay(true);
-	}
-
-	function nextReveal() {
-		if (!eventDrawRevealCanNext(visibleCount, total)) {
-			return;
-		}
-
-		setVisibleCount(eventDrawRevealNextPlayerCount(cards, visibleCount));
-	}
-
-	async function copyDrawLink() {
-		const url = eventDrawUrl(
-			window.location.origin,
-			championshipId,
-			eventId,
-			ROUTES.championshipEventDraw,
-		);
-		await navigator.clipboard.writeText(url);
-		setCopiedDrawLink(true);
-	}
-
-	async function startVideoGeneration(params: {
-		seed: number;
-		algorithmVersion: number;
-		inputHash: string;
-		cards: readonly EventTeamShareCard[];
-		ceiling: number;
-		championshipName: string;
-		eventDateLabel: string;
-	}) {
-		if (videoAbortRef.current) {
-			videoAbortRef.current.abort();
-		}
-		const controller = new AbortController();
-		videoAbortRef.current = controller;
-
-		setVideoStatus("generating");
-		setVideoProgress(0);
-		setVideoBlob(null);
-		setVideoHasAudio(true);
-
-		try {
-			const result = await generateEventDrawVideo({
-				data: {
-					championshipName: params.championshipName,
-					eventDateLabel: params.eventDateLabel,
-					algorithmVersion: params.algorithmVersion,
-					seed: params.seed,
-					inputHash: params.inputHash,
-					cards: params.cards,
-					ceiling: params.ceiling,
-				},
-				onProgress: (percent) => setVideoProgress(percent),
-				signal: controller.signal,
-			});
-
-			if (result) {
-				setVideoBlob(result.blob);
-				setVideoHasAudio(result.hasAudio);
-				setVideoStatus("ready");
-			} else {
-				setVideoStatus("error");
-			}
-		} catch {
-			if (!controller.signal.aborted) {
-				setVideoStatus("error");
-			}
-		}
-	}
-
-	async function drawTeams() {
-		if (!event || !championship) {
-			return;
-		}
-
-		const championshipEntityId = championship.id;
-		const presentIds = event.attendance.map((row) => row.player_id);
-		const rosterIds = activePlayers.map((player) => player.id);
-		const attendanceInvalid = validateEventAttendance(presentIds, rosterIds);
-		if (attendanceInvalid) {
-			setDrawError(attendanceInvalid);
-			return;
-		}
-
-		const present = new Set(presentIds);
-		const volunteerIds = keepGoalkeepersPresent(
-			attendanceGoalkeeperIds(event.attendance),
-			presentIds,
-		);
-		setIsDrawing(true);
-		setDrawError(null);
-		try {
-			const volunteerSet = new Set(volunteerIds);
-			const drawPlayers = activePlayers.flatMap((player) => {
-				if (!present.has(player.id)) {
-					return [];
-				}
-
-				return [
-					{
-						id: player.id,
-						rating: eventDrawInputRating(player, volunteerSet.has(player.id)),
-					},
-				];
-			});
-			const { worker, done } = runEventTeamDraw({
-				players: drawPlayers,
-				playersPerTeam: event.players_per_team,
-				volunteerIds,
-			});
-			drawWorkerRef.current = worker;
-			const { teams: drafts, seed, algorithmVersion } = await done;
-			const teamsInvalid =
-				validateEventTeams(drafts, event.players_per_team) ??
-				validateTeamsInAttendance(drafts, presentIds);
-			if (teamsInvalid) {
-				setDrawError(teamsInvalid);
-				return;
-			}
-
-			await saveTeams.mutateAsync({
-				eventId,
-				presentPlayerIds: presentIds,
-				teams: drafts,
-				goalkeeperPlayerIds: volunteerIds,
-				isDraw: true,
-			});
-
-			// Cards do sorteio recem-feito: a query do evento ainda nao refletiu
-			// o resultado, entao o video usa os drafts diretamente.
-			const drawnCards = eventDrawRevealCards(
-				eventTeamsShareCards(
-					builderTeamsFromDrafts(drafts, event.players_per_team),
-					activePlayers,
-					volunteerIds,
-				),
-			);
-			const drawnCeiling = championshipRatingCeiling(
-				activePlayers.flatMap((player) => [
-					player.rating,
-					player.goalkeeper_rating,
-				]),
-			);
-			const drawnWhen = formatEventStartsAt(event.starts_at);
-
-			void eventTeamDrawHash({
-				seed,
-				algorithmVersion,
-				players: drawPlayers,
-				playersPerTeam: event.players_per_team,
-				volunteerIds,
-			}).then(async (inputHash) => {
-				// O video nao depende da auditoria: se o registro falhar,
-				// o sorteio ja aconteceu e o video precisa sair mesmo assim.
-				const audit = saveEventDrawAudit({
-					eventId,
-					championshipId: championshipEntityId,
-					seed,
-					algorithmVersion,
-					inputSnapshot: {
-						players: drawPlayers,
-						playersPerTeam: event.players_per_team,
-						volunteerIds,
-					},
-					outputSnapshot: {
-						teams: drafts.map((team) => ({
-							playerIds: [...team.playerIds],
-							goalkeeperId: team.goalkeeperId,
-						})),
-					},
-					inputHash,
-				}).catch(console.error);
-
-				await startVideoGeneration({
-					seed,
-					algorithmVersion,
-					inputHash,
-					cards: drawnCards,
-					ceiling: drawnCeiling,
-					championshipName: championship.name,
-					eventDateLabel: `${drawnWhen.date} · ${drawnWhen.time}`,
-				});
-
-				await audit;
-			});
-		} catch (error) {
-			setDrawError(caughtErrorMessage(error, EVENT_TEAM_MESSAGE.drawFailed));
-		} finally {
-			drawWorkerRef.current?.terminate();
-			drawWorkerRef.current = null;
-			setIsDrawing(false);
-		}
-	}
 
 	if (pageStatus === EVENT_DRAW_REVEAL_PAGE.loading) {
 		return <ChampionshipEventDrawPageSkeleton />;
@@ -504,54 +204,9 @@ export function ChampionshipEventDrawPage() {
 	const championshipName = championship.name;
 	const startsAt = event.starts_at;
 
-	async function shareTeams() {
-		setIsSharing(true);
-		setShareError(null);
-
-		try {
-			await shareEventTeamsImage(cards, ceiling, {
-				championshipName,
-				startsAt,
-			});
-		} catch {
-			setShareError(EVENT_TEAM_SHARE_LABEL.shareFailed);
-		} finally {
-			setIsSharing(false);
-		}
-	}
-
-	async function handleShareVideo() {
-		if (!videoBlob) return;
-		const fileName =
-			`sorteio-${championship?.name ?? "baba"}-${event?.id ?? 0}.mp4`
-				.toLowerCase()
-				.replace(/[^a-z0-9.]+/g, "-");
-		const file = new File([videoBlob], fileName, { type: "video/mp4" });
-
-		if (navigator.canShare && navigator.canShare({ files: [file] })) {
-			try {
-				await navigator.share({
-					files: [file],
-					title: "Sorteio de Times Auditado",
-					text: `Confira o sorteio auditado do ${championship?.name ?? "campeonato"}!`,
-				});
-				return;
-			} catch {
-				// Fallback se o usuario cancelar
-			}
-		}
-
-		const url = URL.createObjectURL(videoBlob);
-		const a = document.createElement("a");
-		a.href = url;
-		a.download = fileName;
-		a.click();
-		URL.revokeObjectURL(url);
-	}
-
 	return (
 		<main className={DRAW_SHELL_CLASS}>
-			{isDrawing && (
+			{ceremony.isDrawing && (
 				<AppDialog onClose={() => undefined}>
 					<div
 						className={`${MODAL_CLASS} max-w-sm text-center`}
@@ -595,14 +250,14 @@ export function ChampionshipEventDrawPage() {
 					championshipName={championshipName}
 					dateLabel={when.date}
 					canDraw={canDraw}
-					copied={copiedDrawLink}
-					isDrawing={isDrawing}
-					drawError={drawError}
+					copied={ceremony.copiedDrawLink}
+					isDrawing={ceremony.isDrawing}
+					drawError={ceremony.drawError}
 					onCopyLink={() => {
-						void copyDrawLink();
+						void ceremony.copyDrawLink();
 					}}
 					onDraw={() => {
-						void drawTeams();
+						void ceremony.drawTeams();
 					}}
 				/>
 			)}
@@ -610,22 +265,26 @@ export function ChampionshipEventDrawPage() {
 				<EventDrawReveal
 					championshipName={championshipName}
 					startsAt={startsAt}
-					cards={cards}
-					visibleCount={visibleCount}
-					phase={phase}
-					autoplay={autoplay}
+					cards={ceremony.cards}
+					visibleCount={ceremony.visibleCount}
+					phase={ceremony.phase}
+					autoplay={ceremony.autoplay}
 					ceiling={ceiling}
 					rosterById={rosterById}
-					onStart={startReveal}
-					onReplay={replayReveal}
-					onPause={pauseReveal}
-					onPlay={resumeReveal}
-					onNext={nextReveal}
+					onStart={ceremony.startReveal}
+					onReplay={ceremony.replayReveal}
+					onPause={ceremony.pauseReveal}
+					onPlay={ceremony.resumeReveal}
+					onNext={ceremony.nextReveal}
 					onShare={() => {
-						void shareTeams();
+						void ceremony.shareTeams({
+							ceiling,
+							championshipName,
+							startsAt,
+						});
 					}}
-					isSharing={isSharing}
-					shareError={shareError}
+					isSharing={ceremony.isSharing}
+					shareError={ceremony.shareError}
 					footer={
 						<div className="space-y-4">
 							<ChampionshipDrawRatingAlignmentWarning
@@ -641,47 +300,45 @@ export function ChampionshipEventDrawPage() {
 					}
 				/>
 			)}
-			{videoStatus === "generating" && (
+			{ceremony.videoStatus === EVENT_DRAW_VIDEO_STATUS.generating && (
 				<div className="mx-auto w-full max-w-sm rounded-xl border border-border bg-surface-elevated p-4 text-center my-4 shadow-sm">
 					<div className="flex justify-between text-xs font-medium text-fg-muted mb-2">
 						<span>Gerando vídeo auditável...</span>
-						<span>{videoProgress}%</span>
+						<span>{ceremony.videoProgress}%</span>
 					</div>
 					<div className="h-2 w-full overflow-hidden rounded-full bg-surface-muted">
 						<div
 							className="h-full bg-pitch transition-all duration-300"
-							style={{ width: `${videoProgress}%` }}
+							style={{ width: `${ceremony.videoProgress}%` }}
 						/>
 					</div>
 				</div>
 			)}
-			{videoStatus === "ready" && (
+			{ceremony.videoStatus === EVENT_DRAW_VIDEO_STATUS.ready && (
 				<div className="mx-auto w-full max-w-sm text-center my-4">
 					<Button
 						type="button"
 						onClick={() => {
-							void handleShareVideo();
+							void ceremony.shareVideo(championshipName);
 						}}
 						className="w-full justify-center gap-2 bg-pitch text-pitch-fg hover:bg-pitch-hover font-semibold py-3"
 					>
 						<Video className="size-5" />
 						Compartilhar vídeo MP4
 					</Button>
-					{!videoHasAudio && (
+					{!ceremony.videoHasAudio && (
 						<p className="mt-2 text-xs text-fg-muted">
 							Vídeo sem som: este navegador não gera áudio AAC.
 						</p>
 					)}
 				</div>
 			)}
-			{videoStatus === "error" && (
+			{ceremony.videoStatus === EVENT_DRAW_VIDEO_STATUS.error && (
 				<div className="mx-auto w-full max-w-sm text-center my-4">
 					<Button
 						type="button"
 						variant={BUTTON_VARIANT.secondary}
-						onClick={() => {
-							setVideoStatus("idle");
-						}}
+						onClick={ceremony.dismissVideo}
 						className="w-full justify-center gap-2 text-fg-muted border-border"
 					>
 						<RefreshCw className="size-4" />

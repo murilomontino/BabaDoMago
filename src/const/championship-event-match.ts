@@ -30,6 +30,12 @@ export const EVENT_MATCH_LABEL = {
 	draw: "Empate",
 	open: "Em andamento",
 	selectTeams: "Selecione dois times para o confronto",
+	selectGoalkeepers: "Escolha o goleiro de cada time",
+	backToTeams: "Voltar",
+	confirmGoalkeepers: "Ir para o cronômetro",
+	addPlayer: "Adicionar",
+	addPlayerTitle: "Adicionar jogador",
+	addPlayerEmpty: "Ninguém disponível fora do confronto.",
 	emptySlot: "Vago",
 	emptyTeam: "Ninguém no time.",
 	copied: "Link copiado.",
@@ -39,6 +45,14 @@ export const EVENT_MATCH_LABEL = {
 	showMore: "Ver mais",
 	showLess: "Ver menos",
 } as const;
+
+export const MATCH_PLAY_STEP = {
+	teams: "teams",
+	goalkeepers: "goalkeepers",
+} as const;
+
+export type MatchPlayStep =
+	(typeof MATCH_PLAY_STEP)[keyof typeof MATCH_PLAY_STEP];
 
 export function copyMatchLinkLabel(copied: boolean): string {
 	if (copied) {
@@ -557,6 +571,15 @@ export function matchBenchPlayerIds(
 	return presentIds.filter((playerId) => !taken.has(playerId));
 }
 
+export function matchPrestartAddCandidateIds(
+	presentIds: readonly number[],
+	teamAPlayerIds: readonly number[],
+	teamBPlayerIds: readonly number[],
+): number[] {
+	const taken = new Set([...teamAPlayerIds, ...teamBPlayerIds]);
+	return presentIds.filter((playerId) => !taken.has(playerId));
+}
+
 export function matchAssistCandidates(
 	players: readonly ChampionshipEventMatchPlayer[],
 	teamId: number,
@@ -697,6 +720,99 @@ export function toggleMatchTeamSelection(
 
 export function canConfirmMatchTeams(selected: readonly number[]): boolean {
 	return selected.length === CHAMPIONSHIP_EVENT.minTeams;
+}
+
+export function canConfirmMatchGoalkeepers(
+	_teamAGoalkeeperId?: number | null,
+	_teamBGoalkeeperId?: number | null,
+): boolean {
+	return true;
+}
+
+export function matchTeamTemplateGoalkeeperId(
+	players: readonly { player_id: number; is_goalkeeper: boolean }[],
+): number | null {
+	const goalkeeper = players.find((player) => player.is_goalkeeper);
+	if (!goalkeeper) {
+		return null;
+	}
+
+	return goalkeeper.player_id;
+}
+
+export function matchGoalkeeperDraftFromTeams(
+	teamA: {
+		id: number;
+		players: readonly { player_id: number; is_goalkeeper: boolean }[];
+	},
+	teamB: {
+		id: number;
+		players: readonly { player_id: number; is_goalkeeper: boolean }[];
+	},
+	playersPerTeam: number,
+): Record<number, number> {
+	const draft: Record<number, number> = {};
+
+	if (teamA.players.length >= playersPerTeam) {
+		const goalkeeperA = matchTeamTemplateGoalkeeperId(teamA.players);
+		if (goalkeeperA !== null) {
+			draft[teamA.id] = goalkeeperA;
+		}
+	}
+
+	if (teamB.players.length >= playersPerTeam) {
+		const goalkeeperB = matchTeamTemplateGoalkeeperId(teamB.players);
+		if (goalkeeperB !== null) {
+			draft[teamB.id] = goalkeeperB;
+		}
+	}
+
+	return draft;
+}
+
+export function matchIncompleteTeamNeedsClearGoalkeeper(
+	players: readonly { player_id: number; is_goalkeeper: boolean }[],
+	playersPerTeam: number,
+	draftGoalkeeperId: number | undefined,
+): boolean {
+	if (draftGoalkeeperId !== undefined) {
+		return false;
+	}
+
+	if (players.length >= playersPerTeam) {
+		return false;
+	}
+
+	return matchTeamTemplateGoalkeeperId(players) !== null;
+}
+
+export function matchTeamNeedsGoalkeeperUpdate(
+	players: readonly { player_id: number; is_goalkeeper: boolean }[],
+	goalkeeperId: number,
+): boolean {
+	return matchTeamTemplateGoalkeeperId(players) !== goalkeeperId;
+}
+
+export function matchPrestartAddGoalkeeperId(
+	asGoalkeeper: boolean,
+	playerId: number,
+	currentGoalkeeperId: number | null | undefined,
+	teamPlayerIds: readonly number[],
+): number {
+	if (asGoalkeeper) {
+		return playerId;
+	}
+
+	if (currentGoalkeeperId != null && currentGoalkeeperId > 0) {
+		return currentGoalkeeperId;
+	}
+
+	const firstTeamPlayerId = teamPlayerIds[0];
+	if (firstTeamPlayerId !== undefined) {
+		return firstTeamPlayerId;
+	}
+
+	return playerId;
 }
 
 export type MatchGoalDraft = {

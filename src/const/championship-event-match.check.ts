@@ -6,6 +6,7 @@ import { CHAMPIONSHIP_EVENT, EVENT_ACTION } from "./championship-event.ts";
 import {
 	applyMatchClockAction,
 	canClearMatchClock,
+	canConfirmMatchGoalkeepers,
 	canConfirmMatchTeams,
 	canOpenEventHistoryMatch,
 	clampMatchDurationMinutes,
@@ -27,6 +28,7 @@ import {
 	EVENT_MATCH_SUBSTITUTION_LABEL,
 	EVENT_MATCH_SWAP_TEAM_LABEL,
 	EVENT_MATCH_TEAM_PREVIEW,
+	MATCH_PLAY_STEP,
 	eventGoalScorerHint,
 	eventMatchEndConfirmLabel,
 	eventMatchEndTitle,
@@ -64,9 +66,15 @@ import {
 	matchDurationSeconds,
 	matchEndWinnerLabel,
 	matchGoalForTeamA,
+	matchGoalkeeperDraftFromTeams,
+	matchIncompleteTeamNeedsClearGoalkeeper,
 	matchGoalPayload,
 	matchGoalTimeline,
+	matchTeamNeedsGoalkeeperUpdate,
+	matchTeamTemplateGoalkeeperId,
 	matchPlayUrl,
+	matchPrestartAddCandidateIds,
+	matchPrestartAddGoalkeeperId,
 	matchScore,
 	matchSlotCount,
 	matchSubstitutedTeamPlayers,
@@ -213,6 +221,26 @@ check(
 	"2,4",
 	"bench",
 );
+check(
+	String(matchPrestartAddCandidateIds([1, 2, 3, 4, 5], [1, 2], [3, 4])),
+	"5",
+	"prestart add candidates",
+);
+check(
+	matchPrestartAddGoalkeeperId(true, 9, 2, [1, 2]),
+	9,
+	"prestart add as gk",
+);
+check(
+	matchPrestartAddGoalkeeperId(false, 9, 2, [1, 2]),
+	2,
+	"prestart add as player keeps gk",
+);
+check(
+	matchPrestartAddGoalkeeperId(false, 9, null, [1, 2]),
+	1,
+	"prestart add as player fallback first",
+);
 
 const assists = matchAssistCandidates(
 	[
@@ -355,6 +383,116 @@ check(String(toggleMatchTeamSelection([1, 2], 1)), "2", "deselect");
 check(String(toggleMatchTeamSelection([1, 2], 3)), "2,3", "replace oldest");
 check(canConfirmMatchTeams([1]), false, "one team");
 check(canConfirmMatchTeams([1, 2]), true, "two teams");
+check(canConfirmMatchGoalkeepers(null, 2), true, "gk optional missing a");
+check(canConfirmMatchGoalkeepers(1, null), true, "gk optional missing b");
+check(canConfirmMatchGoalkeepers(1, 2), true, "gk optional both set");
+check(canConfirmMatchGoalkeepers(), true, "gk optional none");
+check(MATCH_PLAY_STEP.goalkeepers, "goalkeepers", "play step gk");
+check(
+	matchTeamTemplateGoalkeeperId([
+		{ player_id: 1, is_goalkeeper: false },
+		{ player_id: 2, is_goalkeeper: true },
+	]),
+	2,
+	"template gk id",
+);
+check(
+	matchTeamNeedsGoalkeeperUpdate(
+		[
+			{ player_id: 1, is_goalkeeper: false },
+			{ player_id: 2, is_goalkeeper: true },
+		],
+		2,
+	),
+	false,
+	"gk update not needed",
+);
+check(
+	matchTeamNeedsGoalkeeperUpdate(
+		[
+			{ player_id: 1, is_goalkeeper: false },
+			{ player_id: 2, is_goalkeeper: true },
+		],
+		1,
+	),
+	true,
+	"gk update needed",
+);
+check(
+	JSON.stringify(
+		matchGoalkeeperDraftFromTeams(
+			{
+				id: 10,
+				players: [
+					{ player_id: 1, is_goalkeeper: true },
+					{ player_id: 2, is_goalkeeper: false },
+				],
+			},
+			{
+				id: 20,
+				players: [
+					{ player_id: 3, is_goalkeeper: false },
+					{ player_id: 4, is_goalkeeper: true },
+				],
+			},
+			2,
+		),
+	),
+	JSON.stringify({ 10: 1, 20: 4 }),
+	"gk draft from full teams",
+);
+check(
+	JSON.stringify(
+		matchGoalkeeperDraftFromTeams(
+			{
+				id: 10,
+				players: [
+					{ player_id: 1, is_goalkeeper: true },
+					{ player_id: 2, is_goalkeeper: false },
+					{ player_id: 3, is_goalkeeper: false },
+					{ player_id: 4, is_goalkeeper: false },
+				],
+			},
+			{
+				id: 20,
+				players: [
+					{ player_id: 5, is_goalkeeper: true },
+					{ player_id: 6, is_goalkeeper: false },
+					{ player_id: 7, is_goalkeeper: false },
+					{ player_id: 8, is_goalkeeper: false },
+					{ player_id: 9, is_goalkeeper: false },
+				],
+			},
+			5,
+		),
+	),
+	JSON.stringify({ 20: 5 }),
+	"gk draft skips incomplete team",
+);
+check(
+	matchIncompleteTeamNeedsClearGoalkeeper(
+		[
+			{ player_id: 1, is_goalkeeper: true },
+			{ player_id: 2, is_goalkeeper: false },
+		],
+		5,
+		undefined,
+	),
+	true,
+	"incomplete clears template gk",
+);
+check(
+	matchIncompleteTeamNeedsClearGoalkeeper(
+		[
+			{ player_id: 1, is_goalkeeper: true },
+			{ player_id: 2, is_goalkeeper: false },
+		],
+		5,
+		1,
+	),
+	false,
+	"incomplete keeps drafted gk",
+);
 
 check(
 	matchGoalPayload({
@@ -663,6 +801,28 @@ check(
 	EVENT_MATCH_LABEL.selectTeams,
 	"Selecione dois times para o confronto",
 	"select teams",
+);
+check(
+	EVENT_MATCH_LABEL.selectGoalkeepers,
+	"Escolha o goleiro de cada time",
+	"select goalkeepers",
+);
+check(EVENT_MATCH_LABEL.backToTeams, "Voltar", "back to teams");
+check(
+	EVENT_MATCH_LABEL.confirmGoalkeepers,
+	"Ir para o cronômetro",
+	"confirm goalkeepers",
+);
+check(EVENT_MATCH_LABEL.addPlayer, "Adicionar", "add player");
+check(
+	EVENT_MATCH_LABEL.addPlayerTitle,
+	"Adicionar jogador",
+	"add player title",
+);
+check(
+	EVENT_MATCH_LABEL.addPlayerEmpty,
+	"Ninguém disponível fora do confronto.",
+	"add player empty",
 );
 
 const clockBase = {

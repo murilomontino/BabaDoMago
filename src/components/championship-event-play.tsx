@@ -1,15 +1,6 @@
-import {
-	ArrowLeftRight,
-	ChevronDown,
-	LoaderCircle,
-	Pause,
-	Play,
-	Star,
-	X,
-} from "lucide-react";
-import { useEffect, useRef, useState } from "react";
 import { AddEventTeamModal } from "@/components/add-event-team-modal";
 import { Button } from "@/components/button";
+import { ChampionshipEventAddPrestartPlayerModal } from "@/components/championship-event-add-prestart-player-modal";
 import { ChampionshipEventBenchModal } from "@/components/championship-event-bench-modal";
 import { ChampionshipEventGoalModal } from "@/components/championship-event-goal-modal";
 import { ChampionshipEventRemovePlayerModal } from "@/components/championship-event-remove-player-modal";
@@ -30,8 +21,8 @@ import {
 import { GoalIcon } from "@/components/goal-icon";
 import { GoalkeeperGlovesIcon } from "@/components/goalkeeper-gloves-icon";
 import {
-	isMatchClockDebugVisible,
 	MatchClockDebug,
+	isMatchClockDebugVisible,
 } from "@/components/match-clock-debug";
 import {
 	MATCH_GOAL_TIMELINE_GRID_CLASS,
@@ -43,21 +34,21 @@ import {
 	type OwnGoalLabelPosition,
 } from "@/components/soccer-ball-icon";
 import {
-	attendanceGoalkeeperIds,
 	EVENT_ACTION,
 	EVENT_CARD_LONG_PRESS,
 	EVENT_TEAM_MESSAGE,
+	EVENT_TEAM_POSITION,
 	EVENT_TEAM_POSITION_LABEL,
+	attendanceGoalkeeperIds,
 	eventDrawInputRating,
 	eventTeamHighestSumFlags,
 	eventTeamPlayerPosition,
 	eventTeamSlotPosition,
 	eventTeamSourcePlayers,
 	eventTeamsSharePlayers,
+	type EventTeamPosition,
 } from "@/const/championship-event";
 import {
-	canConfirmMatchTeams,
-	clampMatchDurationMinutes,
 	EVENT_GOAL_LABEL,
 	EVENT_MATCH_CLOCK_LABEL,
 	EVENT_MATCH_DISCARD_LABEL,
@@ -65,13 +56,14 @@ import {
 	EVENT_MATCH_END_INTENT,
 	EVENT_MATCH_LABEL,
 	EVENT_MATCH_TEAM_PREVIEW,
-	type EventMatchEndIntent,
+	MATCH_CLOCK_ACTION,
+	MATCH_PLAY_STEP,
+	canConfirmMatchTeams,
+	clampMatchDurationMinutes,
 	formatMatchClock,
 	formatMatchScore,
 	isMatchDurationPreset,
 	isMatchTimeUp,
-	MATCH_CLOCK_ACTION,
-	type MatchClockAction,
 	matchActiveTeamPlayers,
 	matchAssistCandidates,
 	matchBenchPlayerIds,
@@ -80,16 +72,25 @@ import {
 	matchClockIsStarted,
 	matchEndWinnerLabel,
 	matchGoalPayload,
+	matchGoalkeeperDraftFromTeams,
+	matchIncompleteTeamNeedsClearGoalkeeper,
+	matchPrestartAddCandidateIds,
+	matchPrestartAddGoalkeeperId,
 	matchScore,
+	matchTeamNeedsGoalkeeperUpdate,
 	matchTeamSlots,
 	matchTeamStarName,
 	matchTeamSwapCandidates,
+	matchTeamTemplateGoalkeeperId,
 	matchWinnerTeamId,
 	mergeMatchClock,
 	parseMatchDurationMinutesInput,
 	shouldSignalMatchTimeUp,
 	sortBenchForSlot,
 	toggleMatchTeamSelection,
+	type EventMatchEndIntent,
+	type MatchClockAction,
+	type MatchPlayStep,
 } from "@/const/championship-event-match";
 import {
 	MATCH_OPS_SYNCING_CLASS,
@@ -98,20 +99,18 @@ import {
 import { resolveEventPlayers } from "@/const/championship-event-roster";
 import { CHAMPIONSHIP_ROLE } from "@/const/championship-role";
 import {
+	MATCHUP_LABEL,
 	analyzeMatchHistoryMatchup,
 	buildStartMatchMatchup,
-	eventMatchupFavoriteStats,
-	formatMatchupFavoriteHitRate,
-	MATCHUP_LABEL,
-	type MatchupSnapshot,
 	matchFavoriteTeamId,
 	matchupFavoriteTeamId,
+	type MatchupSnapshot,
 } from "@/const/event-matchup-analysis";
 import {
-	type EventTeamColor,
 	eventTeamColorStyle,
 	eventTeamName,
 	usedEventTeamColors,
+	type EventTeamColor,
 } from "@/const/event-team-color";
 import { playerVisibleName } from "@/const/player-name";
 import { championshipRatingCeiling } from "@/const/player-rating";
@@ -135,6 +134,16 @@ import type {
 	ChampionshipEventMatchPlayer,
 	ChampionshipEventTeam,
 } from "@/types/championship-event";
+import {
+	ArrowLeftRight,
+	ChevronDown,
+	LoaderCircle,
+	Pause,
+	Play,
+	Star,
+	X,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 type SlotTarget = {
 	teamId: number;
@@ -325,6 +334,95 @@ const TEAM_CARD_LONG_PRESS_MOVE_PX = 8;
 const TEAM_PICK_EXPAND_TRANSITION =
 	"duration-300 ease-out motion-reduce:transition-none";
 
+function MatchGoalkeeperTeamPick({
+	team,
+	pickOrder,
+	selectedGoalkeeperId,
+	rosterById,
+	ceiling,
+	goalkeeperIds,
+	canAddPlayer,
+	onSelectGoalkeeper,
+	onAddPlayer,
+}: {
+	team: ChampionshipEventTeam;
+	pickOrder: number;
+	selectedGoalkeeperId: number | undefined;
+	rosterById: Map<number, ChampionshipPlayer>;
+	ceiling: number;
+	goalkeeperIds: readonly number[];
+	canAddPlayer: boolean;
+	onSelectGoalkeeper: (playerId: number) => void;
+	onAddPlayer: () => void;
+}) {
+	const style = eventTeamColorStyle(team.color);
+
+	return (
+		<section
+			className="rounded-lg border border-line bg-surface p-2"
+			style={style}
+		>
+			<header className="mb-2 flex items-center gap-2">
+				<EventTeamColorDot color={team.color} />
+				<span className="text-sm font-medium text-fg">
+					{eventTeamName(team.color, pickOrder)}
+				</span>
+				<span className="ml-auto text-xs font-medium text-fg-muted">
+					{`${EVENT_MATCH_LABEL.picked} ${pickOrder}`}
+				</span>
+			</header>
+			<ul className="space-y-1">
+				{team.players.map((row) => {
+					const player = resolvePlayer(
+						row.player_id,
+						row.display_name,
+						rosterById,
+					);
+					const selected = selectedGoalkeeperId === player.id;
+
+					return (
+						<li key={row.id}>
+							<button
+								type="button"
+								aria-pressed={selected}
+								className={`flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left ${
+									selected
+										? "bg-primary/15 ring-1 ring-primary"
+										: "bg-surface-muted"
+								}`}
+								onClick={() => {
+									onSelectGoalkeeper(player.id);
+								}}
+							>
+								<span className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}>
+									{EVENT_TEAM_POSITION_LABEL[eventTeamPlayerPosition(selected)]}
+								</span>
+								<EventTeamPlayerRow
+									player={player}
+									ceiling={ceiling}
+									isGoalkeeperVolunteer={goalkeeperIds.includes(player.id)}
+								/>
+								{selected && (
+									<GoalkeeperGlovesIcon className="ml-auto size-4 shrink-0 text-primary" />
+								)}
+							</button>
+						</li>
+					);
+				})}
+			</ul>
+			{canAddPlayer && (
+				<Button
+					variant={BUTTON_VARIANT.secondary}
+					className="mt-2 w-full"
+					onClick={onAddPlayer}
+				>
+					{EVENT_MATCH_LABEL.addPlayer}
+				</Button>
+			)}
+		</section>
+	);
+}
+
 function TeamPick({
 	team,
 	selected,
@@ -384,9 +482,8 @@ function TeamPick({
 
 	return (
 		<div
-			className={`relative w-full overflow-hidden rounded-lg border bg-surface text-sm ${
-				selected ? "border-pitch ring-2 ring-pitch" : "border-line"
-			}`}
+			className={`relative w-full overflow-hidden rounded-lg border bg-surface text-sm ${selected ? "border-pitch ring-2 ring-pitch" : "border-line"
+				}`}
 			style={style}
 		>
 			<EventTeamColorDot color={team.color} />
@@ -443,11 +540,10 @@ function TeamPick({
 						{eventTeamName(team.color, team.sort_order)}
 					</p>
 					<span
-						className={`inline-flex h-7 shrink-0 items-center rounded-lg px-2 text-xs font-medium ${
-							selected
+						className={`inline-flex h-7 shrink-0 items-center rounded-lg px-2 text-xs font-medium ${selected
 								? "bg-pitch text-white"
 								: "border border-line bg-surface text-fg"
-						}`}
+							}`}
 					>
 						{pickOrder !== null
 							? `${EVENT_MATCH_LABEL.picked} ${pickOrder}`
@@ -474,9 +570,8 @@ function TeamPick({
 				</ul>
 				{canExpand && (
 					<div
-						className={`grid transition-[grid-template-rows] ${TEAM_PICK_EXPAND_TRANSITION} ${
-							expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-						}`}
+						className={`grid transition-[grid-template-rows] ${TEAM_PICK_EXPAND_TRANSITION} ${expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+							}`}
 					>
 						<ul className="min-h-0 space-y-1 overflow-hidden pt-1">
 							{extraRoster.map(({ row, player }) => {
@@ -514,9 +609,8 @@ function TeamPick({
 						{expanded && EVENT_MATCH_LABEL.showLess}
 						{!expanded && EVENT_MATCH_LABEL.showMore}
 						<ChevronDown
-							className={`size-3.5 shrink-0 transition-transform ${TEAM_PICK_EXPAND_TRANSITION} ${
-								expanded ? "rotate-180" : ""
-							}`}
+							className={`size-3.5 shrink-0 transition-transform ${TEAM_PICK_EXPAND_TRANSITION} ${expanded ? "rotate-180" : ""
+								}`}
 						/>
 					</button>
 				)}
@@ -966,6 +1060,15 @@ export function ChampionshipEventPlay({
 		eventDrawInputRating(player, volunteerSet.has(player.id)),
 	);
 	const [selected, setSelected] = useState<number[]>([]);
+	const [playStep, setPlayStep] = useState<MatchPlayStep>(
+		MATCH_PLAY_STEP.teams,
+	);
+	const [goalkeeperByTeamId, setGoalkeeperByTeamId] = useState<
+		Record<number, number>
+	>({});
+	const [addPrestartTeamId, setAddPrestartTeamId] = useState<number | null>(
+		null,
+	);
 	const [durationMinutes, setDurationMinutes] = useState<number>(
 		EVENT_MATCH_DURATION.defaultMinutes,
 	);
@@ -1009,8 +1112,8 @@ export function ChampionshipEventPlay({
 	const selectedTeamB = event.teams.find((team) => team.id === selected[1]);
 	const sharedPlayersError =
 		selectedTeamA &&
-		selectedTeamB &&
-		eventTeamsSharePlayers(selectedTeamA.players, selectedTeamB.players)
+			selectedTeamB &&
+			eventTeamsSharePlayers(selectedTeamA.players, selectedTeamB.players)
 			? EVENT_TEAM_MESSAGE.sharedPlayers
 			: null;
 
@@ -1030,6 +1133,232 @@ export function ChampionshipEventPlay({
 	);
 
 	if (!match) {
+		const teamAId = selected[0];
+		const teamBId = selected[1];
+
+		if (playStep === MATCH_PLAY_STEP.goalkeepers) {
+			const prestartAddTeam =
+				addPrestartTeamId === null
+					? null
+					: (teamById.get(addPrestartTeamId) ?? null);
+			const prestartCandidateIds = matchPrestartAddCandidateIds(
+				presentPlayers.map((player) => player.id),
+				selectedTeamA?.players.map((player) => player.player_id) ?? [],
+				selectedTeamB?.players.map((player) => player.player_id) ?? [],
+			);
+			const prestartCandidates = presentPlayers.filter((player) =>
+				prestartCandidateIds.includes(player.id),
+			);
+
+			function addPrestartPlayer(
+				team: ChampionshipEventTeam,
+				playerId: number,
+				role: EventTeamPosition,
+			) {
+				if (team.players.length >= event.players_per_team) {
+					return;
+				}
+
+				if (team.players.some((player) => player.player_id === playerId)) {
+					return;
+				}
+
+				const playerIds = [
+					...team.players.map((player) => player.player_id),
+					playerId,
+				];
+				const asGoalkeeper = role === EVENT_TEAM_POSITION.goalkeeper;
+				const goalkeeperId = matchPrestartAddGoalkeeperId(
+					asGoalkeeper,
+					playerId,
+					goalkeeperByTeamId[team.id] ??
+						matchTeamTemplateGoalkeeperId(team.players),
+					team.players.map((player) => player.player_id),
+				);
+
+				onUpdateTeam({
+					teamId: team.id,
+					color: team.color,
+					playerIds,
+					goalkeeperId,
+				});
+
+				if (asGoalkeeper) {
+					setGoalkeeperByTeamId((current) => ({
+						...current,
+						[team.id]: playerId,
+					}));
+				}
+
+				setAddPrestartTeamId(null);
+			}
+
+			return (
+				<div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden relative">
+					{showQueueBanner && <MatchOpsQueueBanner online={online} />}
+					<p className="mb-2 shrink-0 text-sm font-medium text-fg">
+						{EVENT_MATCH_LABEL.selectGoalkeepers}
+					</p>
+					<div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
+						{selectedTeamA && teamAId !== undefined && (
+							<MatchGoalkeeperTeamPick
+								team={selectedTeamA}
+								pickOrder={1}
+								selectedGoalkeeperId={goalkeeperByTeamId[teamAId]}
+								rosterById={rosterById}
+								ceiling={ceiling}
+								goalkeeperIds={volunteerGoalkeeperIds}
+								canAddPlayer={
+									selectedTeamA.players.length < event.players_per_team
+								}
+								onSelectGoalkeeper={(playerId) => {
+									setGoalkeeperByTeamId((current) => ({
+										...current,
+										[teamAId]: playerId,
+									}));
+								}}
+								onAddPlayer={() => {
+									setAddPrestartTeamId(teamAId);
+								}}
+							/>
+						)}
+						{selectedTeamB && teamBId !== undefined && (
+							<MatchGoalkeeperTeamPick
+								team={selectedTeamB}
+								pickOrder={2}
+								selectedGoalkeeperId={goalkeeperByTeamId[teamBId]}
+								rosterById={rosterById}
+								ceiling={ceiling}
+								goalkeeperIds={volunteerGoalkeeperIds}
+								canAddPlayer={
+									selectedTeamB.players.length < event.players_per_team
+								}
+								onSelectGoalkeeper={(playerId) => {
+									setGoalkeeperByTeamId((current) => ({
+										...current,
+										[teamBId]: playerId,
+									}));
+								}}
+								onAddPlayer={() => {
+									setAddPrestartTeamId(teamBId);
+								}}
+							/>
+						)}
+					</div>
+					<div className="shrink-0 space-y-2 pt-2">
+						{opsError && <p className={ERROR_CLASS}>{opsError}</p>}
+						<div className="grid gap-2 md:flex md:justify-end">
+							<Button
+								variant={BUTTON_VARIANT.ghost}
+								className="w-full md:w-auto"
+								onClick={() => {
+									setAddPrestartTeamId(null);
+									setPlayStep(MATCH_PLAY_STEP.teams);
+								}}
+							>
+								{EVENT_MATCH_LABEL.backToTeams}
+							</Button>
+							<Button
+								className="w-full md:w-auto"
+								onClick={() => {
+									if (
+										teamAId === undefined ||
+										teamBId === undefined ||
+										!selectedTeamA ||
+										!selectedTeamB
+									) {
+										return;
+									}
+
+									const teamsToUpdate = [
+										{
+											team: selectedTeamA,
+											goalkeeperId: goalkeeperByTeamId[teamAId],
+										},
+										{
+											team: selectedTeamB,
+											goalkeeperId: goalkeeperByTeamId[teamBId],
+										},
+									];
+
+									for (const { team, goalkeeperId } of teamsToUpdate) {
+										if (goalkeeperId !== undefined) {
+											if (
+												!matchTeamNeedsGoalkeeperUpdate(
+													team.players,
+													goalkeeperId,
+												)
+											) {
+												continue;
+											}
+
+											onUpdateTeam({
+												teamId: team.id,
+												color: team.color,
+												playerIds: team.players.map(
+													(player) => player.player_id,
+												),
+												goalkeeperId,
+											});
+											continue;
+										}
+
+										if (
+											!matchIncompleteTeamNeedsClearGoalkeeper(
+												team.players,
+												event.players_per_team,
+												goalkeeperId,
+											)
+										) {
+											continue;
+										}
+
+										onUpdateTeam({
+											teamId: team.id,
+											color: team.color,
+											playerIds: team.players.map(
+												(player) => player.player_id,
+											),
+											goalkeeperId: 0,
+										});
+									}
+
+									const matchup = buildStartMatchMatchup({
+										teamA: selectedTeamA,
+										teamB: selectedTeamB,
+										attendance: event.attendance,
+										historyEvents,
+										roster: players,
+									});
+									setAddPrestartTeamId(null);
+									setPlayStep(MATCH_PLAY_STEP.teams);
+									void onStart(teamAId, teamBId, durationMinutes, {
+										snapshot: matchup.snapshot,
+										favoriteTeamId: matchup.favoriteTeamId,
+									});
+								}}
+							>
+								{EVENT_MATCH_LABEL.confirmGoalkeepers}
+							</Button>
+						</div>
+					</div>
+					{prestartAddTeam && (
+						<ChampionshipEventAddPrestartPlayerModal
+							players={prestartCandidates}
+							ceiling={ceiling}
+							errorMessage={opsError}
+							onCancel={() => {
+								setAddPrestartTeamId(null);
+							}}
+							onSelect={(playerId, role) => {
+								addPrestartPlayer(prestartAddTeam, playerId, role);
+							}}
+						/>
+					)}
+				</div>
+			);
+		}
+
 		return (
 			<div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden relative">
 				{showQueueBanner && <MatchOpsQueueBanner online={online} />}
@@ -1137,8 +1466,6 @@ export function ChampionshipEventPlay({
 							className="w-full md:w-auto"
 							disabled={!canStartSelected || Boolean(sharedPlayersError)}
 							onClick={() => {
-								const teamAId = selected[0];
-								const teamBId = selected[1];
 								if (teamAId === undefined || teamBId === undefined) {
 									return;
 								}
@@ -1149,17 +1476,14 @@ export function ChampionshipEventPlay({
 									return;
 								}
 
-								const matchup = buildStartMatchMatchup({
-									teamA,
-									teamB,
-									attendance: event.attendance,
-									historyEvents,
-									roster: players,
-								});
-								void onStart(teamAId, teamBId, durationMinutes, {
-									snapshot: matchup.snapshot,
-									favoriteTeamId: matchup.favoriteTeamId,
-								});
+								setGoalkeeperByTeamId(
+									matchGoalkeeperDraftFromTeams(
+										teamA,
+										teamB,
+										event.players_per_team,
+									),
+								);
+								setPlayStep(MATCH_PLAY_STEP.goalkeepers);
 							}}
 						>
 							{EVENT_ACTION.startMatch}
@@ -1223,19 +1547,14 @@ export function ChampionshipEventPlay({
 		matchupReview === null
 			? null
 			: matchupFavoriteTeamId(
-					matchupReview.analysis.favoriteSide,
-					match.team_a_id,
-					match.team_b_id,
-				);
+				matchupReview.analysis.favoriteSide,
+				match.team_a_id,
+				match.team_b_id,
+			);
 	const favoriteTeamId =
 		frozenFavoriteId === undefined ? liveFavoriteId : frozenFavoriteId;
 	const teamAFavorite = favoriteTeamId === match.team_a_id;
 	const teamBFavorite = favoriteTeamId === match.team_b_id;
-	const favoriteStats = eventMatchupFavoriteStats(event.matches);
-	const favoriteHitCaption =
-		favoriteStats.decreed > 0
-			? formatMatchupFavoriteHitRate(favoriteStats)
-			: null;
 
 	const teamAIds = new Set(
 		match.players
@@ -1325,11 +1644,6 @@ export function ChampionshipEventPlay({
 	return (
 		<div className="relative flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden">
 			{showQueueBanner && <MatchOpsQueueBanner online={online} />}
-			{favoriteHitCaption && (
-				<p className="shrink-0 text-center text-xs font-medium tabular-nums text-fg-muted">
-					{MATCHUP_LABEL.favoriteHitRate}: {favoriteHitCaption}
-				</p>
-			)}
 			<MatchTeamBlock
 				color={teamA.color}
 				sortOrder={teamA.sort_order}
