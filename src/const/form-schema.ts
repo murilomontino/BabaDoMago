@@ -16,6 +16,7 @@ export const FORM_MESSAGE = {
 	locationInvalid: "Local inválido",
 	playersPerTeamInvalid: "Limite inválido",
 	playerVoteQuorumInvalid: "Quórum inválido",
+	ratingMinMatchesInvalid: "Mínimo de jogos inválido",
 	eventDateRequired: "Informe a data",
 	teamRequired: "Selecione o time",
 	teamsDistinct: "Escolha dois times",
@@ -142,6 +143,17 @@ export const eventConfigFormSchema = object({
 		)
 		.required(FORM_MESSAGE.playerVoteQuorumInvalid),
 	playerVoteAllowSelf: boolean().required(),
+	ratingMinMatches: number()
+		.integer(FORM_MESSAGE.ratingMinMatchesInvalid)
+		.min(
+			CHAMPIONSHIP_EVENT.ratingMinMatchesMin,
+			FORM_MESSAGE.ratingMinMatchesInvalid,
+		)
+		.max(
+			CHAMPIONSHIP_EVENT.ratingMinMatchesMax,
+			FORM_MESSAGE.ratingMinMatchesInvalid,
+		)
+		.required(FORM_MESSAGE.ratingMinMatchesInvalid),
 });
 
 export const startEventFormSchema = object({

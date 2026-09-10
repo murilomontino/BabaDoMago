@@ -898,6 +898,16 @@ const dropSharePreview = eventRatingPreview({
 });
 check(eventRatingDelta(1, 0, 2, 3, 4, 5), -0.4, "queda base teto 5");
 check(
+	eventRatingDelta(1, 0, 2, 3, 4, 5, EVENT_RATING_ADJUSTMENT.downThreshold, 5),
+	0,
+	"piso 5 bloqueia 3 jogos",
+);
+check(
+	eventRatingDelta(2, 0, 3, 5, 4, 5, EVENT_RATING_ADJUSTMENT.downThreshold, 5),
+	-0.3,
+	"piso 5 libera 5 jogos",
+);
+check(
 	rosterGoalInvolvement(5, 0) / rosterGoalInvolvement(10, 0),
 	0.5,
 	"joao 50% do time",

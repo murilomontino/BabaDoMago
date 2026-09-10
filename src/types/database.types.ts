@@ -653,6 +653,7 @@ export type Database = {
 					rating_drop_share_exclude_top: boolean;
 					player_vote_quorum: number;
 					player_vote_allow_self: boolean;
+					rating_min_matches: number;
 					skip_guest_goalkeeper_matches: boolean;
 				};
 				Insert: {
@@ -672,6 +673,7 @@ export type Database = {
 					rating_drop_share_exclude_top?: boolean;
 					player_vote_quorum?: number;
 					player_vote_allow_self?: boolean;
+					rating_min_matches?: number;
 					skip_guest_goalkeeper_matches?: boolean;
 				};
 				Update: {
@@ -691,6 +693,7 @@ export type Database = {
 					rating_drop_share_exclude_top?: boolean;
 					player_vote_quorum?: number;
 					player_vote_allow_self?: boolean;
+					rating_min_matches?: number;
 					skip_guest_goalkeeper_matches?: boolean;
 				};
 				Relationships: [];
@@ -1112,6 +1115,7 @@ export type Database = {
 					rating_drop_share_exclude_top?: boolean;
 					player_vote_quorum?: number;
 					player_vote_allow_self?: boolean;
+					rating_min_matches?: number;
 				};
 				Returns: Json;
 			};

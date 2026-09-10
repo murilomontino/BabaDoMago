@@ -891,6 +891,7 @@ export function ChampionshipDetailPage() {
 								canSetMvp={permissions.setMvp}
 								ratingDropGoalShare={data.rating_drop_goal_share}
 								ratingDropShareExcludeTop={data.rating_drop_share_exclude_top}
+								ratingMinMatches={data.rating_min_matches}
 							/>
 						</TabPanel>
 					)}
@@ -979,6 +980,7 @@ export function ChampionshipDetailPage() {
 					ratingDropShareExcludeTop={data.rating_drop_share_exclude_top}
 					playerVoteQuorum={data.player_vote_quorum}
 					playerVoteAllowSelf={data.player_vote_allow_self}
+					ratingMinMatches={data.rating_min_matches}
 					isVisible={data.is_visible}
 					activePlayers={activePlayers}
 					canRename={permissions.rename}

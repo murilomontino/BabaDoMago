@@ -194,6 +194,7 @@ export function useUpdateChampionshipEventConfig(championshipId: number) {
 			ratingDropShareExcludeTop,
 			playerVoteQuorum,
 			playerVoteAllowSelf,
+			ratingMinMatches,
 		}: {
 			eventTime: string;
 			playersPerTeam: number;
@@ -204,6 +205,7 @@ export function useUpdateChampionshipEventConfig(championshipId: number) {
 			ratingDropShareExcludeTop: boolean;
 			playerVoteQuorum: number;
 			playerVoteAllowSelf: boolean;
+			ratingMinMatches: number;
 		}) =>
 			updateChampionshipEventConfig(
 				championshipId,
@@ -216,6 +218,7 @@ export function useUpdateChampionshipEventConfig(championshipId: number) {
 				ratingDropShareExcludeTop,
 				playerVoteQuorum,
 				playerVoteAllowSelf,
+				ratingMinMatches,
 			),
 		onSuccess: async () => {
 			await invalidateChampionshipQueries(queryClient);

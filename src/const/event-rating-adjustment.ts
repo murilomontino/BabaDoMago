@@ -165,10 +165,11 @@ export function eventRatingDeadZoneDownThreshold(
 
 export function eventHasDominantTeam(
 	rows: readonly { matches: number; pointsRate: number }[],
+	minMatches: number = EVENT_RATING_ADJUSTMENT.minMatches,
 ): boolean {
 	return rows.some(
 		(row) =>
-			row.matches >= EVENT_RATING_ADJUSTMENT.minMatches &&
+			row.matches >= minMatches &&
 			row.pointsRate >= EVENT_RATING_ADJUSTMENT.dominantTeamRate,
 	);
 }
@@ -212,6 +213,7 @@ function applyDominantTeamResult(
 
 export function eventHasDominantTeamFromMatchups(
 	matches: readonly EventDominantMatch[],
+	minMatches: number = EVENT_RATING_ADJUSTMENT.minMatches,
 ): boolean {
 	const byTeam = matches.reduce((acc, match) => {
 		if (match.ended_at === null) {
@@ -247,6 +249,7 @@ export function eventHasDominantTeamFromMatchups(
 				pointsRate: standingPointsRate(points, acc.matches),
 			};
 		}),
+		minMatches,
 	);
 }
 
@@ -278,8 +281,9 @@ export function eventRatingInDeadZone(
 	losses: number,
 	matches: number,
 	downThreshold: number = EVENT_RATING_ADJUSTMENT.downThreshold,
+	minMatches: number = EVENT_RATING_ADJUSTMENT.minMatches,
 ): boolean {
-	if (matches < EVENT_RATING_ADJUSTMENT.minMatches) {
+	if (matches < minMatches) {
 		return false;
 	}
 
@@ -299,8 +303,9 @@ export function eventRatingInitial(
 	losses: number,
 	matches: number,
 	downThreshold: number = EVENT_RATING_ADJUSTMENT.downThreshold,
+	minMatches: number = EVENT_RATING_ADJUSTMENT.minMatches,
 ): number {
-	if (matches < EVENT_RATING_ADJUSTMENT.minMatches) {
+	if (matches < minMatches) {
 		return PLAYER_RATING.default;
 	}
 
@@ -312,7 +317,16 @@ export function eventRatingInitial(
 		downThreshold,
 	);
 
-	if (eventRatingInDeadZone(wins, draws, losses, matches, downThreshold)) {
+	if (
+		eventRatingInDeadZone(
+			wins,
+			draws,
+			losses,
+			matches,
+			downThreshold,
+			minMatches,
+		)
+	) {
 		return EVENT_RATING_INITIAL.mid;
 	}
 
@@ -330,12 +344,22 @@ function eventRatingRankedDelta(
 	matches: number,
 	ceiling: number,
 	downThreshold: number = EVENT_RATING_ADJUSTMENT.downThreshold,
+	minMatches: number = EVENT_RATING_ADJUSTMENT.minMatches,
 ): number {
-	if (matches < EVENT_RATING_ADJUSTMENT.minMatches) {
+	if (matches < minMatches) {
 		return 0;
 	}
 
-	if (eventRatingInDeadZone(wins, draws, losses, matches, downThreshold)) {
+	if (
+		eventRatingInDeadZone(
+			wins,
+			draws,
+			losses,
+			matches,
+			downThreshold,
+			minMatches,
+		)
+	) {
 		return 0;
 	}
 
@@ -359,8 +383,9 @@ export function eventRatingDelta(
 	rating: number,
 	ceiling: number,
 	downThreshold: number = EVENT_RATING_ADJUSTMENT.downThreshold,
+	minMatches: number = EVENT_RATING_ADJUSTMENT.minMatches,
 ): number {
-	if (matches < EVENT_RATING_ADJUSTMENT.minMatches) {
+	if (matches < minMatches) {
 		return 0;
 	}
 
@@ -371,6 +396,7 @@ export function eventRatingDelta(
 			losses,
 			matches,
 			downThreshold,
+			minMatches,
 		);
 		return applyEventRatingDelta(
 			seed,
@@ -381,6 +407,7 @@ export function eventRatingDelta(
 				matches,
 				ceiling,
 				downThreshold,
+				minMatches,
 			),
 		);
 	}
@@ -392,6 +419,7 @@ export function eventRatingDelta(
 		matches,
 		ceiling,
 		downThreshold,
+		minMatches,
 	);
 }
 
@@ -414,6 +442,7 @@ export function recomputePlayerEventRating(
 	ceiling: number,
 	snapshotRating = rating,
 	downThreshold: number = EVENT_RATING_ADJUSTMENT.downThreshold,
+	minMatches: number = EVENT_RATING_ADJUSTMENT.minMatches,
 ): number {
 	return applyEventRatingDelta(
 		rating,
@@ -426,6 +455,7 @@ export function recomputePlayerEventRating(
 				snapshotRating,
 				ceiling,
 				downThreshold,
+				minMatches,
 			),
 	);
 }
@@ -444,6 +474,7 @@ export function playerEventRatingAfterSave({
 	ceiling,
 	snapshotRating,
 	downThreshold = EVENT_RATING_ADJUSTMENT.downThreshold,
+	minMatches = EVENT_RATING_ADJUSTMENT.minMatches,
 }: {
 	rating: number;
 	storedDelta: number;
@@ -458,6 +489,7 @@ export function playerEventRatingAfterSave({
 	ceiling: number;
 	snapshotRating?: number;
 	downThreshold?: number;
+	minMatches?: number;
 }): number {
 	if (
 		rating !== PLAYER_RATING.default &&
@@ -470,6 +502,7 @@ export function playerEventRatingAfterSave({
 			rating,
 			ceiling,
 			downThreshold,
+			minMatches,
 		) !== 0
 	) {
 		return rating;
@@ -485,6 +518,7 @@ export function playerEventRatingAfterSave({
 		ceiling,
 		snapshotRating ?? rating,
 		downThreshold,
+		minMatches,
 	);
 }
 
@@ -592,6 +626,7 @@ export function eventRatingPreview({
 	mvpPlayerIds = [],
 	ratingDropGoalShare = false,
 	ratingDropShareExcludeTop = false,
+	ratingMinMatches = EVENT_RATING_ADJUSTMENT.minMatches,
 	teams = [],
 	matches = [],
 	hasDominantTeam,
@@ -620,6 +655,7 @@ export function eventRatingPreview({
 	mvpPlayerIds?: readonly number[];
 	ratingDropGoalShare?: boolean;
 	ratingDropShareExcludeTop?: boolean;
+	ratingMinMatches?: number;
 	teams?: readonly {
 		id: number;
 		color: string | null;
@@ -658,7 +694,8 @@ export function eventRatingPreview({
 				)
 			: new Set<number>();
 	const dominant =
-		hasDominantTeam ?? eventHasDominantTeamFromMatchups(matches);
+		hasDominantTeam ??
+		eventHasDominantTeamFromMatchups(matches, ratingMinMatches);
 	const downThreshold = eventRatingDeadZoneDownThreshold(dominant);
 
 	return ids.map((playerId) => {
@@ -684,6 +721,7 @@ export function eventRatingPreview({
 				from,
 				ceiling,
 				downThreshold,
+				ratingMinMatches,
 			) + eventMvpBonus(isMvp, from);
 		const share = eventRatingDropShareForPlayer({
 			enabled: ratingDropGoalShare,

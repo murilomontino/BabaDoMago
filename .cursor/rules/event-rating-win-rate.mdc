@@ -13,15 +13,15 @@ Fonte única no app: `src/const/event-rating-adjustment.ts` (`EVENT_RATING_ADJUS
 
 ## Quando a nota NÃO muda
 
-- `matches < 3`
+- `matches < championships.rating_min_matches` (default **3**, faixa 3–10 na Configuração)
 - jogador já ranqueado (`rating !== 0`) com aproveitamento na zona morta: 45% a 55% inclusive (`upThreshold` 0.55, `downThreshold` 0.45)
-- se **qualquer** time da rodada tem aproveitamento de classificação ≥ 80% (`dominantTeamRate`) com ≥ 3 jogos, a zona morta baixa para 35%–55% (`dominantDownThreshold`) para **todos**; abaixo de 35% o delta segue a fórmula normal (como hoje abaixo de 45%)
+- se **qualquer** time da rodada tem aproveitamento de classificação ≥ 80% (`dominantTeamRate`) com ≥ `rating_min_matches` jogos, a zona morta baixa para 35%–55% (`dominantDownThreshold`) para **todos**; abaixo de 35% o delta segue a fórmula normal (como hoje abaixo de 45%)
 - empate na classificação do time vale 1 pt (`standingPointsRate`), não o bônus 1,5 do jogador
-- heatmap / forma recente / hidden strength continuam com 45%–55% fixo
+- heatmap / forma recente / hidden strength continuam com 45%–55% fixo (piso de amostra = `EVENT_RATING_ADJUSTMENT.minMatches`, default 3)
 
 ## Nota inicial (sentinela `rating === 0`)
 
-Primeira rodada com 3+ jogos: escolhe a semente e **depois** aplica o delta ranqueado nessa nota (`eventRatingInitial` + `eventRatingDelta` com a semente). Pontuação do jogador na presença, `points / (3 * matches)`:
+Primeira rodada com `rating_min_matches`+ jogos: escolhe a semente e **depois** aplica o delta ranqueado nessa nota (`eventRatingInitial` + `eventRatingDelta` com a semente). Pontuação do jogador na presença, `points / (3 * matches)`:
 
 - abaixo de 45% → `EVENT_RATING_INITIAL.low` (2.7)
 - 45% a 55% inclusive → `EVENT_RATING_INITIAL.mid` (3)

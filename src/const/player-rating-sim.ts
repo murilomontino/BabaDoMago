@@ -30,6 +30,12 @@ export const PLAYER_RATING_SIM_LABEL = {
 	drawBonus: "Empates > derrotas: empate vale 1,5.",
 } as const;
 
+export function playerRatingBelowMinMatchesLabel(
+	minMatches: number = EVENT_RATING_ADJUSTMENT.minMatches,
+): string {
+	return `Menos de ${minMatches} jogos: a nota não muda.`;
+}
+
 export const PLAYER_RATING_SIM_FIELD = {
 	wins: "wins",
 	draws: "draws",
@@ -104,8 +110,9 @@ function eventRatingInDeadZone(
 	draws: number,
 	losses: number,
 	matches: number,
+	minMatches: number,
 ): boolean {
-	if (matches < EVENT_RATING_ADJUSTMENT.minMatches) {
+	if (matches < minMatches) {
 		return false;
 	}
 
@@ -127,6 +134,7 @@ export function simulatePlayerEventRating({
 	losses,
 	ceiling,
 	isMvp = false,
+	minMatches = EVENT_RATING_ADJUSTMENT.minMatches,
 }: {
 	rating: number;
 	wins: number;
@@ -134,18 +142,34 @@ export function simulatePlayerEventRating({
 	losses: number;
 	ceiling: number;
 	isMvp?: boolean;
+	minMatches?: number;
 }): PlayerRatingSimResult {
 	const matches = wins + draws + losses;
-	const belowMinMatches = matches < EVENT_RATING_ADJUSTMENT.minMatches;
+	const belowMinMatches = matches < minMatches;
 	const points = eventRatingPoints(wins, draws, losses);
 	const drawPoints = eventRatingDrawPoints(draws, losses);
 	const maxPoints = matches * EVENT_RATING_ADJUSTMENT.winPoints;
 	const rate = averageOrZero(points, maxPoints);
-	const inDeadZone = eventRatingInDeadZone(wins, draws, losses, matches);
+	const inDeadZone = eventRatingInDeadZone(
+		wins,
+		draws,
+		losses,
+		matches,
+		minMatches,
+	);
 	const isSeed = rating === PLAYER_RATING.default && !belowMinMatches;
 	const mvpBonus = eventMvpBonus(Boolean(isMvp), rating);
 	const delta =
-		eventRatingDelta(wins, draws, losses, matches, rating, ceiling) + mvpBonus;
+		eventRatingDelta(
+			wins,
+			draws,
+			losses,
+			matches,
+			rating,
+			ceiling,
+			EVENT_RATING_ADJUSTMENT.downThreshold,
+			minMatches,
+		) + mvpBonus;
 	const to = applyEventRatingDelta(rating, delta);
 
 	return {

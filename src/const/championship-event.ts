@@ -23,6 +23,9 @@ export const CHAMPIONSHIP_EVENT = {
 	playerVoteQuorumMax: 10,
 	playerVoteQuorumDefault: 3,
 	playerVoteAllowSelfDefault: true,
+	ratingMinMatchesMin: 3,
+	ratingMinMatchesMax: 10,
+	ratingMinMatchesDefault: 3,
 	locationMaxLength: 120,
 } as const;
 
@@ -77,6 +80,9 @@ export const EVENT_CONFIG_LABEL = {
 	playerVoteAllowSelf: "Permitir voto em si",
 	playerVoteAllowSelfHint:
 		"Quem vota pode dar like, dislike ou manter na própria linha.",
+	ratingMinMatches: "Mínimo de jogos para nota",
+	ratingMinMatchesHint:
+		"A nota só muda com pelo menos esse total de partidas na rodada (3 a 10).",
 } as const;
 
 export const EVENT_BUILDER_STEP = {
@@ -729,6 +735,19 @@ export function parsePlayerVoteQuorum(value: unknown): number {
 		parsed > CHAMPIONSHIP_EVENT.playerVoteQuorumMax
 	) {
 		return CHAMPIONSHIP_EVENT.playerVoteQuorumDefault;
+	}
+
+	return parsed;
+}
+
+export function parseRatingMinMatches(value: unknown): number {
+	const parsed = Number(value);
+	if (
+		!Number.isInteger(parsed) ||
+		parsed < CHAMPIONSHIP_EVENT.ratingMinMatchesMin ||
+		parsed > CHAMPIONSHIP_EVENT.ratingMinMatchesMax
+	) {
+		return CHAMPIONSHIP_EVENT.ratingMinMatchesDefault;
 	}
 
 	return parsed;
