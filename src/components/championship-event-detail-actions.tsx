@@ -45,6 +45,7 @@ type ChampionshipEventDetailActionsProps = {
 	draftPresentIdsRef: RefObject<number[]>;
 	ratingDropGoalShare: boolean;
 	ratingDropShareExcludeTop: boolean;
+	ratingMinMatches: number;
 	onEnd: (
 		presentPlayerIds: number[] | null,
 		mvpPlayerIds: number[] | null,
@@ -67,6 +68,7 @@ export function ChampionshipEventDetailActions({
 	draftPresentIdsRef,
 	ratingDropGoalShare,
 	ratingDropShareExcludeTop,
+	ratingMinMatches,
 	onEnd,
 	onDelete,
 	ending,
@@ -112,6 +114,7 @@ export function ChampionshipEventDetailActions({
 		mvpPlayerIds,
 		ratingDropGoalShare,
 		ratingDropShareExcludeTop,
+		ratingMinMatches,
 		teams: event.teams,
 		matches: event.matches,
 	});

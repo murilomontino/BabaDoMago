@@ -31,6 +31,7 @@ import {
 } from "@/const/championship-role";
 import { CHAMPIONSHIP_TAB } from "@/const/championship-tab";
 import {
+	EVENT_RATING_ADJUSTMENT,
 	eventRatingPreview,
 	formatEventRating,
 } from "@/const/event-rating-adjustment";
@@ -87,6 +88,7 @@ function eventRatingPreviewWhenQueued(
 	matches: ChampionshipEvent["matches"],
 	ratingDropGoalShare: boolean,
 	ratingDropShareExcludeTop: boolean,
+	ratingMinMatches: number,
 ) {
 	if (!endOp || endOp.kind !== MATCH_OP.endEvent) {
 		return [];
@@ -99,6 +101,7 @@ function eventRatingPreviewWhenQueued(
 		mvpPlayerIds: queuedMvpIds(endOp.mvpPlayerIds),
 		ratingDropGoalShare,
 		ratingDropShareExcludeTop,
+		ratingMinMatches,
 		teams,
 		matches,
 	});
@@ -202,6 +205,8 @@ export function ChampionshipEventDetailPage() {
 		event.matches,
 		championshipQuery.data?.rating_drop_goal_share === true,
 		championshipQuery.data?.rating_drop_share_exclude_top === true,
+		championshipQuery.data?.rating_min_matches ??
+			EVENT_RATING_ADJUSTMENT.minMatches,
 	);
 
 	return (
@@ -248,6 +253,10 @@ export function ChampionshipEventDetailPage() {
 					}
 					ratingDropShareExcludeTop={
 						championshipQuery.data?.rating_drop_share_exclude_top === true
+					}
+					ratingMinMatches={
+						championshipQuery.data?.rating_min_matches ??
+						EVENT_RATING_ADJUSTMENT.minMatches
 					}
 					savingTeams={saveTeams.isPending}
 					saveTeamsError={mutationErrorMessage(saveTeams)}

@@ -307,9 +307,9 @@ Pontos: V=3, E=1 (ou **1,5** se E>D), D=0.
 
 ### Quando a nota não muda
 
-- `matches < 3`
+- `matches < championships.rating_min_matches` (default **3**, faixa 3–10 na Configuração do baba)
 - Já ranqueado com aproveitamento na **zona morta** 45%–55% (MVP ainda pode somar)
-- Se **qualquer** time da rodada tem aproveitamento de classificação ≥ **80%** (≥ 3 jogos), a zona morta vira **35%–55%** para todos. Abaixo de 35% o delta continua normal. Empate do time = 1 pt (como na classificação).
+- Se **qualquer** time da rodada tem aproveitamento de classificação ≥ **80%** (≥ `rating_min_matches` jogos), a zona morta vira **35%–55%** para todos. Abaixo de 35% o delta continua normal. Empate do time = 1 pt (como na classificação).
 
 ### Fórmula (já ranqueado)
 
@@ -323,7 +323,7 @@ notaNova   = clamp(notaAtual + delta, 0.1 … 100)
 
 ### Nota inicial (sentinela `0`)
 
-Primeira rodada com 3+ jogos: semente **depois** delta ranqueado.
+Primeira rodada com `rating_min_matches`+ jogos: semente **depois** delta ranqueado.
 
 | Aproveitamento | Semente |
 | --- | --- |
@@ -348,7 +348,7 @@ Até 3 MVPs/rodada. Sentinela ainda ganha `+0.1`.
 | Bom | 4/0/2/6 | 66,7% | +0,4 | 4 → **4,4** |
 | Ruim | 1/0/2/3 | 33,3% | −0,4 | 3,5 → **3,1** |
 | Zona morta | 2/0/2/4 | 50% | 0 | 4 → **4** |
-| < 3 jogos | 1/0/0/1 | — | 0 | 4 → **4** |
+| < piso jogos | 1/0/0/1 | — | 0 | 4 → **4** |
 | 3 empates (1,5) | 0/3/0/3 | 50% | 0 | 4 → **4** |
 | Empates = derrotas | 0/2/2/4 | 16,7% | −0,8 | 4 → **3,2** |
 | Semente boa | 4/0/2/6 | 66,7% | semente 3,5 +0,4 | 0 → **3,9** |

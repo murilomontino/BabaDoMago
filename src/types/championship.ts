@@ -13,6 +13,7 @@ export type Championship = {
 	rating_drop_share_exclude_top: boolean;
 	player_vote_quorum: number;
 	player_vote_allow_self: boolean;
+	rating_min_matches: number;
 	is_visible: boolean;
 };
 

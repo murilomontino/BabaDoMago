@@ -9,6 +9,7 @@ import { eventMatchPlayerStats } from "./event-match-player-stats.ts";
 import { eventMvpCandidates } from "./event-mvp.ts";
 import {
 	applyEventRatingDelta,
+	EVENT_RATING_ADJUSTMENT,
 	eventRatingApplyDropShare,
 	eventRatingDropShareExcludedPlayerIds,
 	eventRatingTeamGoalShare,
@@ -18,6 +19,7 @@ import { championshipRatingCeiling } from "./player-rating.ts";
 import {
 	formatPlayerRatingSimRate,
 	PLAYER_RATING_SIM_LABEL,
+	playerRatingBelowMinMatchesLabel,
 	simulatePlayerEventRating,
 } from "./player-rating-sim.ts";
 import { rosterGoalInvolvement } from "./roster-stats.ts";
@@ -39,6 +41,12 @@ export const EVENT_RATING_SIM_LABEL = {
 	deadZone: PLAYER_RATING_SIM_LABEL.deadZone,
 	seed: PLAYER_RATING_SIM_LABEL.seed,
 } as const;
+
+export function eventRatingBelowMinMatchesLabel(
+	minMatches: number = EVENT_RATING_ADJUSTMENT.minMatches,
+): string {
+	return playerRatingBelowMinMatchesLabel(minMatches);
+}
 
 export const EVENT_RATING_SIM_ABBR = {
 	wins: "V",
@@ -122,6 +130,7 @@ export function eventRatingSimRows(input: {
 	mvpPlayerIds: readonly number[];
 	ratingDropGoalShare?: boolean;
 	ratingDropShareExcludeTop?: boolean;
+	ratingMinMatches?: number;
 }): EventRatingSimRow[] {
 	const playerById = new Map(
 		input.players.map((player) => [player.id, player] as const),
@@ -130,6 +139,8 @@ export function eventRatingSimRows(input: {
 	const ceiling = championshipRatingCeiling(
 		input.players.map((player) => player.rating),
 	);
+	const minMatches =
+		input.ratingMinMatches ?? EVENT_RATING_ADJUSTMENT.minMatches;
 	const statsById = eventMatchPlayerStats({
 		matches: input.matches,
 		teams: input.teams,
@@ -173,6 +184,7 @@ export function eventRatingSimRows(input: {
 				losses,
 				ceiling,
 				isMvp,
+				minMatches,
 			});
 			const team = teamByPlayerId.get(row.player_id);
 			const share = excludedPlayerIds.has(row.player_id)

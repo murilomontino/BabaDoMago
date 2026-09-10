@@ -15,6 +15,7 @@ import {
 	parseEventTime,
 	parseEventWeekday,
 	parsePlayerVoteQuorum,
+	parseRatingMinMatches,
 } from "@/const/championship-event";
 import {
 	CHAMPIONSHIP_VISIBILITY,
@@ -51,6 +52,7 @@ type ChampionshipSettingsTabProps = {
 	ratingDropShareExcludeTop: boolean;
 	playerVoteQuorum: number;
 	playerVoteAllowSelf: boolean;
+	ratingMinMatches: number;
 	isVisible: boolean;
 	activePlayers: ChampionshipPlayer[];
 	canRename: boolean;
@@ -85,6 +87,7 @@ type ChampionshipSettingsTabProps = {
 		ratingDropShareExcludeTop: boolean;
 		playerVoteQuorum: number;
 		playerVoteAllowSelf: boolean;
+		ratingMinMatches: number;
 	}) => Promise<void>;
 	onUpdateVisibility: (isVisible: boolean) => void;
 	onTransferOwner: (playerId: number) => Promise<void>;
@@ -105,6 +108,7 @@ export function ChampionshipSettingsTab({
 	ratingDropShareExcludeTop,
 	playerVoteQuorum,
 	playerVoteAllowSelf,
+	ratingMinMatches,
 	isVisible,
 	activePlayers,
 	canRename,
@@ -220,6 +224,7 @@ export function ChampionshipSettingsTab({
 									ratingDropShareExcludeTop,
 									playerVoteQuorum,
 									playerVoteAllowSelf,
+									ratingMinMatches,
 								}}
 								enableReinitialize
 								validationSchema={eventConfigFormSchema}
@@ -237,6 +242,9 @@ export function ChampionshipSettingsTab({
 											values.playerVoteQuorum,
 										),
 										playerVoteAllowSelf: values.playerVoteAllowSelf,
+										ratingMinMatches: parseRatingMinMatches(
+											values.ratingMinMatches,
+										),
 									});
 								}}
 							>
@@ -419,6 +427,25 @@ export function ChampionshipSettingsTab({
 										/>
 									</label>
 									<FormError name="playerVoteQuorum" />
+									<label
+										htmlFor="championship-rating-min-matches"
+										className="block text-sm font-medium text-fg-muted"
+									>
+										{EVENT_CONFIG_LABEL.ratingMinMatches}
+										<span className="mt-1 block font-normal text-fg-muted">
+											{EVENT_CONFIG_LABEL.ratingMinMatchesHint}
+										</span>
+										<Field
+											id="championship-rating-min-matches"
+											name="ratingMinMatches"
+											type="number"
+											inputMode="numeric"
+											min={CHAMPIONSHIP_EVENT.ratingMinMatchesMin}
+											max={CHAMPIONSHIP_EVENT.ratingMinMatchesMax}
+											className={`mt-1 ${FIELD_CLASS}`}
+										/>
+									</label>
+									<FormError name="ratingMinMatches" />
 									<div className="flex items-start justify-between gap-4">
 										<span className="min-w-0 text-sm">
 											<label

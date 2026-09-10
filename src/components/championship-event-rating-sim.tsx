@@ -12,6 +12,7 @@ import {
 	EVENT_RATING_SIM_ABBR,
 	EVENT_RATING_SIM_LABEL,
 	type EventRatingSimRow,
+	eventRatingBelowMinMatchesLabel,
 	eventRatingSimHasEndedMatches,
 	eventRatingSimMvpCandidateIds,
 	eventRatingSimRows,
@@ -31,6 +32,7 @@ type ChampionshipEventRatingSimProps = {
 	canSetMvp: boolean;
 	ratingDropGoalShare: boolean;
 	ratingDropShareExcludeTop: boolean;
+	ratingMinMatches: number;
 };
 
 function RatingSnapshot({
@@ -60,11 +62,17 @@ function mvpBorderClass(isMvp: boolean): string {
 	return "border-line";
 }
 
-function SimRowHint({ row }: { row: EventRatingSimRow }) {
+function SimRowHint({
+	row,
+	ratingMinMatches,
+}: {
+	row: EventRatingSimRow;
+	ratingMinMatches: number;
+}) {
 	if (row.belowMinMatches) {
 		return (
 			<p className="mt-1 text-xs text-fg-muted">
-				{EVENT_RATING_SIM_LABEL.belowMinMatches}
+				{eventRatingBelowMinMatchesLabel(ratingMinMatches)}
 			</p>
 		);
 	}
@@ -91,9 +99,11 @@ function SimRowHint({ row }: { row: EventRatingSimRow }) {
 function SimRowBody({
 	row,
 	ceiling,
+	ratingMinMatches,
 }: {
 	row: EventRatingSimRow;
 	ceiling: number;
+	ratingMinMatches: number;
 }) {
 	return (
 		<>
@@ -146,7 +156,7 @@ function SimRowBody({
 				<span className="text-xs font-bold text-fg">→</span>
 				<RatingSnapshot rating={row.to} ceiling={ceiling} />
 			</div>
-			<SimRowHint row={row} />
+			<SimRowHint row={row} ratingMinMatches={ratingMinMatches} />
 		</>
 	);
 }
@@ -154,15 +164,23 @@ function SimRowBody({
 function SimRowCard({
 	row,
 	ceiling,
+	ratingMinMatches,
 	canToggleMvp,
 	onToggleMvp,
 }: {
 	row: EventRatingSimRow;
 	ceiling: number;
+	ratingMinMatches: number;
 	canToggleMvp: boolean;
 	onToggleMvp: (playerId: number) => void;
 }) {
-	const body = <SimRowBody row={row} ceiling={ceiling} />;
+	const body = (
+		<SimRowBody
+			row={row}
+			ceiling={ceiling}
+			ratingMinMatches={ratingMinMatches}
+		/>
+	);
 
 	if (!canToggleMvp) {
 		return <li className={`${CARD_CLASS} p-2`}>{body}</li>;
@@ -189,6 +207,7 @@ export function ChampionshipEventRatingSim({
 	canSetMvp,
 	ratingDropGoalShare,
 	ratingDropShareExcludeTop,
+	ratingMinMatches,
 }: ChampionshipEventRatingSimProps) {
 	const [mvpPlayerIds, setMvpPlayerIds] = useState(() =>
 		attendanceMvpPlayerIds(event.attendance),
@@ -214,6 +233,7 @@ export function ChampionshipEventRatingSim({
 		mvpPlayerIds,
 		ratingDropGoalShare,
 		ratingDropShareExcludeTop,
+		ratingMinMatches,
 	});
 	const selectedMvpCount = rows.filter((row) => row.isMvp).length;
 
@@ -244,6 +264,7 @@ export function ChampionshipEventRatingSim({
 							key={row.playerId}
 							row={row}
 							ceiling={ceiling}
+							ratingMinMatches={ratingMinMatches}
 							canToggleMvp={canSetMvp && mvpCandidateIds.has(row.playerId)}
 							onToggleMvp={(playerId) => {
 								setMvpPlayerIds((current) =>
