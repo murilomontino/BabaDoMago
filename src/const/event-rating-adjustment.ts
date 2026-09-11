@@ -33,6 +33,14 @@ export const EVENT_RATING_DROP_SHARE = {
 	minShare: 0.4,
 } as const;
 
+export const EVENT_RATING_TRACK = {
+	line: "line",
+	goalkeeper: "goalkeeper",
+} as const;
+
+export type EventRatingTrack =
+	(typeof EVENT_RATING_TRACK)[keyof typeof EVENT_RATING_TRACK];
+
 export function eventActivePlayerRating(
 	isGoalkeeper: boolean,
 	rating: number,
@@ -43,6 +51,191 @@ export function eventActivePlayerRating(
 	}
 
 	return rating;
+}
+
+export type EventRatingMatchStats = {
+	wins: number;
+	draws: number;
+	losses: number;
+	matches: number;
+};
+
+const EVENT_RATING_MATCH_STATS_EMPTY: EventRatingMatchStats = {
+	wins: 0,
+	draws: 0,
+	losses: 0,
+	matches: 0,
+};
+
+export function eventRatingSumMatchStats(
+	left: EventRatingMatchStats,
+	right: EventRatingMatchStats,
+): EventRatingMatchStats {
+	return {
+		wins: left.wins + right.wins,
+		draws: left.draws + right.draws,
+		losses: left.losses + right.losses,
+		matches: left.matches + right.matches,
+	};
+}
+
+/**
+ * When both tracks are below min but the sum reaches min, fold W/D/L into the
+ * larger track (tie → line). Other track gets empty stats so its delta stays 0.
+ */
+export function eventRatingEffectiveTrackStats(
+	line: EventRatingMatchStats,
+	gk: EventRatingMatchStats,
+	minMatches: number = EVENT_RATING_ADJUSTMENT.minMatches,
+): {
+	line: EventRatingMatchStats;
+	gk: EventRatingMatchStats;
+	mergedInto: EventRatingTrack | null;
+} {
+	if (line.matches >= minMatches || gk.matches >= minMatches) {
+		return { line, gk, mergedInto: null };
+	}
+
+	if (line.matches + gk.matches < minMatches) {
+		return { line, gk, mergedInto: null };
+	}
+
+	const merged = eventRatingSumMatchStats(line, gk);
+	if (line.matches >= gk.matches) {
+		return {
+			line: merged,
+			gk: EVENT_RATING_MATCH_STATS_EMPTY,
+			mergedInto: EVENT_RATING_TRACK.line,
+		};
+	}
+
+	return {
+		line: EVENT_RATING_MATCH_STATS_EMPTY,
+		gk: merged,
+		mergedInto: EVENT_RATING_TRACK.goalkeeper,
+	};
+}
+
+export function eventRatingMvpOnLine(input: {
+	isMvp: boolean;
+	isGoalkeeper: boolean;
+	lineMatches: number;
+	gkMatches: number;
+	mergedInto?: EventRatingTrack | null;
+}): boolean {
+	if (!input.isMvp) {
+		return false;
+	}
+
+	if (input.mergedInto === EVENT_RATING_TRACK.line) {
+		return true;
+	}
+
+	if (input.mergedInto === EVENT_RATING_TRACK.goalkeeper) {
+		return false;
+	}
+
+	if (input.isGoalkeeper) {
+		return input.gkMatches === 0 && input.lineMatches > 0;
+	}
+
+	return input.lineMatches > 0 || input.gkMatches === 0;
+}
+
+export function eventRatingMvpOnGoalkeeper(input: {
+	isMvp: boolean;
+	isGoalkeeper: boolean;
+	lineMatches: number;
+	gkMatches: number;
+	mergedInto?: EventRatingTrack | null;
+}): boolean {
+	if (!input.isMvp) {
+		return false;
+	}
+
+	if (input.mergedInto === EVENT_RATING_TRACK.goalkeeper) {
+		return true;
+	}
+
+	if (input.mergedInto === EVENT_RATING_TRACK.line) {
+		return false;
+	}
+
+	if (input.isGoalkeeper) {
+		return input.gkMatches > 0 || input.lineMatches === 0;
+	}
+
+	return input.lineMatches === 0 && input.gkMatches > 0;
+}
+
+function eventRatingTrackMatchStats(
+	stats:
+		| {
+				wins: number;
+				draws: number;
+				losses: number;
+				matches: number;
+				is_goalkeeper?: boolean;
+				line_wins?: number;
+				line_draws?: number;
+				line_losses?: number;
+				line_matches?: number;
+				gk_wins?: number;
+				gk_draws?: number;
+				gk_losses?: number;
+				gk_matches?: number;
+		  }
+		| undefined,
+	track: EventRatingTrack,
+): { wins: number; draws: number; losses: number; matches: number } {
+	if (!stats) {
+		return { wins: 0, draws: 0, losses: 0, matches: 0 };
+	}
+
+	const hasSplit =
+		stats.line_matches !== undefined || stats.gk_matches !== undefined;
+	if (!hasSplit) {
+		const isGoalkeeper = stats.is_goalkeeper === true;
+		if (track === EVENT_RATING_TRACK.goalkeeper) {
+			if (!isGoalkeeper) {
+				return { wins: 0, draws: 0, losses: 0, matches: 0 };
+			}
+
+			return {
+				wins: stats.wins,
+				draws: stats.draws,
+				losses: stats.losses,
+				matches: stats.matches,
+			};
+		}
+
+		if (isGoalkeeper) {
+			return { wins: 0, draws: 0, losses: 0, matches: 0 };
+		}
+
+		return {
+			wins: stats.wins,
+			draws: stats.draws,
+			losses: stats.losses,
+			matches: stats.matches,
+		};
+	}
+
+	if (track === EVENT_RATING_TRACK.goalkeeper) {
+		return {
+			wins: stats.gk_wins ?? 0,
+			draws: stats.gk_draws ?? 0,
+			losses: stats.gk_losses ?? 0,
+			matches: stats.gk_matches ?? 0,
+		};
+	}
+
+	return {
+		wins: stats.line_wins ?? 0,
+		draws: stats.line_draws ?? 0,
+		losses: stats.line_losses ?? 0,
+		matches: stats.line_matches ?? 0,
+	};
 }
 
 export function eventRatingDropShareExcludedPlayerIds(
@@ -74,6 +267,7 @@ export type EventRatingPreviewRow = {
 	from: number;
 	to: number;
 	isMvp: boolean;
+	track: EventRatingTrack;
 };
 
 export function previewRatingTos(
@@ -641,6 +835,14 @@ export function eventRatingPreview({
 		is_goalkeeper?: boolean;
 		rating?: number;
 		goalkeeper_rating?: number;
+		line_wins?: number;
+		line_draws?: number;
+		line_losses?: number;
+		line_matches?: number;
+		gk_wins?: number;
+		gk_draws?: number;
+		gk_losses?: number;
+		gk_matches?: number;
 		goals?: number;
 		assists?: number;
 	}[];
@@ -698,55 +900,115 @@ export function eventRatingPreview({
 		eventHasDominantTeamFromMatchups(matches, ratingMinMatches);
 	const downThreshold = eventRatingDeadZoneDownThreshold(dominant);
 
-	return ids.map((playerId) => {
+	return ids.flatMap((playerId) => {
 		const player = playerById.get(playerId);
 		const stats = statsById.get(playerId);
 		const isGoalkeeper = stats?.is_goalkeeper === true;
-		const snapshotRating = isGoalkeeper
-			? stats?.goalkeeper_rating
-			: stats?.rating;
-		const rosterRating = isGoalkeeper
-			? player?.goalkeeper_rating
-			: player?.rating;
-		const from = eventRatingPreviewFrom(snapshotRating, rosterRating);
-		const isMvp = mvpIds.has(playerId);
-		const ceiling = isGoalkeeper ? gkCeiling : lineCeiling;
-		const excludedPlayerIds = isGoalkeeper ? excludedGkIds : excludedLineIds;
-		const rawDelta =
-			eventRatingDelta(
-				stats?.wins ?? 0,
-				stats?.draws ?? 0,
-				stats?.losses ?? 0,
-				stats?.matches ?? 0,
-				from,
-				ceiling,
-				downThreshold,
-				ratingMinMatches,
-			) + eventMvpBonus(isMvp, from);
-		const share = eventRatingDropShareForPlayer({
-			enabled: ratingDropGoalShare,
-			playerId,
-			excludedPlayerIds,
-			statsById,
-			teamByPlayerId,
-			teamInvolvementById,
-		});
-		const to = applyEventRatingDelta(
-			from,
-			eventRatingApplyDropShare(rawDelta, share),
+		const rawLineStats = eventRatingTrackMatchStats(
+			stats,
+			EVENT_RATING_TRACK.line,
 		);
-
-		return {
-			playerId,
-			name: playerVisibleName(
-				player ?? {
-					nickname: null,
-					display_name: stats?.display_name ?? "",
-				},
-			),
-			from,
-			to,
+		const rawGkStats = eventRatingTrackMatchStats(
+			stats,
+			EVENT_RATING_TRACK.goalkeeper,
+		);
+		const {
+			line: lineStats,
+			gk: gkStats,
+			mergedInto,
+		} = eventRatingEffectiveTrackStats(
+			rawLineStats,
+			rawGkStats,
+			ratingMinMatches,
+		);
+		const name = playerVisibleName(
+			player ?? {
+				nickname: null,
+				display_name: stats?.display_name ?? "",
+			},
+		);
+		const isMvp = mvpIds.has(playerId);
+		const mvpLine = eventRatingMvpOnLine({
 			isMvp,
-		};
+			isGoalkeeper,
+			lineMatches: rawLineStats.matches,
+			gkMatches: rawGkStats.matches,
+			mergedInto,
+		});
+		const mvpGk = eventRatingMvpOnGoalkeeper({
+			isMvp,
+			isGoalkeeper,
+			lineMatches: rawLineStats.matches,
+			gkMatches: rawGkStats.matches,
+			mergedInto,
+		});
+		const tracks: EventRatingTrack[] = [];
+		if (lineStats.matches > 0) {
+			tracks.push(EVENT_RATING_TRACK.line);
+		}
+		if (gkStats.matches > 0) {
+			tracks.push(EVENT_RATING_TRACK.goalkeeper);
+		}
+		if (tracks.length === 0) {
+			tracks.push(
+				isGoalkeeper
+					? EVENT_RATING_TRACK.goalkeeper
+					: EVENT_RATING_TRACK.line,
+			);
+		}
+
+		return tracks.map((track) => {
+			const trackStats =
+				track === EVENT_RATING_TRACK.goalkeeper ? gkStats : lineStats;
+			const snapshotRating =
+				track === EVENT_RATING_TRACK.goalkeeper
+					? stats?.goalkeeper_rating
+					: stats?.rating;
+			const rosterRating =
+				track === EVENT_RATING_TRACK.goalkeeper
+					? player?.goalkeeper_rating
+					: player?.rating;
+			const from = eventRatingPreviewFrom(snapshotRating, rosterRating);
+			const ceiling =
+				track === EVENT_RATING_TRACK.goalkeeper ? gkCeiling : lineCeiling;
+			const excludedPlayerIds =
+				track === EVENT_RATING_TRACK.goalkeeper
+					? excludedGkIds
+					: excludedLineIds;
+			const trackIsMvp =
+				track === EVENT_RATING_TRACK.goalkeeper ? mvpGk : mvpLine;
+			const rawDelta =
+				eventRatingDelta(
+					trackStats.wins,
+					trackStats.draws,
+					trackStats.losses,
+					trackStats.matches,
+					from,
+					ceiling,
+					downThreshold,
+					ratingMinMatches,
+				) + eventMvpBonus(trackIsMvp, from);
+			const share = eventRatingDropShareForPlayer({
+				enabled: ratingDropGoalShare,
+				playerId,
+				excludedPlayerIds,
+				statsById,
+				teamByPlayerId,
+				teamInvolvementById,
+			});
+			const to = applyEventRatingDelta(
+				from,
+				eventRatingApplyDropShare(rawDelta, share),
+			);
+
+			return {
+				playerId,
+				name,
+				from,
+				to,
+				isMvp: trackIsMvp,
+				track,
+			};
+		});
 	});
 }

@@ -10,6 +10,7 @@ import {
 	playerProfileDelta,
 	playerProfileHistory,
 } from "./player-profile.ts";
+import { EVENT_RATING_TRACK } from "./event-rating-adjustment.ts";
 import { PLAYER_RATING } from "./player-rating.ts";
 
 export const CHAMPIONSHIP_RATING_HISTORY_LABEL = {
@@ -306,7 +307,11 @@ function includeDefinedSeries(
 	events: readonly PlayerProfileEventInput[],
 	nowIso: string | null,
 ): SeriesValues[] {
-	const history = playerProfileHistory(events, player.id);
+	const history = playerProfileHistory(
+		events,
+		player.id,
+		EVENT_RATING_TRACK.line,
+	);
 	const values = playerRatingValuesAlongEvents(
 		events,
 		history,

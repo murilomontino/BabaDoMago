@@ -1,4 +1,5 @@
 import type { ChampionshipPlayer } from "../types/championship.ts";
+import { EVENT_RATING_TRACK } from "./event-rating-adjustment.ts";
 import type { PlayerProfileHistoryRow } from "./player-profile.ts";
 import {
 	PLAYER_PROFILE_SHARE_LABEL,
@@ -66,6 +67,7 @@ const history: readonly PlayerProfileHistoryRow[] = [
 		ratingFrom: 7,
 		ratingDelta: 1,
 		ratingTo: 8,
+		track: EVENT_RATING_TRACK.line,
 	},
 ];
 

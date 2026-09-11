@@ -12,13 +12,13 @@ A nota no elenco **só persiste no SQL**. `endEvent` pinta `ended_at` na hora; o
 
 ## Pipeline
 
-1. Presença: snapshot `rating` e `goalkeeper_rating` (antes do evento).
-2. Preview: `eventRatingPreview` = aproveitamento + MVP (+ drop share se flag on) na **nota vigente** (`attendance.is_goalkeeper`). Snapshot vence elenco.
-3. Voto: overlay `vote_rating_delta` (±0,5). Sync aplica em `rating` ou `goalkeeper_rating` conforme o track; sentinela espera semente.
-4. Encerrar: `adjust_championship_player_ratings_for_event` grava `rating_delta` ou `goalkeeper_rating_delta`, depois voto pendente.
-5. Histórico de linha: ficha (`playerProfileHistory`) e campeonato (`championshipRatingHistory`, **Evolução da nota**). Histórico de goleiro fica para depois.
+1. Presença: snapshot `rating` e `goalkeeper_rating` (antes do evento); stats `line_*` / `gk_*` por papel na partida.
+2. Preview: `eventRatingPreview` = até duas linhas (linha e goleiro) com aproveitamento + MVP (+ drop share se flag on) por track. Snapshot vence elenco.
+3. Voto: overlay por track (`vote_rating_delta` / `goalkeeper_vote_rating_delta`). Sync aplica em `rating` ou `goalkeeper_rating` conforme o track; sentinela espera semente. Alvo só com `*_matches >= rating_min_matches`.
+4. Encerrar: `adjust_championship_player_ratings_for_event` grava `rating_delta` e/ou `goalkeeper_rating_delta`, depois voto pendente.
+5. Histórico: ficha (`playerProfileHistory` com `track`) e campeonato (`championshipRatingHistory`, **Evolução da nota** na linha). Projeção já escolhe posto.
 
-Recompute: nota − old_delta + new_delta no snapshot do track vigente.
+Recompute: nota − old_delta + new_delta no snapshot do track.
 
 ## Amortecimento de queda (flag)
 

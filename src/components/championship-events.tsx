@@ -201,7 +201,15 @@ export function ChampionshipEvents({
 		});
 	const previewCeiling = championshipRatingCeiling([
 		...players.map((player) => player.rating),
-		...previewRatingTos(ratingPreview),
+		...previewRatingTos(
+			ratingPreview?.filter((row) => row.track === "line"),
+		),
+	]);
+	const previewGoalkeeperCeiling = championshipRatingCeiling([
+		...players.map((player) => player.goalkeeper_rating),
+		...previewRatingTos(
+			ratingPreview?.filter((row) => row.track === "goalkeeper"),
+		),
 	]);
 	const actionsFlags =
 		flowEvent &&
@@ -560,6 +568,7 @@ export function ChampionshipEvents({
 					teams={flowEvent.teams}
 					rows={ratingPreview}
 					ceiling={previewCeiling}
+					goalkeeperCeiling={previewGoalkeeperCeiling}
 					canSetMvp={canSetMvp}
 					mvpCandidateIds={endIds.mvpCandidateIds}
 					missingAttendanceNames={endIds.missingMatchPlayerIds.map(

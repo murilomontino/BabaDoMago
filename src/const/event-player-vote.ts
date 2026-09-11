@@ -1,4 +1,9 @@
 import { eventTeamByPlayerId } from "./championship-event.ts";
+import {
+	EVENT_RATING_ADJUSTMENT,
+	EVENT_RATING_TRACK,
+	type EventRatingTrack,
+} from "./event-rating-adjustment.ts";
 import { eventTeamName } from "./event-team-color.ts";
 
 export const EVENT_PLAYER_VOTE = {
@@ -65,6 +70,7 @@ export const EVENT_PLAYER_VOTE_LABEL = {
 	back: "Voltar",
 	goals: "G",
 	assists: "A",
+	matches: "J",
 	appliedUp: "+0,5",
 	appliedDown: "−0,5",
 	voteFailed: "Não foi possível registrar o voto",
@@ -75,6 +81,11 @@ export const EVENT_PLAYER_VOTE_LABEL = {
 	editVotes: "Alterar votos",
 	likeBudget: "Likes",
 	dislikeBudget: "Dislikes",
+	trackLine: "Como jogador",
+	trackGoalkeeper: "Como goleiro",
+	trackGoalkeeperBadge: "GK",
+	belowMinMatches:
+		"Participante não atingiu o limite mínimo de partidas para entrar em votação",
 } as const;
 
 export const EVENT_PLAYER_VOTE_ERROR_MESSAGE = {
@@ -83,6 +94,7 @@ export const EVENT_PLAYER_VOTE_ERROR_MESSAGE = {
 	"event not found": "Rodada não encontrada",
 	"event still open": "Voto só com a rodada encerrada",
 	"invalid vote": "Voto inválido",
+	"invalid vote track": "Voto inválido",
 	"cannot vote self": "Não dá para votar em si",
 	"voter not present": "Você precisa estar na presença",
 	"player not present": "Jogador fora da presença",
@@ -157,17 +169,275 @@ export function isEventPlayerVoteLocked(voteRatingDelta: number): boolean {
 	return voteRatingDelta !== 0;
 }
 
-export function eventPlayerVoteLockedTargetIds(
-	attendance: readonly { player_id: number; vote_rating_delta: number }[],
-): Set<number> {
-	return new Set(
-		attendance.flatMap((row) => {
-			if (!isEventPlayerVoteLocked(row.vote_rating_delta)) {
-				return [];
+export type EventPlayerVoteTargetKey = string;
+
+export type EventPlayerVoteTarget = {
+	key: EventPlayerVoteTargetKey;
+	playerId: number;
+	track: EventRatingTrack;
+};
+
+export function eventPlayerVoteTargetKey(
+	playerId: number,
+	track: EventRatingTrack,
+): EventPlayerVoteTargetKey {
+	return `${playerId}:${track}`;
+}
+
+export function eventPlayerVoteTargetFromKey(
+	key: EventPlayerVoteTargetKey,
+): EventPlayerVoteTarget | null {
+	const [rawPlayerId, rawTrack] = key.split(":");
+	const playerId = Number(rawPlayerId);
+	if (!Number.isInteger(playerId) || playerId <= 0) {
+		return null;
+	}
+
+	if (
+		rawTrack !== EVENT_RATING_TRACK.line &&
+		rawTrack !== EVENT_RATING_TRACK.goalkeeper
+	) {
+		return null;
+	}
+
+	return { key, playerId, track: rawTrack };
+}
+
+export function eventPlayerVoteTrackLabel(track: EventRatingTrack): string {
+	switch (track) {
+		case EVENT_RATING_TRACK.line:
+			return EVENT_PLAYER_VOTE_LABEL.trackLine;
+		case EVENT_RATING_TRACK.goalkeeper:
+			return EVENT_PLAYER_VOTE_LABEL.trackGoalkeeper;
+		default: {
+			const _exhaustive: never = track;
+			return _exhaustive;
+		}
+	}
+}
+
+export function eventPlayerVoteCardClassName(
+	track: EventRatingTrack | null,
+	options: { belowMin?: boolean } = {},
+): string {
+	const belowMin = options.belowMin === true;
+	const base =
+		"flex flex-col gap-2 rounded-md px-2 py-2 text-fg";
+	if (track === EVENT_RATING_TRACK.goalkeeper) {
+		if (belowMin) {
+			return `${base} border border-line/50 bg-surface-muted/60 opacity-80`;
+		}
+
+		return `${base} border border-line/40 bg-surface-muted/40`;
+	}
+
+	if (belowMin) {
+		return `${base} bg-surface-muted opacity-80`;
+	}
+
+	return `${base} bg-surface-muted`;
+}
+
+export function eventPlayerVoteTrackBadgeClassName(
+	track: EventRatingTrack,
+): string {
+	if (track === EVENT_RATING_TRACK.goalkeeper) {
+		return "rounded bg-fg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white";
+	}
+
+	return "rounded bg-surface px-1.5 py-0.5 text-xs font-medium tabular-nums text-fg-muted";
+}
+
+export function eventPlayerVoteTrackBadgeLabel(
+	track: EventRatingTrack,
+): string {
+	if (track === EVENT_RATING_TRACK.goalkeeper) {
+		return EVENT_PLAYER_VOTE_LABEL.trackGoalkeeperBadge;
+	}
+
+	return eventPlayerVoteTrackLabel(track);
+}
+
+export function eventPlayerVoteTrackEligible(
+	matches: number,
+	ratingMinMatches: number = EVENT_RATING_ADJUSTMENT.minMatches,
+): boolean {
+	return matches >= ratingMinMatches;
+}
+
+type EventPlayerVoteTargetRow = {
+	player_id: number;
+	matches?: number;
+	is_goalkeeper?: boolean;
+	line_matches?: number;
+	gk_matches?: number;
+};
+
+export function eventPlayerVoteTrackMatches(
+	row: EventPlayerVoteTargetRow,
+	track: EventRatingTrack,
+): number {
+	const hasSplitSample =
+		(row.line_matches !== undefined && row.line_matches > 0) ||
+		(row.gk_matches !== undefined && row.gk_matches > 0);
+
+	if (!hasSplitSample) {
+		if (track === EVENT_RATING_TRACK.goalkeeper) {
+			if (row.is_goalkeeper === true) {
+				return row.matches ?? 0;
 			}
 
-			return [row.player_id];
-		}),
+			return 0;
+		}
+
+		if (row.is_goalkeeper === true) {
+			return 0;
+		}
+
+		return row.matches ?? 0;
+	}
+
+	if (track === EVENT_RATING_TRACK.goalkeeper) {
+		return row.gk_matches ?? 0;
+	}
+
+	return row.line_matches ?? 0;
+}
+
+export function eventPlayerVoteTotalMatches(
+	row: EventPlayerVoteTargetRow,
+): number {
+	return (
+		eventPlayerVoteTrackMatches(row, EVENT_RATING_TRACK.line) +
+		eventPlayerVoteTrackMatches(row, EVENT_RATING_TRACK.goalkeeper)
+	);
+}
+
+export function eventPlayerVoteParticipantEligible(
+	row: EventPlayerVoteTargetRow,
+	ratingMinMatches: number = EVENT_RATING_ADJUSTMENT.minMatches,
+): boolean {
+	return eventPlayerVoteTrackEligible(
+		eventPlayerVoteTotalMatches(row),
+		ratingMinMatches,
+	);
+}
+
+/** Piso fixo (3) para o card do track; a urna em si exige a soma ≥ rating_min_matches. */
+export const EVENT_PLAYER_VOTE_TRACK_CARD_MIN_MATCHES =
+	EVENT_RATING_ADJUSTMENT.minMatches;
+
+function eventPlayerVoteSampledTracks(
+	row: EventPlayerVoteTargetRow,
+): EventRatingTrack[] {
+	const tracks: EventRatingTrack[] = [];
+	if (
+		eventPlayerVoteTrackMatches(row, EVENT_RATING_TRACK.line) >=
+		EVENT_PLAYER_VOTE_TRACK_CARD_MIN_MATCHES
+	) {
+		tracks.push(EVENT_RATING_TRACK.line);
+	}
+	if (
+		eventPlayerVoteTrackMatches(row, EVENT_RATING_TRACK.goalkeeper) >=
+		EVENT_PLAYER_VOTE_TRACK_CARD_MIN_MATCHES
+	) {
+		tracks.push(EVENT_RATING_TRACK.goalkeeper);
+	}
+	return tracks;
+}
+
+function eventPlayerVoteRowTargets(
+	row: EventPlayerVoteTargetRow,
+	ratingMinMatches: number,
+): EventPlayerVoteTarget[] {
+	if (!eventPlayerVoteParticipantEligible(row, ratingMinMatches)) {
+		return [];
+	}
+
+	return eventPlayerVoteSampledTracks(row).map((track) => ({
+		key: eventPlayerVoteTargetKey(row.player_id, track),
+		playerId: row.player_id,
+		track,
+	}));
+}
+
+export const EVENT_PLAYER_VOTE_LIST_KIND = {
+	eligible: "eligible",
+	belowMin: "belowMin",
+} as const;
+
+export type EventPlayerVoteListKind =
+	(typeof EVENT_PLAYER_VOTE_LIST_KIND)[keyof typeof EVENT_PLAYER_VOTE_LIST_KIND];
+
+export type EventPlayerVoteListEntry = {
+	key: string;
+	playerId: number;
+	track: EventRatingTrack | null;
+	kind: EventPlayerVoteListKind;
+	matches: number;
+};
+
+export function eventPlayerVoteListEntriesForRow(
+	row: EventPlayerVoteTargetRow,
+	ratingMinMatches: number = EVENT_RATING_ADJUSTMENT.minMatches,
+): EventPlayerVoteListEntry[] {
+	return eventPlayerVoteRowTargets(row, ratingMinMatches).map((target) => ({
+		key: target.key,
+		playerId: target.playerId,
+		track: target.track,
+		kind: EVENT_PLAYER_VOTE_LIST_KIND.eligible,
+		matches: eventPlayerVoteTrackMatches(row, target.track),
+	}));
+}
+
+export function eventPlayerVoteListEntries(
+	attendance: readonly EventPlayerVoteTargetRow[],
+	ratingMinMatches: number = EVENT_RATING_ADJUSTMENT.minMatches,
+): EventPlayerVoteListEntry[] {
+	return attendance.flatMap((row) =>
+		eventPlayerVoteListEntriesForRow(row, ratingMinMatches),
+	);
+}
+
+export function eventPlayerVoteTargets(
+	attendance: readonly EventPlayerVoteTargetRow[],
+	ratingMinMatches: number = EVENT_RATING_ADJUSTMENT.minMatches,
+): EventPlayerVoteTarget[] {
+	return attendance.flatMap((row) =>
+		eventPlayerVoteRowTargets(row, ratingMinMatches),
+	);
+}
+
+export function eventPlayerVoteTrackDelta(
+	row: { vote_rating_delta: number; goalkeeper_vote_rating_delta?: number },
+	track: EventRatingTrack,
+): number {
+	if (track === EVENT_RATING_TRACK.goalkeeper) {
+		return row.goalkeeper_vote_rating_delta ?? 0;
+	}
+
+	return row.vote_rating_delta;
+}
+
+export function eventPlayerVoteLockedTargetIds(
+	attendance: readonly {
+		player_id: number;
+		vote_rating_delta: number;
+		goalkeeper_vote_rating_delta?: number;
+	}[],
+): Set<EventPlayerVoteTargetKey> {
+	return new Set(
+		attendance.flatMap((row) =>
+			[EVENT_RATING_TRACK.line, EVENT_RATING_TRACK.goalkeeper].flatMap(
+				(track) => {
+					if (!isEventPlayerVoteLocked(eventPlayerVoteTrackDelta(row, track))) {
+						return [];
+					}
+
+					return [eventPlayerVoteTargetKey(row.player_id, track)];
+				},
+			),
+		),
 	);
 }
 
@@ -456,8 +726,13 @@ export function nextEventPlayerVoteValue(
 }
 
 export type EventPlayerVoteDraft = ReadonlyMap<
-	number,
+	EventPlayerVoteTargetKey,
 	EventPlayerVoteChoice | null
+>;
+
+export type EventPlayerVoteSaved = ReadonlyMap<
+	EventPlayerVoteTargetKey,
+	EventPlayerVoteChoice
 >;
 
 export function countEventPlayerVoteDraft(
@@ -476,7 +751,7 @@ export function countEventPlayerVoteDraft(
 
 export function canSetEventPlayerVoteDraft(
 	draft: EventPlayerVoteDraft,
-	targetPlayerId: number,
+	targetKey: EventPlayerVoteTargetKey,
 	nextValue: EventPlayerVoteChoice | null,
 ): boolean {
 	if (nextValue === null) {
@@ -484,7 +759,7 @@ export function canSetEventPlayerVoteDraft(
 	}
 
 	const simulated = new Map(draft);
-	simulated.set(targetPlayerId, nextValue);
+	simulated.set(targetKey, nextValue);
 
 	return (
 		countEventPlayerVoteDraft(simulated, EVENT_PLAYER_VOTE.like) <=
@@ -496,18 +771,18 @@ export function canSetEventPlayerVoteDraft(
 
 export function isEventPlayerVoteDraftDirty(
 	draft: EventPlayerVoteDraft,
-	saved: ReadonlyMap<number, EventPlayerVoteChoice>,
-	lockedTargetIds: ReadonlySet<number> = new Set(),
+	saved: EventPlayerVoteSaved,
+	lockedTargetIds: ReadonlySet<EventPlayerVoteTargetKey> = new Set(),
 ): boolean {
-	const targetIds = new Set([...draft.keys(), ...saved.keys()]);
+	const targetKeys = new Set([...draft.keys(), ...saved.keys()]);
 
-	for (const targetId of targetIds) {
-		if (lockedTargetIds.has(targetId)) {
+	for (const targetKey of targetKeys) {
+		if (lockedTargetIds.has(targetKey)) {
 			continue;
 		}
 
-		const draftValue = draft.get(targetId) ?? null;
-		const savedValue = saved.get(targetId) ?? null;
+		const draftValue = draft.get(targetKey) ?? null;
+		const savedValue = saved.get(targetKey) ?? null;
 		if (draftValue !== savedValue) {
 			return true;
 		}
@@ -518,18 +793,27 @@ export function isEventPlayerVoteDraftDirty(
 
 export function eventPlayerVoteDraftToSubmit(
 	draft: EventPlayerVoteDraft,
-	lockedTargetIds: ReadonlySet<number> = new Set(),
-): { target_player_id: number; value: EventPlayerVoteChoice }[] {
-	return [...draft.entries()].flatMap(([targetPlayerId, value]) => {
+	lockedTargetIds: ReadonlySet<EventPlayerVoteTargetKey> = new Set(),
+): {
+	target_player_id: number;
+	track: EventRatingTrack;
+	value: EventPlayerVoteChoice;
+}[] {
+	return [...draft.entries()].flatMap(([targetKey, value]) => {
 		if (!value) {
 			return [];
 		}
 
-		if (lockedTargetIds.has(targetPlayerId)) {
+		if (lockedTargetIds.has(targetKey)) {
 			return [];
 		}
 
-		return [{ target_player_id: targetPlayerId, value }];
+		const target = eventPlayerVoteTargetFromKey(targetKey);
+		if (!target) {
+			return [];
+		}
+
+		return [{ target_player_id: target.playerId, track: target.track, value }];
 	});
 }
 
@@ -543,14 +827,9 @@ export function eventPlayerVoteBudgetSummary(
 }
 
 export function savedEventPlayerVoteDraft(
-	saved: ReadonlyMap<number, EventPlayerVoteChoice>,
-): Map<number, EventPlayerVoteChoice | null> {
-	return new Map(
-		[...saved.entries()].map(([targetPlayerId, value]) => [
-			targetPlayerId,
-			value,
-		]),
-	);
+	saved: EventPlayerVoteSaved,
+): Map<EventPlayerVoteTargetKey, EventPlayerVoteChoice | null> {
+	return new Map(saved);
 }
 
 export type EventPlayerVoteTeamSection = {

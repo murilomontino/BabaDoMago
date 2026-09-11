@@ -400,7 +400,9 @@ function MatchGoalkeeperTeamPick({
 								<EventTeamPlayerRow
 									player={player}
 									ceiling={ceiling}
-									isGoalkeeperVolunteer={goalkeeperIds.includes(player.id)}
+									isGoalkeeperVolunteer={
+										selected || goalkeeperIds.includes(player.id)
+									}
 								/>
 								{selected && (
 									<GoalkeeperGlovesIcon className="ml-auto size-4 shrink-0 text-primary" />
@@ -553,6 +555,8 @@ function TeamPick({
 				<ul className="space-y-1">
 					{previewRoster.map(({ row, player }) => {
 						const position = eventTeamPlayerPosition(row.is_goalkeeper);
+						const asGoalkeeper =
+							row.is_goalkeeper || goalkeeperIds.includes(player.id);
 
 						return (
 							<li key={row.id} className={EVENT_TEAM_PLAYER_SLOT_CLASS}>
@@ -562,7 +566,7 @@ function TeamPick({
 								<EventTeamPlayerRow
 									player={player}
 									ceiling={ceiling}
-									isGoalkeeperVolunteer={goalkeeperIds.includes(player.id)}
+									isGoalkeeperVolunteer={asGoalkeeper}
 								/>
 							</li>
 						);
@@ -576,6 +580,8 @@ function TeamPick({
 						<ul className="min-h-0 space-y-1 overflow-hidden pt-1">
 							{extraRoster.map(({ row, player }) => {
 								const position = eventTeamPlayerPosition(row.is_goalkeeper);
+								const asGoalkeeper =
+									row.is_goalkeeper || goalkeeperIds.includes(player.id);
 
 								return (
 									<li key={row.id} className={EVENT_TEAM_PLAYER_SLOT_CLASS}>
@@ -587,7 +593,7 @@ function TeamPick({
 										<EventTeamPlayerRow
 											player={player}
 											ceiling={ceiling}
-											isGoalkeeperVolunteer={goalkeeperIds.includes(player.id)}
+											isGoalkeeperVolunteer={asGoalkeeper}
 										/>
 									</li>
 								);
@@ -616,8 +622,11 @@ function TeamPick({
 				)}
 				<div className="ml-auto [&>p]:mt-0">
 					<EventTeamRatingAverage
-						ratings={teamRoster.map(({ player }) =>
-							eventDrawInputRating(player, goalkeeperIds.includes(player.id)),
+						ratings={teamRoster.map(({ row, player }) =>
+							eventDrawInputRating(
+								player,
+								row.is_goalkeeper || goalkeeperIds.includes(player.id),
+							),
 						)}
 						presentRatings={presentRatings}
 						isHighestSum={isHighestSum}
@@ -1126,7 +1135,12 @@ export function ChampionshipEventPlay({
 					return [];
 				}
 
-				return [eventDrawInputRating(player, volunteerSet.has(row.player_id))];
+				return [
+					eventDrawInputRating(
+						player,
+						row.is_goalkeeper || volunteerSet.has(row.player_id),
+					),
+				];
 			}),
 		),
 		presentRatings,

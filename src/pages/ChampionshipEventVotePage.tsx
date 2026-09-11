@@ -25,6 +25,7 @@ import {
 	eventPlayerVoteDraftToSubmit,
 	eventPlayerVoteLockedTargetIds,
 	eventPlayerVotesSubmittedLabel,
+	eventPlayerVoteTargetKey,
 	initialEventPlayerBallotLocked,
 	isEventPlayerVoteDraftDirty,
 	isEventPlayerVotesClosed,
@@ -33,6 +34,7 @@ import {
 	ownerEventPlayerVotesSubmitted,
 	savedEventPlayerVoteDraft,
 } from "@/const/event-player-vote";
+import type { EventRatingTrack } from "@/const/event-rating-adjustment";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import { ROUTES } from "@/const/routes";
 import { SKELETON_LABEL } from "@/const/skeleton";
@@ -78,7 +80,7 @@ export function ChampionshipEventVotePage() {
 	const matchOps = useAppSelector((state) => selectMatchOps(state, eventId));
 	const [localError, setLocalError] = useState<string | null>(null);
 	const [draftVotes, setDraftVotes] = useState<
-		Map<number, EventPlayerVoteChoice | null>
+		Map<string, EventPlayerVoteChoice | null>
 	>(new Map());
 	const [ballotLocked, setBallotLocked] = useState(false);
 	const [ballotHydrated, setBallotHydrated] = useState(false);
@@ -151,9 +153,12 @@ export function ChampionshipEventVotePage() {
 		[eventsQuery.data],
 	);
 	const savedVotes = useMemo(() => {
-		const map = new Map<number, EventPlayerVoteChoice>();
+		const map = new Map<string, EventPlayerVoteChoice>();
 		for (const row of myVotesQuery.data ?? []) {
-			map.set(row.target_player_id, row.value);
+			map.set(
+				eventPlayerVoteTargetKey(row.target_player_id, row.track),
+				row.value,
+			);
 		}
 		return map;
 	}, [myVotesQuery.data]);
@@ -275,6 +280,7 @@ export function ChampionshipEventVotePage() {
 				formWindowEvents={formWindowEvents}
 				ceiling={ceiling}
 				goalkeeperCeiling={goalkeeperCeiling}
+				ratingMinMatches={championship.rating_min_matches}
 				canVoteRole={canVoteRole}
 				eventEnded={event.ended_at !== null}
 				votesClosed={votesClosed}
@@ -288,15 +294,20 @@ export function ChampionshipEventVotePage() {
 				allowSelfVote={allowSelfVote}
 				voteCounts={voteCounts}
 				error={null}
-				onDraftChange={(targetPlayerId, value) => {
+				onDraftChange={(
+					targetPlayerId: number,
+					track: EventRatingTrack,
+					value: EventPlayerVoteChoice | null,
+				) => {
+					const targetKey = eventPlayerVoteTargetKey(targetPlayerId, track);
 					setDraftVotes((current) => {
 						const next = new Map(current);
 						if (value === null) {
-							next.delete(targetPlayerId);
+							next.delete(targetKey);
 							return next;
 						}
 
-						next.set(targetPlayerId, value);
+						next.set(targetKey, value);
 						return next;
 					});
 				}}

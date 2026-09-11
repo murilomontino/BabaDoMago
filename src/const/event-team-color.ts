@@ -49,6 +49,13 @@ export const EVENT_TEAM_FG = {
 export const EVENT_TEAM_PASTEL = {
 	mix: 0.55,
 	white: "#ffffff",
+	/** Matches `--color-surface` in dark theme (team cards). */
+	dark: "#1c1917",
+} as const;
+
+/** Team tint over muted surface — low alpha reads ashy. */
+export const EVENT_TEAM_WASH = {
+	alpha: 0.1,
 } as const;
 
 const EVENT_TEAM_COLOR_HEX = /^#[0-9a-f]{6}$/;
@@ -153,17 +160,25 @@ function contrastRatio(left: number, right: number): number {
 	return (max + 0.05) / (min + 0.05);
 }
 
-export function eventTeamColorPastel(hex: string): string {
+export function eventTeamColorPastel(
+	hex: string,
+	base: string = EVENT_TEAM_PASTEL.white,
+): string {
 	const source = hexRgb(hex);
-	const white = hexRgb(EVENT_TEAM_PASTEL.white);
+	const mixBase = hexRgb(base);
 	const mix = EVENT_TEAM_PASTEL.mix;
 	const rest = 1 - mix;
 
 	return rgbToHex(
-		source.r * mix + white.r * rest,
-		source.g * mix + white.g * rest,
-		source.b * mix + white.b * rest,
+		source.r * mix + mixBase.r * rest,
+		source.g * mix + mixBase.g * rest,
+		source.b * mix + mixBase.b * rest,
 	);
+}
+
+/** Theme-aware wash: mixes toward `--color-team-pastel-base`. */
+export function eventTeamColorPastelCss(hex: string): string {
+	return `color-mix(in srgb, ${hex} ${EVENT_TEAM_PASTEL.mix * 100}%, var(--color-team-pastel-base))`;
 }
 
 export function eventTeamColorFg(hex: string): string {
@@ -180,16 +195,46 @@ export function eventTeamColorFg(hex: string): string {
 
 export function eventTeamColorStyle(hex: string | null): {
 	backgroundColor?: string;
+} {
+	if (hex === null) {
+		return {};
+	}
+
+	return {
+		backgroundColor: eventTeamColorPastelCss(hex),
+	};
+}
+
+export function eventTeamColorWash(
+	hex: string,
+	alpha: number = EVENT_TEAM_WASH.alpha,
+): string {
+	const { r, g, b } = hexRgb(hex);
+	return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+export function eventTeamColorWashStyle(hex: string | null): {
+	backgroundColor?: string;
+} {
+	if (hex === null) {
+		return {};
+	}
+
+	return {
+		backgroundColor: eventTeamColorWash(hex),
+	};
+}
+
+export function eventTeamColorBadgeStyle(hex: string | null): {
+	backgroundColor?: string;
 	color?: string;
 } {
 	if (hex === null) {
 		return {};
 	}
 
-	const backgroundColor = eventTeamColorPastel(hex);
-
 	return {
-		backgroundColor,
-		color: eventTeamColorFg(backgroundColor),
+		backgroundColor: hex,
+		color: eventTeamColorFg(hex),
 	};
 }

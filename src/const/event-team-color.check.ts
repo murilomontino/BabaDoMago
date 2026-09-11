@@ -4,10 +4,15 @@ import {
 	EVENT_TEAM_COLOR_RAINBOW_GRADIENT,
 	EVENT_TEAM_FG,
 	EVENT_TEAM_PASTEL,
+	EVENT_TEAM_WASH,
+	eventTeamColorBadgeStyle,
 	eventTeamColorFg,
 	eventTeamColorOrNone,
 	eventTeamColorPastel,
+	eventTeamColorPastelCss,
 	eventTeamColorStyle,
+	eventTeamColorWash,
+	eventTeamColorWashStyle,
 	eventTeamCustomColorPreview,
 	eventTeamName,
 	isEventTeamColor,
@@ -46,14 +51,34 @@ check(
 	eventTeamColorFg(eventTeamColorPastel(EVENT_TEAM_COLOR.red)),
 	EVENT_TEAM_FG.dark,
 );
-check(eventTeamColorStyle("#ffffff").backgroundColor, "#ffffff");
-check(eventTeamColorStyle("#ffffff").color, EVENT_TEAM_FG.dark);
+check(
+	eventTeamColorPastel(EVENT_TEAM_COLOR.red, EVENT_TEAM_PASTEL.dark) ===
+		EVENT_TEAM_COLOR.red,
+	false,
+);
+check(
+	eventTeamColorFg(
+		eventTeamColorPastel(EVENT_TEAM_COLOR.red, EVENT_TEAM_PASTEL.dark),
+	),
+	EVENT_TEAM_FG.light,
+);
+check(
+	eventTeamColorPastelCss(EVENT_TEAM_COLOR.red),
+	`color-mix(in srgb, ${EVENT_TEAM_COLOR.red} ${EVENT_TEAM_PASTEL.mix * 100}%, var(--color-team-pastel-base))`,
+);
+check(
+	eventTeamColorStyle("#ffffff").backgroundColor,
+	eventTeamColorPastelCss("#ffffff"),
+);
+check(
+	"color" in (eventTeamColorStyle("#ffffff") as Record<string, unknown>),
+	false,
+);
 check(eventTeamColorStyle(EVENT_TEAM_COLOR_NONE).backgroundColor, undefined);
 check(
 	eventTeamColorStyle(EVENT_TEAM_COLOR.red).backgroundColor,
-	eventTeamColorPastel(EVENT_TEAM_COLOR.red),
+	eventTeamColorPastelCss(EVENT_TEAM_COLOR.red),
 );
-check(eventTeamColorStyle(EVENT_TEAM_COLOR.red).color, EVENT_TEAM_FG.dark);
 check(eventTeamColorOrNone(null), null);
 check(eventTeamColorOrNone(EVENT_TEAM_COLOR.red), EVENT_TEAM_COLOR.red);
 check(eventTeamColorOrNone("nope"), null);
@@ -74,5 +99,24 @@ check(
 	eventTeamCustomColorPreview(true, EVENT_TEAM_COLOR.red).backgroundImage,
 	undefined,
 );
+check(EVENT_TEAM_WASH.alpha, 0.1);
+check(
+	eventTeamColorWash(EVENT_TEAM_COLOR.red),
+	`rgba(220, 38, 38, ${EVENT_TEAM_WASH.alpha})`,
+);
+check(
+	eventTeamColorWashStyle(EVENT_TEAM_COLOR.blue).backgroundColor,
+	eventTeamColorWash(EVENT_TEAM_COLOR.blue),
+);
+check(eventTeamColorWashStyle(EVENT_TEAM_COLOR_NONE).backgroundColor, undefined);
+check(
+	eventTeamColorBadgeStyle(EVENT_TEAM_COLOR.red).backgroundColor,
+	EVENT_TEAM_COLOR.red,
+);
+check(
+	eventTeamColorBadgeStyle(EVENT_TEAM_COLOR.red).color,
+	EVENT_TEAM_FG.light,
+);
+check(eventTeamColorBadgeStyle(EVENT_TEAM_COLOR_NONE).backgroundColor, undefined);
 
 console.log("event-team-color ok");

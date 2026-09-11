@@ -120,7 +120,15 @@ export function ChampionshipEventDetailActions({
 	});
 	const previewCeiling = championshipRatingCeiling([
 		...players.map((player) => player.rating),
-		...ratingPreview.map((row) => row.to),
+		...ratingPreview
+			.filter((row) => row.track !== "goalkeeper")
+			.map((row) => row.to),
+	]);
+	const previewGoalkeeperCeiling = championshipRatingCeiling([
+		...players.map((player) => player.goalkeeper_rating),
+		...ratingPreview
+			.filter((row) => row.track === "goalkeeper")
+			.map((row) => row.to),
 	]);
 
 	const canEndEvent = canManage && status === EVENT_STATUS.open;
@@ -217,6 +225,7 @@ export function ChampionshipEventDetailActions({
 					teams={event.teams}
 					rows={ratingPreview}
 					ceiling={previewCeiling}
+					goalkeeperCeiling={previewGoalkeeperCeiling}
 					canSetMvp={canSetMvp}
 					mvpCandidateIds={mvpCandidateIds}
 					missingAttendanceNames={missingMatchPlayerIds.map((playerId) => {

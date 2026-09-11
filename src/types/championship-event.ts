@@ -15,6 +15,14 @@ export type ChampionshipEventAttendance = {
 	losses: number;
 	draws: number;
 	matches: number;
+	line_wins?: number;
+	line_losses?: number;
+	line_draws?: number;
+	line_matches?: number;
+	gk_wins?: number;
+	gk_losses?: number;
+	gk_draws?: number;
+	gk_matches?: number;
 	rating: number;
 	rating_delta: number;
 	rating_projected?: number | null;

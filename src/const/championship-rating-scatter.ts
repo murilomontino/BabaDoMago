@@ -10,6 +10,7 @@ import {
 	type PlayerProfileHistoryRow,
 	playerProfileHistory,
 } from "./player-profile.ts";
+import { EVENT_RATING_TRACK } from "./event-rating-adjustment.ts";
 import { PLAYER_RATING } from "./player-rating.ts";
 
 export const CHAMPIONSHIP_RATING_SCATTER_KIND = {
@@ -155,7 +156,7 @@ function scatterPointForPlayer(
 	player: ChampionshipRatingScatterPlayer,
 	events: readonly PlayerProfileEventInput[],
 ): ChampionshipRatingScatterPoint | null {
-	const history = playerProfileHistory(events, player.id);
+	const history = playerProfileHistory(events, player.id, EVENT_RATING_TRACK.line);
 	const initialRating = playerInitialOfficialRating(history);
 	if (initialRating === null) {
 		return null;

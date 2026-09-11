@@ -13,14 +13,18 @@ import {
 	EVENT_PLAYER_VOTE,
 	type EventPlayerVoteChoice,
 } from "@/const/event-player-vote";
+import {
+	EVENT_RATING_TRACK,
+	type EventRatingTrack,
+} from "@/const/event-rating-adjustment";
 import type { EventTeamColor } from "@/const/event-team-color";
 import { useAuth } from "@/contexts/auth";
 import { supabase } from "@/lib/supabase";
 import {
+	addChampionshipEventEndedMatchGoal,
 	addChampionshipEventTeam,
 	type ChampionshipEventPlayerVoteCountsPayload,
 	type ChampionshipEventPlayerVoteRow,
-	addChampionshipEventEndedMatchGoal,
 	closeChampionshipEventPlayerVotes,
 	createChampionshipEvent,
 	deleteChampionshipEvent,
@@ -662,6 +666,7 @@ export function useReopenChampionshipEventPlayerVotes(championshipId: number) {
 						attendance: current.attendance.map((row) => ({
 							...row,
 							vote_rating_delta: 0,
+							goalkeeper_vote_rating_delta: 0,
 						})),
 					};
 				},
@@ -693,11 +698,15 @@ export function useSubmitChampionshipEventPlayerVotes(
 
 	return useMutation({
 		mutationFn: (
-			votes: { target_player_id: number; value: EventPlayerVoteChoice }[],
+			votes: {
+				target_player_id: number;
+				track: EventRatingTrack;
+				value: EventPlayerVoteChoice;
+			}[],
 		) => submitChampionshipEventPlayerVotes(eventId, votes),
 		onSuccess: async (result) => {
 			const deltaByPlayerId = new Map(
-				result.attendance.map((row) => [row.player_id, row.vote_rating_delta]),
+				result.attendance.map((row) => [row.player_id, row]),
 			);
 
 			queryClient.setQueriesData<ChampionshipEvent>(
@@ -713,14 +722,16 @@ export function useSubmitChampionshipEventPlayerVotes(
 					return {
 						...current,
 						attendance: current.attendance.map((row) => {
-							const voteRatingDelta = deltaByPlayerId.get(row.player_id);
-							if (voteRatingDelta === undefined) {
+							const deltas = deltaByPlayerId.get(row.player_id);
+							if (!deltas) {
 								return row;
 							}
 
 							return {
 								...row,
-								vote_rating_delta: voteRatingDelta,
+								vote_rating_delta: deltas.vote_rating_delta,
+								goalkeeper_vote_rating_delta:
+									deltas.goalkeeper_vote_rating_delta,
 							};
 						}),
 					};
@@ -754,10 +765,12 @@ export function useVoteChampionshipEventPlayer(
 		mutationFn: ({
 			targetPlayerId,
 			value,
+			track = EVENT_RATING_TRACK.line,
 		}: {
 			targetPlayerId: number;
 			value: EventPlayerVoteChoice | null;
-		}) => voteChampionshipEventPlayer(eventId, targetPlayerId, value),
+			track?: EventRatingTrack;
+		}) => voteChampionshipEventPlayer(eventId, targetPlayerId, value, track),
 		onSuccess: async (result) => {
 			queryClient.setQueriesData<ChampionshipEvent>(
 				{
@@ -776,6 +789,13 @@ export function useVoteChampionshipEventPlayer(
 								return row;
 							}
 
+							if (result.track === EVENT_RATING_TRACK.goalkeeper) {
+								return {
+									...row,
+									goalkeeper_vote_rating_delta: result.vote_rating_delta,
+								};
+							}
+
 							return {
 								...row,
 								vote_rating_delta: result.vote_rating_delta,
@@ -789,7 +809,9 @@ export function useVoteChampionshipEventPlayer(
 				championshipEventMyVotesQueryKey(eventId, user?.id),
 				(current: ChampionshipEventPlayerVoteRow[] | undefined) => {
 					const without = (current ?? []).filter(
-						(row) => row.target_player_id !== result.target_player_id,
+						(row) =>
+							row.target_player_id !== result.target_player_id ||
+							row.track !== result.track,
 					);
 					if (!result.my_value) {
 						return without;
@@ -799,6 +821,7 @@ export function useVoteChampionshipEventPlayer(
 						...without,
 						{
 							target_player_id: result.target_player_id,
+							track: result.track,
 							value: result.my_value,
 						},
 					];

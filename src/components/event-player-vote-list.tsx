@@ -14,19 +14,35 @@ import {
 	canVoteEventPlayer,
 	EVENT_PLAYER_VOTE,
 	EVENT_PLAYER_VOTE_LABEL,
+	EVENT_PLAYER_VOTE_LIST_KIND,
 	type EventPlayerVoteChoice,
 	type EventPlayerVoteCount,
 	type EventPlayerVoteDraft,
 	eventPlayerVoteBudgetSummary,
+	eventPlayerVoteCardClassName,
 	eventPlayerVoteChipLabel,
 	eventPlayerVoteChoiceLabel,
+	eventPlayerVoteListEntriesForRow,
 	eventPlayerVoteShowsSavedChoice,
+	eventPlayerVoteTargetKey,
 	eventPlayerVoteTeamSections,
+	eventPlayerVoteTrackBadgeClassName,
+	eventPlayerVoteTrackBadgeLabel,
+	eventPlayerVoteTrackDelta,
+	eventPlayerVoteTrackLabel,
 	isEventPlayerVoteLocked,
 	nextEventPlayerVoteValue,
 } from "@/const/event-player-vote";
-import { eventActivePlayerRating } from "@/const/event-rating-adjustment";
-import { eventTeamColorStyle } from "@/const/event-team-color";
+import {
+	EVENT_RATING_TRACK,
+	type EventRatingTrack,
+	eventActivePlayerRating,
+} from "@/const/event-rating-adjustment";
+import {
+	eventTeamColorBadgeStyle,
+	eventTeamColorStyle,
+	eventTeamColorWashStyle,
+} from "@/const/event-team-color";
 import { playerVisibleName } from "@/const/player-name";
 import {
 	PLAYER_STAR_CLASS,
@@ -61,6 +77,7 @@ type EventPlayerVoteListProps = {
 	formWindowEvents: readonly ChampionshipEvent[];
 	ceiling: number;
 	goalkeeperCeiling: number;
+	ratingMinMatches: number;
 	canVoteRole: boolean;
 	eventEnded: boolean;
 	votesClosed: boolean;
@@ -76,6 +93,7 @@ type EventPlayerVoteListProps = {
 	error: string | null;
 	onDraftChange: (
 		targetPlayerId: number,
+		track: EventRatingTrack,
 		value: EventPlayerVoteChoice | null,
 	) => void;
 };
@@ -136,6 +154,7 @@ export function EventPlayerVoteList({
 	formWindowEvents,
 	ceiling,
 	goalkeeperCeiling,
+	ratingMinMatches,
 	canVoteRole,
 	eventEnded,
 	votesClosed,
@@ -242,226 +261,345 @@ export function EventPlayerVoteList({
 									rosterById,
 								);
 								const name = playerVisibleName(player);
-								const isGoalkeeper = row.is_goalkeeper === true;
-								const rating = eventActivePlayerRating(
-									isGoalkeeper,
-									player.rating,
-									player.goalkeeper_rating,
-								);
-								const ratingCeiling = isGoalkeeper
-									? goalkeeperCeiling
-									: ceiling;
-								const draftVote = draftVotes.get(row.player_id) ?? null;
-								const chip = votesVoided
-									? null
-									: eventPlayerVoteChipLabel(row.vote_rating_delta);
-								const canVote = canVoteEventPlayer({
-									canVote: canVoteRole,
-									eventEnded,
-									votesClosed,
-									votesVoided,
-									voterPresent,
-									targetPlayerId: row.player_id,
-									voterPlayerId,
-									voteRatingDelta: row.vote_rating_delta,
-									votingEnabled,
-									allowSelfVote,
-								});
 								const isSelf = voterPlayerId === row.player_id;
 								const count = voteCounts?.get(row.player_id);
-								const locked =
-									!votesVoided &&
-									isEventPlayerVoteLocked(row.vote_rating_delta);
-								const showSubmittedChoice = eventPlayerVoteShowsSavedChoice({
-									draftVote,
-									locked,
-									votingEnabled,
-								});
-								const nextLike = nextEventPlayerVoteValue(draftVote, "like");
-								const nextDislike = nextEventPlayerVoteValue(
-									draftVote,
-									"dislike",
+								const entries = eventPlayerVoteListEntriesForRow(
+									row,
+									ratingMinMatches,
 								);
-								const nextMaintain = nextEventPlayerVoteValue(
-									draftVote,
-									"maintain",
-								);
-								const nextBlank = nextEventPlayerVoteValue(draftVote, "blank");
-								const canLike =
-									canVote &&
-									canSetEventPlayerVoteDraft(
-										draftVotes,
-										row.player_id,
-										nextLike,
-									);
-								const canDislike =
-									canVote &&
-									canSetEventPlayerVoteDraft(
-										draftVotes,
-										row.player_id,
-										nextDislike,
-									);
-								const canMaintain =
-									canVote &&
-									canSetEventPlayerVoteDraft(
-										draftVotes,
-										row.player_id,
-										nextMaintain,
-									);
-								const canBlank =
-									canVote &&
-									canSetEventPlayerVoteDraft(
-										draftVotes,
-										row.player_id,
-										nextBlank,
-									);
 
-								return [
-									<li
-										key={row.player_id}
-										className="flex flex-col gap-2 rounded-md bg-surface-muted px-2 py-2 text-fg"
-									>
-										<div className="flex min-w-0 items-start gap-3">
-											<VotePlayerAvatar
-												avatarUrl={player.avatar_url}
-												name={name}
-											/>
-											<div className="min-w-0 space-y-1">
-												<div className="flex flex-wrap items-center gap-2">
-													<p className="truncate text-sm font-medium text-fg">
-														{name}
-													</p>
-													{chip && <span className={CHIP_CLASS}>{chip}</span>}
-													{locked && (
-														<span className={CHIP_CLASS}>
-															{EVENT_PLAYER_VOTE_LABEL.closed}
-														</span>
-													)}
-													{!allowSelfVote && isSelf && (
-														<span className={CHIP_CLASS}>
-															{EVENT_PLAYER_VOTE_LABEL.cannotVoteSelf}
-														</span>
-													)}
-													{count && (
-														<span className={CHIP_CLASS}>
-															{EVENT_PLAYER_VOTE_LABEL.like} {count.likes}
-														</span>
-													)}
-													{count && (
-														<span className={CHIP_CLASS}>
-															{EVENT_PLAYER_VOTE_LABEL.dislike} {count.dislikes}
-														</span>
-													)}
-													{showSubmittedChoice && draftVote && (
-														<span className={CHIP_CLASS}>
-															{eventPlayerVoteChoiceLabel(draftVote)}
-														</span>
-													)}
+								return entries.flatMap((entry) => {
+									if (entry.kind === EVENT_PLAYER_VOTE_LIST_KIND.belowMin) {
+										const track = entry.track;
+										const isGoalkeeper =
+											track === EVENT_RATING_TRACK.goalkeeper;
+										const rating = eventActivePlayerRating(
+											isGoalkeeper,
+											row.rating,
+											row.goalkeeper_rating,
+										);
+										const ratingCeiling = isGoalkeeper
+											? goalkeeperCeiling
+											: ceiling;
+										const fillClassName = isGoalkeeper
+											? PLAYER_STAR_FILL_CLASS.goalkeeper
+											: PLAYER_STAR_FILL_CLASS.line;
+										const cardStyle = isGoalkeeper
+											? eventTeamColorWashStyle(section.color)
+											: undefined;
+										const badgeStyle = isGoalkeeper
+											? eventTeamColorBadgeStyle(section.color)
+											: undefined;
+
+										return [
+											<li
+												key={entry.key}
+												className={eventPlayerVoteCardClassName(track, {
+													belowMin: true,
+												})}
+												style={cardStyle}
+											>
+												<div className="flex min-w-0 items-start gap-3">
+													<VotePlayerAvatar
+														avatarUrl={player.avatar_url}
+														name={name}
+													/>
+													<div className="min-w-0 space-y-1">
+														<div className="flex flex-wrap items-center gap-2">
+															<p className="truncate text-sm font-medium text-fg">
+																{name}
+															</p>
+															{track && (
+																<span
+																	className={eventPlayerVoteTrackBadgeClassName(
+																		track,
+																	)}
+																	style={badgeStyle}
+																>
+																	{eventPlayerVoteTrackBadgeLabel(track)}
+																</span>
+															)}
+															{track ===
+																EVENT_RATING_TRACK.goalkeeper && (
+																<span className={CHIP_CLASS}>
+																	{eventPlayerVoteTrackLabel(track)}
+																</span>
+															)}
+														</div>
+														{track && (
+															<div className="flex flex-wrap items-center gap-2 text-xs text-fg-muted">
+																<PlayerRating
+																	rating={rating}
+																	ceiling={ratingCeiling}
+																	starClassName={PLAYER_STAR_CLASS.compact}
+																	fillClassName={fillClassName}
+																/>
+																<span className={CHIP_CLASS}>{rating}</span>
+																<span>
+																	{EVENT_PLAYER_VOTE_LABEL.matches}{" "}
+																	{entry.matches}
+																</span>
+															</div>
+														)}
+														<p className="text-xs text-fg-muted">
+															{EVENT_PLAYER_VOTE_LABEL.belowMinMatches}
+														</p>
+													</div>
 												</div>
-												<div className="flex flex-wrap items-center gap-2 text-xs text-fg-muted">
-													{isGoalkeeper && (
-														<PlayerRating
-															rating={rating}
-															ceiling={ratingCeiling}
-															starClassName={PLAYER_STAR_CLASS.compact}
-															fillClassName={PLAYER_STAR_FILL_CLASS.goalkeeper}
-														/>
-													)}
-													{!isGoalkeeper && (
-														<PlayerRating
-															rating={rating}
-															ceiling={ratingCeiling}
-															starClassName={PLAYER_STAR_CLASS.compact}
-															fillClassName={PLAYER_STAR_FILL_CLASS.line}
-														/>
-													)}
-													<span className={CHIP_CLASS}>{rating}</span>
-													<span>
-														{EVENT_PLAYER_VOTE_LABEL.goals} {row.goals}
-													</span>
-													<span>
-														{EVENT_PLAYER_VOTE_LABEL.assists} {row.assists}
-													</span>
-												</div>
-												<FormHeatmapPlayerStrip
-													cells={playerFormHeatmapCells(
-														row.player_id,
-														formWindowEvents,
-													)}
-													columnIds={formColumnIds}
+											</li>,
+										];
+									}
+
+									const track = entry.track;
+									if (!track) {
+										return [];
+									}
+
+									const isGoalkeeper = track === EVENT_RATING_TRACK.goalkeeper;
+									const targetKey = eventPlayerVoteTargetKey(
+										row.player_id,
+										track,
+									);
+									const trackDelta = eventPlayerVoteTrackDelta(row, track);
+									const rating = eventActivePlayerRating(
+										isGoalkeeper,
+										row.rating,
+										row.goalkeeper_rating,
+									);
+									const ratingCeiling = isGoalkeeper
+										? goalkeeperCeiling
+										: ceiling;
+									const draftVote = draftVotes.get(targetKey) ?? null;
+									const chip = votesVoided
+										? null
+										: eventPlayerVoteChipLabel(trackDelta);
+									const canVote = canVoteEventPlayer({
+										canVote: canVoteRole,
+										eventEnded,
+										votesClosed,
+										votesVoided,
+										voterPresent,
+										targetPlayerId: row.player_id,
+										voterPlayerId,
+										voteRatingDelta: trackDelta,
+										votingEnabled,
+										allowSelfVote,
+									});
+									const locked =
+										!votesVoided && isEventPlayerVoteLocked(trackDelta);
+									const showSubmittedChoice = eventPlayerVoteShowsSavedChoice({
+										draftVote,
+										locked,
+										votingEnabled,
+									});
+									const nextLike = nextEventPlayerVoteValue(draftVote, "like");
+									const nextDislike = nextEventPlayerVoteValue(
+										draftVote,
+										"dislike",
+									);
+									const nextMaintain = nextEventPlayerVoteValue(
+										draftVote,
+										"maintain",
+									);
+									const nextBlank = nextEventPlayerVoteValue(
+										draftVote,
+										"blank",
+									);
+									const canLike =
+										canVote &&
+										canSetEventPlayerVoteDraft(draftVotes, targetKey, nextLike);
+									const canDislike =
+										canVote &&
+										canSetEventPlayerVoteDraft(
+											draftVotes,
+											targetKey,
+											nextDislike,
+										);
+									const canMaintain =
+										canVote &&
+										canSetEventPlayerVoteDraft(
+											draftVotes,
+											targetKey,
+											nextMaintain,
+										);
+									const canBlank =
+										canVote &&
+										canSetEventPlayerVoteDraft(
+											draftVotes,
+											targetKey,
+											nextBlank,
+										);
+									const fillClassName = isGoalkeeper
+										? PLAYER_STAR_FILL_CLASS.goalkeeper
+										: PLAYER_STAR_FILL_CLASS.line;
+									const cardStyle = isGoalkeeper
+										? eventTeamColorWashStyle(section.color)
+										: undefined;
+									const badgeStyle = isGoalkeeper
+										? eventTeamColorBadgeStyle(section.color)
+										: undefined;
+
+									return [
+										<li
+											key={entry.key}
+											className={eventPlayerVoteCardClassName(track)}
+											style={cardStyle}
+										>
+											<div className="flex min-w-0 items-start gap-3">
+												<VotePlayerAvatar
+													avatarUrl={player.avatar_url}
+													name={name}
 												/>
+												<div className="min-w-0 space-y-1">
+													<div className="flex flex-wrap items-center gap-2">
+														<p className="truncate text-sm font-medium text-fg">
+															{name}
+														</p>
+														<span
+															className={eventPlayerVoteTrackBadgeClassName(
+																track,
+															)}
+															style={badgeStyle}
+														>
+															{eventPlayerVoteTrackBadgeLabel(track)}
+														</span>
+														{isGoalkeeper && (
+															<span className={CHIP_CLASS}>
+																{eventPlayerVoteTrackLabel(track)}
+															</span>
+														)}
+														{chip && <span className={CHIP_CLASS}>{chip}</span>}
+														{locked && (
+															<span className={CHIP_CLASS}>
+																{EVENT_PLAYER_VOTE_LABEL.closed}
+															</span>
+														)}
+														{!allowSelfVote && isSelf && (
+															<span className={CHIP_CLASS}>
+																{EVENT_PLAYER_VOTE_LABEL.cannotVoteSelf}
+															</span>
+														)}
+														{count && (
+															<span className={CHIP_CLASS}>
+																{EVENT_PLAYER_VOTE_LABEL.like} {count.likes}
+															</span>
+														)}
+														{count && (
+															<span className={CHIP_CLASS}>
+																{EVENT_PLAYER_VOTE_LABEL.dislike}{" "}
+																{count.dislikes}
+															</span>
+														)}
+														{showSubmittedChoice && draftVote && (
+															<span className={CHIP_CLASS}>
+																{eventPlayerVoteChoiceLabel(draftVote)}
+															</span>
+														)}
+													</div>
+													<div className="flex flex-wrap items-center gap-2 text-xs text-fg-muted">
+														<PlayerRating
+															rating={rating}
+															ceiling={ratingCeiling}
+															starClassName={PLAYER_STAR_CLASS.compact}
+															fillClassName={fillClassName}
+														/>
+														<span className={CHIP_CLASS}>{rating}</span>
+														<span>
+															{EVENT_PLAYER_VOTE_LABEL.matches}{" "}
+															{entry.matches}
+														</span>
+														{!isGoalkeeper && (
+															<span>
+																{EVENT_PLAYER_VOTE_LABEL.goals} {row.goals}
+															</span>
+														)}
+														{!isGoalkeeper && (
+															<span>
+																{EVENT_PLAYER_VOTE_LABEL.assists}{" "}
+																{row.assists}
+															</span>
+														)}
+													</div>
+													<FormHeatmapPlayerStrip
+														cells={playerFormHeatmapCells(
+															row.player_id,
+															formWindowEvents,
+														)}
+														columnIds={formColumnIds}
+													/>
+												</div>
 											</div>
-										</div>
-										{canVote && (
-											<div className="grid w-full min-w-0 grid-cols-4 gap-1">
-												<Button
-													variant={
-														draftVote === "like"
-															? BUTTON_VARIANT.primary
-															: BUTTON_VARIANT.secondary
-													}
-													className="min-w-0 px-2"
-													disabled={!canLike}
-													aria-pressed={draftVote === "like"}
-													aria-label={EVENT_PLAYER_VOTE_LABEL.like}
-													onClick={() => {
-														onDraftChange(row.player_id, nextLike);
-													}}
-												>
-													<ThumbsUp className="size-4 shrink-0" />
-												</Button>
-												<Button
-													variant={
-														draftVote === "dislike"
-															? BUTTON_VARIANT.danger
-															: BUTTON_VARIANT.secondary
-													}
-													className="min-w-0 px-2"
-													disabled={!canDislike}
-													aria-pressed={draftVote === "dislike"}
-													aria-label={EVENT_PLAYER_VOTE_LABEL.dislike}
-													onClick={() => {
-														onDraftChange(row.player_id, nextDislike);
-													}}
-												>
-													<ThumbsDown className="size-4 shrink-0" />
-												</Button>
-												<Button
-													variant={
-														draftVote === "maintain"
-															? BUTTON_VARIANT.soft
-															: BUTTON_VARIANT.secondary
-													}
-													className="min-w-0 px-2"
-													disabled={!canMaintain}
-													aria-pressed={draftVote === "maintain"}
-													aria-label={EVENT_PLAYER_VOTE_LABEL.maintain}
-													onClick={() => {
-														onDraftChange(row.player_id, nextMaintain);
-													}}
-												>
-													<Equal className="size-4 shrink-0" />
-												</Button>
-												<Button
-													variant={
-														draftVote === "blank"
-															? BUTTON_VARIANT.muted
-															: BUTTON_VARIANT.secondary
-													}
-													className="min-w-0 px-2"
-													disabled={!canBlank}
-													aria-pressed={draftVote === "blank"}
-													aria-label={EVENT_PLAYER_VOTE_LABEL.blank}
-													onClick={() => {
-														onDraftChange(row.player_id, nextBlank);
-													}}
-												>
-													<CircleOff className="size-4 shrink-0" />
-												</Button>
-											</div>
-										)}
-									</li>,
-								];
+											{canVote && (
+												<div className="grid w-full min-w-0 grid-cols-4 gap-1">
+													<Button
+														variant={
+															draftVote === "like"
+																? BUTTON_VARIANT.primary
+																: BUTTON_VARIANT.secondary
+														}
+														className="min-w-0 px-2"
+														disabled={!canLike}
+														aria-pressed={draftVote === "like"}
+														aria-label={EVENT_PLAYER_VOTE_LABEL.like}
+														onClick={() => {
+															onDraftChange(row.player_id, track, nextLike);
+														}}
+													>
+														<ThumbsUp className="size-4 shrink-0" />
+													</Button>
+													<Button
+														variant={
+															draftVote === "dislike"
+																? BUTTON_VARIANT.danger
+																: BUTTON_VARIANT.secondary
+														}
+														className="min-w-0 px-2"
+														disabled={!canDislike}
+														aria-pressed={draftVote === "dislike"}
+														aria-label={EVENT_PLAYER_VOTE_LABEL.dislike}
+														onClick={() => {
+															onDraftChange(row.player_id, track, nextDislike);
+														}}
+													>
+														<ThumbsDown className="size-4 shrink-0" />
+													</Button>
+													<Button
+														variant={
+															draftVote === "maintain"
+																? BUTTON_VARIANT.soft
+																: BUTTON_VARIANT.secondary
+														}
+														className="min-w-0 px-2"
+														disabled={!canMaintain}
+														aria-pressed={draftVote === "maintain"}
+														aria-label={EVENT_PLAYER_VOTE_LABEL.maintain}
+														onClick={() => {
+															onDraftChange(row.player_id, track, nextMaintain);
+														}}
+													>
+														<Equal className="size-4 shrink-0" />
+													</Button>
+													<Button
+														variant={
+															draftVote === "blank"
+																? BUTTON_VARIANT.muted
+																: BUTTON_VARIANT.secondary
+														}
+														className="min-w-0 px-2"
+														disabled={!canBlank}
+														aria-pressed={draftVote === "blank"}
+														aria-label={EVENT_PLAYER_VOTE_LABEL.blank}
+														onClick={() => {
+															onDraftChange(row.player_id, track, nextBlank);
+														}}
+													>
+														<CircleOff className="size-4 shrink-0" />
+													</Button>
+												</div>
+											)}
+										</li>,
+									];
+								});
 							})}
 						</ul>
 					</section>
