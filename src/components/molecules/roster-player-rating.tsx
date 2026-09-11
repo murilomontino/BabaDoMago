@@ -185,20 +185,22 @@ export function RosterPlayerRating({
 				}
 				hiddenStrength={hiddenLine}
 			/>
-			<RosterRatingTrack
-				rating={player.goalkeeper_rating}
-				ceiling={goalkeeperCeiling}
-				isOwnerViewer={isOwnerViewer}
-				busy={busy}
-				ariaLabel={PLAYER_RATING_INPUT.goalkeeperAriaLabel}
-				fillClassName={PLAYER_STAR_FILL_CLASS.goalkeeper}
-				onChange={
-					onChangeGoalkeeperRating
-						? (rating) => onChangeGoalkeeperRating(player.id, rating)
-						: undefined
-				}
-				hiddenStrength={hiddenGoalkeeper}
-			/>
+			{player.is_goalkeeper && (
+				<RosterRatingTrack
+					rating={player.goalkeeper_rating}
+					ceiling={goalkeeperCeiling}
+					isOwnerViewer={isOwnerViewer}
+					busy={busy}
+					ariaLabel={PLAYER_RATING_INPUT.goalkeeperAriaLabel}
+					fillClassName={PLAYER_STAR_FILL_CLASS.goalkeeper}
+					onChange={
+						onChangeGoalkeeperRating
+							? (rating) => onChangeGoalkeeperRating(player.id, rating)
+							: undefined
+					}
+					hiddenStrength={hiddenGoalkeeper}
+				/>
+			)}
 		</div>
 	);
 }
