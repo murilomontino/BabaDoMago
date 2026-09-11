@@ -1008,4 +1008,44 @@ const excludeTopPreview = eventRatingPreview({
 check(excludeTopPreview[0]?.to, 4.6, "top 1 nao amortece com exclude");
 check(excludeTopPreview[1]?.to, 2.8, "fora do top ainda amortece");
 
+const dualTrackPreview = eventRatingPreview({
+	attendance: [
+		{
+			player_id: 1,
+			display_name: "Misto",
+			wins: 5,
+			draws: 0,
+			losses: 1,
+			matches: 6,
+			is_goalkeeper: false,
+			rating: 4,
+			goalkeeper_rating: 3,
+			line_wins: 3,
+			line_draws: 0,
+			line_losses: 0,
+			line_matches: 3,
+			gk_wins: 2,
+			gk_draws: 0,
+			gk_losses: 1,
+			gk_matches: 3,
+		},
+	],
+	players: [
+		{
+			id: 1,
+			rating: 4,
+			goalkeeper_rating: 3,
+			nickname: "Misto",
+			display_name: "Misto",
+		},
+	],
+	presentPlayerIds: null,
+	mvpPlayerIds: [1],
+});
+check(dualTrackPreview.length, 2, "preview dual emite dois tracks");
+check(dualTrackPreview[0]?.track, "line", "primeiro track linha");
+check(dualTrackPreview[1]?.track, "goalkeeper", "segundo track goleiro");
+check(dualTrackPreview[0]?.isMvp, true, "mvp na linha quando flag linha");
+check(dualTrackPreview[1]?.isMvp, false, "mvp nao duplica no goleiro");
+
 console.log("event-rating-adjustment ok");

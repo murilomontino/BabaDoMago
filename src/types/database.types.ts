@@ -115,6 +115,14 @@ export type Database = {
 					wins: number;
 					losses: number;
 					draws: number;
+					line_wins: number;
+					line_losses: number;
+					line_draws: number;
+					line_matches: number;
+					gk_wins: number;
+					gk_losses: number;
+					gk_draws: number;
+					gk_matches: number;
 					is_mvp: boolean;
 					mvp_overridden: boolean;
 				};
@@ -146,6 +154,14 @@ export type Database = {
 					wins?: number;
 					losses?: number;
 					draws?: number;
+					line_wins?: number;
+					line_losses?: number;
+					line_draws?: number;
+					line_matches?: number;
+					gk_wins?: number;
+					gk_losses?: number;
+					gk_draws?: number;
+					gk_matches?: number;
 					is_mvp?: boolean;
 					mvp_overridden?: boolean;
 				};
@@ -177,6 +193,14 @@ export type Database = {
 					wins?: number;
 					losses?: number;
 					draws?: number;
+					line_wins?: number;
+					line_losses?: number;
+					line_draws?: number;
+					line_matches?: number;
+					gk_wins?: number;
+					gk_losses?: number;
+					gk_draws?: number;
+					gk_matches?: number;
 					is_mvp?: boolean;
 					mvp_overridden?: boolean;
 				};
@@ -203,6 +227,7 @@ export type Database = {
 					event_id: number;
 					id: number;
 					target_player_id: number;
+					track: string;
 					updated_at: string;
 					value: string;
 					voter_player_id: number;
@@ -212,6 +237,7 @@ export type Database = {
 					event_id: number;
 					id?: number;
 					target_player_id: number;
+					track?: string;
 					updated_at?: string;
 					value: string;
 					voter_player_id: number;
@@ -221,6 +247,7 @@ export type Database = {
 					event_id?: number;
 					id?: number;
 					target_player_id?: number;
+					track?: string;
 					updated_at?: string;
 					value?: string;
 					voter_player_id?: number;
@@ -908,6 +935,7 @@ export type Database = {
 					event_id: number;
 					target_player_id: number;
 					value: string | null;
+					track?: string;
 				};
 				Returns: Json;
 			};

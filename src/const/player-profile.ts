@@ -3,7 +3,11 @@ import {
 	formatEventStartsAt,
 } from "./championship-event.ts";
 import { mvpCount } from "./event-mvp.ts";
-import { applyEventRatingDelta } from "./event-rating-adjustment.ts";
+import {
+	applyEventRatingDelta,
+	EVENT_RATING_TRACK,
+	type EventRatingTrack,
+} from "./event-rating-adjustment.ts";
 import { rosterSafeCount } from "./roster-stats.ts";
 
 export const PLAYER_PROFILE_LABEL = {
@@ -109,6 +113,14 @@ export type PlayerProfileEventInput = {
 		losses: number;
 		draws: number;
 		matches: number;
+		line_wins?: number;
+		line_losses?: number;
+		line_draws?: number;
+		line_matches?: number;
+		gk_wins?: number;
+		gk_losses?: number;
+		gk_draws?: number;
+		gk_matches?: number;
 		rating: number;
 		rating_delta: number;
 		rating_projected?: number | null;
@@ -135,6 +147,7 @@ export type PlayerProfileHistoryRow = {
 	ratingFrom: number;
 	ratingDelta: number;
 	ratingTo: number;
+	track: EventRatingTrack;
 };
 
 export type PlayerRatingHistoryChartPoint = {
@@ -166,9 +179,82 @@ export function formatPlayerProfileDelta(value: number): string {
 	return `−${abs}`;
 }
 
+function playerProfileAttendanceTrackMatches(
+	attendance: PlayerProfileEventInput["attendance"][number],
+	track: EventRatingTrack,
+): number {
+	if (track === EVENT_RATING_TRACK.goalkeeper) {
+		if (attendance.gk_matches !== undefined) {
+			return rosterSafeCount(attendance.gk_matches);
+		}
+
+		if (attendance.is_goalkeeper === true) {
+			return rosterSafeCount(attendance.matches);
+		}
+
+		return 0;
+	}
+
+	if (attendance.line_matches !== undefined) {
+		return rosterSafeCount(attendance.line_matches);
+	}
+
+	if (attendance.is_goalkeeper === true) {
+		return 0;
+	}
+
+	return rosterSafeCount(attendance.matches);
+}
+
+function playerProfileHistoryRowForTrack(
+	event: PlayerProfileEventInput,
+	attendance: PlayerProfileEventInput["attendance"][number],
+	track: EventRatingTrack,
+): PlayerProfileHistoryRow {
+	const isGoalkeeper = track === EVENT_RATING_TRACK.goalkeeper;
+	const ratingFrom = playerProfileDelta(
+		isGoalkeeper ? attendance.goalkeeper_rating : attendance.rating,
+	);
+	const ratingDelta = playerProfileDelta(
+		isGoalkeeper
+			? attendance.goalkeeper_rating_delta
+			: attendance.rating_delta,
+	);
+	const wins = isGoalkeeper
+		? rosterSafeCount(attendance.gk_wins ?? attendance.wins)
+		: rosterSafeCount(attendance.line_wins ?? attendance.wins);
+	const losses = isGoalkeeper
+		? rosterSafeCount(attendance.gk_losses ?? attendance.losses)
+		: rosterSafeCount(attendance.line_losses ?? attendance.losses);
+	const draws = isGoalkeeper
+		? rosterSafeCount(attendance.gk_draws ?? attendance.draws)
+		: rosterSafeCount(attendance.line_draws ?? attendance.draws);
+	const matches = playerProfileAttendanceTrackMatches(attendance, track);
+
+	return {
+		eventId: event.id,
+		championshipId: event.championship_id,
+		startsAt: event.starts_at,
+		goals: rosterSafeCount(attendance.goals),
+		assists: rosterSafeCount(attendance.assists),
+		assistedGoals: rosterSafeCount(attendance.assisted_goals),
+		ownGoals: rosterSafeCount(attendance.own_goals),
+		wins,
+		losses,
+		draws,
+		mvps: mvpCount(attendance.is_mvp === true),
+		matches,
+		ratingFrom,
+		ratingDelta,
+		ratingTo: applyEventRatingDelta(ratingFrom, ratingDelta),
+		track,
+	};
+}
+
 export function playerProfileHistory(
 	events: readonly PlayerProfileEventInput[],
 	playerId: number,
+	track: EventRatingTrack | null = null,
 ): PlayerProfileHistoryRow[] {
 	return events
 		.flatMap((event) => {
@@ -183,28 +269,31 @@ export function playerProfileHistory(
 				return [];
 			}
 
-			const ratingFrom = playerProfileDelta(attendance.rating);
-			const ratingDelta = playerProfileDelta(attendance.rating_delta);
+			const lineMatches = playerProfileAttendanceTrackMatches(
+				attendance,
+				EVENT_RATING_TRACK.line,
+			);
+			const gkMatches = playerProfileAttendanceTrackMatches(
+				attendance,
+				EVENT_RATING_TRACK.goalkeeper,
+			);
+			const gkDelta = playerProfileDelta(attendance.goalkeeper_rating_delta);
+			const tracks: EventRatingTrack[] = [];
+			if (lineMatches > 0 || (gkMatches === 0 && track === null)) {
+				tracks.push(EVENT_RATING_TRACK.line);
+			}
+			if (gkMatches > 0 || gkDelta !== 0) {
+				tracks.push(EVENT_RATING_TRACK.goalkeeper);
+			}
+			if (tracks.length === 0) {
+				tracks.push(EVENT_RATING_TRACK.line);
+			}
 
-			return [
-				{
-					eventId: event.id,
-					championshipId: event.championship_id,
-					startsAt: event.starts_at,
-					goals: rosterSafeCount(attendance.goals),
-					assists: rosterSafeCount(attendance.assists),
-					assistedGoals: rosterSafeCount(attendance.assisted_goals),
-					ownGoals: rosterSafeCount(attendance.own_goals),
-					wins: rosterSafeCount(attendance.wins),
-					losses: rosterSafeCount(attendance.losses),
-					draws: rosterSafeCount(attendance.draws),
-					mvps: mvpCount(attendance.is_mvp === true),
-					matches: rosterSafeCount(attendance.matches),
-					ratingFrom,
-					ratingDelta,
-					ratingTo: applyEventRatingDelta(ratingFrom, ratingDelta),
-				},
-			];
+			return tracks
+				.filter((rowTrack) => track === null || rowTrack === track)
+				.map((rowTrack) =>
+					playerProfileHistoryRowForTrack(event, attendance, rowTrack),
+				);
 		})
 		.sort((left, right) =>
 			compareStartsAtNewestFirst(

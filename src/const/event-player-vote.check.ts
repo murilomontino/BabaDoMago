@@ -17,11 +17,20 @@ import {
 	eventPlayerVoteDraftToSubmit,
 	eventPlayerVoteErrorMessage,
 	eventPlayerVoteLockedTargetIds,
+	eventPlayerVoteListEntriesForRow,
+	eventPlayerVoteParticipantEligible,
 	eventPlayerVoteShowsSavedChoice,
 	eventPlayerVoteStatus,
 	eventPlayerVoteStatusLabel,
 	eventPlayerVotesSubmittedLabel,
+	eventPlayerVoteTargetFromKey,
+	eventPlayerVoteTargetKey,
+	eventPlayerVoteTargets,
 	eventPlayerVoteTeamSections,
+	eventPlayerVoteTrackDelta,
+	eventPlayerVoteTrackEligible,
+	eventPlayerVoteTrackLabel,
+	eventPlayerVoteTotalMatches,
 	eventPlayerVoteUrl,
 	initialEventPlayerBallotLocked,
 	isEventPlayerVoteDraftDirty,
@@ -165,30 +174,188 @@ check(
 check(eventPlayerVoteAppliedDelta(4, 0, 0, 5) === 0, "custom quorum not met");
 check(eventPlayerVoteAppliedDelta(5, 0, 0, 5) === 0.5, "custom quorum met");
 
-const draft = new Map<number, EventPlayerVoteChoice | null>([
-	[1, "like"],
-	[2, "like"],
-	[3, "dislike"],
+const lineKey = (playerId: number) =>
+	eventPlayerVoteTargetKey(playerId, "line");
+const gkKey = (playerId: number) =>
+	eventPlayerVoteTargetKey(playerId, "goalkeeper");
+
+check(lineKey(7) === "7:line", "line target key");
+check(gkKey(7) === "7:goalkeeper", "goalkeeper target key");
+check(eventPlayerVoteTargetFromKey("7:line")?.playerId === 7, "key player id");
+check(
+	eventPlayerVoteTargetFromKey("7:goalkeeper")?.track === "goalkeeper",
+	"key track",
+);
+check(eventPlayerVoteTargetFromKey("7:keeper") === null, "key bad track");
+check(eventPlayerVoteTargetFromKey("x:line") === null, "key bad player");
+check(eventPlayerVoteTrackLabel("line") === "Como jogador", "track line label");
+check(
+	eventPlayerVoteTrackLabel("goalkeeper") === "Como goleiro",
+	"track goalkeeper label",
+);
+check(eventPlayerVoteTrackEligible(3, 3), "track eligible at min");
+check(!eventPlayerVoteTrackEligible(2, 3), "track below min");
+check(
+	eventPlayerVoteTrackDelta(
+		{ vote_rating_delta: 0.5, goalkeeper_vote_rating_delta: -0.5 },
+		"goalkeeper",
+	) === -0.5,
+	"track delta goalkeeper",
+);
+check(
+	eventPlayerVoteTrackDelta({ vote_rating_delta: 0.5 }, "line") === 0.5,
+	"track delta line",
+);
+check(
+	eventPlayerVoteTotalMatches({
+		player_id: 1,
+		line_matches: 3,
+		gk_matches: 2,
+	}) === 5,
+	"total matches sum tracks",
+);
+check(
+	eventPlayerVoteParticipantEligible(
+		{ player_id: 1, line_matches: 3, gk_matches: 2 },
+		5,
+	),
+	"sum 5 enables",
+);
+check(
+	!eventPlayerVoteParticipantEligible(
+		{ player_id: 1, line_matches: 0, gk_matches: 1 },
+		5,
+	),
+	"one gk match stays out",
+);
+check(
+	eventPlayerVoteTargets([{ player_id: 1, line_matches: 3, gk_matches: 2 }], 5)
+		.map((target) => target.key)
+		.join("|") === "1:line",
+	"sum 5 enables; only line has 3+ for card",
+);
+check(
+	eventPlayerVoteTargets([{ player_id: 1, line_matches: 2, gk_matches: 3 }], 5)
+		.map((target) => target.key)
+		.join("|") === "1:goalkeeper",
+	"sum 5 enables; only gk has 3+ for card",
+);
+check(
+	eventPlayerVoteTargets([{ player_id: 1, line_matches: 3, gk_matches: 3 }], 5)
+		.map((target) => target.key)
+		.join("|") === "1:line|1:goalkeeper",
+	"sum and both tracks at 3 show both cards",
+);
+check(
+	eventPlayerVoteTargets([{ player_id: 1, line_matches: 2, gk_matches: 4 }], 3)
+		.map((target) => target.key)
+		.join("|") === "1:goalkeeper",
+	"sum ok; line below 3 hides line card",
+);
+check(
+	eventPlayerVoteTargets([{ player_id: 1, line_matches: 0, gk_matches: 1 }], 5)
+		.length === 0,
+	"one gk match hides card",
+);
+check(
+	eventPlayerVoteTargets([{ player_id: 1, line_matches: 1, gk_matches: 1 }], 3)
+		.length === 0,
+	"sum below min hides",
+);
+check(
+	eventPlayerVoteTargets([{ player_id: 1, line_matches: 5, gk_matches: 0 }], 5)
+		.map((target) => target.key)
+		.join("|") === "1:line",
+	"only line when sum and track floor ok",
+);
+check(
+	eventPlayerVoteListEntriesForRow(
+		{ player_id: 1, line_matches: 3, gk_matches: 2 },
+		5,
+	)
+		.map((entry) => `${entry.kind}:${entry.track}`)
+		.join("|") === "eligible:line",
+	"list only line card when gk below 3",
+);
+check(
+	eventPlayerVoteListEntriesForRow(
+		{ player_id: 1, line_matches: 0, gk_matches: 1 },
+		5,
+	).length === 0,
+	"list hides single gk below sum",
+);
+check(
+	eventPlayerVoteTargets([{ player_id: 1, matches: 4, is_goalkeeper: true }], 3)
+		.map((target) => target.key)
+		.join("|") === "1:goalkeeper",
+	"legacy goalkeeper fallback",
+);
+check(
+	eventPlayerVoteTargets([{ player_id: 1, matches: 4 }], 3)
+		.map((target) => target.key)
+		.join("|") === "1:line",
+	"legacy line fallback",
+);
+check(
+	eventPlayerVoteTargets([{ player_id: 1, matches: 1 }], 3).length === 0,
+	"legacy below min",
+);
+check(
+	eventPlayerVoteTargets(
+		[{ player_id: 1, matches: 5, line_matches: 0, gk_matches: 0 }],
+		3,
+	)
+		.map((target) => target.key)
+		.join("|") === "1:line",
+	"zero split falls back to totals",
+);
+check(
+	eventPlayerVoteTargets(
+		[
+			{
+				player_id: 1,
+				matches: 5,
+				line_matches: 0,
+				gk_matches: 0,
+				is_goalkeeper: true,
+			},
+		],
+		3,
+	)
+		.map((target) => target.key)
+		.join("|") === "1:goalkeeper",
+	"zero split goalkeeper fallback",
+);
+check(
+	eventPlayerVoteTargets([{ player_id: 1, line_matches: 2, gk_matches: 1 }], 3)
+		.length === 0,
+	"sum ok but no track reaches card floor 3",
+);
+
+const draft = new Map<string, EventPlayerVoteChoice | null>([
+	[lineKey(1), "like"],
+	[lineKey(2), "like"],
+	[gkKey(3), "dislike"],
 ]);
 check(countEventPlayerVoteDraft(draft, "like") === 2, "draft like count");
 check(countEventPlayerVoteDraft(draft, "dislike") === 1, "draft dislike count");
 check(
-	canSetEventPlayerVoteDraft(draft, 4, "like"),
+	canSetEventPlayerVoteDraft(draft, lineKey(4), "like"),
 	"can add like under budget",
 );
 check(
 	!canSetEventPlayerVoteDraft(
 		new Map([
-			[1, "like"],
-			[2, "like"],
-			[3, "like"],
-			[4, "like"],
-			[5, "like"],
+			[lineKey(1), "like"],
+			[lineKey(2), "like"],
+			[lineKey(3), "like"],
+			[gkKey(3), "like"],
+			[lineKey(5), "like"],
 		]),
-		6,
+		lineKey(6),
 		"like",
 	),
-	"like budget blocks",
+	"like budget blocks across tracks",
 );
 check(
 	eventPlayerVoteBudgetSummary(draft) === "Likes 2/5 · Dislikes 1/5",
@@ -196,62 +363,72 @@ check(
 );
 check(
 	isEventPlayerVoteDraftDirty(
-		new Map([[1, "like"]]),
-		new Map([[1, "dislike"]]),
+		new Map([[lineKey(1), "like"]]),
+		new Map([[lineKey(1), "dislike"]]),
 	),
 	"draft dirty",
 );
 check(
 	!isEventPlayerVoteDraftDirty(
-		savedEventPlayerVoteDraft(new Map([[1, "like"]])),
-		new Map([[1, "like"]]),
+		savedEventPlayerVoteDraft(new Map([[lineKey(1), "like"]])),
+		new Map([[lineKey(1), "like"]]),
 	),
 	"draft clean",
 );
 check(
-	eventPlayerVoteDraftToSubmit(
-		new Map([
-			[1, "like"],
-			[2, null],
-		]),
-	).length === 1,
-	"draft submit payload",
+	isEventPlayerVoteDraftDirty(
+		new Map([[gkKey(1), "like"]]),
+		new Map([[lineKey(1), "like"]]),
+	),
+	"draft dirty across tracks",
 );
+const submitted = eventPlayerVoteDraftToSubmit(
+	new Map([
+		[lineKey(1), "like"],
+		[gkKey(1), "dislike"],
+		[lineKey(2), null],
+	]),
+);
+check(submitted.length === 2, "draft submit payload");
+check(
+	submitted[0]?.target_player_id === 1 && submitted[0]?.track === "line",
+	"draft submit line track",
+);
+check(submitted[1]?.track === "goalkeeper", "draft submit goalkeeper track");
 check(
 	eventPlayerVoteDraftToSubmit(
 		new Map([
-			[1, "like"],
-			[2, "dislike"],
+			[lineKey(1), "like"],
+			[gkKey(1), "dislike"],
 		]),
-		new Set([1]),
+		new Set([lineKey(1)]),
 	).length === 1,
 	"draft submit skips locked",
 );
 check(
 	!isEventPlayerVoteDraftDirty(
 		new Map([
-			[1, "dislike"],
-			[2, "like"],
+			[lineKey(1), "dislike"],
+			[lineKey(2), "like"],
 		]),
 		new Map([
-			[1, "like"],
-			[2, "like"],
+			[lineKey(1), "like"],
+			[lineKey(2), "like"],
 		]),
-		new Set([1]),
+		new Set([lineKey(1)]),
 	),
 	"draft dirty ignores locked",
 );
-check(
-	eventPlayerVoteLockedTargetIds([
-		{ player_id: 1, vote_rating_delta: 0.5 },
-		{ player_id: 2, vote_rating_delta: 0 },
-	]).has(1) &&
-		!eventPlayerVoteLockedTargetIds([
-			{ player_id: 1, vote_rating_delta: 0.5 },
-			{ player_id: 2, vote_rating_delta: 0 },
-		]).has(2),
-	"locked target ids",
-);
+const lockedKeys = eventPlayerVoteLockedTargetIds([
+	{ player_id: 1, vote_rating_delta: 0.5, goalkeeper_vote_rating_delta: 0 },
+	{ player_id: 2, vote_rating_delta: 0, goalkeeper_vote_rating_delta: -0.5 },
+	{ player_id: 3, vote_rating_delta: 0, goalkeeper_vote_rating_delta: 0 },
+]);
+check(lockedKeys.has(lineKey(1)), "locked line target");
+check(!lockedKeys.has(gkKey(1)), "open goalkeeper target");
+check(lockedKeys.has(gkKey(2)), "locked goalkeeper target");
+check(!lockedKeys.has(lineKey(2)), "open line target");
+check(lockedKeys.size === 2, "locked target count");
 check(
 	eventPlayerVoteShowsSavedChoice({
 		draftVote: "like",

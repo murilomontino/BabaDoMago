@@ -71,6 +71,9 @@ import {
 	playerRatingHistoryChartSeries,
 } from "@/const/player-profile";
 import {
+	EVENT_RATING_TRACK,
+} from "@/const/event-rating-adjustment";
+import {
 	PLAYER_PROFILE_SHARE_LABEL,
 	playerProfileShareCard,
 } from "@/const/player-profile-share";
@@ -222,7 +225,7 @@ function PlayerProfileHeader({
 					career,
 					createdBy,
 					championshipName,
-					history,
+					history.filter((row) => row.track === EVENT_RATING_TRACK.line),
 					new Date().toISOString(),
 				),
 				ceiling,
@@ -409,7 +412,11 @@ function PlayerHistoryTable({
 					meta: { title: PLAYER_PROFILE_HISTORY_COLUMN_LABEL.date },
 					cell: ({ row }) => {
 						const when = formatEventStartsAt(row.original.startsAt);
-						return `${when.date} · ${when.time}`;
+						const trackLabel =
+							row.original.track === EVENT_RATING_TRACK.goalkeeper
+								? "GK"
+								: "LN";
+						return `${when.date} · ${when.time} · ${trackLabel}`;
 					},
 				}),
 				historyColumnHelper.accessor("goals", {
@@ -762,7 +769,9 @@ export function ChampionshipPlayerDetail({
 }: ChampionshipPlayerDetailProps) {
 	const [tab, setTab] = usePlayerProfileTab();
 	const selectedTab = tab ?? PLAYER_PROFILE_TAB.profile;
-	const form = playerRecentForm(history);
+	const form = playerRecentForm(
+		history.filter((row) => row.track === EVENT_RATING_TRACK.line),
+	);
 	const [synergyWindow, setSynergyWindow] = useState<SynergyWindow>(
 		SYNERGY_WINDOW_DEFAULT,
 	);
@@ -1027,13 +1036,32 @@ export function ChampionshipPlayerDetail({
 								<Suspense fallback={<PlayerHistoryChartSkeleton />}>
 									<PlayerRatingHistoryChart
 										points={playerRatingHistoryChartSeries(
-											history,
+											history.filter(
+												(row) => row.track === EVENT_RATING_TRACK.line,
+											),
 											player.rating,
 											new Date().toISOString(),
 										)}
 										ceiling={ceiling}
 									/>
 								</Suspense>
+								{history.some(
+									(row) => row.track === EVENT_RATING_TRACK.goalkeeper,
+								) && (
+									<Suspense fallback={<PlayerHistoryChartSkeleton />}>
+										<PlayerRatingHistoryChart
+											points={playerRatingHistoryChartSeries(
+												history.filter(
+													(row) =>
+														row.track === EVENT_RATING_TRACK.goalkeeper,
+												),
+												player.goalkeeper_rating,
+												new Date().toISOString(),
+											)}
+											ceiling={ceiling}
+										/>
+									</Suspense>
+								)}
 								<PlayerHistoryTable
 									history={history}
 									onOpenEvent={onOpenEvent}

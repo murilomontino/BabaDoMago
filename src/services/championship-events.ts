@@ -14,6 +14,10 @@ import {
 	eventPlayerVoteErrorMessage,
 } from "@/const/event-player-vote";
 import {
+	EVENT_RATING_TRACK,
+	type EventRatingTrack,
+} from "@/const/event-rating-adjustment";
+import {
 	type EventTeamColor,
 	eventTeamColorOrNone,
 	isEventTeamColor,
@@ -83,6 +87,14 @@ const EVENT_DETAIL_COLUMNS = `${EVENT_LIST_COLUMNS},
 		losses,
 		draws,
 		matches,
+		line_wins,
+		line_losses,
+		line_draws,
+		line_matches,
+		gk_wins,
+		gk_losses,
+		gk_draws,
+		gk_matches,
 		rating,
 		rating_delta,
 		rating_projected,
@@ -177,6 +189,14 @@ function asAttendance(value: unknown): ChampionshipEventAttendance {
 		losses: Number(row.losses ?? 0),
 		draws: Number(row.draws ?? 0),
 		matches: Number(row.matches ?? 0),
+		line_wins: Number(row.line_wins ?? 0),
+		line_losses: Number(row.line_losses ?? 0),
+		line_draws: Number(row.line_draws ?? 0),
+		line_matches: Number(row.line_matches ?? 0),
+		gk_wins: Number(row.gk_wins ?? 0),
+		gk_losses: Number(row.gk_losses ?? 0),
+		gk_draws: Number(row.gk_draws ?? 0),
+		gk_matches: Number(row.gk_matches ?? 0),
 		rating: Number(row.rating ?? 0),
 		rating_delta: Number(row.rating_delta ?? 0),
 		rating_projected:
@@ -1052,12 +1072,14 @@ export async function saveEventDrawAudit(params: {
 
 export type ChampionshipEventPlayerVoteRow = {
 	target_player_id: number;
+	track: EventRatingTrack;
 	value: EventPlayerVoteChoice;
 };
 
 export type VoteChampionshipEventPlayerResult = {
 	event_id: number;
 	target_player_id: number;
+	track: EventRatingTrack;
 	my_value: EventPlayerVoteChoice | null;
 	vote_rating_delta: number;
 };
@@ -1075,12 +1097,20 @@ function asVoteChoice(value: unknown): EventPlayerVoteChoice | null {
 	return null;
 }
 
+function asVoteTrack(value: unknown): EventRatingTrack {
+	if (value === EVENT_RATING_TRACK.goalkeeper) {
+		return EVENT_RATING_TRACK.goalkeeper;
+	}
+
+	return EVENT_RATING_TRACK.line;
+}
+
 export async function listMyChampionshipEventPlayerVotes(
 	eventId: number,
 ): Promise<ChampionshipEventPlayerVoteRow[]> {
 	const { data, error } = await supabase
 		.from("championship_event_player_votes")
-		.select("target_player_id, value")
+		.select("target_player_id, track, value")
 		.eq("event_id", eventId);
 
 	if (error) {
@@ -1096,6 +1126,7 @@ export async function listMyChampionshipEventPlayerVotes(
 		return [
 			{
 				target_player_id: Number(row.target_player_id),
+				track: asVoteTrack(row.track),
 				value,
 			},
 		];
@@ -1168,15 +1199,25 @@ export async function listChampionshipEventPlayerVoteCounts(
 	};
 }
 
+export type SubmitChampionshipEventPlayerVotesAttendance = {
+	player_id: number;
+	vote_rating_delta: number;
+	goalkeeper_vote_rating_delta: number;
+};
+
 export type SubmitChampionshipEventPlayerVotesResult = {
 	event_id: number;
 	votes: ChampionshipEventPlayerVoteRow[];
-	attendance: { player_id: number; vote_rating_delta: number }[];
+	attendance: SubmitChampionshipEventPlayerVotesAttendance[];
 };
 
 export async function submitChampionshipEventPlayerVotes(
 	eventId: number,
-	votes: { target_player_id: number; value: EventPlayerVoteChoice }[],
+	votes: {
+		target_player_id: number;
+		track: EventRatingTrack;
+		value: EventPlayerVoteChoice;
+	}[],
 ): Promise<SubmitChampionshipEventPlayerVotesResult> {
 	const { data, error } = await supabase.rpc(
 		"submit_championship_event_player_votes",
@@ -1210,6 +1251,7 @@ export async function submitChampionshipEventPlayerVotes(
 			return [
 				{
 					target_player_id: Number(vote.target_player_id),
+					track: asVoteTrack(vote.track),
 					value,
 				},
 			];
@@ -1228,6 +1270,9 @@ export async function submitChampionshipEventPlayerVotes(
 				{
 					player_id: attendance.player_id,
 					vote_rating_delta: Number(attendance.vote_rating_delta ?? 0),
+					goalkeeper_vote_rating_delta: Number(
+						attendance.goalkeeper_vote_rating_delta ?? 0,
+					),
 				},
 			];
 		}),
@@ -1238,11 +1283,13 @@ export async function voteChampionshipEventPlayer(
 	eventId: number,
 	targetPlayerId: number,
 	value: EventPlayerVoteChoice | null,
+	track: EventRatingTrack = EVENT_RATING_TRACK.line,
 ): Promise<VoteChampionshipEventPlayerResult> {
 	const { data, error } = await supabase.rpc("vote_championship_event_player", {
 		event_id: eventId,
 		target_player_id: targetPlayerId,
 		value,
+		track,
 	});
 
 	if (error) {
@@ -1253,6 +1300,7 @@ export async function voteChampionshipEventPlayer(
 	return {
 		event_id: Number(row.event_id ?? eventId),
 		target_player_id: Number(row.target_player_id ?? targetPlayerId),
+		track: asVoteTrack(row.track ?? track),
 		my_value: asVoteChoice(row.my_value),
 		vote_rating_delta: Number(row.vote_rating_delta ?? 0),
 	};

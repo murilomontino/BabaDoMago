@@ -138,18 +138,31 @@ export function eventRecapShareRatingChangesFromAttendance(
 	attendance: readonly ChampionshipEventAttendance[],
 ): readonly EventRecapShareRatingChange[] {
 	return attendance
-		.map((row) => {
-			const from = row.rating;
-			const delta = row.rating_delta;
-			const to = applyEventRatingDelta(from, delta);
-			return {
-				playerId: row.player_id,
-				name: row.display_name,
-				from,
-				to,
-				delta,
-				isMvp: row.is_mvp,
-			};
+		.flatMap((row) => {
+			const lineFrom = row.rating;
+			const lineDelta = row.rating_delta;
+			const lineTo = applyEventRatingDelta(lineFrom, lineDelta);
+			const gkFrom = row.goalkeeper_rating;
+			const gkDelta = row.goalkeeper_rating_delta;
+			const gkTo = applyEventRatingDelta(gkFrom, gkDelta);
+			return [
+				{
+					playerId: row.player_id,
+					name: row.display_name,
+					from: lineFrom,
+					to: lineTo,
+					delta: lineDelta,
+					isMvp: row.is_mvp && lineDelta !== 0,
+				},
+				{
+					playerId: row.player_id,
+					name: row.display_name,
+					from: gkFrom,
+					to: gkTo,
+					delta: gkDelta,
+					isMvp: row.is_mvp && gkDelta !== 0 && lineDelta === 0,
+				},
+			];
 		})
 		.filter((row) => row.from !== row.to)
 		.sort((left, right) => {

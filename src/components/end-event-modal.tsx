@@ -11,6 +11,7 @@ import {
 import { EVENT_MVP_LABEL, formatEventMvpCount } from "@/const/event-mvp";
 import {
 	type EventRatingPreviewRow,
+	EVENT_RATING_TRACK,
 	formatEventRating,
 } from "@/const/event-rating-adjustment";
 import {
@@ -18,7 +19,7 @@ import {
 	type EventRecapShareRatingChange,
 	eventRecapShareRatingChangesFromPreview,
 } from "@/const/event-recap-share";
-import { PLAYER_STAR_CLASS } from "@/const/player-rating";
+import { PLAYER_STAR_CLASS, PLAYER_STAR_FILL_CLASS } from "@/const/player-rating";
 import { BUTTON_VARIANT, CHIP_CLASS, ERROR_CLASS } from "@/const/ui";
 import { shareEventRecapImage } from "@/lib/share-event-recap-image";
 import type {
@@ -29,6 +30,7 @@ import type {
 type EndEventModalProps = {
 	rows: readonly EventRatingPreviewRow[];
 	ceiling: number;
+	goalkeeperCeiling?: number;
 	canSetMvp: boolean;
 	mvpCandidateIds: readonly number[];
 	missingAttendanceNames?: readonly string[];
@@ -46,9 +48,11 @@ type EndEventModalProps = {
 function RatingSnapshot({
 	rating,
 	ceiling,
+	fillClassName,
 }: {
 	rating: number;
 	ceiling: number;
+	fillClassName?: string;
 }) {
 	return (
 		<div className="flex min-w-0 items-center gap-1">
@@ -56,6 +60,7 @@ function RatingSnapshot({
 				rating={rating}
 				ceiling={ceiling}
 				starClassName={PLAYER_STAR_CLASS.compact}
+				fillClassName={fillClassName}
 			/>
 			<span className={CHIP_CLASS}>{formatEventRating(rating)}</span>
 		</div>
@@ -69,12 +74,22 @@ function EndEventPreviewCardBody({
 	row: EventRatingPreviewRow;
 	ceiling: number;
 }) {
+	const fillClassName =
+		row.track === EVENT_RATING_TRACK.goalkeeper
+			? PLAYER_STAR_FILL_CLASS.goalkeeper
+			: PLAYER_STAR_FILL_CLASS.line;
+
 	return (
 		<>
 			<div className="flex min-w-0 items-center gap-1">
 				<p className="min-w-0 truncate text-sm font-medium text-fg">
 					{row.name}
 				</p>
+				{row.track === EVENT_RATING_TRACK.goalkeeper && (
+					<span className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}>
+						GK
+					</span>
+				)}
 				{row.isMvp && (
 					<span className={`${EVENT_TEAM_POSITION_CHIP_CLASS} shrink-0`}>
 						{EVENT_MVP_LABEL.badge}
@@ -91,9 +106,17 @@ function EndEventPreviewCardBody({
 				</span>
 			</p>
 			<div className="mt-1 hidden flex-nowrap items-center gap-1 overflow-hidden md:flex">
-				<RatingSnapshot rating={row.from} ceiling={ceiling} />
+				<RatingSnapshot
+					rating={row.from}
+					ceiling={ceiling}
+					fillClassName={fillClassName}
+				/>
 				<span className="text-xs font-bold text-fg">→</span>
-				<RatingSnapshot rating={row.to} ceiling={ceiling} />
+				<RatingSnapshot
+					rating={row.to}
+					ceiling={ceiling}
+					fillClassName={fillClassName}
+				/>
 			</div>
 		</>
 	);
@@ -110,17 +133,23 @@ function mvpPreviewBorderClass(isMvp: boolean): string {
 function EndEventPreviewCard({
 	row,
 	ceiling,
+	goalkeeperCeiling,
 	canToggleMvp,
 	isPending,
 	onToggleMvp,
 }: {
 	row: EventRatingPreviewRow;
 	ceiling: number;
+	goalkeeperCeiling: number;
 	canToggleMvp: boolean;
 	isPending: boolean;
 	onToggleMvp: (playerId: number) => void;
 }) {
-	const body = <EndEventPreviewCardBody row={row} ceiling={ceiling} />;
+	const rowCeiling =
+		row.track === EVENT_RATING_TRACK.goalkeeper ? goalkeeperCeiling : ceiling;
+	const body = (
+		<EndEventPreviewCardBody row={row} ceiling={rowCeiling} />
+	);
 
 	if (!canToggleMvp) {
 		return <li className="rounded-lg border border-line p-2">{body}</li>;
@@ -145,6 +174,7 @@ function EndEventPreviewCard({
 export function EndEventModal({
 	rows,
 	ceiling,
+	goalkeeperCeiling = ceiling,
 	canSetMvp,
 	mvpCandidateIds,
 	missingAttendanceNames = [],
@@ -163,7 +193,15 @@ export function EndEventModal({
 	const [shareError, setShareError] = useState<string | null>(null);
 
 	const candidateIds = new Set(mvpCandidateIds);
-	const mvpCount = rows.filter((row) => row.isMvp).length;
+	const mvpCount = new Set(
+		rows.flatMap((row) => {
+			if (!row.isMvp) {
+				return [];
+			}
+
+			return [row.playerId];
+		}),
+	).size;
 
 	const ratingChanges: readonly EventRecapShareRatingChange[] =
 		eventRecapShareRatingChangesFromPreview(rows);
@@ -254,9 +292,10 @@ export function EndEventModal({
 							<ul className="mb-3 grid grid-cols-3 gap-2">
 								{rows.map((row) => (
 									<EndEventPreviewCard
-										key={row.playerId}
+										key={`${row.playerId}:${row.track}`}
 										row={row}
 										ceiling={ceiling}
+										goalkeeperCeiling={goalkeeperCeiling}
 										canToggleMvp={canSetMvp && candidateIds.has(row.playerId)}
 										isPending={isPending}
 										onToggleMvp={onToggleMvp}
