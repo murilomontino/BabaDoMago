@@ -69,6 +69,8 @@ import {
 	matchGoalEditAssistCandidates,
 	matchGoalEditPayload,
 	matchGoalEditScorerCandidates,
+	matchGoalAddPayload,
+	matchGoalAddScorerCandidates,
 	canEditEndedMatchGoal,
 	matchGoalkeeperDraftFromTeams,
 	matchIncompleteTeamNeedsClearGoalkeeper,
@@ -710,7 +712,25 @@ check(
 );
 check(EVENT_GOAL_LABEL.whoScored, "Quem fez o gol?", "edit who scored");
 check(EVENT_GOAL_LABEL.editHint.includes("tempo"), true, "edit hint tempo");
+check(EVENT_GOAL_LABEL.add, "Adicionar gol", "add goal label");
+check(EVENT_GOAL_LABEL.addHint.includes("Placar"), true, "add hint placar");
 check(EVENT_ACTION.editGoal, "Corrigir gol", "edit goal action");
+check(
+	matchGoalAddScorerCandidates(editPlayers)
+		.map((player) => player.player_id)
+		.join(","),
+	"1,2,4,3",
+	"add scorer sorts by team",
+);
+check(
+	matchGoalAddPayload(5, {
+		scorerPlayerId: 1,
+		kind: EVENT_GOAL_KIND.none,
+		assistPlayerId: null,
+	}).matchId,
+	5,
+	"add payload match id",
+);
 
 check(
 	formatGoalTimelineLine({

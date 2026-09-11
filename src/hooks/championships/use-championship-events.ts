@@ -20,6 +20,7 @@ import {
 	addChampionshipEventTeam,
 	type ChampionshipEventPlayerVoteCountsPayload,
 	type ChampionshipEventPlayerVoteRow,
+	addChampionshipEventEndedMatchGoal,
 	closeChampionshipEventPlayerVotes,
 	createChampionshipEvent,
 	deleteChampionshipEvent,
@@ -435,6 +436,37 @@ export function useUpdateChampionshipEventGoalPlayers(championshipId: number) {
 				scorerPlayerId,
 				assistPlayerId,
 				isOwnGoal,
+			),
+		onSuccess: async () => {
+			await Promise.all([
+				invalidateChampionshipEvents(queryClient, championshipId),
+				invalidateChampionshipQueries(queryClient),
+			]);
+		},
+	});
+}
+
+export function useAddChampionshipEventEndedMatchGoal(championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({
+			matchId,
+			scorerPlayerId,
+			assistPlayerId,
+			isOwnGoal,
+		}: {
+			matchId: number;
+			scorerPlayerId: number;
+			assistPlayerId: number | null;
+			isOwnGoal: boolean;
+		}) =>
+			addChampionshipEventEndedMatchGoal(
+				matchId,
+				scorerPlayerId,
+				assistPlayerId,
+				isOwnGoal,
+				null,
 			),
 		onSuccess: async () => {
 			await Promise.all([

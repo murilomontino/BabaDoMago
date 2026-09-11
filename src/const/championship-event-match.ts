@@ -424,6 +424,8 @@ export const EVENT_GOAL_LABEL = {
 	ownGoal: "Gol contra",
 	ownGoalShort: "Contra",
 	editHint: "O tempo do gol não muda.",
+	add: "Adicionar gol",
+	addHint: "Placar e vencedor atualizam na hora.",
 } as const;
 
 export const EVENT_MATCH_ICON = {
@@ -1119,6 +1121,38 @@ export function canEditEndedMatchGoal(
 	}
 
 	return !isOpenMatch(match);
+}
+
+export function matchGoalAddScorerCandidates(
+	players: readonly ChampionshipEventMatchPlayer[],
+): ChampionshipEventMatchPlayer[] {
+	return [...players].sort((left, right) => {
+		if (left.team_id !== right.team_id) {
+			return left.team_id - right.team_id;
+		}
+
+		return left.player_id - right.player_id;
+	});
+}
+
+export type MatchGoalAddPayload = {
+	matchId: number;
+	scorerPlayerId: number;
+	assistPlayerId: number | null;
+	isOwnGoal: boolean;
+};
+
+export function matchGoalAddPayload(
+	matchId: number,
+	draft: MatchGoalDraft,
+): MatchGoalAddPayload {
+	const payload = matchGoalPayload(draft);
+	return {
+		matchId,
+		scorerPlayerId: payload.scorerPlayerId,
+		assistPlayerId: payload.assistPlayerId,
+		isOwnGoal: payload.isOwnGoal,
+	};
 }
 
 export type MatchGoalEditPayload = {

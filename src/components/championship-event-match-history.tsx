@@ -1,6 +1,7 @@
 import { ChevronDown, Handshake, Star, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/button";
+import { ChampionshipEventAddGoalModal } from "@/components/championship-event-add-goal-modal";
 import { ChampionshipEventEditGoalModal } from "@/components/championship-event-edit-goal-modal";
 import { MatchupAnalysisPanel } from "@/components/event-matchup-analysis";
 import { EventTeamChip } from "@/components/event-team-player";
@@ -19,7 +20,9 @@ import {
 	EVENT_MATCH_ICON_LEGEND,
 	EVENT_MATCH_LABEL,
 	EVENT_MATCH_SUBSTITUTION_LABEL,
+	EVENT_GOAL_LABEL,
 	type EventMatchIcon,
+	type MatchGoalAddPayload,
 	type MatchGoalEditPayload,
 	formatMatchScore,
 	isOpenMatch,
@@ -63,9 +66,12 @@ type ChampionshipEventMatchHistoryProps = {
 	eventEnded: boolean;
 	editGoalPending?: boolean;
 	editGoalError?: string | null;
+	addGoalPending?: boolean;
+	addGoalError?: string | null;
 	onOpenMatch: (match: ChampionshipEventMatch) => void;
 	onRemoveMatch: (match: ChampionshipEventMatch) => void;
 	onEditGoal: (payload: MatchGoalEditPayload) => Promise<void>;
+	onAddGoal: (payload: MatchGoalAddPayload) => Promise<void>;
 };
 
 function MatchHistoryMatchupReview({
@@ -173,9 +179,12 @@ function MatchHistoryCard({
 	canOpenMatch,
 	editGoalPending,
 	editGoalError,
+	addGoalPending,
+	addGoalError,
 	onOpenMatch,
 	onRemoveMatch,
 	onEditGoal,
+	onAddGoal,
 }: {
 	match: ChampionshipEventMatch;
 	teamById: ReadonlyMap<number, ChampionshipEventTeam>;
@@ -188,14 +197,18 @@ function MatchHistoryCard({
 	canOpenMatch: boolean;
 	editGoalPending: boolean;
 	editGoalError: string | null;
+	addGoalPending: boolean;
+	addGoalError: string | null;
 	onOpenMatch: (match: ChampionshipEventMatch) => void;
 	onRemoveMatch: (match: ChampionshipEventMatch) => void;
 	onEditGoal: (payload: MatchGoalEditPayload) => Promise<void>;
+	onAddGoal: (payload: MatchGoalAddPayload) => Promise<void>;
 }) {
 	const [analysisOpen, setAnalysisOpen] = useState(false);
 	const [editingGoal, setEditingGoal] = useState<ChampionshipEventGoal | null>(
 		null,
 	);
+	const [addingGoal, setAddingGoal] = useState(false);
 	const teamA = teamById.get(match.team_a_id) ?? null;
 	const teamB = teamById.get(match.team_b_id) ?? null;
 	const review =
@@ -349,6 +362,20 @@ function MatchHistoryCard({
 							</ul>
 						</div>
 					)}
+					{canEditGoals && (
+						<div className="mt-2">
+							<Button
+								variant={BUTTON_VARIANT.secondary}
+								className="h-8 w-full text-xs"
+								disabled={editGoalPending || addGoalPending}
+								onClick={() => {
+									setAddingGoal(true);
+								}}
+							>
+								{EVENT_GOAL_LABEL.add}
+							</Button>
+						</div>
+					)}
 				</div>
 				{showMatchDelete && (
 					<button
@@ -411,6 +438,22 @@ function MatchHistoryCard({
 					}}
 				/>
 			)}
+			{addingGoal && (
+				<ChampionshipEventAddGoalModal
+					matchId={match.id}
+					matchPlayers={match.players}
+					rosterById={rosterById}
+					isPending={addGoalPending}
+					errorMessage={addGoalError}
+					onCancel={() => {
+						setAddingGoal(false);
+					}}
+					onSave={async (payload) => {
+						await onAddGoal(payload);
+						setAddingGoal(false);
+					}}
+				/>
+			)}
 		</li>
 	);
 }
@@ -427,9 +470,12 @@ export function ChampionshipEventMatchHistory({
 	eventEnded,
 	editGoalPending = false,
 	editGoalError = null,
+	addGoalPending = false,
+	addGoalError = null,
 	onOpenMatch,
 	onRemoveMatch,
 	onEditGoal,
+	onAddGoal,
 }: ChampionshipEventMatchHistoryProps) {
 	const teamById = new Map(teams.map((team) => [team.id, team]));
 	const hasOpenMatch = openEventMatch(matches) !== null;
@@ -473,9 +519,12 @@ export function ChampionshipEventMatchHistory({
 								})}
 								editGoalPending={editGoalPending}
 								editGoalError={editGoalError}
+								addGoalPending={addGoalPending}
+								addGoalError={addGoalError}
 								onOpenMatch={onOpenMatch}
 								onRemoveMatch={onRemoveMatch}
 								onEditGoal={onEditGoal}
+								onAddGoal={onAddGoal}
 							/>
 						))}
 					</ul>

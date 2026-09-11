@@ -79,6 +79,7 @@ import {
 import {
 	EVENT_MATCH_DELETE_LABEL,
 	isOpenMatch,
+	type MatchGoalAddPayload,
 	type MatchGoalEditPayload,
 } from "@/const/championship-event-match";
 import {
@@ -134,7 +135,10 @@ import {
 	roundTabRemoveTeam,
 	roundTabReopenMatch,
 } from "@/const/championship-event-round-tab-ui";
-import { useUpdateChampionshipEventGoalPlayers } from "@/hooks/championships/use-championship-events";
+import {
+	useAddChampionshipEventEndedMatchGoal,
+	useUpdateChampionshipEventGoalPlayers,
+} from "@/hooks/championships/use-championship-events";
 import { useChampionshipEventRoundTabUi } from "@/hooks/use-championship-event-round-tab-ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type {
@@ -401,10 +405,13 @@ export function ChampionshipEventRoundTab({
 	const showAttendanceOwnerActions = canOverrideEnded && !showTeamBuilder;
 	const showAddTeam = canOverrideEnded && !showTeamBuilder;
 	const showMatchDelete = canOverrideEnded && !showTeamBuilder;
-	const showGoalEdit = showMatchDelete;
+	const showGoalEdit = canManage && !showTeamBuilder;
 	const ui = useChampionshipEventRoundTabUi();
 	const navigate = useNavigate();
 	const updateGoalPlayers = useUpdateChampionshipEventGoalPlayers(
+		event.championship_id,
+	);
+	const addEndedMatchGoal = useAddChampionshipEventEndedMatchGoal(
 		event.championship_id,
 	);
 
@@ -733,6 +740,8 @@ export function ChampionshipEventRoundTab({
 					eventEnded={ended}
 					editGoalPending={updateGoalPlayers.isPending}
 					editGoalError={mutationErrorMessage(updateGoalPlayers)}
+					addGoalPending={addEndedMatchGoal.isPending}
+					addGoalError={mutationErrorMessage(addEndedMatchGoal)}
 					onOpenMatch={(match) => {
 						if (isOpenMatch(match)) {
 							void onOpenMatch(match);
@@ -746,6 +755,9 @@ export function ChampionshipEventRoundTab({
 					}}
 					onEditGoal={async (payload: MatchGoalEditPayload) => {
 						await updateGoalPlayers.mutateAsync(payload);
+					}}
+					onAddGoal={async (payload: MatchGoalAddPayload) => {
+						await addEndedMatchGoal.mutateAsync(payload);
 					}}
 				/>
 			)}
