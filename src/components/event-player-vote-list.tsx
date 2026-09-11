@@ -9,19 +9,23 @@ import {
 	formHeatmapEndedColumns,
 	playerFormHeatmapCells,
 } from "@/const/championship-form-heatmap";
+import type {
+	EventPlayerVoteChoice,
+	EventPlayerVoteCount,
+	EventPlayerVoteDraft,
+	EventPlayerVoteTargetKey,
+} from "@/const/event-player-vote";
 import {
 	canSetEventPlayerVoteDraft,
 	canVoteEventPlayer,
 	EVENT_PLAYER_VOTE,
 	EVENT_PLAYER_VOTE_LABEL,
 	EVENT_PLAYER_VOTE_LIST_KIND,
-	type EventPlayerVoteChoice,
-	type EventPlayerVoteCount,
-	type EventPlayerVoteDraft,
 	eventPlayerVoteBudgetSummary,
 	eventPlayerVoteCardClassName,
 	eventPlayerVoteChipLabel,
 	eventPlayerVoteChoiceLabel,
+	eventPlayerVoteDisplayRating,
 	eventPlayerVoteListEntriesForRow,
 	eventPlayerVoteShowsSavedChoice,
 	eventPlayerVoteTargetKey,
@@ -89,7 +93,7 @@ type EventPlayerVoteListProps = {
 	ballotLocked: boolean;
 	showBudget: boolean;
 	allowSelfVote: boolean;
-	voteCounts: ReadonlyMap<number, EventPlayerVoteCount> | null;
+	voteCounts: ReadonlyMap<EventPlayerVoteTargetKey, EventPlayerVoteCount> | null;
 	error: string | null;
 	onDraftChange: (
 		targetPlayerId: number,
@@ -262,7 +266,6 @@ export function EventPlayerVoteList({
 								);
 								const name = playerVisibleName(player);
 								const isSelf = voterPlayerId === row.player_id;
-								const count = voteCounts?.get(row.player_id);
 								const entries = eventPlayerVoteListEntriesForRow(
 									row,
 									ratingMinMatches,
@@ -273,11 +276,19 @@ export function EventPlayerVoteList({
 										const track = entry.track;
 										const isGoalkeeper =
 											track === EVENT_RATING_TRACK.goalkeeper;
-										const rating = eventActivePlayerRating(
+										const liveRating = eventActivePlayerRating(
 											isGoalkeeper,
-											row.rating,
-											row.goalkeeper_rating,
+											player.rating,
+											player.goalkeeper_rating,
 										);
+										const trackDelta = track
+											? eventPlayerVoteTrackDelta(row, track)
+											: 0;
+										const ratingDisplay = eventPlayerVoteDisplayRating({
+											liveRating,
+											voteDelta: trackDelta,
+										});
+										const rating = ratingDisplay.display;
 										const ratingCeiling = isGoalkeeper
 											? goalkeeperCeiling
 											: ceiling;
@@ -334,7 +345,9 @@ export function EventPlayerVoteList({
 																	starClassName={PLAYER_STAR_CLASS.compact}
 																	fillClassName={fillClassName}
 																/>
-																<span className={CHIP_CLASS}>{rating}</span>
+																<span className={CHIP_CLASS}>
+																	{ratingDisplay.label}
+																</span>
 																<span>
 																	{EVENT_PLAYER_VOTE_LABEL.matches}{" "}
 																	{entry.matches}
@@ -360,12 +373,18 @@ export function EventPlayerVoteList({
 										row.player_id,
 										track,
 									);
+									const count = voteCounts?.get(targetKey) ?? null;
 									const trackDelta = eventPlayerVoteTrackDelta(row, track);
-									const rating = eventActivePlayerRating(
+									const liveRating = eventActivePlayerRating(
 										isGoalkeeper,
-										row.rating,
-										row.goalkeeper_rating,
+										player.rating,
+										player.goalkeeper_rating,
 									);
+									const ratingDisplay = eventPlayerVoteDisplayRating({
+										liveRating,
+										voteDelta: trackDelta,
+									});
+									const rating = ratingDisplay.display;
 									const ratingCeiling = isGoalkeeper
 										? goalkeeperCeiling
 										: ceiling;
@@ -503,7 +522,9 @@ export function EventPlayerVoteList({
 															starClassName={PLAYER_STAR_CLASS.compact}
 															fillClassName={fillClassName}
 														/>
-														<span className={CHIP_CLASS}>{rating}</span>
+														<span className={CHIP_CLASS}>
+															{ratingDisplay.label}
+														</span>
 														<span>
 															{EVENT_PLAYER_VOTE_LABEL.matches}{" "}
 															{entry.matches}

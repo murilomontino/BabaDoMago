@@ -6,6 +6,8 @@ import { playerRatingSchema } from "@/const/form-schema";
 import {
 	formatHiddenStrength,
 	HIDDEN_STRENGTH_LABEL,
+	HIDDEN_STRENGTH_TRACK,
+	type HiddenStrengthTrack,
 } from "@/const/hidden-strength";
 import {
 	PLAYER_RATING_INPUT,
@@ -22,6 +24,11 @@ export type RosterPlayerRatingProps = {
 	goalkeeperCeiling?: number;
 	onChangeRating?: (playerId: number, rating: number) => void;
 	onChangeGoalkeeperRating?: (playerId: number, rating: number) => void;
+	onChangeHiddenStrength?: (
+		playerId: number,
+		value: number,
+		track: HiddenStrengthTrack,
+	) => void;
 	ratingPlayerId?: number | null;
 	hiddenLine?: number;
 	hiddenGoalkeeper?: number;
@@ -90,6 +97,65 @@ function RosterRatingInput({
 	);
 }
 
+function RosterHiddenInput({
+	value,
+	disabled,
+	onCommit,
+}: {
+	value: number;
+	disabled: boolean;
+	onCommit: (value: number) => void;
+}) {
+	const [draft, setDraft] = useState(String(value));
+
+	useEffect(() => {
+		setDraft(String(value));
+	}, [value]);
+
+	function revert() {
+		setDraft(String(value));
+	}
+
+	function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+		if (event.key === "Escape") {
+			revert();
+			event.currentTarget.blur();
+			return;
+		}
+
+		if (event.key !== "Enter") {
+			return;
+		}
+
+		event.preventDefault();
+		const parsed = parsePlayerRatingInput(draft);
+		if (parsed === null) {
+			revert();
+			return;
+		}
+
+		onCommit(parsed);
+		event.currentTarget.blur();
+	}
+
+	return (
+		<input
+			type="text"
+			inputMode="decimal"
+			aria-label={HIDDEN_STRENGTH_LABEL.ariaLabel}
+			title={HIDDEN_STRENGTH_LABEL.ariaLabel}
+			disabled={disabled}
+			value={draft}
+			className={`${CHIP_CLASS} w-12 border-0 text-center text-fg-muted outline-none focus:ring-2 focus:ring-pitch/20`}
+			onChange={(event) => {
+				setDraft(event.target.value);
+			}}
+			onBlur={revert}
+			onKeyDown={handleKeyDown}
+		/>
+	);
+}
+
 function RosterRatingTrack({
 	rating,
 	ceiling,
@@ -99,6 +165,7 @@ function RosterRatingTrack({
 	fillClassName,
 	onChange,
 	hiddenStrength,
+	onChangeHidden,
 }: {
 	rating: number;
 	ceiling: number;
@@ -108,6 +175,7 @@ function RosterRatingTrack({
 	fillClassName: string;
 	onChange?: (rating: number) => void;
 	hiddenStrength?: number;
+	onChangeHidden?: (value: number) => void;
 }) {
 	return (
 		<div className="flex items-center gap-2">
@@ -144,7 +212,14 @@ function RosterRatingTrack({
 			{isOwnerViewer && !onChange && (
 				<span className={CHIP_CLASS}>{rating}</span>
 			)}
-			{isOwnerViewer && hiddenStrength !== undefined && (
+			{isOwnerViewer && hiddenStrength !== undefined && onChangeHidden && (
+				<RosterHiddenInput
+					value={hiddenStrength}
+					disabled={busy}
+					onCommit={onChangeHidden}
+				/>
+			)}
+			{isOwnerViewer && hiddenStrength !== undefined && !onChangeHidden && (
 				<span
 					className={`${CHIP_CLASS} text-fg-muted`}
 					title={HIDDEN_STRENGTH_LABEL.ariaLabel}
@@ -163,6 +238,7 @@ export function RosterPlayerRating({
 	goalkeeperCeiling = ceiling,
 	onChangeRating,
 	onChangeGoalkeeperRating,
+	onChangeHiddenStrength,
 	ratingPlayerId,
 	hiddenLine,
 	hiddenGoalkeeper,
@@ -184,21 +260,43 @@ export function RosterPlayerRating({
 						: undefined
 				}
 				hiddenStrength={hiddenLine}
-			/>
-			<RosterRatingTrack
-				rating={player.goalkeeper_rating}
-				ceiling={goalkeeperCeiling}
-				isOwnerViewer={isOwnerViewer}
-				busy={busy}
-				ariaLabel={PLAYER_RATING_INPUT.goalkeeperAriaLabel}
-				fillClassName={PLAYER_STAR_FILL_CLASS.goalkeeper}
-				onChange={
-					onChangeGoalkeeperRating
-						? (rating) => onChangeGoalkeeperRating(player.id, rating)
+				onChangeHidden={
+					onChangeHiddenStrength
+						? (value) =>
+								onChangeHiddenStrength(
+									player.id,
+									value,
+									HIDDEN_STRENGTH_TRACK.line,
+								)
 						: undefined
 				}
-				hiddenStrength={hiddenGoalkeeper}
 			/>
+			{player.is_goalkeeper && (
+				<RosterRatingTrack
+					rating={player.goalkeeper_rating}
+					ceiling={goalkeeperCeiling}
+					isOwnerViewer={isOwnerViewer}
+					busy={busy}
+					ariaLabel={PLAYER_RATING_INPUT.goalkeeperAriaLabel}
+					fillClassName={PLAYER_STAR_FILL_CLASS.goalkeeper}
+					onChange={
+						onChangeGoalkeeperRating
+							? (rating) => onChangeGoalkeeperRating(player.id, rating)
+							: undefined
+					}
+					hiddenStrength={hiddenGoalkeeper}
+					onChangeHidden={
+						onChangeHiddenStrength
+							? (value) =>
+									onChangeHiddenStrength(
+										player.id,
+										value,
+										HIDDEN_STRENGTH_TRACK.goalkeeper,
+									)
+							: undefined
+					}
+				/>
+			)}
 		</div>
 	);
 }

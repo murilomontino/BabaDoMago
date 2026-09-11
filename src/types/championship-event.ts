@@ -30,6 +30,8 @@ export type ChampionshipEventAttendance = {
 	goalkeeper_rating_delta: number;
 	vote_rating_delta: number;
 	goalkeeper_vote_rating_delta: number;
+	vote_rating_applied?: number;
+	goalkeeper_vote_rating_applied?: number;
 	hidden_strength?: number;
 	hidden_strength_delta?: number;
 	hidden_goalkeeper_strength?: number;

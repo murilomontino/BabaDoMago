@@ -22,6 +22,7 @@ import {
 	updateChampionshipEventConfig,
 	updateChampionshipVisibility,
 	updatePlayerGoalkeeperRating,
+	updatePlayerHiddenStrength,
 	updatePlayerNickname,
 	updatePlayerRating,
 	uploadChampionshipLogo,
@@ -144,6 +145,25 @@ export function useUpdatePlayerGoalkeeperRating() {
 	return useMutation({
 		mutationFn: ({ playerId, rating }: { playerId: number; rating: number }) =>
 			updatePlayerGoalkeeperRating(playerId, rating),
+		onSuccess: async () => {
+			await invalidateChampionshipQueries(queryClient);
+		},
+	});
+}
+
+export function useUpdatePlayerHiddenStrength() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({
+			playerId,
+			value,
+			track,
+		}: {
+			playerId: number;
+			value: number;
+			track: "line" | "goalkeeper";
+		}) => updatePlayerHiddenStrength(playerId, value, track),
 		onSuccess: async () => {
 			await invalidateChampionshipQueries(queryClient);
 		},

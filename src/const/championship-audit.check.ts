@@ -18,6 +18,10 @@ check(
 	isAuditAction(AUDIT_ACTION.updatePlayerGoalkeeperRating),
 	"gk rating action",
 );
+check(
+	isAuditAction(AUDIT_ACTION.updatePlayerHiddenStrength),
+	"hidden strength action",
+);
 check(isAuditAction(AUDIT_ACTION.drawEventTeams), "draw action");
 check(!isAuditAction("nope"), "unknown action");
 check(
@@ -28,6 +32,11 @@ check(
 	auditActionLabel(AUDIT_ACTION.updatePlayerGoalkeeperRating) ===
 		"Nota goleiro alterada",
 	"gk rating label",
+);
+check(
+	auditActionLabel(AUDIT_ACTION.updatePlayerHiddenStrength) ===
+		"Nota oculta alterada",
+	"hidden strength label",
 );
 check(
 	auditActionLabel(AUDIT_ACTION.drawEventTeams) === "Times sorteados",

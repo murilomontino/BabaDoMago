@@ -29,7 +29,10 @@ import {
 	CHAMPIONSHIP_ROLE,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
-import type { HiddenStrengthCurrent } from "@/const/hidden-strength";
+import type {
+	HiddenStrengthCurrent,
+	HiddenStrengthTrack,
+} from "@/const/hidden-strength";
 import { championshipRatingCeiling } from "@/const/player-rating";
 import { filterPlayersBySearch, PLAYER_SEARCH } from "@/const/player-search";
 import {
@@ -59,6 +62,11 @@ type ChampionshipRosterProps = {
 	onClaim?: (playerId: number) => void;
 	onChangeRating?: (playerId: number, rating: number) => void;
 	onChangeGoalkeeperRating?: (playerId: number, rating: number) => void;
+	onChangeHiddenStrength?: (
+		playerId: number,
+		value: number,
+		track: HiddenStrengthTrack,
+	) => void;
 	ratingPlayerId?: number | null;
 	onEditNickname?: (playerId: number) => void;
 	nicknamePlayerId?: number | null;
@@ -134,6 +142,7 @@ export function ChampionshipRoster({
 	onClaim,
 	onChangeRating,
 	onChangeGoalkeeperRating,
+	onChangeHiddenStrength,
 	ratingPlayerId,
 	onEditNickname,
 	nicknamePlayerId,
@@ -210,6 +219,7 @@ export function ChampionshipRoster({
 			goalkeeperCeiling,
 			onChangeRating,
 			onChangeGoalkeeperRating,
+			onChangeHiddenStrength,
 			ratingPlayerId,
 		}),
 		[
@@ -219,6 +229,7 @@ export function ChampionshipRoster({
 			goalkeeperCeiling,
 			onChangeRating,
 			onChangeGoalkeeperRating,
+			onChangeHiddenStrength,
 			ratingPlayerId,
 		],
 	);
