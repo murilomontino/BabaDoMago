@@ -10,7 +10,10 @@ import { Button } from "@/components/button";
 import { ChampionshipRoster } from "@/components/championship-roster";
 import { SectionCard } from "@/components/section-card";
 import type { AssignableChampionshipRole } from "@/const/championship-role";
-import type { HiddenStrengthCurrent } from "@/const/hidden-strength";
+import type {
+	HiddenStrengthCurrent,
+	HiddenStrengthTrack,
+} from "@/const/hidden-strength";
 import { PLAYER_RATING } from "@/const/player-rating";
 import { filterPlayersBySearch } from "@/const/player-search";
 import {
@@ -63,6 +66,11 @@ type ChampionshipRosterTabProps = {
 	onClaim: (playerId: number) => void;
 	onChangeRating: (playerId: number, rating: number) => void;
 	onChangeGoalkeeperRating: (playerId: number, rating: number) => void;
+	onChangeHiddenStrength?: (
+		playerId: number,
+		value: number,
+		track: HiddenStrengthTrack,
+	) => void;
 	onEditNickname: (playerId: number) => void;
 	onEditEventStats?: (playerId: number) => void;
 	eventStatsPlayerId?: number | null;
@@ -105,6 +113,7 @@ export function ChampionshipRosterTab({
 	onClaim,
 	onChangeRating,
 	onChangeGoalkeeperRating,
+	onChangeHiddenStrength,
 	onEditNickname,
 	onEditEventStats,
 	eventStatsPlayerId,
@@ -263,6 +272,10 @@ export function ChampionshipRosterTab({
 				onChangeGoalkeeperRating={handlerWhenAllowed(
 					canUpdateRating,
 					onChangeGoalkeeperRating,
+				)}
+				onChangeHiddenStrength={handlerWhenAllowed(
+					isOwnerViewer,
+					onChangeHiddenStrength,
 				)}
 				ratingPlayerId={ratingPlayerId}
 				onEditNickname={onEditNickname}

@@ -57,6 +57,7 @@ check(hiddenStrengthSeed(4, 5) === 80, "4 of 5 rescales to 80");
 check(hiddenStrengthSeed(2.7, 5) === 54, "semente baixa nao vira 1");
 check(hiddenStrengthSeed(6, 5) === 100, "above ceiling clamps");
 check(hiddenStrengthSeed(3, 0) === 0, "sem teto fica sentinela");
+check(hiddenStrengthSeed(4, 5) === 80, "commit 0 → seed da pública no teto");
 check(hiddenStrengthApply(100, 8.3) === 100, "teto 100");
 check(hiddenStrengthApply(99.5, 8.3) === 100, "sobe ate 100");
 check(hiddenStrengthApply(1, -8.3) === 1, "piso 1");

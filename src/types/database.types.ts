@@ -1190,6 +1190,14 @@ export type Database = {
 				Args: { player_id: number; rating: number };
 				Returns: Json;
 			};
+			update_player_hidden_strength: {
+				Args: {
+					player_id: number;
+					value: number;
+					track?: string;
+				};
+				Returns: Json;
+			};
 		};
 		Enums: {
 			[_ in never]: never;

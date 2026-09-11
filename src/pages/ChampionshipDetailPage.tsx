@@ -72,6 +72,7 @@ import {
 	rememberChampionshipTab,
 	visibleChampionshipTab,
 } from "@/const/championship-tab";
+import type { HiddenStrengthTrack } from "@/const/hidden-strength";
 import {
 	confirmClaimPlayerMessage,
 	normalizeNicknameTags,
@@ -108,6 +109,7 @@ import {
 	useUpdateChampionshipEventConfig,
 	useUpdateChampionshipVisibility,
 	useUpdatePlayerGoalkeeperRating,
+	useUpdatePlayerHiddenStrength,
 	useUpdatePlayerNickname,
 	useUpdatePlayerRating,
 	useUploadChampionshipLogo,
@@ -162,6 +164,7 @@ export function ChampionshipDetailPage() {
 	const removePlayer = useRemovePlayer();
 	const updateRating = useUpdatePlayerRating();
 	const updateGoalkeeperRating = useUpdatePlayerGoalkeeperRating();
+	const updateHiddenStrength = useUpdatePlayerHiddenStrength();
 	const updateNickname = useUpdatePlayerNickname();
 	const eventsQuery = useChampionshipEvents(championshipId);
 	useEffect(() => {
@@ -384,6 +387,31 @@ export function ChampionshipDetailPage() {
 			updateGoalkeeperRating.reset,
 			applyRating,
 		],
+	);
+
+	const handleChangeHiddenStrength = useCallback(
+		(playerId: number, value: number, track: HiddenStrengthTrack) => {
+			if (!user || !data || data.created_by !== user.id) {
+				return;
+			}
+
+			const player = activePlayers.find((item) => item.id === playerId);
+			if (!player) {
+				return;
+			}
+
+			const current =
+				track === "goalkeeper"
+					? (player.hidden_goalkeeper_strength ?? PLAYER_RATING.default)
+					: (player.hidden_strength ?? PLAYER_RATING.default);
+
+			if (value !== PLAYER_RATING.default && current === value) {
+				return;
+			}
+
+			updateHiddenStrength.mutate({ playerId, value, track });
+		},
+		[user, data, activePlayers, updateHiddenStrength.mutate],
 	);
 
 	function handleRatingCancel() {
@@ -833,10 +861,16 @@ export function ChampionshipDetailPage() {
 								ratingPlayerId={
 									pendingMutationId(updateRating)?.playerId ??
 									pendingMutationId(updateGoalkeeperRating)?.playerId ??
+									pendingMutationId(updateHiddenStrength)?.playerId ??
 									null
 								}
 								ratingError={mutationErrorMessage(
-									updateRating.isError ? updateRating : updateGoalkeeperRating,
+									[
+										updateRating,
+										updateGoalkeeperRating,
+										updateHiddenStrength,
+									].find((mutation) => mutation.isError) ??
+										updateHiddenStrength,
 									Boolean(pendingRatingChange),
 								)}
 								nicknamePlayerId={
@@ -860,6 +894,7 @@ export function ChampionshipDetailPage() {
 								onClaim={handleClaim}
 								onChangeRating={handleChangeRating}
 								onChangeGoalkeeperRating={handleChangeGoalkeeperRating}
+								onChangeHiddenStrength={handleChangeHiddenStrength}
 								onEditNickname={handleEditNickname}
 								onEditEventStats={handlerWhenAllowed(
 									permissions.overrideEnded,

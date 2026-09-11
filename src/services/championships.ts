@@ -387,6 +387,24 @@ export async function updatePlayerGoalkeeperRating(
 	return asPlayer(data);
 }
 
+export async function updatePlayerHiddenStrength(
+	playerId: number,
+	value: number,
+	track: "line" | "goalkeeper" = "line",
+): Promise<ChampionshipPlayer> {
+	const { data, error } = await supabase.rpc("update_player_hidden_strength", {
+		player_id: playerId,
+		value,
+		track,
+	});
+
+	if (error) {
+		throw error;
+	}
+
+	return asPlayer(data);
+}
+
 export async function updatePlayerNickname(
 	playerId: number,
 	nickname: string,
