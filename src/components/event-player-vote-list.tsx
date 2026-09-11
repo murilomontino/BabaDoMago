@@ -14,17 +14,20 @@ import {
 	canVoteEventPlayer,
 	EVENT_PLAYER_VOTE,
 	EVENT_PLAYER_VOTE_LABEL,
+	EVENT_PLAYER_VOTE_LIST_KIND,
 	type EventPlayerVoteChoice,
 	type EventPlayerVoteCount,
 	type EventPlayerVoteDraft,
 	eventPlayerVoteBudgetSummary,
+	eventPlayerVoteCardClassName,
 	eventPlayerVoteChipLabel,
 	eventPlayerVoteChoiceLabel,
-	EVENT_PLAYER_VOTE_LIST_KIND,
 	eventPlayerVoteListEntriesForRow,
 	eventPlayerVoteShowsSavedChoice,
 	eventPlayerVoteTargetKey,
 	eventPlayerVoteTeamSections,
+	eventPlayerVoteTrackBadgeClassName,
+	eventPlayerVoteTrackBadgeLabel,
 	eventPlayerVoteTrackDelta,
 	eventPlayerVoteTrackLabel,
 	isEventPlayerVoteLocked,
@@ -35,7 +38,11 @@ import {
 	type EventRatingTrack,
 	eventActivePlayerRating,
 } from "@/const/event-rating-adjustment";
-import { eventTeamColorStyle } from "@/const/event-team-color";
+import {
+	eventTeamColorBadgeStyle,
+	eventTeamColorStyle,
+	eventTeamColorWashStyle,
+} from "@/const/event-team-color";
 import { playerVisibleName } from "@/const/player-name";
 import {
 	PLAYER_STAR_CLASS,
@@ -277,11 +284,20 @@ export function EventPlayerVoteList({
 										const fillClassName = isGoalkeeper
 											? PLAYER_STAR_FILL_CLASS.goalkeeper
 											: PLAYER_STAR_FILL_CLASS.line;
+										const cardStyle = isGoalkeeper
+											? eventTeamColorWashStyle(section.color)
+											: undefined;
+										const badgeStyle = isGoalkeeper
+											? eventTeamColorBadgeStyle(section.color)
+											: undefined;
 
 										return [
 											<li
 												key={entry.key}
-												className="flex flex-col gap-2 rounded-md bg-surface-muted px-2 py-2 text-fg opacity-80"
+												className={eventPlayerVoteCardClassName(track, {
+													belowMin: true,
+												})}
+												style={cardStyle}
 											>
 												<div className="flex min-w-0 items-start gap-3">
 													<VotePlayerAvatar
@@ -294,6 +310,17 @@ export function EventPlayerVoteList({
 																{name}
 															</p>
 															{track && (
+																<span
+																	className={eventPlayerVoteTrackBadgeClassName(
+																		track,
+																	)}
+																	style={badgeStyle}
+																>
+																	{eventPlayerVoteTrackBadgeLabel(track)}
+																</span>
+															)}
+															{track ===
+																EVENT_RATING_TRACK.goalkeeper && (
 																<span className={CHIP_CLASS}>
 																	{eventPlayerVoteTrackLabel(track)}
 																</span>
@@ -405,11 +432,18 @@ export function EventPlayerVoteList({
 									const fillClassName = isGoalkeeper
 										? PLAYER_STAR_FILL_CLASS.goalkeeper
 										: PLAYER_STAR_FILL_CLASS.line;
+									const cardStyle = isGoalkeeper
+										? eventTeamColorWashStyle(section.color)
+										: undefined;
+									const badgeStyle = isGoalkeeper
+										? eventTeamColorBadgeStyle(section.color)
+										: undefined;
 
 									return [
 										<li
 											key={entry.key}
-											className="flex flex-col gap-2 rounded-md bg-surface-muted px-2 py-2 text-fg"
+											className={eventPlayerVoteCardClassName(track)}
+											style={cardStyle}
 										>
 											<div className="flex min-w-0 items-start gap-3">
 												<VotePlayerAvatar
@@ -421,9 +455,19 @@ export function EventPlayerVoteList({
 														<p className="truncate text-sm font-medium text-fg">
 															{name}
 														</p>
-														<span className={CHIP_CLASS}>
-															{eventPlayerVoteTrackLabel(track)}
+														<span
+															className={eventPlayerVoteTrackBadgeClassName(
+																track,
+															)}
+															style={badgeStyle}
+														>
+															{eventPlayerVoteTrackBadgeLabel(track)}
 														</span>
+														{isGoalkeeper && (
+															<span className={CHIP_CLASS}>
+																{eventPlayerVoteTrackLabel(track)}
+															</span>
+														)}
 														{chip && <span className={CHIP_CLASS}>{chip}</span>}
 														{locked && (
 															<span className={CHIP_CLASS}>

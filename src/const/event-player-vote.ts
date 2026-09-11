@@ -83,6 +83,7 @@ export const EVENT_PLAYER_VOTE_LABEL = {
 	dislikeBudget: "Dislikes",
 	trackLine: "Como jogador",
 	trackGoalkeeper: "Como goleiro",
+	trackGoalkeeperBadge: "GK",
 	belowMinMatches:
 		"Participante não atingiu o limite mínimo de partidas para entrar em votação",
 } as const;
@@ -213,6 +214,48 @@ export function eventPlayerVoteTrackLabel(track: EventRatingTrack): string {
 			return _exhaustive;
 		}
 	}
+}
+
+export function eventPlayerVoteCardClassName(
+	track: EventRatingTrack | null,
+	options: { belowMin?: boolean } = {},
+): string {
+	const belowMin = options.belowMin === true;
+	const base =
+		"flex flex-col gap-2 rounded-md px-2 py-2 text-fg";
+	if (track === EVENT_RATING_TRACK.goalkeeper) {
+		if (belowMin) {
+			return `${base} border border-line/50 bg-surface-muted/60 opacity-80`;
+		}
+
+		return `${base} border border-line/40 bg-surface-muted/40`;
+	}
+
+	if (belowMin) {
+		return `${base} bg-surface-muted opacity-80`;
+	}
+
+	return `${base} bg-surface-muted`;
+}
+
+export function eventPlayerVoteTrackBadgeClassName(
+	track: EventRatingTrack,
+): string {
+	if (track === EVENT_RATING_TRACK.goalkeeper) {
+		return "rounded bg-fg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white";
+	}
+
+	return "rounded bg-surface px-1.5 py-0.5 text-xs font-medium tabular-nums text-fg-muted";
+}
+
+export function eventPlayerVoteTrackBadgeLabel(
+	track: EventRatingTrack,
+): string {
+	if (track === EVENT_RATING_TRACK.goalkeeper) {
+		return EVENT_PLAYER_VOTE_LABEL.trackGoalkeeperBadge;
+	}
+
+	return eventPlayerVoteTrackLabel(track);
 }
 
 export function eventPlayerVoteTrackEligible(
