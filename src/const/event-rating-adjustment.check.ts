@@ -3,6 +3,7 @@ import {
 	EVENT_RATING_ADJUSTMENT,
 	EVENT_RATING_DROP_SHARE,
 	EVENT_RATING_INITIAL,
+	EVENT_RATING_TRACK,
 	eventActivePlayerRating,
 	eventHasDominantTeam,
 	eventHasDominantTeamFromMatchups,
@@ -11,6 +12,7 @@ import {
 	eventRatingDelta,
 	eventRatingDrawPoints,
 	eventRatingDropShareExcludedPlayerIds,
+	eventRatingEffectiveTrackStats,
 	eventRatingInDeadZone,
 	eventRatingInitial,
 	eventRatingPreview,
@@ -1047,5 +1049,135 @@ check(dualTrackPreview[0]?.track, "line", "primeiro track linha");
 check(dualTrackPreview[1]?.track, "goalkeeper", "segundo track goleiro");
 check(dualTrackPreview[0]?.isMvp, true, "mvp na linha quando flag linha");
 check(dualTrackPreview[1]?.isMvp, false, "mvp nao duplica no goleiro");
+
+const mergeLineStats = eventRatingEffectiveTrackStats(
+	{ wins: 2, draws: 0, losses: 1, matches: 3 },
+	{ wins: 1, draws: 0, losses: 1, matches: 2 },
+	5,
+);
+check(mergeLineStats.mergedInto, EVENT_RATING_TRACK.line, "3+2 merge linha");
+check(mergeLineStats.line.matches, 5, "3+2 linha soma matches");
+check(mergeLineStats.line.wins, 3, "3+2 linha soma wins");
+check(mergeLineStats.gk.matches, 0, "3+2 goleiro zera");
+
+const mergeGkStats = eventRatingEffectiveTrackStats(
+	{ wins: 1, draws: 0, losses: 1, matches: 2 },
+	{ wins: 2, draws: 0, losses: 1, matches: 3 },
+	5,
+);
+check(mergeGkStats.mergedInto, EVENT_RATING_TRACK.goalkeeper, "2+3 merge gk");
+check(mergeGkStats.gk.matches, 5, "2+3 gk soma matches");
+check(mergeGkStats.line.matches, 0, "2+3 linha zera");
+
+const mergeTieStats = eventRatingEffectiveTrackStats(
+	{ wins: 1, draws: 0, losses: 1, matches: 2 },
+	{ wins: 1, draws: 1, losses: 0, matches: 2 },
+	4,
+);
+check(mergeTieStats.mergedInto, EVENT_RATING_TRACK.line, "empate merge linha");
+check(mergeTieStats.line.matches, 4, "empate soma na linha");
+
+const noMergeIndependent = eventRatingEffectiveTrackStats(
+	{ wins: 4, draws: 0, losses: 1, matches: 5 },
+	{ wins: 1, draws: 0, losses: 0, matches: 1 },
+	5,
+);
+check(noMergeIndependent.mergedInto, null, "5+1 sem merge");
+check(noMergeIndependent.line.matches, 5, "5+1 linha intacta");
+check(noMergeIndependent.gk.matches, 1, "5+1 gk intacto");
+
+const noMergeBelowSum = eventRatingEffectiveTrackStats(
+	{ wins: 1, draws: 0, losses: 1, matches: 2 },
+	{ wins: 1, draws: 0, losses: 1, matches: 2 },
+	5,
+);
+check(noMergeBelowSum.mergedInto, null, "2+2 min 5 sem merge");
+check(noMergeBelowSum.line.matches, 2, "2+2 linha intacta");
+
+const mergeLinePreview = eventRatingPreview({
+	attendance: [
+		{
+			player_id: 1,
+			display_name: "Merge",
+			wins: 3,
+			draws: 0,
+			losses: 2,
+			matches: 5,
+			is_goalkeeper: false,
+			rating: 4,
+			goalkeeper_rating: 3,
+			line_wins: 2,
+			line_draws: 0,
+			line_losses: 1,
+			line_matches: 3,
+			gk_wins: 1,
+			gk_draws: 0,
+			gk_losses: 1,
+			gk_matches: 2,
+		},
+	],
+	players: [
+		{
+			id: 1,
+			rating: 4,
+			goalkeeper_rating: 3,
+			nickname: "Merge",
+			display_name: "Merge",
+		},
+	],
+	presentPlayerIds: null,
+	mvpPlayerIds: [1],
+	ratingMinMatches: 5,
+});
+check(mergeLinePreview.length, 1, "merge preview um track");
+check(mergeLinePreview[0]?.track, "line", "merge preview na linha");
+check(mergeLinePreview[0]?.isMvp, true, "merge mvp no track alvo");
+check(
+	mergeLinePreview[0]?.to,
+	applyEventRatingDelta(4, eventRatingDelta(3, 0, 2, 5, 4, 5) + 0.1),
+	"merge preview delta com WDL somados + mvp",
+);
+
+const mergeGkPreview = eventRatingPreview({
+	attendance: [
+		{
+			player_id: 1,
+			display_name: "MergeGk",
+			wins: 3,
+			draws: 0,
+			losses: 2,
+			matches: 5,
+			is_goalkeeper: true,
+			rating: 4,
+			goalkeeper_rating: 3,
+			line_wins: 1,
+			line_draws: 0,
+			line_losses: 1,
+			line_matches: 2,
+			gk_wins: 2,
+			gk_draws: 0,
+			gk_losses: 1,
+			gk_matches: 3,
+		},
+	],
+	players: [
+		{
+			id: 1,
+			rating: 4,
+			goalkeeper_rating: 3,
+			nickname: "MergeGk",
+			display_name: "MergeGk",
+		},
+	],
+	presentPlayerIds: null,
+	ratingMinMatches: 5,
+});
+check(mergeGkPreview.length, 1, "merge gk preview um track");
+check(mergeGkPreview[0]?.track, "goalkeeper", "merge gk no goleiro");
+check(
+	mergeGkPreview[0]?.to,
+	applyEventRatingDelta(3, eventRatingDelta(3, 0, 2, 5, 3, 5)),
+	"merge gk delta no teto de goleiro",
+);
 
 console.log("event-rating-adjustment ok");

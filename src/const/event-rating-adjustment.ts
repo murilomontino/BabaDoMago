@@ -53,13 +53,85 @@ export function eventActivePlayerRating(
 	return rating;
 }
 
+export type EventRatingMatchStats = {
+	wins: number;
+	draws: number;
+	losses: number;
+	matches: number;
+};
+
+const EVENT_RATING_MATCH_STATS_EMPTY: EventRatingMatchStats = {
+	wins: 0,
+	draws: 0,
+	losses: 0,
+	matches: 0,
+};
+
+export function eventRatingSumMatchStats(
+	left: EventRatingMatchStats,
+	right: EventRatingMatchStats,
+): EventRatingMatchStats {
+	return {
+		wins: left.wins + right.wins,
+		draws: left.draws + right.draws,
+		losses: left.losses + right.losses,
+		matches: left.matches + right.matches,
+	};
+}
+
+/**
+ * When both tracks are below min but the sum reaches min, fold W/D/L into the
+ * larger track (tie → line). Other track gets empty stats so its delta stays 0.
+ */
+export function eventRatingEffectiveTrackStats(
+	line: EventRatingMatchStats,
+	gk: EventRatingMatchStats,
+	minMatches: number = EVENT_RATING_ADJUSTMENT.minMatches,
+): {
+	line: EventRatingMatchStats;
+	gk: EventRatingMatchStats;
+	mergedInto: EventRatingTrack | null;
+} {
+	if (line.matches >= minMatches || gk.matches >= minMatches) {
+		return { line, gk, mergedInto: null };
+	}
+
+	if (line.matches + gk.matches < minMatches) {
+		return { line, gk, mergedInto: null };
+	}
+
+	const merged = eventRatingSumMatchStats(line, gk);
+	if (line.matches >= gk.matches) {
+		return {
+			line: merged,
+			gk: EVENT_RATING_MATCH_STATS_EMPTY,
+			mergedInto: EVENT_RATING_TRACK.line,
+		};
+	}
+
+	return {
+		line: EVENT_RATING_MATCH_STATS_EMPTY,
+		gk: merged,
+		mergedInto: EVENT_RATING_TRACK.goalkeeper,
+	};
+}
+
 export function eventRatingMvpOnLine(input: {
 	isMvp: boolean;
 	isGoalkeeper: boolean;
 	lineMatches: number;
 	gkMatches: number;
+	mergedInto?: EventRatingTrack | null;
 }): boolean {
 	if (!input.isMvp) {
+		return false;
+	}
+
+	if (input.mergedInto === EVENT_RATING_TRACK.line) {
+		return true;
+	}
+
+	if (input.mergedInto === EVENT_RATING_TRACK.goalkeeper) {
 		return false;
 	}
 
@@ -75,8 +147,17 @@ export function eventRatingMvpOnGoalkeeper(input: {
 	isGoalkeeper: boolean;
 	lineMatches: number;
 	gkMatches: number;
+	mergedInto?: EventRatingTrack | null;
 }): boolean {
 	if (!input.isMvp) {
+		return false;
+	}
+
+	if (input.mergedInto === EVENT_RATING_TRACK.goalkeeper) {
+		return true;
+	}
+
+	if (input.mergedInto === EVENT_RATING_TRACK.line) {
 		return false;
 	}
 
@@ -823,13 +904,22 @@ export function eventRatingPreview({
 		const player = playerById.get(playerId);
 		const stats = statsById.get(playerId);
 		const isGoalkeeper = stats?.is_goalkeeper === true;
-		const lineStats = eventRatingTrackMatchStats(
+		const rawLineStats = eventRatingTrackMatchStats(
 			stats,
 			EVENT_RATING_TRACK.line,
 		);
-		const gkStats = eventRatingTrackMatchStats(
+		const rawGkStats = eventRatingTrackMatchStats(
 			stats,
 			EVENT_RATING_TRACK.goalkeeper,
+		);
+		const {
+			line: lineStats,
+			gk: gkStats,
+			mergedInto,
+		} = eventRatingEffectiveTrackStats(
+			rawLineStats,
+			rawGkStats,
+			ratingMinMatches,
 		);
 		const name = playerVisibleName(
 			player ?? {
@@ -841,14 +931,16 @@ export function eventRatingPreview({
 		const mvpLine = eventRatingMvpOnLine({
 			isMvp,
 			isGoalkeeper,
-			lineMatches: lineStats.matches,
-			gkMatches: gkStats.matches,
+			lineMatches: rawLineStats.matches,
+			gkMatches: rawGkStats.matches,
+			mergedInto,
 		});
 		const mvpGk = eventRatingMvpOnGoalkeeper({
 			isMvp,
 			isGoalkeeper,
-			lineMatches: lineStats.matches,
-			gkMatches: gkStats.matches,
+			lineMatches: rawLineStats.matches,
+			gkMatches: rawGkStats.matches,
+			mergedInto,
 		});
 		const tracks: EventRatingTrack[] = [];
 		if (lineStats.matches > 0) {
