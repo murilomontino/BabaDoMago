@@ -596,7 +596,7 @@ export function ChampionshipEventBuilder({
 																	CHAMPIONSHIP_EVENT.minTeams && (
 																	<EventTeamRemoveButton
 																		label="Remover time"
-																		color={cardStyle.color ?? "currentColor"}
+																		color="currentColor"
 																		iconClassName="size-4"
 																		onClick={() => {
 																			remove(teamIndex);

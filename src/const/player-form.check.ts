@@ -6,6 +6,7 @@ import {
 	playerFormStreak,
 	playerRecentForm,
 } from "./player-form.ts";
+import { EVENT_RATING_TRACK } from "./event-rating-adjustment.ts";
 import type { PlayerProfileHistoryRow } from "./player-profile.ts";
 
 function check(condition: boolean, message: string) {
@@ -33,6 +34,7 @@ function row(
 		ratingFrom: 3,
 		ratingDelta: 0,
 		ratingTo: 3,
+		track: EVENT_RATING_TRACK.line,
 		...overrides,
 	};
 }

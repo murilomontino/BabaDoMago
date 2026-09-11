@@ -713,6 +713,7 @@ check(
 			from: 3,
 			to: 3.2,
 			isMvp: false,
+			track: "line",
 		},
 	]).join(","),
 	"3.2",

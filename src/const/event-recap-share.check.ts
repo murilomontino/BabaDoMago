@@ -5,7 +5,10 @@ import type {
 	ChampionshipEventTeam,
 } from "@/types/championship-event";
 import { formatEventStartsAt } from "./championship-event.ts";
-import { applyEventRatingDelta } from "./event-rating-adjustment.ts";
+import {
+	applyEventRatingDelta,
+	EVENT_RATING_TRACK,
+} from "./event-rating-adjustment.ts";
 import {
 	EVENT_RECAP_SHARE,
 	eventRecapShareDataFromEvent,
@@ -136,8 +139,22 @@ const match = endedMatch(
 const startsAt = "2026-08-14T22:00:00.000Z";
 
 const ratingPreview = [
-	{ playerId: 10, name: "Ana", from: 5, to: 6, isMvp: true },
-	{ playerId: 20, name: "Bruno", from: 6, to: 5, isMvp: false },
+	{
+		playerId: 10,
+		name: "Ana",
+		from: 5,
+		to: 6,
+		isMvp: true,
+		track: EVENT_RATING_TRACK.line,
+	},
+	{
+		playerId: 20,
+		name: "Bruno",
+		from: 6,
+		to: 5,
+		isMvp: false,
+		track: EVENT_RATING_TRACK.line,
+	},
 ];
 
 check(
