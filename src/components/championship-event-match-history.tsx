@@ -1,6 +1,7 @@
 import { ChevronDown, Handshake, Star, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/button";
+import { ChampionshipEventEditGoalModal } from "@/components/championship-event-edit-goal-modal";
 import { MatchupAnalysisPanel } from "@/components/event-matchup-analysis";
 import { EventTeamChip } from "@/components/event-team-player";
 import { GoalIcon } from "@/components/goal-icon";
@@ -12,12 +13,14 @@ import {
 import { OwnGoalIcon } from "@/components/soccer-ball-icon";
 import { EVENT_ACTION, EVENT_SECTION_LABEL } from "@/const/championship-event";
 import {
+	canEditEndedMatchGoal,
 	canOpenEventHistoryMatch,
 	EVENT_MATCH_ICON,
 	EVENT_MATCH_ICON_LEGEND,
 	EVENT_MATCH_LABEL,
 	EVENT_MATCH_SUBSTITUTION_LABEL,
 	type EventMatchIcon,
+	type MatchGoalEditPayload,
 	formatMatchScore,
 	isOpenMatch,
 	matchScore,
@@ -42,6 +45,7 @@ import type { ChampionshipPlayer } from "@/types/championship";
 import type {
 	ChampionshipEvent,
 	ChampionshipEventAttendance,
+	ChampionshipEventGoal,
 	ChampionshipEventMatch,
 	ChampionshipEventMatchPlayer,
 	ChampionshipEventTeam,
@@ -55,9 +59,13 @@ type ChampionshipEventMatchHistoryProps = {
 	attendance: readonly ChampionshipEventAttendance[];
 	historyEvents: readonly ChampionshipEvent[];
 	showMatchDelete: boolean;
+	showGoalEdit: boolean;
 	eventEnded: boolean;
+	editGoalPending?: boolean;
+	editGoalError?: string | null;
 	onOpenMatch: (match: ChampionshipEventMatch) => void;
 	onRemoveMatch: (match: ChampionshipEventMatch) => void;
+	onEditGoal: (payload: MatchGoalEditPayload) => Promise<void>;
 };
 
 function MatchHistoryMatchupReview({
@@ -161,9 +169,13 @@ function MatchHistoryCard({
 	attendance,
 	historyEvents,
 	showMatchDelete,
+	showGoalEdit,
 	canOpenMatch,
+	editGoalPending,
+	editGoalError,
 	onOpenMatch,
 	onRemoveMatch,
+	onEditGoal,
 }: {
 	match: ChampionshipEventMatch;
 	teamById: ReadonlyMap<number, ChampionshipEventTeam>;
@@ -172,11 +184,18 @@ function MatchHistoryCard({
 	attendance: readonly ChampionshipEventAttendance[];
 	historyEvents: readonly ChampionshipEvent[];
 	showMatchDelete: boolean;
+	showGoalEdit: boolean;
 	canOpenMatch: boolean;
+	editGoalPending: boolean;
+	editGoalError: string | null;
 	onOpenMatch: (match: ChampionshipEventMatch) => void;
 	onRemoveMatch: (match: ChampionshipEventMatch) => void;
+	onEditGoal: (payload: MatchGoalEditPayload) => Promise<void>;
 }) {
 	const [analysisOpen, setAnalysisOpen] = useState(false);
+	const [editingGoal, setEditingGoal] = useState<ChampionshipEventGoal | null>(
+		null,
+	);
 	const teamA = teamById.get(match.team_a_id) ?? null;
 	const teamB = teamById.get(match.team_b_id) ?? null;
 	const review =
@@ -215,6 +234,7 @@ function MatchHistoryCard({
 	const score = matchScore(match.goals, teamAIds);
 	const winner = matchWinnerTeam(match.winner_team_id, teamById);
 	const open = isOpenMatch(match);
+	const canEditGoals = canEditEndedMatchGoal(match, showGoalEdit);
 	const matchPlayerById = new Map(
 		match.players.map((row) => [row.player_id, row]),
 	);
@@ -226,97 +246,110 @@ function MatchHistoryCard({
 		.filter(Boolean)
 		.join(" ");
 
-	const body = (
+	function playerName(playerId: number) {
+		const row = matchPlayerById.get(playerId);
+		return playerVisibleName(
+			resolveRosterPlayer(playerId, row?.display_name ?? "", rosterById),
+		);
+	}
+
+	const scoreHeader = (
 		<>
-			<div className={MATCH_GOAL_TIMELINE_GRID_CLASS}>
-				<div className="flex min-w-0 items-center justify-end gap-1">
-					{teamAFavorite && (
-						<Star
-							aria-label={MATCHUP_LABEL.favoriteByFields}
-							className="size-3.5 shrink-0 fill-amber-400 text-amber-400"
-						/>
-					)}
-					<EventTeamChip color={teamA.color} sortOrder={teamA.sort_order} />
-				</div>
-				<p className="text-2xl font-semibold tabular-nums text-fg">
-					{formatMatchScore(score.teamA, score.teamB)}
-				</p>
-				<div className="flex min-w-0 items-center justify-start gap-1">
-					<EventTeamChip color={teamB.color} sortOrder={teamB.sort_order} />
-					{teamBFavorite && (
-						<Star
-							aria-label={MATCHUP_LABEL.favoriteByFields}
-							className="size-3.5 shrink-0 fill-amber-400 text-amber-400"
-						/>
-					)}
-				</div>
-				<div className="col-span-3 flex items-center justify-center gap-2">
-					{open && <span className={CHIP_CLASS}>{EVENT_MATCH_LABEL.open}</span>}
-					{!open && winner && (
-						<EventTeamChip color={winner.color} sortOrder={winner.sort_order} />
-					)}
-					{!open && !winner && (
-						<span className={CHIP_CLASS}>{EVENT_MATCH_LABEL.draw}</span>
-					)}
-				</div>
-				<MatchGoalTimeline
-					goals={match.goals}
-					teamAPlayerIds={teamAIds}
-					playerName={(playerId) => {
-						const row = matchPlayerById.get(playerId);
-						return playerVisibleName(
-							resolveRosterPlayer(
-								playerId,
-								row?.display_name ?? "",
-								rosterById,
-							),
-						);
-					}}
-				/>
+			<div className="flex min-w-0 items-center justify-end gap-1">
+				{teamAFavorite && (
+					<Star
+						aria-label={MATCHUP_LABEL.favoriteByFields}
+						className="size-3.5 shrink-0 fill-amber-400 text-amber-400"
+					/>
+				)}
+				<EventTeamChip color={teamA.color} sortOrder={teamA.sort_order} />
 			</div>
-			{match.players.length > 0 && (
-				<div className="mt-3 grid grid-cols-2 gap-2 border-t border-line pt-2">
-					<ul className="space-y-0.5">
-						{playedA.map((row) => (
-							<MatchLineupPlayer
-								key={row.id}
-								row={row}
-								rosterById={rosterById}
-								alignEnd
-							/>
-						))}
-					</ul>
-					<ul className="space-y-0.5">
-						{playedB.map((row) => (
-							<MatchLineupPlayer
-								key={row.id}
-								row={row}
-								rosterById={rosterById}
-								alignEnd={false}
-							/>
-						))}
-					</ul>
-				</div>
-			)}
+			<p className="text-2xl font-semibold tabular-nums text-fg">
+				{formatMatchScore(score.teamA, score.teamB)}
+			</p>
+			<div className="flex min-w-0 items-center justify-start gap-1">
+				<EventTeamChip color={teamB.color} sortOrder={teamB.sort_order} />
+				{teamBFavorite && (
+					<Star
+						aria-label={MATCHUP_LABEL.favoriteByFields}
+						className="size-3.5 shrink-0 fill-amber-400 text-amber-400"
+					/>
+				)}
+			</div>
+			<div className="col-span-3 flex items-center justify-center gap-2">
+				{open && <span className={CHIP_CLASS}>{EVENT_MATCH_LABEL.open}</span>}
+				{!open && winner && (
+					<EventTeamChip color={winner.color} sortOrder={winner.sort_order} />
+				)}
+				{!open && !winner && (
+					<span className={CHIP_CLASS}>{EVENT_MATCH_LABEL.draw}</span>
+				)}
+			</div>
 		</>
 	);
 
 	return (
 		<li className={cardClass}>
 			<div className="flex items-start gap-2">
-				{canOpenMatch && (
-					<button
-						type="button"
-						aria-label={EVENT_ACTION.editMatch}
-						className="min-w-0 flex-1 text-left"
-						onClick={() => {
-							onOpenMatch(match);
-						}}
-					>
-						{body}
-					</button>
-				)}
-				{!canOpenMatch && <div className="min-w-0 flex-1">{body}</div>}
+				<div className="min-w-0 flex-1">
+					<div className={MATCH_GOAL_TIMELINE_GRID_CLASS}>
+						{canOpenMatch && (
+							<button
+								type="button"
+								aria-label={EVENT_ACTION.editMatch}
+								className="col-span-3 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-2 gap-y-0.5 text-left"
+								onClick={() => {
+									onOpenMatch(match);
+								}}
+							>
+								{scoreHeader}
+							</button>
+						)}
+						{!canOpenMatch && scoreHeader}
+						<MatchGoalTimeline
+							goals={match.goals}
+							teamAPlayerIds={teamAIds}
+							playerName={playerName}
+							editDisabled={editGoalPending}
+							onEditGoal={
+								canEditGoals
+									? (goalId) => {
+											const goal = match.goals.find((row) => row.id === goalId);
+											if (!goal) {
+												return;
+											}
+
+											setEditingGoal(goal);
+										}
+									: undefined
+							}
+						/>
+					</div>
+					{match.players.length > 0 && (
+						<div className="mt-3 grid grid-cols-2 gap-2 border-t border-line pt-2">
+							<ul className="space-y-0.5">
+								{playedA.map((row) => (
+									<MatchLineupPlayer
+										key={row.id}
+										row={row}
+										rosterById={rosterById}
+										alignEnd
+									/>
+								))}
+							</ul>
+							<ul className="space-y-0.5">
+								{playedB.map((row) => (
+									<MatchLineupPlayer
+										key={row.id}
+										row={row}
+										rosterById={rosterById}
+										alignEnd={false}
+									/>
+								))}
+							</ul>
+						</div>
+					)}
+				</div>
 				{showMatchDelete && (
 					<button
 						type="button"
@@ -362,6 +395,22 @@ function MatchHistoryCard({
 					)}
 				</div>
 			)}
+			{editingGoal && (
+				<ChampionshipEventEditGoalModal
+					goal={editingGoal}
+					matchPlayers={match.players}
+					rosterById={rosterById}
+					isPending={editGoalPending}
+					errorMessage={editGoalError}
+					onCancel={() => {
+						setEditingGoal(null);
+					}}
+					onSave={async (payload) => {
+						await onEditGoal(payload);
+						setEditingGoal(null);
+					}}
+				/>
+			)}
 		</li>
 	);
 }
@@ -374,9 +423,13 @@ export function ChampionshipEventMatchHistory({
 	attendance,
 	historyEvents,
 	showMatchDelete,
+	showGoalEdit,
 	eventEnded,
+	editGoalPending = false,
+	editGoalError = null,
 	onOpenMatch,
 	onRemoveMatch,
+	onEditGoal,
 }: ChampionshipEventMatchHistoryProps) {
 	const teamById = new Map(teams.map((team) => [team.id, team]));
 	const hasOpenMatch = openEventMatch(matches) !== null;
@@ -413,12 +466,16 @@ export function ChampionshipEventMatchHistory({
 								attendance={attendance}
 								historyEvents={historyEvents}
 								showMatchDelete={showMatchDelete}
+								showGoalEdit={showGoalEdit}
 								canOpenMatch={canOpenEventHistoryMatch(match, {
 									eventEnded,
 									hasOpenMatch,
 								})}
+								editGoalPending={editGoalPending}
+								editGoalError={editGoalError}
 								onOpenMatch={onOpenMatch}
 								onRemoveMatch={onRemoveMatch}
+								onEditGoal={onEditGoal}
 							/>
 						))}
 					</ul>

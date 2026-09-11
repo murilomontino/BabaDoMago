@@ -43,6 +43,7 @@ import {
 	startChampionshipEventMatch,
 	submitChampionshipEventPlayerVotes,
 	swapChampionshipEventMatchTeam,
+	updateChampionshipEventGoalPlayers,
 	updateChampionshipEventTeam,
 	upsertChampionshipEventRsvp,
 	voidChampionshipEventPlayerVotes,
@@ -405,6 +406,36 @@ export function useReopenChampionshipEventMatch(championshipId: number) {
 
 	return useMutation({
 		mutationFn: (matchId: number) => reopenChampionshipEventMatch(matchId),
+		onSuccess: async () => {
+			await Promise.all([
+				invalidateChampionshipEvents(queryClient, championshipId),
+				invalidateChampionshipQueries(queryClient),
+			]);
+		},
+	});
+}
+
+export function useUpdateChampionshipEventGoalPlayers(championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({
+			goalId,
+			scorerPlayerId,
+			assistPlayerId,
+			isOwnGoal,
+		}: {
+			goalId: number;
+			scorerPlayerId: number;
+			assistPlayerId: number | null;
+			isOwnGoal: boolean;
+		}) =>
+			updateChampionshipEventGoalPlayers(
+				goalId,
+				scorerPlayerId,
+				assistPlayerId,
+				isOwnGoal,
+			),
 		onSuccess: async () => {
 			await Promise.all([
 				invalidateChampionshipEvents(queryClient, championshipId),

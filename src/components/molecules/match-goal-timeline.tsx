@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { Pencil, X } from "lucide-react";
 import { GoalTimelineEvent } from "@/components/molecules/goal-timeline-event";
 import { EVENT_ACTION } from "@/const/championship-event";
 import {
@@ -27,7 +27,9 @@ type MatchGoalTimelineProps = {
 	teamAPlayerIds: ReadonlySet<number>;
 	playerName: (playerId: number) => string;
 	undoDisabled?: boolean;
+	editDisabled?: boolean;
 	onUndoGoal?: (goalId: number) => void;
+	onEditGoal?: (goalId: number) => void;
 };
 
 function UndoGoalButton({
@@ -50,12 +52,34 @@ function UndoGoalButton({
 	);
 }
 
+function EditGoalButton({
+	disabled,
+	onEdit,
+}: {
+	disabled: boolean;
+	onEdit: () => void;
+}) {
+	return (
+		<button
+			type="button"
+			aria-label={EVENT_ACTION.editGoal}
+			disabled={disabled}
+			className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-fg-muted hover:bg-surface-muted hover:text-fg disabled:opacity-50"
+			onClick={onEdit}
+		>
+			<Pencil className="size-3.5" />
+		</button>
+	);
+}
+
 export function MatchGoalTimeline({
 	goals,
 	teamAPlayerIds,
 	playerName,
 	undoDisabled = false,
+	editDisabled = false,
 	onUndoGoal,
+	onEditGoal,
 }: MatchGoalTimelineProps) {
 	const timeline = matchGoalTimeline(goals);
 	if (timeline.length === 0) {
@@ -83,11 +107,20 @@ export function MatchGoalTimeline({
 						}}
 					/>
 				);
+				const edit = onEditGoal && (
+					<EditGoalButton
+						disabled={editDisabled}
+						onEdit={() => {
+							onEditGoal(goal.id);
+						}}
+					/>
+				);
 
 				return (
 					<div key={goal.id} className="contents">
 						<div className="flex min-w-0 items-center justify-end gap-0.5">
 							{forTeamA && undo}
+							{forTeamA && edit}
 							{forTeamA && event}
 						</div>
 						<span className="text-center text-[10px] font-medium tabular-nums text-fg-muted">
@@ -96,6 +129,7 @@ export function MatchGoalTimeline({
 						</span>
 						<div className="flex min-w-0 items-center justify-start gap-0.5">
 							{!forTeamA && event}
+							{!forTeamA && edit}
 							{!forTeamA && undo}
 						</div>
 					</div>

@@ -79,6 +79,7 @@ import {
 import {
 	EVENT_MATCH_DELETE_LABEL,
 	isOpenMatch,
+	type MatchGoalEditPayload,
 } from "@/const/championship-event-match";
 import {
 	resolveEventPlayers,
@@ -122,6 +123,7 @@ import {
 	SECTION_ACTION_HEADER_CLASS,
 } from "@/const/ui";
 import { handlerWhenAllowed } from "@/lib/handler-when-allowed";
+import { mutationErrorMessage } from "@/lib/error-message";
 import { shareEventRecapImage } from "@/lib/share-event-recap-image";
 import { shareEventTeamsImage } from "@/lib/share-event-teams-image";
 import {
@@ -132,6 +134,7 @@ import {
 	roundTabRemoveTeam,
 	roundTabReopenMatch,
 } from "@/const/championship-event-round-tab-ui";
+import { useUpdateChampionshipEventGoalPlayers } from "@/hooks/championships/use-championship-events";
 import { useChampionshipEventRoundTabUi } from "@/hooks/use-championship-event-round-tab-ui";
 import type { ChampionshipPlayer } from "@/types/championship";
 import type {
@@ -398,8 +401,12 @@ export function ChampionshipEventRoundTab({
 	const showAttendanceOwnerActions = canOverrideEnded && !showTeamBuilder;
 	const showAddTeam = canOverrideEnded && !showTeamBuilder;
 	const showMatchDelete = canOverrideEnded && !showTeamBuilder;
+	const showGoalEdit = showMatchDelete;
 	const ui = useChampionshipEventRoundTabUi();
 	const navigate = useNavigate();
+	const updateGoalPlayers = useUpdateChampionshipEventGoalPlayers(
+		event.championship_id,
+	);
 
 	const attendanceIds = event.attendance.map((row) => row.player_id);
 	const selfCheckIn = canSelfCheckIn({
@@ -722,7 +729,10 @@ export function ChampionshipEventRoundTab({
 					attendance={event.attendance}
 					historyEvents={matchupHistoryEvents(seedEvents, event)}
 					showMatchDelete={showMatchDelete}
+					showGoalEdit={showGoalEdit}
 					eventEnded={ended}
+					editGoalPending={updateGoalPlayers.isPending}
+					editGoalError={mutationErrorMessage(updateGoalPlayers)}
 					onOpenMatch={(match) => {
 						if (isOpenMatch(match)) {
 							void onOpenMatch(match);
@@ -733,6 +743,9 @@ export function ChampionshipEventRoundTab({
 					}}
 					onRemoveMatch={(match) => {
 						ui.openRemoveMatch(match);
+					}}
+					onEditGoal={async (payload: MatchGoalEditPayload) => {
+						await updateGoalPlayers.mutateAsync(payload);
 					}}
 				/>
 			)}

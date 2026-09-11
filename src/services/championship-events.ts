@@ -885,6 +885,27 @@ export async function undoChampionshipEventGoal(
 	}
 }
 
+export async function updateChampionshipEventGoalPlayers(
+	goalId: number,
+	scorerPlayerId: number,
+	assistPlayerId: number | null,
+	isOwnGoal: boolean,
+): Promise<void> {
+	const { error } = await supabase.rpc(
+		"update_championship_event_goal_players",
+		{
+			goal_id: goalId,
+			scorer_player_id: scorerPlayerId,
+			assist_player_id: assistPlayerId,
+			is_own_goal: isOwnGoal,
+		},
+	);
+
+	if (error) {
+		throwEventError(error);
+	}
+}
+
 export async function endChampionshipEventMatch(
 	matchId: number,
 ): Promise<void> {

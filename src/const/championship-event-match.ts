@@ -419,9 +419,11 @@ export const EVENT_GOAL_LABEL = {
 	goal: "Gol",
 	assist: "Assistência",
 	whoAssisted: "Quem deu a assistência?",
+	whoScored: "Quem fez o gol?",
 	none: "Sem assistência",
 	ownGoal: "Gol contra",
 	ownGoalShort: "Contra",
+	editHint: "O tempo do gol não muda.",
 } as const;
 
 export const EVENT_MATCH_ICON = {
@@ -1062,6 +1064,81 @@ export function matchGoalForTeamA(
 	}
 
 	return scorerInA;
+}
+
+export function matchGoalScorerTeamId(
+	goal: Pick<ChampionshipEventGoal, "scorer_player_id">,
+	players: readonly Pick<
+		ChampionshipEventMatchPlayer,
+		"player_id" | "team_id"
+	>[],
+): number | null {
+	const scorer = players.find(
+		(player) => player.player_id === goal.scorer_player_id,
+	);
+	if (!scorer) {
+		return null;
+	}
+
+	return scorer.team_id;
+}
+
+export function matchGoalEditScorerCandidates(
+	goal: Pick<ChampionshipEventGoal, "scorer_player_id" | "is_own_goal">,
+	players: readonly ChampionshipEventMatchPlayer[],
+): ChampionshipEventMatchPlayer[] {
+	const scorerTeamId = matchGoalScorerTeamId(goal, players);
+	if (scorerTeamId === null) {
+		return [];
+	}
+
+	return players.filter((player) => player.team_id === scorerTeamId);
+}
+
+export function matchGoalEditAssistCandidates(
+	scorerPlayerId: number,
+	players: readonly ChampionshipEventMatchPlayer[],
+): ChampionshipEventMatchPlayer[] {
+	const scorer = players.find((player) => player.player_id === scorerPlayerId);
+	if (!scorer) {
+		return [];
+	}
+
+	return players.filter(
+		(player) =>
+			player.team_id === scorer.team_id && player.player_id !== scorerPlayerId,
+	);
+}
+
+export function canEditEndedMatchGoal(
+	match: Pick<ChampionshipEventMatch, "ended_at">,
+	canManage: boolean,
+): boolean {
+	if (!canManage) {
+		return false;
+	}
+
+	return !isOpenMatch(match);
+}
+
+export type MatchGoalEditPayload = {
+	goalId: number;
+	scorerPlayerId: number;
+	assistPlayerId: number | null;
+	isOwnGoal: boolean;
+};
+
+export function matchGoalEditPayload(
+	goalId: number,
+	draft: MatchGoalDraft,
+): MatchGoalEditPayload {
+	const payload = matchGoalPayload(draft);
+	return {
+		goalId,
+		scorerPlayerId: payload.scorerPlayerId,
+		assistPlayerId: payload.assistPlayerId,
+		isOwnGoal: payload.isOwnGoal,
+	};
 }
 
 export function compareGoalsOldestFirst(
