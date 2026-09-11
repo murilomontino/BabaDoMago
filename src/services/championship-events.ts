@@ -207,6 +207,10 @@ function asAttendance(value: unknown): ChampionshipEventAttendance {
 		goalkeeper_rating_delta: Number(row.goalkeeper_rating_delta ?? 0),
 		vote_rating_delta: Number(row.vote_rating_delta ?? 0),
 		goalkeeper_vote_rating_delta: Number(row.goalkeeper_vote_rating_delta ?? 0),
+		vote_rating_applied: Number(row.vote_rating_applied ?? 0),
+		goalkeeper_vote_rating_applied: Number(
+			row.goalkeeper_vote_rating_applied ?? 0,
+		),
 		hidden_strength: Number(row.hidden_strength ?? 0),
 		hidden_strength_delta: Number(row.hidden_strength_delta ?? 0),
 		hidden_goalkeeper_strength: Number(row.hidden_goalkeeper_strength ?? 0),
@@ -1135,6 +1139,7 @@ export async function listMyChampionshipEventPlayerVotes(
 
 export type ChampionshipEventPlayerVoteCountRow = {
 	player_id: number;
+	track: EventRatingTrack;
 	likes: number;
 	dislikes: number;
 };
@@ -1143,6 +1148,14 @@ export type ChampionshipEventPlayerVoteCountsPayload = {
 	submitted: number;
 	counts: ChampionshipEventPlayerVoteCountRow[];
 };
+
+function parseVoteCountTrack(value: unknown): EventRatingTrack | null {
+	if (value === EVENT_RATING_TRACK.line || value === EVENT_RATING_TRACK.goalkeeper) {
+		return value;
+	}
+
+	return null;
+}
 
 function parseVoteCountRow(
 	entry: unknown,
@@ -1156,9 +1169,15 @@ function parseVoteCountRow(
 		return [];
 	}
 
+	const track = parseVoteCountTrack(row.track);
+	if (!track) {
+		return [];
+	}
+
 	return [
 		{
 			player_id: row.player_id,
+			track,
 			likes: Number(row.likes ?? 0),
 			dislikes: Number(row.dislikes ?? 0),
 		},

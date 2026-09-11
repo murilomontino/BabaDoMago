@@ -14,6 +14,7 @@ import {
 	eventPlayerVoteBudgetSummary,
 	eventPlayerVoteChipLabel,
 	eventPlayerVoteChoiceLabel,
+	eventPlayerVoteDisplayRating,
 	eventPlayerVoteDraftToSubmit,
 	eventPlayerVoteErrorMessage,
 	eventPlayerVoteLockedTargetIds,
@@ -58,15 +59,23 @@ check(EVENT_PLAYER_VOTE.delta === 0.5, "delta");
 check(EVENT_PLAYER_VOTE.ownerCountsPollMs === 4000, "owner counts poll");
 check(
 	ownerEventPlayerVoteCounts(false, [
-		{ player_id: 1, likes: 2, dislikes: 1 },
+		{ player_id: 1, track: "line", likes: 2, dislikes: 1 },
 	]) === null,
 	"owner counts hidden",
 );
 check(
 	ownerEventPlayerVoteCounts(true, [
-		{ player_id: 1, likes: 2, dislikes: 1 },
-	])?.get(1)?.likes === 2,
-	"owner counts map likes",
+		{ player_id: 1, track: "line", likes: 2, dislikes: 1 },
+		{ player_id: 1, track: "goalkeeper", likes: 1, dislikes: 0 },
+	])?.get("1:line")?.likes === 2,
+	"owner counts map likes by track",
+);
+check(
+	ownerEventPlayerVoteCounts(true, [
+		{ player_id: 1, track: "line", likes: 2, dislikes: 1 },
+		{ player_id: 1, track: "goalkeeper", likes: 1, dislikes: 0 },
+	])?.get("1:goalkeeper")?.likes === 1,
+	"owner counts gk separate from line",
 );
 check(ownerEventPlayerVotesSubmitted(false, 3) === null, "submitted hidden");
 check(
@@ -331,6 +340,12 @@ check(
 		.length === 0,
 	"sum ok but no track reaches card floor 3",
 );
+check(
+	eventPlayerVoteTargets([{ player_id: 1, line_matches: 4, gk_matches: 1 }], 5)
+		.map((target) => target.key)
+		.join("|") === "1:line",
+	"4+1 min 5 hides gk card with 1 match",
+);
 
 const draft = new Map<string, EventPlayerVoteChoice | null>([
 	[lineKey(1), "like"],
@@ -459,6 +474,31 @@ check(eventPlayerVoteChipLabel(0.5) === "+0,5", "chip +");
 check(eventPlayerVoteChipLabel(-0.5) === "−0,5", "chip -");
 check(eventPlayerVoteChipLabel(0) === null, "chip none");
 check(eventPlayerVoteChipLabel(0.1) === null, "chip ignore");
+
+const openDisplay = eventPlayerVoteDisplayRating({
+	liveRating: 4,
+	voteDelta: 0,
+});
+check(openDisplay.label === "4.0", "open shows live");
+check(openDisplay.to === null, "open has no to");
+check(openDisplay.display === 4, "open display is live");
+
+const syncedClosed = eventPlayerVoteDisplayRating({
+	liveRating: 4.5,
+	voteDelta: 0.5,
+});
+check(syncedClosed.label === "4.0 → 4.5", "closed undoes live +0.5");
+check(syncedClosed.from === 4, "closed from");
+check(syncedClosed.to === 4.5, "closed to is live");
+check(syncedClosed.display === 4.5, "closed display is live");
+
+const downClosed = eventPlayerVoteDisplayRating({
+	liveRating: 3.5,
+	voteDelta: -0.5,
+});
+check(downClosed.label === "4.0 → 3.5", "closed undoes live -0.5");
+check(downClosed.from === 4, "down from");
+check(downClosed.to === 3.5, "down to is live");
 
 check(!isEventPlayerVoteLocked(0), "open when zero");
 check(isEventPlayerVoteLocked(0.5), "locked up");

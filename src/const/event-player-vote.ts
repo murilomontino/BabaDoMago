@@ -1,8 +1,10 @@
 import { eventTeamByPlayerId } from "./championship-event.ts";
 import {
+	applyEventRatingDelta,
 	EVENT_RATING_ADJUSTMENT,
 	EVENT_RATING_TRACK,
 	type EventRatingTrack,
+	formatEventRating,
 } from "./event-rating-adjustment.ts";
 import { eventTeamName } from "./event-team-color.ts";
 
@@ -167,6 +169,51 @@ export function eventPlayerVoteChipLabel(
 
 export function isEventPlayerVoteLocked(voteRatingDelta: number): boolean {
 	return voteRatingDelta !== 0;
+}
+
+export function eventPlayerVoteTrackApplied(
+	row: {
+		vote_rating_applied?: number;
+		goalkeeper_vote_rating_applied?: number;
+	},
+	track: EventRatingTrack,
+): number {
+	if (track === EVENT_RATING_TRACK.goalkeeper) {
+		return row.goalkeeper_vote_rating_applied ?? 0;
+	}
+
+	return row.vote_rating_applied ?? 0;
+}
+
+export type EventPlayerVoteDisplayRating = {
+	from: number;
+	to: number | null;
+	display: number;
+	label: string;
+};
+
+/** Live roster rating. Closed tracks undo ±0.5 for from → to (live already includes overlay). */
+export function eventPlayerVoteDisplayRating(input: {
+	liveRating: number;
+	voteDelta: number;
+}): EventPlayerVoteDisplayRating {
+	if (!isEventPlayerVoteLocked(input.voteDelta)) {
+		return {
+			from: input.liveRating,
+			to: null,
+			display: input.liveRating,
+			label: formatEventRating(input.liveRating),
+		};
+	}
+
+	const from = applyEventRatingDelta(input.liveRating, -input.voteDelta);
+	const to = input.liveRating;
+	return {
+		from,
+		to,
+		display: to,
+		label: `${formatEventRating(from)} → ${formatEventRating(to)}`,
+	};
 }
 
 export type EventPlayerVoteTargetKey = string;
@@ -615,18 +662,19 @@ export function ownerEventPlayerVoteCounts(
 	rows:
 		| readonly {
 				player_id: number;
+				track: EventRatingTrack;
 				likes: number;
 				dislikes: number;
 		  }[]
 		| undefined,
-): Map<number, EventPlayerVoteCount> | null {
+): Map<EventPlayerVoteTargetKey, EventPlayerVoteCount> | null {
 	if (!isOwner || !rows) {
 		return null;
 	}
 
 	return new Map(
 		rows.map((row) => [
-			row.player_id,
+			eventPlayerVoteTargetKey(row.player_id, row.track),
 			{ likes: row.likes, dislikes: row.dislikes },
 		]),
 	);
