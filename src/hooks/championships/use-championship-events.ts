@@ -20,6 +20,7 @@ import {
 	addChampionshipEventTeam,
 	type ChampionshipEventPlayerVoteCountsPayload,
 	type ChampionshipEventPlayerVoteRow,
+	addChampionshipEventEndedMatchGoal,
 	closeChampionshipEventPlayerVotes,
 	createChampionshipEvent,
 	deleteChampionshipEvent,
@@ -43,6 +44,7 @@ import {
 	startChampionshipEventMatch,
 	submitChampionshipEventPlayerVotes,
 	swapChampionshipEventMatchTeam,
+	updateChampionshipEventGoalPlayers,
 	updateChampionshipEventTeam,
 	upsertChampionshipEventRsvp,
 	voidChampionshipEventPlayerVotes,
@@ -405,6 +407,67 @@ export function useReopenChampionshipEventMatch(championshipId: number) {
 
 	return useMutation({
 		mutationFn: (matchId: number) => reopenChampionshipEventMatch(matchId),
+		onSuccess: async () => {
+			await Promise.all([
+				invalidateChampionshipEvents(queryClient, championshipId),
+				invalidateChampionshipQueries(queryClient),
+			]);
+		},
+	});
+}
+
+export function useUpdateChampionshipEventGoalPlayers(championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({
+			goalId,
+			scorerPlayerId,
+			assistPlayerId,
+			isOwnGoal,
+		}: {
+			goalId: number;
+			scorerPlayerId: number;
+			assistPlayerId: number | null;
+			isOwnGoal: boolean;
+		}) =>
+			updateChampionshipEventGoalPlayers(
+				goalId,
+				scorerPlayerId,
+				assistPlayerId,
+				isOwnGoal,
+			),
+		onSuccess: async () => {
+			await Promise.all([
+				invalidateChampionshipEvents(queryClient, championshipId),
+				invalidateChampionshipQueries(queryClient),
+			]);
+		},
+	});
+}
+
+export function useAddChampionshipEventEndedMatchGoal(championshipId: number) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({
+			matchId,
+			scorerPlayerId,
+			assistPlayerId,
+			isOwnGoal,
+		}: {
+			matchId: number;
+			scorerPlayerId: number;
+			assistPlayerId: number | null;
+			isOwnGoal: boolean;
+		}) =>
+			addChampionshipEventEndedMatchGoal(
+				matchId,
+				scorerPlayerId,
+				assistPlayerId,
+				isOwnGoal,
+				null,
+			),
 		onSuccess: async () => {
 			await Promise.all([
 				invalidateChampionshipEvents(queryClient, championshipId),

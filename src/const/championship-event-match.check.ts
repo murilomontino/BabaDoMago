@@ -66,6 +66,12 @@ import {
 	matchDurationSeconds,
 	matchEndWinnerLabel,
 	matchGoalForTeamA,
+	matchGoalEditAssistCandidates,
+	matchGoalEditPayload,
+	matchGoalEditScorerCandidates,
+	matchGoalAddPayload,
+	matchGoalAddScorerCandidates,
+	canEditEndedMatchGoal,
 	matchGoalkeeperDraftFromTeams,
 	matchIncompleteTeamNeedsClearGoalkeeper,
 	matchGoalPayload,
@@ -654,6 +660,78 @@ check(
 	true,
 	"b own goal side",
 );
+
+const editPlayers = [
+	player({ id: 1, player_id: 1, team_id: 10, slot: 0 }),
+	player({ id: 2, player_id: 2, team_id: 10, slot: 1 }),
+	player({ id: 3, player_id: 3, team_id: 20, slot: 0 }),
+	player({
+		id: 4,
+		player_id: 4,
+		team_id: 10,
+		slot: 2,
+		is_substituted: true,
+	}),
+];
+check(
+	matchGoalEditScorerCandidates(
+		goal({ scorer_player_id: 1, is_own_goal: false }),
+		editPlayers,
+	)
+		.map((player) => player.player_id)
+		.join(","),
+	"1,2,4",
+	"edit scorer same team",
+);
+check(
+	matchGoalEditAssistCandidates(1, editPlayers)
+		.map((player) => player.player_id)
+		.join(","),
+	"2,4",
+	"edit assist excludes scorer",
+);
+const editPayload = matchGoalEditPayload(9, {
+	scorerPlayerId: 2,
+	kind: EVENT_GOAL_KIND.assist,
+	assistPlayerId: 4,
+});
+check(editPayload.goalId, 9, "edit payload goal id");
+check(editPayload.scorerPlayerId, 2, "edit payload scorer");
+check(editPayload.assistPlayerId, 4, "edit payload assist");
+check(editPayload.isOwnGoal, false, "edit payload own goal");
+check(canEditEndedMatchGoal({ ended_at: "x" }, true), true, "edit ended ok");
+check(
+	canEditEndedMatchGoal({ ended_at: null }, true),
+	false,
+	"edit open blocked",
+);
+check(
+	canEditEndedMatchGoal({ ended_at: "x" }, false),
+	false,
+	"edit needs manage",
+);
+check(EVENT_GOAL_LABEL.whoScored, "Quem fez o gol?", "edit who scored");
+check(EVENT_GOAL_LABEL.editHint.includes("tempo"), true, "edit hint tempo");
+check(EVENT_GOAL_LABEL.add, "Adicionar gol", "add goal label");
+check(EVENT_GOAL_LABEL.addHint.includes("Placar"), true, "add hint placar");
+check(EVENT_ACTION.editGoal, "Corrigir gol", "edit goal action");
+check(
+	matchGoalAddScorerCandidates(editPlayers)
+		.map((player) => player.player_id)
+		.join(","),
+	"1,2,4,3",
+	"add scorer sorts by team",
+);
+check(
+	matchGoalAddPayload(5, {
+		scorerPlayerId: 1,
+		kind: EVENT_GOAL_KIND.none,
+		assistPlayerId: null,
+	}).matchId,
+	5,
+	"add payload match id",
+);
+
 check(
 	formatGoalTimelineLine({
 		scorerName: "A",

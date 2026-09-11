@@ -871,6 +871,29 @@ export async function addChampionshipEventGoal(
 	}
 }
 
+export async function addChampionshipEventEndedMatchGoal(
+	matchId: number,
+	scorerPlayerId: number,
+	assistPlayerId: number | null,
+	isOwnGoal: boolean,
+	elapsedSeconds: number | null = null,
+): Promise<void> {
+	const { error } = await supabase.rpc(
+		"add_championship_event_ended_match_goal",
+		{
+			match_id: matchId,
+			scorer_player_id: scorerPlayerId,
+			assist_player_id: assistPlayerId,
+			is_own_goal: isOwnGoal,
+			elapsed_seconds: elapsedSeconds,
+		},
+	);
+
+	if (error) {
+		throwEventError(error);
+	}
+}
+
 export async function undoChampionshipEventGoal(
 	matchId: number,
 	goalId: number,
@@ -879,6 +902,27 @@ export async function undoChampionshipEventGoal(
 		match_id: matchId,
 		goal_id: goalId,
 	});
+
+	if (error) {
+		throwEventError(error);
+	}
+}
+
+export async function updateChampionshipEventGoalPlayers(
+	goalId: number,
+	scorerPlayerId: number,
+	assistPlayerId: number | null,
+	isOwnGoal: boolean,
+): Promise<void> {
+	const { error } = await supabase.rpc(
+		"update_championship_event_goal_players",
+		{
+			goal_id: goalId,
+			scorer_player_id: scorerPlayerId,
+			assist_player_id: assistPlayerId,
+			is_own_goal: isOwnGoal,
+		},
+	);
 
 	if (error) {
 		throwEventError(error);

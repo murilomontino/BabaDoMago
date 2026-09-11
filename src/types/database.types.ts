@@ -768,6 +768,16 @@ export type Database = {
 				};
 				Returns: Json;
 			};
+			add_championship_event_ended_match_goal: {
+				Args: {
+					match_id: number;
+					scorer_player_id: number;
+					assist_player_id: number | null;
+					is_own_goal: boolean;
+					elapsed_seconds?: number | null;
+				};
+				Returns: Json;
+			};
 			championship_actor_role: {
 				Args: { championship_id: number };
 				Returns: string;
@@ -1088,6 +1098,15 @@ export type Database = {
 			};
 			undo_championship_event_goal: {
 				Args: { match_id: number; goal_id: number };
+				Returns: Json;
+			};
+			update_championship_event_goal_players: {
+				Args: {
+					goal_id: number;
+					scorer_player_id: number;
+					assist_player_id: number | null;
+					is_own_goal: boolean;
+				};
 				Returns: Json;
 			};
 			unlink_player: {
