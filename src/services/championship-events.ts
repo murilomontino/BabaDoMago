@@ -11,6 +11,7 @@ import {
 } from "@/const/championship-event-match";
 import {
 	type EventPlayerVoteChoice,
+	type EventPlayerVoteForceDecision,
 	eventPlayerVoteErrorMessage,
 } from "@/const/event-player-vote";
 import {
@@ -1346,6 +1347,42 @@ export async function closeChampionshipEventPlayerVotes(
 	return {
 		event_id: Number(row.event_id ?? eventId),
 		player_votes_closed_at: String(row.player_votes_closed_at ?? ""),
+	};
+}
+
+export type CloseChampionshipEventPlayerVoteTargetResult = {
+	event_id: number;
+	target_player_id: number;
+	track: EventRatingTrack;
+	vote_rating_delta: number;
+};
+
+export async function closeChampionshipEventPlayerVoteTarget(
+	eventId: number,
+	targetPlayerId: number,
+	track: EventRatingTrack,
+	decision: EventPlayerVoteForceDecision,
+): Promise<CloseChampionshipEventPlayerVoteTargetResult> {
+	const { data, error } = await supabase.rpc(
+		"close_championship_event_player_vote_target",
+		{
+			event_id: eventId,
+			target_player_id: targetPlayerId,
+			track,
+			decision,
+		},
+	);
+
+	if (error) {
+		throwVoteError(error);
+	}
+
+	const row = (data ?? {}) as Record<string, unknown>;
+	return {
+		event_id: Number(row.event_id ?? eventId),
+		target_player_id: Number(row.target_player_id ?? targetPlayerId),
+		track: asVoteTrack(row.track ?? track),
+		vote_rating_delta: Number(row.vote_rating_delta ?? 0),
 	};
 }
 

@@ -14,7 +14,7 @@ A nota no elenco **só persiste no SQL**. `endEvent` pinta `ended_at` na hora; o
 
 1. Presença: snapshot `rating` e `goalkeeper_rating` (antes do evento); stats `line_*` / `gk_*` por papel na partida.
 2. Preview: `eventRatingPreview` = até duas linhas (linha e goleiro) com aproveitamento + MVP (+ drop share se flag on) por track. Snapshot vence elenco.
-3. Voto: overlay por track (`vote_rating_delta` / `goalkeeper_vote_rating_delta`). Sync aplica em `rating` ou `goalkeeper_rating` conforme o track; sentinela espera semente. Alvo só com `*_matches >= rating_min_matches`.
+3. Voto: overlay por track (`vote_rating_delta` / `goalkeeper_vote_rating_delta`). Quórum fecha sozinho; dono também força ±0,5 com `close_championship_event_player_vote_target` após enviar a urna. Sync aplica em `rating` ou `goalkeeper_rating` conforme o track; sentinela espera semente. Alvo só com `*_matches >= rating_min_matches`.
 4. Encerrar: `adjust_championship_player_ratings_for_event` grava `rating_delta` e/ou `goalkeeper_rating_delta`, depois voto pendente.
 5. Histórico: ficha (`playerProfileHistory` com `track`) e campeonato (`championshipRatingHistory`, **Evolução da nota** na linha). Projeção já escolhe posto.
 
@@ -30,7 +30,7 @@ Recompute: nota − old_delta + new_delta no snapshot do track.
 
 - Delta: `src/const/event-rating-adjustment.ts`
 - MVP: `src/const/event-mvp.ts`
-- Voto: `src/const/event-player-vote.ts`, RPC `submit_championship_event_player_votes`; flag `player_vote_allow_self`; totais do dono `list_championship_event_player_vote_counts`
+- Voto: `src/const/event-player-vote.ts`, RPC `submit_championship_event_player_votes`, `close_championship_event_player_vote_target`; flag `player_vote_allow_self`; totais do dono `list_championship_event_player_vote_counts`
 - Persistência: `adjust_championship_player_ratings_for_event`
 - UI preview: detalhe da rodada / Encerrar
 - Sim: `src/const/player-rating-sim.ts` / `event-rating-sim.ts`

@@ -20,6 +20,7 @@ import {
 	canEditEventPlayerBallot,
 	EVENT_PLAYER_VOTE_LABEL,
 	type EventPlayerVoteChoice,
+	type EventPlayerVoteForceDecision,
 	eventPlayerMonthlyCount,
 	eventPlayerVoteBudgetSummary,
 	eventPlayerVoteDraftToSubmit,
@@ -46,6 +47,7 @@ import {
 	useChampionshipEventRealtime,
 	useChampionshipEvents,
 	useCloseChampionshipEventPlayerVotes,
+	useCloseChampionshipEventPlayerVoteTarget,
 	useMyChampionshipEventPlayerVotes,
 	useSubmitChampionshipEventPlayerVotes,
 } from "@/hooks/championships/use-championship-events";
@@ -77,6 +79,10 @@ export function ChampionshipEventVotePage() {
 	);
 	const closeVotesMutation =
 		useCloseChampionshipEventPlayerVotes(championshipId);
+	const forceCloseTargetMutation = useCloseChampionshipEventPlayerVoteTarget(
+		championshipId,
+		eventId,
+	);
 	const matchOps = useAppSelector((state) => selectMatchOps(state, eventId));
 	const [localError, setLocalError] = useState<string | null>(null);
 	const [draftVotes, setDraftVotes] = useState<
@@ -290,6 +296,8 @@ export function ChampionshipEventVotePage() {
 				draftVotes={draftVotes}
 				votingEnabled={votingEnabled}
 				ballotLocked={ballotLocked && canSubmitVotes}
+				canForceCloseTargets={canCloseVotesAsOwner}
+				forceClosePending={forceCloseTargetMutation.isPending}
 				showBudget={false}
 				allowSelfVote={allowSelfVote}
 				voteCounts={voteCounts}
@@ -310,6 +318,26 @@ export function ChampionshipEventVotePage() {
 						next.set(targetKey, value);
 						return next;
 					});
+				}}
+				onForceCloseTarget={(
+					targetPlayerId: number,
+					track: EventRatingTrack,
+					decision: EventPlayerVoteForceDecision,
+				) => {
+					setLocalError(null);
+					forceCloseTargetMutation.mutate(
+						{ targetPlayerId, track, decision },
+						{
+							onError: (forceError) => {
+								setLocalError(
+									caughtErrorMessage(
+										forceError,
+										EVENT_PLAYER_VOTE_LABEL.forceCloseFailed,
+									),
+								);
+							},
+						},
+					);
 				}}
 			/>
 

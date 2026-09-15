@@ -525,9 +525,9 @@ Overlay ±0,5 **depois** da rodada. Não entra em `eventRatingDelta`. Urna secre
 
 | Item | Valor |
 | --- | --- |
-| Quórum | `player_vote_quorum` (default 3, 1–10) |
+| Quórum | `player_vote_quorum` (default **5**, 1–10) — like/dislike atinge N, supera o outro polo **e** maintains → ±0,5 e fecha |
 | Orçamento | 5 likes + 5 dislikes; manter/nulo ilimitados |
-| Like / dislike | N+ e supera o outro polo **e** maintains → ±0,5 e fecha |
+| Força like / dislike | só dono, após enviar a urna → fixa ±0,5 antes do quórum |
 | Manter | bloqueia ±0,5 se não superado |
 | Nulo (`blank`) | grava urna; fora da fórmula |
 | Totais | só dono |
@@ -537,7 +537,10 @@ flowchart TD
   endEvent[Encerrar rodada] --> open[Urna aberta]
   open --> submit[submit votos]
   submit -->|quorum| closedTarget[Alvo fechado]
-  open --> closeVotes[Dono fecha]
+  submit --> ballotLocked[ballotLocked]
+  ballotLocked --> forceClose[Dono Forca like/dislike]
+  forceClose --> closedTarget
+  open --> closeVotes[Dono encerra urna]
   closeVotes --> closedAll[player_votes_closed_at]
   createEvent[Criar nova rodada] --> closedAll
   closedAll --> void[Void soft]
@@ -547,7 +550,7 @@ flowchart TD
 
 Encerrar rodada ≠ encerrar votação. Void soft: notas voltam, votos ficam. Reabrir apaga votos (não reativa efeito antigo). Sentinela guarda overlay até semente.
 
-RPCs: `submit_…`, `list_…_vote_counts`, `close_…`, `void_…`, `reopen_…`.
+RPCs: `submit_…`, `list_…_vote_counts`, `close_…_vote_target`, `close_…_votes`, `void_…`, `reopen_…`.
 
 ---
 
@@ -899,5 +902,5 @@ Aba `projections`. Valida se a nota **prevê** resultado.
 - **Duas notas** = linha e goleiro
 - **Partida** = overlay + FIFO Redux; SQL depois
 - **Sorteio** = worker no cliente
-- **Voto** = overlay ±0,5 com quórum
+- **Voto** = overlay ±0,5 (quórum ou dono força like/dislike)
 - **Oculta** = só dono; projeções/favorito

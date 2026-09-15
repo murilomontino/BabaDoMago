@@ -21,7 +21,7 @@ export const CHAMPIONSHIP_EVENT = {
 	ratingDropShareExcludeTopDefault: false,
 	playerVoteQuorumMin: 1,
 	playerVoteQuorumMax: 10,
-	playerVoteQuorumDefault: 3,
+	playerVoteQuorumDefault: 5,
 	playerVoteAllowSelfDefault: true,
 	ratingMinMatchesMin: 3,
 	ratingMinMatchesMax: 10,
@@ -76,7 +76,7 @@ export const EVENT_CONFIG_LABEL = {
 		"Os 10 com maior nota da liga não recebem o amortecimento de queda.",
 	playerVoteQuorum: "Votos para fechar jogador",
 	playerVoteQuorumHint:
-		"Like ou dislike precisa desse total (e superar o outro polo) para aplicar ±0,5.",
+		"Like ou dislike precisa desse total (e superar o outro polo) para aplicar ±0,5. O dono também pode forçar.",
 	playerVoteAllowSelf: "Permitir voto em si",
 	playerVoteAllowSelfHint:
 		"Quem vota pode dar like, dislike ou manter na própria linha.",

@@ -12,6 +12,7 @@ import {
 import {
 	EVENT_PLAYER_VOTE,
 	type EventPlayerVoteChoice,
+	type EventPlayerVoteForceDecision,
 } from "@/const/event-player-vote";
 import {
 	EVENT_RATING_TRACK,
@@ -26,6 +27,7 @@ import {
 	type ChampionshipEventPlayerVoteCountsPayload,
 	type ChampionshipEventPlayerVoteRow,
 	closeChampionshipEventPlayerVotes,
+	closeChampionshipEventPlayerVoteTarget,
 	createChampionshipEvent,
 	deleteChampionshipEvent,
 	deleteChampionshipEventMatch,
@@ -591,6 +593,74 @@ export function useCloseChampionshipEventPlayerVotes(championshipId: number) {
 					return {
 						...current,
 						player_votes_closed_at: result.player_votes_closed_at,
+					};
+				},
+			);
+
+			await Promise.all([
+				invalidateChampionshipEvent(
+					queryClient,
+					championshipId,
+					result.event_id,
+				),
+				invalidateChampionshipQueries(queryClient),
+			]);
+		},
+	});
+}
+
+export function useCloseChampionshipEventPlayerVoteTarget(
+	championshipId: number,
+	eventId: number,
+) {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({
+			targetPlayerId,
+			track,
+			decision,
+		}: {
+			targetPlayerId: number;
+			track: EventRatingTrack;
+			decision: EventPlayerVoteForceDecision;
+		}) =>
+			closeChampionshipEventPlayerVoteTarget(
+				eventId,
+				targetPlayerId,
+				track,
+				decision,
+			),
+		onSuccess: async (result) => {
+			queryClient.setQueriesData<ChampionshipEvent>(
+				{
+					predicate: (query) =>
+						eventIdFromDetailKey(query.queryKey) === result.event_id,
+				},
+				(current) => {
+					if (!current) {
+						return current;
+					}
+
+					return {
+						...current,
+						attendance: current.attendance.map((row) => {
+							if (row.player_id !== result.target_player_id) {
+								return row;
+							}
+
+							if (result.track === EVENT_RATING_TRACK.goalkeeper) {
+								return {
+									...row,
+									goalkeeper_vote_rating_delta: result.vote_rating_delta,
+								};
+							}
+
+							return {
+								...row,
+								vote_rating_delta: result.vote_rating_delta,
+							};
+						}),
 					};
 				},
 			);

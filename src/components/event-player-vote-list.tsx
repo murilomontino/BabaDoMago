@@ -9,16 +9,12 @@ import {
 	formHeatmapEndedColumns,
 	playerFormHeatmapCells,
 } from "@/const/championship-form-heatmap";
-import type {
-	EventPlayerVoteChoice,
-	EventPlayerVoteCount,
-	EventPlayerVoteDraft,
-	EventPlayerVoteTargetKey,
-} from "@/const/event-player-vote";
 import {
+	canForceCloseEventPlayerVoteTarget,
 	canSetEventPlayerVoteDraft,
 	canVoteEventPlayer,
 	EVENT_PLAYER_VOTE,
+	EVENT_PLAYER_VOTE_FORCE_DECISION,
 	EVENT_PLAYER_VOTE_LABEL,
 	EVENT_PLAYER_VOTE_LIST_KIND,
 	eventPlayerVoteBudgetSummary,
@@ -36,6 +32,11 @@ import {
 	eventPlayerVoteTrackLabel,
 	isEventPlayerVoteLocked,
 	nextEventPlayerVoteValue,
+	type EventPlayerVoteChoice,
+	type EventPlayerVoteCount,
+	type EventPlayerVoteDraft,
+	type EventPlayerVoteForceDecision,
+	type EventPlayerVoteTargetKey,
 } from "@/const/event-player-vote";
 import {
 	EVENT_RATING_TRACK,
@@ -91,6 +92,8 @@ type EventPlayerVoteListProps = {
 	draftVotes: EventPlayerVoteDraft;
 	votingEnabled: boolean;
 	ballotLocked: boolean;
+	canForceCloseTargets: boolean;
+	forceClosePending: boolean;
 	showBudget: boolean;
 	allowSelfVote: boolean;
 	voteCounts: ReadonlyMap<EventPlayerVoteTargetKey, EventPlayerVoteCount> | null;
@@ -99,6 +102,11 @@ type EventPlayerVoteListProps = {
 		targetPlayerId: number,
 		track: EventRatingTrack,
 		value: EventPlayerVoteChoice | null,
+	) => void;
+	onForceCloseTarget: (
+		targetPlayerId: number,
+		track: EventRatingTrack,
+		decision: EventPlayerVoteForceDecision,
 	) => void;
 };
 
@@ -168,11 +176,14 @@ export function EventPlayerVoteList({
 	draftVotes,
 	votingEnabled,
 	ballotLocked,
+	canForceCloseTargets,
+	forceClosePending,
 	showBudget,
 	allowSelfVote,
 	voteCounts,
 	error,
 	onDraftChange,
+	onForceCloseTarget,
 }: EventPlayerVoteListProps) {
 	if (attendance.length === 0) {
 		return (
@@ -406,6 +417,13 @@ export function EventPlayerVoteList({
 									});
 									const locked =
 										!votesVoided && isEventPlayerVoteLocked(trackDelta);
+									const canForceClose = canForceCloseEventPlayerVoteTarget({
+										isOwner: canForceCloseTargets,
+										ballotLocked,
+										votesClosed,
+										votesVoided,
+										locked,
+									});
 									const showSubmittedChoice = eventPlayerVoteShowsSavedChoice({
 										draftVote,
 										locked,
@@ -615,6 +633,46 @@ export function EventPlayerVoteList({
 														}}
 													>
 														<CircleOff className="size-4 shrink-0" />
+													</Button>
+												</div>
+											)}
+											{canForceClose && (
+												<div className="grid w-full min-w-0 grid-cols-2 gap-1">
+													<Button
+														variant={BUTTON_VARIANT.primary}
+														className="min-w-0 px-2"
+														disabled={forceClosePending}
+														aria-label={EVENT_PLAYER_VOTE_LABEL.forceLike}
+														onClick={() => {
+															onForceCloseTarget(
+																row.player_id,
+																track,
+																EVENT_PLAYER_VOTE_FORCE_DECISION.like,
+															);
+														}}
+													>
+														<ThumbsUp className="size-4 shrink-0" />
+														<span className="truncate text-xs">
+															{EVENT_PLAYER_VOTE_LABEL.forceLike}
+														</span>
+													</Button>
+													<Button
+														variant={BUTTON_VARIANT.danger}
+														className="min-w-0 px-2"
+														disabled={forceClosePending}
+														aria-label={EVENT_PLAYER_VOTE_LABEL.forceDislike}
+														onClick={() => {
+															onForceCloseTarget(
+																row.player_id,
+																track,
+																EVENT_PLAYER_VOTE_FORCE_DECISION.dislike,
+															);
+														}}
+													>
+														<ThumbsDown className="size-4 shrink-0" />
+														<span className="truncate text-xs">
+															{EVENT_PLAYER_VOTE_LABEL.forceDislike}
+														</span>
 													</Button>
 												</div>
 											)}
