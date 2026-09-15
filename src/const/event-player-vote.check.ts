@@ -1,5 +1,6 @@
 import {
 	canEditEventPlayerBallot,
+	canForceCloseEventPlayerVoteTarget,
 	canOpenEventPlayerVoteShortcut,
 	canSetEventPlayerVoteDraft,
 	canVoteEventPlayer,
@@ -50,9 +51,9 @@ function check(condition: boolean, message: string) {
 	}
 }
 
-const quorum = EVENT_PLAYER_VOTE.defaultQuorum;
+const quorum = 3;
 
-check(EVENT_PLAYER_VOTE.defaultQuorum === 3, "default quorum");
+check(EVENT_PLAYER_VOTE.defaultQuorum === 5, "default quorum");
 check(EVENT_PLAYER_VOTE.likeBudget === 5, "like budget");
 check(EVENT_PLAYER_VOTE.dislikeBudget === 5, "dislike budget");
 check(EVENT_PLAYER_VOTE.delta === 0.5, "delta");
@@ -182,6 +183,10 @@ check(
 );
 check(eventPlayerVoteAppliedDelta(4, 0, 0, 5) === 0, "custom quorum not met");
 check(eventPlayerVoteAppliedDelta(5, 0, 0, 5) === 0.5, "custom quorum met");
+check(
+	eventPlayerVoteAppliedDelta(5, 0, 0, EVENT_PLAYER_VOTE.defaultQuorum) === 0.5,
+	"default quorum met",
+);
 
 const lineKey = (playerId: number) =>
 	eventPlayerVoteTargetKey(playerId, "line");
@@ -861,6 +866,57 @@ check(
 		votingEnabled: false,
 	}),
 	"votingEnabled false blocks",
+);
+
+check(
+	canForceCloseEventPlayerVoteTarget({
+		isOwner: true,
+		ballotLocked: true,
+		votesClosed: false,
+		votesVoided: false,
+		locked: false,
+	}),
+	"owner force after ballot",
+);
+check(
+	!canForceCloseEventPlayerVoteTarget({
+		isOwner: true,
+		ballotLocked: false,
+		votesClosed: false,
+		votesVoided: false,
+		locked: false,
+	}),
+	"force hidden while editing",
+);
+check(
+	!canForceCloseEventPlayerVoteTarget({
+		isOwner: false,
+		ballotLocked: true,
+		votesClosed: false,
+		votesVoided: false,
+		locked: false,
+	}),
+	"force owner only",
+);
+check(
+	!canForceCloseEventPlayerVoteTarget({
+		isOwner: true,
+		ballotLocked: true,
+		votesClosed: false,
+		votesVoided: false,
+		locked: true,
+	}),
+	"force hidden when locked",
+);
+check(
+	!canForceCloseEventPlayerVoteTarget({
+		isOwner: true,
+		ballotLocked: true,
+		votesClosed: true,
+		votesVoided: false,
+		locked: false,
+	}),
+	"force hidden when votes closed",
 );
 
 console.log("event-player-vote.check.ts: ok");

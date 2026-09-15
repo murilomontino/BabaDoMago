@@ -918,6 +918,15 @@ export type Database = {
 				Args: { event_id: number };
 				Returns: Json;
 			};
+			close_championship_event_player_vote_target: {
+				Args: {
+					event_id: number;
+					target_player_id: number;
+					track?: string;
+					decision?: string;
+				};
+				Returns: Json;
+			};
 			void_championship_event_player_votes: {
 				Args: { event_id: number };
 				Returns: Json;

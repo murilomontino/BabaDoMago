@@ -13,12 +13,20 @@ export const EVENT_PLAYER_VOTE = {
 	dislike: "dislike",
 	maintain: "maintain",
 	blank: "blank",
-	defaultQuorum: 3,
+	defaultQuorum: 5,
 	likeBudget: 5,
 	dislikeBudget: 5,
 	delta: 0.5,
 	ownerCountsPollMs: 4000,
 } as const;
+
+export const EVENT_PLAYER_VOTE_FORCE_DECISION = {
+	like: EVENT_PLAYER_VOTE.like,
+	dislike: EVENT_PLAYER_VOTE.dislike,
+} as const;
+
+export type EventPlayerVoteForceDecision =
+	(typeof EVENT_PLAYER_VOTE_FORCE_DECISION)[keyof typeof EVENT_PLAYER_VOTE_FORCE_DECISION];
 
 export const EVENT_PLAYER_VOTE_VALUE = {
 	like: EVENT_PLAYER_VOTE.like,
@@ -54,6 +62,9 @@ export const EVENT_PLAYER_VOTE_LABEL = {
 	votesClosed: "Votação encerrada",
 	closeVotes: "Encerrar votação",
 	closeVotesFailed: "Não foi possível encerrar a votação",
+	forceLike: "Força like",
+	forceDislike: "Força dislike",
+	forceCloseFailed: "Não foi possível forçar o voto",
 	historyTitle: "Histórico de votação",
 	historyEmpty: "Nenhuma rodada encerrada.",
 	statusOpen: "Aberta",
@@ -652,6 +663,32 @@ export function canVoteEventPlayer(input: {
 
 	if (input.allowSelfVote === false) {
 		return input.voterPlayerId !== input.targetPlayerId;
+	}
+
+	return true;
+}
+
+export function canForceCloseEventPlayerVoteTarget(input: {
+	isOwner: boolean;
+	ballotLocked: boolean;
+	votesClosed: boolean;
+	votesVoided: boolean;
+	locked: boolean;
+}): boolean {
+	if (!input.isOwner) {
+		return false;
+	}
+
+	if (!input.ballotLocked) {
+		return false;
+	}
+
+	if (input.votesClosed || input.votesVoided) {
+		return false;
+	}
+
+	if (input.locked) {
+		return false;
 	}
 
 	return true;
