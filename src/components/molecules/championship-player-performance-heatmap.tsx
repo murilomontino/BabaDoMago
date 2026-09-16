@@ -26,11 +26,14 @@ function cellTitle(rowId: string, cell: PlayerPerformanceHeatCell): string {
 	const group = PLAYER_PERFORMANCE_HEAT_LEGEND.find(
 		(item) => item.id === rowId,
 	);
-	const match = group?.items.find((item) => item.cell === cell);
-	if (match) {
-		return `${group.title}: ${match.caption}`;
+	if (!group) {
+		return playerPerformanceHeatCellLabel(cell);
 	}
-	return playerPerformanceHeatCellLabel(cell);
+	const match = group.items.find((item) => item.cell === cell);
+	if (!match) {
+		return playerPerformanceHeatCellLabel(cell);
+	}
+	return `${group.title}: ${match.caption}`;
 }
 
 export function ChampionshipPlayerPerformanceHeatmap({
