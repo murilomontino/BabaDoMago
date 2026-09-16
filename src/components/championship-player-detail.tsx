@@ -4,6 +4,7 @@ import { lazy, Suspense, useMemo, useState } from "react";
 import { AppDialog } from "@/components/atoms/app-dialog";
 import { Skeleton, SkeletonRegion } from "@/components/atoms/skeleton";
 import { Button } from "@/components/button";
+import { ChampionshipPlayerPerformance20 } from "@/components/championship-player-performance-20";
 import { ChampionshipPlayerRatingAlignmentCard } from "@/components/championship-player-rating-alignment-card";
 import { EmptyState } from "@/components/empty-state";
 import { DataTableSkeleton } from "@/components/molecules/data-table-skeleton";
@@ -26,6 +27,7 @@ import {
 	CHAMPIONSHIP_ROLE_LABEL,
 	resolveChampionshipRole,
 } from "@/const/championship-role";
+import { EVENT_RATING_TRACK } from "@/const/event-rating-adjustment";
 import {
 	formatGoalkeeperAverage,
 	formatGoalkeeperCount,
@@ -70,9 +72,6 @@ import {
 	type PlayerProfileHistoryRow,
 	playerRatingHistoryChartSeries,
 } from "@/const/player-profile";
-import {
-	EVENT_RATING_TRACK,
-} from "@/const/event-rating-adjustment";
 import {
 	PLAYER_PROFILE_SHARE_LABEL,
 	playerProfileShareCard,
@@ -864,6 +863,10 @@ export function ChampionshipPlayerDetail({
 							/>
 						)}
 					</SectionCard>
+					<ChampionshipPlayerPerformance20
+						playerId={player.id}
+						events={events}
+					/>
 					<ChampionshipPlayerRatingAlignmentCard
 						player={player}
 						players={rosterPlayers}
@@ -1052,8 +1055,7 @@ export function ChampionshipPlayerDetail({
 										<PlayerRatingHistoryChart
 											points={playerRatingHistoryChartSeries(
 												history.filter(
-													(row) =>
-														row.track === EVENT_RATING_TRACK.goalkeeper,
+													(row) => row.track === EVENT_RATING_TRACK.goalkeeper,
 												),
 												player.goalkeeper_rating,
 												new Date().toISOString(),

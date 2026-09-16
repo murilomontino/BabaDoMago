@@ -1,29 +1,19 @@
 import type { ChampionshipPlayer } from "../types/championship.ts";
-import type {
-	ChampionshipEvent,
-	ChampionshipEventMatch,
-	ChampionshipEventMatchPlayer,
-} from "../types/championship-event.ts";
-import {
-	CONSISTENCY_METRIC,
-	CONSISTENCY_MIN_PRESENCES,
-	consistencySampleStdDev,
-} from "./championship-consistency.ts";
-import { compareStartsAtNewestFirst } from "./championship-event.ts";
+import type { ChampionshipEvent } from "../types/championship-event.ts";
+import { CONSISTENCY_METRIC } from "./championship-consistency.ts";
 import { championshipRatingChartColor } from "./championship-rating-history.ts";
-import {
-	eventRatingRate,
-	formatEventRating,
-} from "./event-rating-adjustment.ts";
-import { matchGoalsConceded, matchGoalsForTeam } from "./match-goal-counts.ts";
+import { formatEventRating } from "./event-rating-adjustment.ts";
 import { playerVisibleName } from "./player-name.ts";
-import { PLAYER_RATING } from "./player-rating.ts";
-import { countsForSynergy } from "./player-synergy.ts";
 import {
-	rosterAverage,
-	rosterSafeCount,
-	rosterWinRate,
-} from "./roster-stats.ts";
+	aggregatePlayerPerformanceRaw,
+	PLAYER_PERFORMANCE_EVIDENCE,
+	PLAYER_PERFORMANCE_EVIDENCE_LEVEL,
+	type PlayerPerformanceGoalkeeperMetrics,
+	type PlayerPerformanceRawMetrics,
+	playerPerformanceEvidence,
+	playerPerformanceSeats,
+} from "./player-performance-20.ts";
+import { PLAYER_RATING } from "./player-rating.ts";
 
 export const RATING_ALIGNMENT_WINDOW = {
 	short: 10,
@@ -51,11 +41,7 @@ export const RATING_ALIGNMENT_WEIGHT = {
 	defenseConceded: 0.4,
 } as const;
 
-export const RATING_ALIGNMENT_EVIDENCE = {
-	minGames: 3,
-	initialMax: 4,
-	moderateMax: 7,
-} as const;
+export const RATING_ALIGNMENT_EVIDENCE = PLAYER_PERFORMANCE_EVIDENCE;
 
 export const RATING_ALIGNMENT_GAP = {
 	strong: 1,
@@ -73,12 +59,8 @@ export const RATING_ALIGNMENT_STATUS = {
 export type RatingAlignmentStatus =
 	(typeof RATING_ALIGNMENT_STATUS)[keyof typeof RATING_ALIGNMENT_STATUS];
 
-export const RATING_ALIGNMENT_EVIDENCE_LEVEL = {
-	insufficient: "insufficient",
-	initial: "initial",
-	moderate: "moderate",
-	strong: "strong",
-} as const;
+export const RATING_ALIGNMENT_EVIDENCE_LEVEL =
+	PLAYER_PERFORMANCE_EVIDENCE_LEVEL;
 
 export type EvidenceLevel =
 	(typeof RATING_ALIGNMENT_EVIDENCE_LEVEL)[keyof typeof RATING_ALIGNMENT_EVIDENCE_LEVEL];
@@ -110,6 +92,10 @@ export const PLAYER_RATING_ALIGNMENT_LABEL = {
 	noEvidence: "Sem evidência suficiente",
 	defenseContext:
 		"Gols sofridos = contexto defensivo do time em campo, não culpa individual.",
+	goalkeeperWindow: "Como goleiro (janela)",
+	goalkeeperMatches: "Jogos",
+	goalkeeperCleanSheet: "Clean sheet",
+	goalkeeperConceded: "Sofridos/J",
 	chartTitle: "Rating atual × referência",
 	chartHint: "Acima da linha: nota abaixo do desempenho. Abaixo: nota acima.",
 	underratedList: "Jogadores com possível rating defasado",
@@ -139,11 +125,7 @@ export type PlayerRatingAlignmentOptions = {
 	windowSize?: RatingAlignmentWindowSize;
 };
 
-export type GoalkeeperAlignmentMetrics = {
-	matches: number;
-	goalsConcededPerGame: number;
-	cleanSheetRate: number;
-};
+export type GoalkeeperAlignmentMetrics = PlayerPerformanceGoalkeeperMetrics;
 
 export type RatingAlignmentWindows = {
 	[RATING_ALIGNMENT_WINDOW.short]: number | null;
@@ -169,15 +151,6 @@ export type PlayerRatingAlignment = {
 	goalkeeperMetrics: GoalkeeperAlignmentMetrics | null;
 };
 
-type SeatMatch = {
-	eventId: number;
-	match: ChampionshipEventMatch;
-	seat: ChampionshipEventMatchPlayer;
-	skipGuestGk: boolean;
-	rosterTeamId: number | null;
-	startsAt: string;
-};
-
 type PlayerRawMetrics = {
 	playerId: number;
 	games: number;
@@ -201,249 +174,28 @@ type PeerCalibration = {
 	rating: number;
 };
 
-function rosterTeamByPlayerId(
-	event: ChampionshipEvent,
-): ReadonlyMap<number, number> {
-	return new Map(
-		event.teams.flatMap((team) =>
-			team.players.map((row) => [row.player_id, team.id] as const),
-		),
-	);
-}
-
-function matchSeatGoals(
-	match: ChampionshipEventMatch,
-	playerId: number,
-): { goals: number; assists: number } {
-	const goals = match.goals.reduce((sum, goal) => {
-		if (goal.is_own_goal) {
-			return sum;
-		}
-		if (goal.scorer_player_id !== playerId) {
-			return sum;
-		}
-		return sum + 1;
-	}, 0);
-	const assists = match.goals.reduce((sum, goal) => {
-		if (goal.assist_player_id !== playerId) {
-			return sum;
-		}
-		return sum + 1;
-	}, 0);
-	return { goals, assists };
-}
-
-function playerSeatMatches(
-	events: readonly ChampionshipEvent[],
-	playerId: number,
-	limit: number,
-): SeatMatch[] {
-	const ordered = [...events].sort(compareStartsAtNewestFirst);
-	const collected: SeatMatch[] = [];
-
-	for (const event of ordered) {
-		const rosterByPlayer = rosterTeamByPlayerId(event);
-		const matchesNewestFirst = [...event.matches].sort((left, right) => {
-			const leftKey = left.ended_at ?? left.created_at;
-			const rightKey = right.ended_at ?? right.created_at;
-			return rightKey.localeCompare(leftKey);
-		});
-
-		for (const match of matchesNewestFirst) {
-			const seat = match.players.find((row) => row.player_id === playerId);
-			if (!seat) {
-				continue;
-			}
-
-			if (
-				!countsForSynergy(
-					seat,
-					match,
-					rosterByPlayer.get(playerId) ?? null,
-					event.skip_guest_goalkeeper_matches,
-				)
-			) {
-				continue;
-			}
-
-			collected.push({
-				eventId: event.id,
-				match,
-				seat,
-				skipGuestGk: event.skip_guest_goalkeeper_matches,
-				rosterTeamId: rosterByPlayer.get(playerId) ?? null,
-				startsAt: event.starts_at,
-			});
-			if (collected.length >= limit) {
-				return collected;
-			}
-		}
-	}
-
-	return collected;
-}
-
-function attendanceGoalInvolvementPerMatch(
-	events: readonly ChampionshipEvent[],
-	playerId: number,
-	eventIds: ReadonlySet<number>,
-): number | null {
-	const samples = events.flatMap((event) => {
-		if (!eventIds.has(event.id)) {
-			return [];
-		}
-		if (event.ended_at == null) {
-			return [];
-		}
-		const row = event.attendance.find((item) => item.player_id === playerId);
-		if (!row) {
-			return [];
-		}
-		const matches = rosterSafeCount(row.matches);
-		if (matches === 0) {
-			return [0];
-		}
-		return [
-			(rosterSafeCount(row.goals) + rosterSafeCount(row.assists)) / matches,
-		];
-	});
-
-	if (samples.length < CONSISTENCY_MIN_PRESENCES) {
-		return null;
-	}
-
-	return consistencySampleStdDev(samples);
-}
-
-function aggregateRawMetrics(
-	seats: readonly SeatMatch[],
-	events: readonly ChampionshipEvent[],
-	playerId: number,
-): PlayerRawMetrics {
-	let wins = 0;
-	let draws = 0;
-	let losses = 0;
-	let lineGoals = 0;
-	let lineAssists = 0;
-	let lineTeamGoals = 0;
-	let lineGames = 0;
-	let goalsConceded = 0;
-	let cleanSheets = 0;
-	let gkMatches = 0;
-	let gkConceded = 0;
-	let gkCleanSheets = 0;
-	const eventIds = new Set<number>();
-
-	for (const row of seats) {
-		eventIds.add(row.eventId);
-		const won = row.match.winner_team_id === row.seat.team_id;
-		const draw = row.match.winner_team_id === null;
-		if (won) {
-			wins += 1;
-		} else if (draw) {
-			draws += 1;
-		} else {
-			losses += 1;
-		}
-
-		const conceded = matchGoalsConceded(row.match, row.seat.team_id);
-		goalsConceded += conceded;
-		if (conceded === 0) {
-			cleanSheets += 1;
-		}
-
-		if (row.seat.is_goalkeeper) {
-			gkMatches += 1;
-			gkConceded += conceded;
-			if (conceded === 0) {
-				gkCleanSheets += 1;
-			}
-			continue;
-		}
-
-		lineGames += 1;
-		const involvement = matchSeatGoals(row.match, playerId);
-		lineGoals += involvement.goals;
-		lineAssists += involvement.assists;
-		lineTeamGoals += matchGoalsForTeam(row.match, row.seat.team_id);
-	}
-
-	const games = seats.length;
-	const rate = eventRatingRate(wins, draws, losses, games);
-	const consistencyDeviation = attendanceGoalInvolvementPerMatch(
-		events,
-		playerId,
-		eventIds,
-	);
-
+function toAlignmentRaw(raw: PlayerPerformanceRawMetrics): PlayerRawMetrics {
 	return {
-		playerId,
-		games,
-		wins,
-		draws,
-		losses,
-		rate,
-		winRate: rosterWinRate(wins, games),
-		goalsPerGame: lineGames > 0 ? lineGoals / lineGames : null,
-		assistsPerGame: lineGames > 0 ? lineAssists / lineGames : null,
-		goalParticipation: goalParticipationOrNull(
-			lineGoals + lineAssists,
-			lineTeamGoals,
-			lineGames,
-		),
-		goalsConcededPerGame: rosterAverage(goalsConceded, games),
-		cleanSheetRate: rosterWinRate(cleanSheets, games),
-		consistencyDeviation,
-		goalkeeperMetrics: goalkeeperMetricsOrNull(
-			gkMatches,
-			gkConceded,
-			gkCleanSheets,
-		),
-		lineGames,
-	};
-}
-
-function goalParticipationOrNull(
-	involvement: number,
-	teamGoals: number,
-	lineGames: number,
-): number | null {
-	if (lineGames === 0) {
-		return null;
-	}
-	if (teamGoals <= 0) {
-		return null;
-	}
-	return involvement / teamGoals;
-}
-
-function goalkeeperMetricsOrNull(
-	matches: number,
-	conceded: number,
-	cleanSheets: number,
-): GoalkeeperAlignmentMetrics | null {
-	if (matches < RATING_ALIGNMENT_EVIDENCE.minGames) {
-		return null;
-	}
-
-	return {
-		matches,
-		goalsConcededPerGame: rosterAverage(conceded, matches),
-		cleanSheetRate: rosterWinRate(cleanSheets, matches),
+		playerId: raw.playerId,
+		games: raw.games,
+		wins: raw.wins,
+		draws: raw.draws,
+		losses: raw.losses,
+		rate: raw.pointsRate,
+		winRate: raw.winRate,
+		goalsPerGame: raw.goalsPerGame,
+		assistsPerGame: raw.assistsPerGame,
+		goalParticipation: raw.goalParticipation,
+		goalsConcededPerGame: raw.goalsConcededPerGame ?? 0,
+		cleanSheetRate: raw.cleanSheetRate ?? 0,
+		consistencyDeviation: raw.consistencyDeviation,
+		goalkeeperMetrics: raw.goalkeeperMetrics,
+		lineGames: raw.lineGames,
 	};
 }
 
 export function ratingAlignmentEvidence(games: number): EvidenceLevel {
-	if (games < RATING_ALIGNMENT_EVIDENCE.minGames) {
-		return RATING_ALIGNMENT_EVIDENCE_LEVEL.insufficient;
-	}
-	if (games <= RATING_ALIGNMENT_EVIDENCE.initialMax) {
-		return RATING_ALIGNMENT_EVIDENCE_LEVEL.initial;
-	}
-	if (games <= RATING_ALIGNMENT_EVIDENCE.moderateMax) {
-		return RATING_ALIGNMENT_EVIDENCE_LEVEL.moderate;
-	}
-	return RATING_ALIGNMENT_EVIDENCE_LEVEL.strong;
+	return playerPerformanceEvidence(games);
 }
 
 export function classifyRatingAlignmentGap(
@@ -731,8 +483,11 @@ function collectRawByPlayer(
 		if (player.deleted_at !== null) {
 			continue;
 		}
-		const seats = playerSeatMatches(events, player.id, windowSize);
-		map.set(player.id, aggregateRawMetrics(seats, events, player.id));
+		const seats = playerPerformanceSeats(events, player.id, windowSize);
+		map.set(
+			player.id,
+			toAlignmentRaw(aggregatePlayerPerformanceRaw(seats, events, player.id)),
+		);
 	}
 	return map;
 }

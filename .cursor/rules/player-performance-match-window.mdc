@@ -1,0 +1,32 @@
+---
+description: Unidades de análise — partida vs rodada. Performance individual usa últimas N partidas do jogador; rating/voto/sorteio usam rodada.
+globs: src/const/player-performance-20*.ts,src/const/player-rating-alignment*.ts,src/const/player-form*.ts,src/components/championship-player-performance*.tsx,src/components/**/championship-player-performance*
+alwaysApply: false
+---
+
+# Partida vs rodada
+
+## Convenção
+
+| Uso | Unidade |
+|-----|---------|
+| Análise individual / performance / forma recente match-level | Últimas N **partidas** disputadas pelo jogador |
+| Histórico de rating, rating_delta, votação, sorteio, equilíbrio | **Rodada** (`championship_events`) |
+
+Janela padrão de performance: **20 partidas** do jogador (`PLAYER_PERFORMANCE_WINDOW.default`), não as 20 últimas do campeonato.
+
+Tendência comparativa: últimas **5 / 10 / 20** partidas.
+
+## Fonte
+
+- Seleção e métricas: `src/const/player-performance-20.ts`
+- Adequação rating × desempenho: `src/const/player-rating-alignment.ts` (consome seats/métricas do performance-20)
+- Aproveitamento: só `eventRatingRate` — não criar segunda fórmula
+- UI ficha: `ChampionshipPlayerPerformance20` + card de adequação existente
+
+## O que não fazer
+
+- Não misturar janela de partidas com janela de rodadas na mesma métrica
+- Não alterar `championship_players.rating` / `rating_delta` / `goalkeeper_rating` com essas análises
+- Não meter `ratingGap` no sorteio
+- Não inventar delta de rating entre partidas da mesma rodada (snapshot constante até encerrar a rodada)

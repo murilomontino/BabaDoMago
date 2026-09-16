@@ -150,6 +150,40 @@ function AlignmentBody({ row }: { row: PlayerRatingAlignment }) {
 			<p className="text-xs text-fg-muted">
 				{PLAYER_RATING_ALIGNMENT_LABEL.defenseContext}
 			</p>
+
+			{row.goalkeeperMetrics && (
+				<div className="rounded-lg border border-black/10 p-3">
+					<p className="mb-2 text-xs font-medium text-fg-muted">
+						{PLAYER_RATING_ALIGNMENT_LABEL.goalkeeperWindow}
+					</p>
+					<div className="grid grid-cols-3 gap-3 text-sm">
+						<div>
+							<p className="text-xs text-fg-muted">
+								{PLAYER_RATING_ALIGNMENT_LABEL.goalkeeperMatches}
+							</p>
+							<p className="font-semibold tabular-nums text-fg">
+								{row.goalkeeperMetrics.matches}
+							</p>
+						</div>
+						<div>
+							<p className="text-xs text-fg-muted">
+								{PLAYER_RATING_ALIGNMENT_LABEL.goalkeeperCleanSheet}
+							</p>
+							<p className="font-semibold tabular-nums text-fg">
+								{Math.round(row.goalkeeperMetrics.cleanSheetRate * 100)}%
+							</p>
+						</div>
+						<div>
+							<p className="text-xs text-fg-muted">
+								{PLAYER_RATING_ALIGNMENT_LABEL.goalkeeperConceded}
+							</p>
+							<p className="font-semibold tabular-nums text-fg">
+								{row.goalkeeperMetrics.goalsConcededPerGame.toFixed(1)}
+							</p>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }
