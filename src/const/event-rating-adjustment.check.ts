@@ -1,5 +1,6 @@
 import {
 	applyEventRatingDelta,
+	championshipTrackRatingAverage,
 	EVENT_RATING_ADJUSTMENT,
 	EVENT_RATING_DROP_SHARE,
 	EVENT_RATING_INITIAL,
@@ -10,6 +11,7 @@ import {
 	eventRatingApplyDropShare,
 	eventRatingDeadZoneDownThreshold,
 	eventRatingDelta,
+	eventRatingDominantDeltaScale,
 	eventRatingDrawPoints,
 	eventRatingDropShareExcludedPlayerIds,
 	eventRatingEffectiveTrackStats,
@@ -45,6 +47,17 @@ check(
 	EVENT_RATING_ADJUSTMENT.dominantDownThreshold,
 	0.35,
 	"dominant down threshold",
+);
+check(EVENT_RATING_ADJUSTMENT.dominantDropScale, 0.5, "dominant drop scale");
+check(
+	EVENT_RATING_ADJUSTMENT.dominantRiseBelowAvgScale,
+	0.8,
+	"dominant rise below avg",
+);
+check(
+	EVENT_RATING_ADJUSTMENT.dominantRiseAtOrAboveAvgScale,
+	0.5,
+	"dominant rise at or above avg",
 );
 check(
 	eventRatingDeadZoneDownThreshold(false),
@@ -217,6 +230,122 @@ check(
 	),
 	-0.4,
 	"33% delta normal com dominante",
+);
+check(
+	championshipTrackRatingAverage([4, 6, 0]),
+	5,
+	"media campeonato exclui sentinela",
+);
+check(championshipTrackRatingAverage([0, 0]), null, "media vazia sem ranqueados");
+check(
+	eventRatingDominantDeltaScale({
+		hasDominantTeam: false,
+		wins: 1,
+		draws: 0,
+		losses: 2,
+		matches: 3,
+		playerRating: 4,
+		championshipAverage: 5,
+	}),
+	1,
+	"scale 1 sem dominante",
+);
+check(
+	eventRatingDominantDeltaScale({
+		hasDominantTeam: true,
+		wins: 1,
+		draws: 0,
+		losses: 2,
+		matches: 3,
+		playerRating: 4,
+		championshipAverage: 5,
+	}),
+	EVENT_RATING_ADJUSTMENT.dominantDropScale,
+	"scale queda dominante",
+);
+check(
+	eventRatingDominantDeltaScale({
+		hasDominantTeam: true,
+		wins: 4,
+		draws: 0,
+		losses: 0,
+		matches: 6,
+		playerRating: 4,
+		championshipAverage: 5,
+	}),
+	EVENT_RATING_ADJUSTMENT.dominantRiseBelowAvgScale,
+	"scale subida abaixo da media",
+);
+check(
+	eventRatingDominantDeltaScale({
+		hasDominantTeam: true,
+		wins: 4,
+		draws: 0,
+		losses: 0,
+		matches: 6,
+		playerRating: 5,
+		championshipAverage: 5,
+	}),
+	EVENT_RATING_ADJUSTMENT.dominantRiseAtOrAboveAvgScale,
+	"scale subida na media",
+);
+check(
+	eventRatingDominantDeltaScale({
+		hasDominantTeam: true,
+		wins: 4,
+		draws: 0,
+		losses: 0,
+		matches: 6,
+		playerRating: 4,
+		championshipAverage: null,
+	}),
+	EVENT_RATING_ADJUSTMENT.dominantRiseBelowAvgScale,
+	"scale subida sem media",
+);
+check(
+	eventRatingDelta(
+		1,
+		0,
+		2,
+		3,
+		4,
+		5,
+		EVENT_RATING_ADJUSTMENT.dominantDownThreshold,
+		EVENT_RATING_ADJUSTMENT.minMatches,
+		EVENT_RATING_ADJUSTMENT.dominantDropScale,
+	),
+	-0.2,
+	"33% queda suave dominante",
+);
+check(
+	eventRatingDelta(
+		4,
+		0,
+		0,
+		6,
+		4,
+		5,
+		EVENT_RATING_ADJUSTMENT.dominantDownThreshold,
+		EVENT_RATING_ADJUSTMENT.minMatches,
+		EVENT_RATING_ADJUSTMENT.dominantRiseBelowAvgScale,
+	),
+	0.3,
+	"67% subida suave abaixo media",
+);
+check(
+	eventRatingDelta(
+		4,
+		0,
+		0,
+		6,
+		6,
+		5,
+		EVENT_RATING_ADJUSTMENT.dominantDownThreshold,
+		EVENT_RATING_ADJUSTMENT.minMatches,
+		EVENT_RATING_ADJUSTMENT.dominantRiseAtOrAboveAvgScale,
+	),
+	0.2,
+	"67% subida suave acima media",
 );
 check(
 	eventRatingDelta(

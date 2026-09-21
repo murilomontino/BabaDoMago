@@ -25,7 +25,7 @@ export const PLAYER_RATING_SIM_LABEL = {
 	drawPoints: "Pontos por empate",
 	belowMinMatches: "Menos de 3 jogos: a nota não muda.",
 	deadZone:
-		"Zona morta (45%–55%): delta 0. Com time ≥80% na rodada, vira 35%–55%.",
+		"Zona morta (45%–55%): delta 0. Com time ≥80% na rodada, vira 35%–55%; fora, queda ×0,5 e subida ×0,8/×0,5 vs média do campeonato.",
 	seed: "Nota inicial (sentinela): a semente vira a nota.",
 	drawBonus: "Empates > derrotas: empate vale 1,5.",
 } as const;

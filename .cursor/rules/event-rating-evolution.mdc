@@ -20,6 +20,20 @@ A nota no elenco **só persiste no SQL**. `endEvent` pinta `ended_at` na hora; o
 
 Recompute: nota − old_delta + new_delta no snapshot do track.
 
+## Time dominante (≥80%)
+
+Se **qualquer** time da rodada tem aproveitamento de classificação ≥ `dominantTeamRate` (0.8) **e** ≥ `rating_min_matches` jogos (`eventHasDominantTeam`):
+
+- zona morta desce de 45%–55% para **35%–55%** (`dominantDownThreshold`) para **todos** os jogadores da rodada
+- fora da zona morta, `delta_scale` via `eventRatingDominantDeltaScale`:
+  - queda → `dominantDropScale` (0.5)
+  - subida e rating **&lt;** média do campeonato no track → `dominantRiseBelowAvgScale` (0.8)
+  - subida e rating **≥** média (ou média nula tratada como abaixo) → `dominantRiseAtOrAboveAvgScale` (0.5)
+- média = elenco ativo do campeonato no track, excluindo sentinela `0` (`championshipTrackRatingAverage`)
+- empate do time na classificação = 1 pt (`standingPointsRate`), não o bônus 1,5 do jogador
+
+Constates: `EVENT_RATING_ADJUSTMENT.dominantTeamRate` / `dominantDownThreshold` / `dominantDropScale` / `dominantRise*`. Helpers: `eventRatingDeadZoneDownThreshold`, `eventRatingDominantDeltaScale`.
+
 ## Amortecimento de queda (flag)
 
 `championships.rating_drop_goal_share` (default false). Só em delta negativo e share **> 40%**: `share = G+A jogador / G+A do time`; `delta *= (1 − share)`. Helpers: `eventRatingTeamGoalShare`, `eventRatingApplyDropShare`.

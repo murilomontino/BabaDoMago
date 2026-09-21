@@ -13,6 +13,9 @@ export const EVENT_RATING_ADJUSTMENT = {
 	downThreshold: 0.45,
 	dominantDownThreshold: 0.35,
 	dominantTeamRate: 0.8,
+	dominantDropScale: 0.5,
+	dominantRiseBelowAvgScale: 0.8,
+	dominantRiseAtOrAboveAvgScale: 0.5,
 	expectedRate: 0.5,
 	minMatches: 3,
 	scaleDivisor: 2,
@@ -357,6 +360,50 @@ export function eventRatingDeadZoneDownThreshold(
 	return EVENT_RATING_ADJUSTMENT.downThreshold;
 }
 
+export function championshipTrackRatingAverage(
+	ratings: readonly number[],
+): number | null {
+	const ranked = ratings.filter((rating) => rating !== PLAYER_RATING.default);
+	if (ranked.length === 0) {
+		return null;
+	}
+
+	return ranked.reduce((sum, rating) => sum + rating, 0) / ranked.length;
+}
+
+export function eventRatingDominantDeltaScale(input: {
+	hasDominantTeam: boolean;
+	wins: number;
+	draws: number;
+	losses: number;
+	matches: number;
+	playerRating: number;
+	championshipAverage: number | null;
+}): number {
+	if (!input.hasDominantTeam) {
+		return 1;
+	}
+
+	const points = eventRatingPoints(
+		input.wins,
+		input.draws,
+		input.losses,
+	);
+	const maxPoints = input.matches * EVENT_RATING_ADJUSTMENT.winPoints;
+	if (2 * points - maxPoints < 0) {
+		return EVENT_RATING_ADJUSTMENT.dominantDropScale;
+	}
+
+	if (
+		input.championshipAverage === null ||
+		input.playerRating < input.championshipAverage
+	) {
+		return EVENT_RATING_ADJUSTMENT.dominantRiseBelowAvgScale;
+	}
+
+	return EVENT_RATING_ADJUSTMENT.dominantRiseAtOrAboveAvgScale;
+}
+
 export function eventHasDominantTeam(
 	rows: readonly { matches: number; pointsRate: number }[],
 	minMatches: number = EVENT_RATING_ADJUSTMENT.minMatches,
@@ -539,6 +586,7 @@ function eventRatingRankedDelta(
 	ceiling: number,
 	downThreshold: number = EVENT_RATING_ADJUSTMENT.downThreshold,
 	minMatches: number = EVENT_RATING_ADJUSTMENT.minMatches,
+	deltaScale: number = 1,
 ): number {
 	if (matches < minMatches) {
 		return 0;
@@ -563,9 +611,10 @@ function eventRatingRankedDelta(
 	const ceilingTenths = Math.round(
 		Math.min(PLAYER_RATING.max, Math.max(PLAYER_RATING.min, ceiling)) * 10,
 	);
+	const scaleTenths = Math.round(deltaScale * 10);
 	return roundRatioToTenths(
-		(2 * points - maxPoints) * ceilingTenths,
-		2 * EVENT_RATING_ADJUSTMENT.scaleDivisor * maxPoints,
+		(2 * points - maxPoints) * ceilingTenths * scaleTenths,
+		2 * EVENT_RATING_ADJUSTMENT.scaleDivisor * maxPoints * 10,
 	);
 }
 
@@ -578,6 +627,7 @@ export function eventRatingDelta(
 	ceiling: number,
 	downThreshold: number = EVENT_RATING_ADJUSTMENT.downThreshold,
 	minMatches: number = EVENT_RATING_ADJUSTMENT.minMatches,
+	deltaScale: number = 1,
 ): number {
 	if (matches < minMatches) {
 		return 0;
@@ -602,6 +652,7 @@ export function eventRatingDelta(
 				ceiling,
 				downThreshold,
 				minMatches,
+				deltaScale,
 			),
 		);
 	}
@@ -614,6 +665,7 @@ export function eventRatingDelta(
 		ceiling,
 		downThreshold,
 		minMatches,
+		deltaScale,
 	);
 }
 
@@ -899,6 +951,14 @@ export function eventRatingPreview({
 		hasDominantTeam ??
 		eventHasDominantTeamFromMatchups(matches, ratingMinMatches);
 	const downThreshold = eventRatingDeadZoneDownThreshold(dominant);
+	const lineAverage = championshipTrackRatingAverage(
+		players.map((player) => player.rating),
+	);
+	const gkAverage = championshipTrackRatingAverage(
+		players.map(
+			(player) => player.goalkeeper_rating ?? PLAYER_RATING.default,
+		),
+	);
 
 	return ids.flatMap((playerId) => {
 		const player = playerById.get(playerId);
@@ -977,6 +1037,19 @@ export function eventRatingPreview({
 					: excludedLineIds;
 			const trackIsMvp =
 				track === EVENT_RATING_TRACK.goalkeeper ? mvpGk : mvpLine;
+			const trackAverage =
+				track === EVENT_RATING_TRACK.goalkeeper
+					? gkAverage
+					: lineAverage;
+			const deltaScale = eventRatingDominantDeltaScale({
+				hasDominantTeam: dominant,
+				wins: trackStats.wins,
+				draws: trackStats.draws,
+				losses: trackStats.losses,
+				matches: trackStats.matches,
+				playerRating: from,
+				championshipAverage: trackAverage,
+			});
 			const rawDelta =
 				eventRatingDelta(
 					trackStats.wins,
@@ -987,6 +1060,7 @@ export function eventRatingPreview({
 					ceiling,
 					downThreshold,
 					ratingMinMatches,
+					deltaScale,
 				) + eventMvpBonus(trackIsMvp, from);
 			const share = eventRatingDropShareForPlayer({
 				enabled: ratingDropGoalShare,
