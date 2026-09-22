@@ -15,7 +15,7 @@ Fonte única no app: `src/const/event-rating-adjustment.ts` (`EVENT_RATING_ADJUS
 
 - no track efetivo, `matches < championships.rating_min_matches` (default **3**, faixa 3–10 na Configuração) — após o merge por soma, a amostra fundida conta como um único track
 - jogador já ranqueado (`rating !== 0`) com aproveitamento na zona morta: 45% a 55% inclusive (`upThreshold` 0.55, `downThreshold` 0.45)
-- se **qualquer** time da rodada tem aproveitamento de classificação ≥ 80% (`dominantTeamRate`) com ≥ `rating_min_matches` jogos, a zona morta baixa para 35%–55% (`dominantDownThreshold`) para **todos**; abaixo de 35% o delta segue a fórmula normal (como hoje abaixo de 45%)
+- se **qualquer** time da rodada tem aproveitamento de classificação ≥ 80% (`dominantTeamRate`) com ≥ `rating_min_matches` jogos, a zona morta baixa para 35%–55% (`dominantDownThreshold`) para **todos**; fora dela o delta de aproveitamento é suavizado: **queda ×0,5**; **subida ×0,8** se a nota do track está abaixo da média do campeonato (sem sentinela `0`), **×0,5** se está na média ou acima (`eventRatingDominantDeltaScale`); abaixo de 35% o sinal do delta continua o da fórmula, só o tamanho muda
 - empate na classificação do time vale 1 pt (`standingPointsRate`), não o bônus 1,5 do jogador
 - heatmap / forma recente / hidden strength continuam com 45%–55% fixo (piso de amostra = `EVENT_RATING_ADJUSTMENT.minMatches`, default 3)
 

@@ -309,7 +309,7 @@ Pontos: V=3, E=1 (ou **1,5** se E>D), D=0.
 
 - `matches < championships.rating_min_matches` (default **3**, faixa 3–10 na Configuração do baba)
 - Já ranqueado com aproveitamento na **zona morta** 45%–55% (MVP ainda pode somar)
-- Se **qualquer** time da rodada tem aproveitamento de classificação ≥ **80%** (≥ `rating_min_matches` jogos), a zona morta vira **35%–55%** para todos. Abaixo de 35% o delta continua normal. Empate do time = 1 pt (como na classificação).
+- Se **qualquer** time da rodada tem aproveitamento de classificação ≥ **80%** (≥ `rating_min_matches` jogos), a zona morta vira **35%–55%** para todos. Fora dela o delta suaviza: queda **×0,5**; subida **×0,8** abaixo da média do campeonato no track, **×0,5** na média ou acima. Empate do time = 1 pt (como na classificação).
 
 ### Fórmula (já ranqueado)
 
